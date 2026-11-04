@@ -482,7 +482,17 @@ class GpuRenderer final : public Renderer {
     wgpu::CommandBuffer cb = enc.Finish();
     queue_.Submit(1, &cb);
     ++inFlight_;
-    queue_.OnSubmittedWorkDone(wgpu::CallbackMode::AllowSpontaneous, [this](wgpu::QueueWorkDoneStatus, wgpu::StringView) { --inFlight_; });
+    // GPU time per frame, estimated from when the GPU says it's done: from
+    // submit (or from the end of the frame before, if it was still busy)
+    double submitted = emscripten_get_now();
+    queue_.OnSubmittedWorkDone(wgpu::CallbackMode::AllowSpontaneous, [this, submitted](wgpu::QueueWorkDoneStatus, wgpu::StringView) {
+      --inFlight_;
+      double now = emscripten_get_now();
+      double ms = now - std::max(submitted, lastDone_);
+      lastDone_ = now;
+      lastGpuMs_ = static_cast<float>(ms);
+      gpuMs_ += (lastGpuMs_ - gpuMs_) * 0.1f;
+    });
     if (captureTex) {
       // the page copies and reads it with the browser's own WebGPU calls
       captureDone_ = nullptr;
@@ -493,6 +503,8 @@ class GpuRenderer final : public Renderer {
   }
 
   uint64_t presentedFrames() const override { return presented_; }
+  float gpuMs() const override { return gpuMs_; }
+  float lastGpuMs() const override { return lastGpuMs_; }
   float renderScale() const override { return renderScale_; }
 
   // Once a second: if the GPU dropped frames, draw fewer pixels; after a few
@@ -1207,6 +1219,8 @@ class GpuRenderer final : public Renderer {
   float renderScale_ = 1, scaleCeil_ = 1, perfClock_ = 0, sinceScale_ = 0;
   int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, stuckFrames_ = 0;
   uint64_t presented_ = 0;
+  double lastDone_ = 0;
+  float gpuMs_ = 0, lastGpuMs_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
 };
 

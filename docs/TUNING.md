@@ -87,7 +87,33 @@ Every scene sets these with `look …`. Most are nearly free (one full-screen pa
 
 ---
 
-## 5. Switches for testing
+## 5. Measuring: the benchmark and the tracker
+
+Every change to this sheet gets judged by numbers we keep.
+
+1. **Run a benchmark.** In the player, open **Benchmark…** and pick **This scene** or **The whole story** (about 30 minutes). It plays by itself: it presses Use, answers questions with the first option, and moves on scene by scene. Or open it directly with `?bench=scene` or `?bench=story`, plus `&quality=0|1|2`, `&choices=0,1,1` and `&seconds=N` (a time limit per scene).
+2. **Read the results.** At the end it shows a table, one row per scene, and offers **Copy results** and **Save file**. The last 20 runs are also kept in that browser.
+3. **Keep them.** Paste the results into the chat with Claude, or send the file. Claude runs `tools/perf_add.py`, which keeps every run whole in `perf/raw/` and rebuilds `perf/runs.json` and `perf/segments.json`. Those feed the **Smoothness Tracker** (the link is in the results panel).
+
+What each number means:
+
+| Number | What it measures | Target |
+|---|---|---|
+| fps | frames that reached the screen per second | 60 |
+| Worst 1% (1% low) | the frame rate of the slowest 1% of frames: what the worst moments feel like | 55 or more |
+| p99 ms | 99% of frames took less than this | 20 ms or less (60 fps is 16.7 ms) |
+| Max ms | the single slowest frame | under 50 ms |
+| Hitches | frames that took more than twice the usual time and over 25 ms: the stutters you notice | none |
+| Hitch % | share of the time spent inside hitches | 0 |
+| Dropped | browser frames the GPU had no room for | low |
+| GPU ms | estimated GPU time per frame (from the GPU's done signals) | under 14 ms at 60 fps |
+| CPU ms | time in script, world and sending to the GPU | under 4 ms |
+| Res | the share of full resolution the player chose | as high as the targets allow |
+| Load ms | from the scene's script starting to its first frame on screen | under 1500 |
+
+The results also record the build, the GPU's name, the browser, the screen and the pixel density, so runs from different machines and builds can be compared.
+
+## 6. Switches for testing
 
 | Switch | What it does |
 |---|---|
@@ -96,11 +122,13 @@ Every scene sets these with `look …`. Most are nearly free (one full-screen pa
 | `?skip=N` | skip passes (add up): 1 sun shadow, 2 scene, 4 exposure, 8 bloom, 16 film, 32 shadow pass, 64 scene pass, 128 depth, 256 draw off-screen (headless tests), 512 no lamp shadows |
 | `?view=1\|2\|3` | debug views: raw light, exposure, bloom |
 | `?ui=0` | hide the controls |
+| `?bench=scene\|story` | the benchmark (above) |
+| tap the stats line | a live graph of the last 240 frames' times, with 16.7 ms and 33 ms lines |
 | `loop play first.loop` | plays a whole story with no picture, for testing the story itself |
 
 ---
 
-## 6. Performance tricks: what we have, what's next
+## 7. Performance tricks: what we have, what's next
 
 Ranked by how much they help smoothness. **Done** means it's in the engine now.
 
@@ -115,6 +143,7 @@ Ranked by how much they help smoothness. **Done** means it's in the engine now.
 | **Audio on its own thread (AudioWorklet)** | Next | the sound mixer now runs on the main thread 23 times a second and can steal a frame; moving it off removes a source of hitches |
 | **Pipelines compiled in the background** (`createRenderPipelineAsync`), warmed at load | Next | no hitch the first time a pass or quality is used |
 | **Scene loading off the main thread** (a worker builds meshes and ray trees) | Next | no freeze when a scene loads or `go_to` runs |
+| Frame recorder, benchmark and Smoothness Tracker | **Done** | every frame's time kept as data, per scene, per build, per GPU |
 | GPU timing (timestamp queries) to drive the resolution governor | Next | the governor reacts to real GPU milliseconds before frames drop, not after |
 | Script and world in a worker, WASM threads and SIMD | Later | more CPU headroom; GitHub Pages needs a service-worker trick for threads |
 | Late camera update (read input just before drawing) | Later | less delay between the hand and the view |
@@ -159,11 +188,11 @@ Ranked by how much they help smoothness. **Done** means it's in the engine now.
 
 ---
 
-## 7. Adding to this sheet
+## 8. Adding to this sheet
 
 For a new setting or trick, add a row to the right table:
 
 | Setting | Values per level | What it does | Cost | Tune with |
 |---|---|---|---|---|
 
-Then measure it with the stats line in three scenes (a small room like `cabin`, a crowd like `ardane_02_market`, a big outdoor one like `ardane_12_garden`) on Phone and High, and write what changed.
+Then benchmark it in three scenes (a small room like `cabin`, a crowd like `ardane_02_market`, a big outdoor one like `ardane_12_garden`) on Phone and High, and write what changed.

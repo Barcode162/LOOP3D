@@ -8,6 +8,9 @@ emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build build-web -j4
 rm -rf site && mkdir -p site/scenes
 cp web/index.html build-web/player.js build-web/player.wasm site/
+# stamp the build (benchmarks record which build they ran) and the tracker's link
+sed -i "s|__BUILD__|$(git rev-parse --short HEAD 2>/dev/null || echo dev) $(date -u +%F)|" site/index.html
+[ -f web/tracker_url.txt ] && sed -i "s|__TRACKER__|$(tr -d '\n' < web/tracker_url.txt)|" site/index.html
 cp examples/*.loop examples/story/*.loop site/scenes/
 # whole stories: every scene and its trailer still
 for d in stories/*/; do

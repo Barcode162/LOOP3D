@@ -36,6 +36,10 @@ class Renderer {
   // Frames that reached the screen, and the share of full resolution drawn.
   virtual uint64_t presentedFrames() const = 0;
   virtual float renderScale() const = 0;
+  // GPU milliseconds per frame (estimated from the GPU's "done" signals):
+  // smoothed, and the latest frame's.
+  virtual float gpuMs() const = 0;
+  virtual float lastGpuMs() const = 0;
   virtual void setQuality(Quality q) = 0;
   virtual float pixelRatio() const = 0;
   virtual size_t drawCalls() const = 0;
