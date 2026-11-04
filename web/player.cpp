@@ -8,8 +8,10 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 #include <memory>
 #include <string>
 
@@ -38,12 +40,67 @@ struct Player {
   Vec2 move{0};  // -1..1 from keys or the thumb
   bool keys[8] = {};
   std::string pendingScript, problems;
+  bool autoplay = false;
   int frames = 0;
   double fpsTime = 0;
   float fps = 0;
-  double cpuMs = 0;
+  double cpuMs = 0, frameStart = 0;
 };
 Player g;
+
+// The frame recorder: the time between frames that reached the screen (what
+// the eye feels), the CPU and GPU time of each, and the resolution drawn.
+// A benchmark records one scene at a time and gets its numbers as JSON.
+struct Perf {
+  bool on = false, waitingFirst = false;
+  double scriptStart = 0, lastShown = 0, loadMs = -1, started = 0;
+  uint64_t rafFrames = 0, shownAtStart = 0;
+  std::vector<float> interval, cpu, gpu, scale;
+  float ring[240] = {};  // the last 240 shown frames, for the live graph
+  int ringAt = 0;
+} perf;
+
+void perfShown(double now, double cpuMs) {
+  if (perf.lastShown > 0) {
+    float iv = static_cast<float>(now - perf.lastShown);
+    perf.ring[perf.ringAt] = iv;
+    perf.ringAt = (perf.ringAt + 1) % 240;
+    if (perf.on && !perf.waitingFirst) {
+      perf.interval.push_back(iv);
+      perf.cpu.push_back(static_cast<float>(cpuMs));
+      perf.gpu.push_back(g.renderer->lastGpuMs());
+      perf.scale.push_back(g.renderer->renderScale());
+    }
+  }
+  if (perf.on && perf.waitingFirst) {
+    perf.waitingFirst = false;
+    perf.loadMs = emscripten_get_now() - perf.scriptStart;  // same clock as scriptStart
+    perf.started = now;
+    perf.shownAtStart = g.renderer->presentedFrames();
+  }
+  perf.lastShown = now;
+}
+
+float pct(std::vector<float> v, float p) {
+  if (v.empty()) return 0;
+  size_t k = std::min(v.size() - 1, static_cast<size_t>(p * (v.size() - 1) + 0.5f));
+  std::nth_element(v.begin(), v.begin() + k, v.end());
+  return v[k];
+}
+float mean(const std::vector<float>& v) {
+  double t = 0;
+  for (float x : v) t += x;
+  return v.empty() ? 0 : static_cast<float>(t / v.size());
+}
+// fps of the slowest share of frames ("1% low"): what the worst moments feel like
+float lowFps(std::vector<float> v, float share) {
+  if (v.empty()) return 0;
+  std::sort(v.begin(), v.end(), std::greater<float>());
+  size_t n = std::max<size_t>(1, static_cast<size_t>(v.size() * share));
+  double t = 0;
+  for (size_t i = 0; i < n; ++i) t += v[i];
+  return static_cast<float>(1000.0 / (t / n));
+}
 
 uint64_t skySignature(const Scene& s) {
   uint64_t h = 1469598103934665603ULL;
@@ -60,9 +117,12 @@ uint64_t skySignature(const Scene& s) {
 }
 
 void startScript(const std::string& src) {
+  perf.scriptStart = emscripten_get_now();
+  perf.lastShown = 0;
   if (g.renderer) g.renderer->reset();
   g.vm = std::make_unique<Vm>();
   g.stage = std::make_unique<Stage>();
+  g.stage->autoplay = g.autoplay;
   installStandardLibrary(*g.vm);
   installSceneApi(*g.vm, *g.stage);
   g.vm->onSay = [](const std::string& s) { EM_ASM({ if (window.loopSay) window.loopSay(UTF8ToString($0)); }, s.c_str()); };
@@ -152,6 +212,7 @@ bool frameBody(double now);
 // smoothed: shown in the stats so a slow script is easy to tell from a slow GPU.
 bool frame(double now, void*) {
   double t0 = emscripten_get_now();
+  g.frameStart = t0;
   bool r = frameBody(now);
   g.cpuMs += (emscripten_get_now() - t0 - g.cpuMs) * 0.05;
   return r;
@@ -217,7 +278,8 @@ bool frameBody(double now) {
   }
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
-  g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);
+  if (g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade)) perfShown(now, emscripten_get_now() - g.frameStart);
+  if (perf.on) ++perf.rafFrames;
   // frames per second that reached the screen (dropped ones don't count)
   g.fpsTime += dt;
   if (g.fpsTime > 0.5) {
@@ -273,10 +335,63 @@ EMSCRIPTEN_KEEPALIVE void loop_audio(float* stereo, int frames) {
   if (g.stage) g.stage->mixer.render(stereo, frames);
   else std::memset(stereo, 0, sizeof(float) * frames * 2);
 }
+// The benchmark: start recording (the clock for "load time" starts at the
+// scene's script), and stop, getting the scene's numbers as JSON.
+EMSCRIPTEN_KEEPALIVE void loop_perf_begin() {
+  perf.on = true;
+  perf.waitingFirst = true;
+  perf.loadMs = -1;
+  perf.rafFrames = 0;
+  perf.interval.clear(), perf.cpu.clear(), perf.gpu.clear(), perf.scale.clear();
+}
+EMSCRIPTEN_KEEPALIVE const char* loop_perf_end() {
+  static std::string out;
+  perf.on = false;
+  const auto& iv = perf.interval;
+  float p50 = pct(iv, 0.5f);
+  float hitchAt = std::max(2 * p50, 25.0f);
+  int hitches = 0;
+  double total = 0, hitchTime = 0;
+  for (float x : iv) {
+    total += x;
+    if (x > hitchAt) ++hitches, hitchTime += x;
+  }
+  uint64_t shown = iv.size();
+  long dropped = static_cast<long>(perf.rafFrames) - static_cast<long>(shown) - 1;
+  float maxMs = iv.empty() ? 0 : *std::max_element(iv.begin(), iv.end());
+  float scaleMin = perf.scale.empty() ? 1 : *std::min_element(perf.scale.begin(), perf.scale.end());
+  std::string title = g.stage ? g.stage->title : "";
+  for (char& c : title)
+    if (c == '"' || c == '\\' || static_cast<unsigned char>(c) < 32) c = '\'';
+  char buf[1400];
+  std::snprintf(buf, sizeof buf,
+                "{\"title\":\"%s\",\"mode\":\"%s\",\"seconds\":%.2f,\"frames\":%llu,\"fps\":%.2f,\"avgMs\":%.2f,\"p50Ms\":%.2f,\"p95Ms\":%.2f,"
+                "\"p99Ms\":%.2f,\"maxMs\":%.1f,\"low1Fps\":%.2f,\"low01Fps\":%.2f,\"hitches\":%d,\"hitchPct\":%.2f,\"dropped\":%ld,"
+                "\"cpuMs\":%.2f,\"cpuP99Ms\":%.2f,\"gpuMs\":%.2f,\"gpuP95Ms\":%.2f,\"scaleAvg\":%.3f,\"scaleMin\":%.3f,\"loadMs\":%.0f,"
+                "\"things\":%zu,\"lights\":%zu,\"width\":%d,\"height\":%d}",
+                title.c_str(), g.movie ? "movie" : "game", total / 1000.0, static_cast<unsigned long long>(shown),
+                total > 0 ? shown * 1000.0 / total : 0.0, mean(iv), p50, pct(iv, 0.95f), pct(iv, 0.99f), maxMs, lowFps(iv, 0.01f), lowFps(iv, 0.001f), hitches,
+                total > 0 ? 100.0 * hitchTime / total : 0.0, std::max(0L, dropped), mean(perf.cpu), pct(perf.cpu, 0.99f), mean(perf.gpu), pct(perf.gpu, 0.95f),
+                mean(perf.scale), scaleMin, perf.loadMs, g.stage ? g.stage->scene.instances.size() : 0, g.stage ? g.stage->scene.lights.size() : 0,
+                EM_ASM_INT({ return document.getElementById('view').width; }), EM_ASM_INT({ return document.getElementById('view').height; }));
+  out = buf;
+  return out.c_str();
+}
+// The last 240 shown frames' times (ms), oldest first, for the live graph.
+EMSCRIPTEN_KEEPALIVE const float* loop_perf_graph() {
+  static float out[240];
+  for (int i = 0; i < 240; ++i) out[i] = perf.ring[(perf.ringAt + i) % 240];
+  return out;
+}
+// Benchmarks play by themselves: the player counts as near everything.
+EMSCRIPTEN_KEEPALIVE void loop_set_autoplay(int on) {
+  if (g.stage) g.stage->autoplay = on != 0;
+  g.autoplay = on != 0;
+}
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];
   if (!g.stage) return "{}";
-  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f}", g.fps, g.cpuMs,
+  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
                 g.renderer ? g.renderer->renderScale() : 1.0f, g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
                 g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime);
   return buf;

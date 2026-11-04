@@ -1,0 +1,65 @@
+{
+ "kind": "loop3d-bench",
+ "v": 1,
+ "when": "2026-11-04T16:15:52.360Z",
+ "build": "9689c9a 2026-11-04",
+ "bench": "scene",
+ "start": "cabin",
+ "quality": "High",
+ "msaa": 4,
+ "device": {
+  "gpu": {
+   "vendor": "google",
+   "architecture": "swiftshader",
+   "device": "",
+   "description": ""
+  },
+  "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+  "dpr": 1,
+  "screen": "320x180",
+  "cores": 4
+ },
+ "summary": {
+  "scenes": 1,
+  "seconds": 22.8,
+  "frames": 10,
+  "fps": 0.44,
+  "worstLow1Fps": 0.15,
+  "worstP99Ms": 6699.7,
+  "maxMs": 6699.7,
+  "hitches": 3,
+  "avgScale": 0.67,
+  "worstLoadMs": -2
+ },
+ "segments": [
+  {
+   "title": "The Cabin",
+   "mode": "movie",
+   "seconds": 22.75,
+   "frames": 10,
+   "fps": 0.44,
+   "avgMs": 2274.91,
+   "p50Ms": 1149.9,
+   "p95Ms": 6699.7,
+   "p99Ms": 6699.7,
+   "maxMs": 6699.7,
+   "low1Fps": 0.15,
+   "low01Fps": 0.15,
+   "hitches": 3,
+   "hitchPct": 83.66,
+   "dropped": 412,
+   "cpuMs": 2.46,
+   "cpuP99Ms": 11,
+   "gpuMs": 4953.08,
+   "gpuP95Ms": 7841.8,
+   "scaleAvg": 0.67,
+   "scaleMin": 0.5,
+   "loadMs": -2,
+   "things": 30,
+   "lights": 3,
+   "width": 160,
+   "height": 90,
+   "scene": "cabin"
+  }
+ ]
+}
