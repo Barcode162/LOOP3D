@@ -1,0 +1,39 @@
+# Builds the web player and publishes it to GitHub Pages.
+# It only runs when started by hand (Actions → "Publish the player" → Run),
+# so nothing goes public until the owner decides.
+name: Publish the player
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 6.0.13
+      - name: Engine tests
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j
+          ./build/loop_tests
+      - name: The site
+        run: |
+          sudo apt-get install -y ninja-build
+          ./tools/build_site.sh
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
