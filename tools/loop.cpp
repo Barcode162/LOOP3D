@@ -197,7 +197,8 @@ int playStory(const std::string& first, const Options& o) {
     while (t < limit && stage.nextScene.empty()) {
       vm.update(1.0 / 60), stage.update(1.0f / 60), t += 1.0 / 60;
       for (const Stage::UiMessage& m : stage.ui) {
-        if (m.kind == "line" && !m.text.empty()) std::printf(m.speaker.empty() ? "   %s%s\n" : "   %s: %s\n", m.speaker.c_str(), m.text.c_str());
+        if (m.kind == "line" && !m.text.empty())
+          std::printf(m.speaker.empty() ? "  %6.1f  %s%s\n" : "  %6.1f  %s: %s\n", t, m.speaker.c_str(), m.text.c_str());
         if (m.kind == "ask") {
           answer = asked < picks.size() ? picks[asked] : 0;
           answer = std::clamp(answer, 0, static_cast<int>(m.options.size()) - 1);

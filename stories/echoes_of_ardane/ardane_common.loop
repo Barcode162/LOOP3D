@@ -335,12 +335,12 @@ to pip_dark(p)
 
 # streaks of rain hanging in the air (they fall, unless time is stopped)
 let rain_frozen = no
-to rain_streaks(center, count: 160, spread: 6, height: 8)
+to rain_streaks(center, count: 160, spread: 6, height: 8, thick: 0.006, brightness: 30)
   let drops = []
-  let wet_glow = material(like: "water", color: rgb(0.8, 0.9, 1.0), glow: rgb(0.6, 0.8, 1.0) * 30)
+  let wet_glow = material(like: "water", color: rgb(0.8, 0.9, 1.0), glow: rgb(0.6, 0.8, 1.0) * brightness)
   seed(31)
   repeat count times
-    drops.push(box(size: vec(0.006, 0.22, 0.006), at: center + vec(random(-spread, spread), random(0, height), random(-spread, spread)), material: wet_glow, collide: no))
+    drops.push(box(size: vec(thick, 0.22, thick), at: center + vec(random(-spread, spread), random(0, height), random(-spread, spread)), material: wet_glow, collide: no))
   every 1 / 30 s
     if not rain_frozen
       for each d in drops
@@ -423,3 +423,15 @@ to veyl_at(at, facing: 0 deg)
     crown.position = v.position + vec(0, 2.04, 0)
     glow.position = v.position + vec(0, 2.3, 0)
   return v
+
+# eyes that glow faintly (Milo, once the Mercy Shard is in him)
+to glowing_eyes(who, color: rgb(0.4, 0.85, 1.0), height: 1.47, strength: 600)
+  let m = material(color: rgb(0, 0, 0), glow: color * strength)
+  let eyes = [sphere(0.012, at: who.position, material: m, collide: no), sphere(0.012, at: who.position, material: m, collide: no)]
+  every 1 / 30 s
+    let f = who.facing
+    let fwd = vec(sin(f), 0, cos(f))
+    let side = vec(cos(f), 0, -sin(f))
+    for i from 0 to 1
+      eyes[i].position = who.position + vec(0, height, 0) + fwd * 0.085 + side * (0.032 * (i * 2 - 1))
+  return eyes
