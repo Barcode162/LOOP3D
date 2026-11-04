@@ -57,30 +57,30 @@ to choose(question, options)
   return answer
 
 # ---- the portal: a turning ring of light in the brick
-to portal(at, facing: 0 deg, size: 1.3, color: rgb(0.75, 0.6, 1.0))
-  let glow = material(color: rgb(0.05, 0.05, 0.08), glow: color * 6000)
-  let core = material(color: rgb(0.02, 0.02, 0.03), glow: color * 1500)
+to portal(at, facing: 0 deg, size: 1.3, color: rgb(0.75, 0.6, 1.0), brightness: 1)
+  let glow = material(color: rgb(0.05, 0.05, 0.08), glow: color * 6000 * brightness)
+  let core = material(color: rgb(0.02, 0.02, 0.03), glow: color * 1500 * brightness)
   let rings = []
   for i from 0 to 2
     let r = ring(size * (1 - i * 0.18), 0.03 + i * 0.01, at: at, material: glow, collide: no)
     rings.push(r)
   let disc = cylinder(size * 0.8, 0.02, at: at, material: core, collide: no)
   disc.rotation = vec(facing, 90 deg, 0)
-  let l = light(at, lumens: 4000, color: color, radius: 0.3)
+  let l = light(at, lumens: 4000 * brightness, color: color, radius: 0.3)
   sound "hum", at: at, volume: 0.7
   every 1 / 30 s
     for i from 0 to 2
       let r = rings[i]
       r.rotation = vec(facing + time() * (0.6 + i * 0.5), 90 deg + 0.3 * sin(time() * (1 + i)), time() * (1.3 - i * 0.4))
-    l.lumens = 4000 * (1 + 0.25 * flicker(time(), 3, 7))
+    l.lumens = 4000 * brightness * (1 + 0.25 * flicker(time(), 3, 7))
   return {rings: rings, light: l, disc: disc}
 
 # a smaller faint portal (the one that stays)
 to faint_portal(at, facing: 0 deg)
-  let glow = material(color: rgb(0.02, 0.02, 0.03), glow: rgb(0.7, 0.6, 1.0) * 300)
-  let r = ring(0.9, 0.015, at: at, material: glow, collide: no)
+  let glow = material(color: rgb(0.02, 0.02, 0.03), glow: rgb(0.7, 0.6, 1.0) * 1200)
+  let r = ring(0.9, 0.03, at: at, material: glow, collide: no)
   r.rotation = vec(facing, 90 deg, 0)
-  light at, lumens: 60, color: rgb(0.7, 0.6, 1.0), radius: 0.2
+  light at, lumens: 150, color: rgb(0.7, 0.6, 1.0), radius: 0.2
   every 1 / 20 s
     r.rotation = vec(facing + time() * 0.2, 90 deg, 0)
 
@@ -247,7 +247,7 @@ to the_family()
 # ---- Aelor: green islands hanging in gold air
 let island_rock = material(like: "stone", color: rgb(0.42, 0.36, 0.30), bump: 4 mm)
 let lawn = material(like: "grass", color: rgb(0.30, 0.48, 0.18))
-let living_root = material(color: rgb(0.05, 0.12, 0.05), glow: rgb(0.25, 1.0, 0.35) * 220, roughness: 0.6)
+let living_root = material(color: rgb(0.05, 0.12, 0.05), glow: rgb(0.25, 1.0, 0.35) * 12, roughness: 0.6)
 let dead_root = material(like: "bark", color: rgb(0.18, 0.16, 0.14))
 # an island: a lawn on top of an upside-down cone of rock, roots and a waterfall below
 to sky_island(at, radius: 8, depth: 10, trees: 6, falls: yes, pattern: 4)
@@ -273,7 +273,7 @@ to tether(start, finish)
 
 to glasshouse(at, size: vec(6, 4, 4), lumens: 5000)
   let frame = material(like: "iron", color: rgb(0.9, 0.9, 0.88), roughness: 0.4)
-  let pane = material(like: "glass", color: rgb(0.95, 1, 0.97))
+  let pane = material(like: "frosted glass", color: rgb(0.95, 1, 0.97), glow: kelvin(2800) * 18)
   box size: vec(size.x, size.y, size.z), at: at + vec(0, size.y / 2, 0), material: pane, collide: no
   for x from -size.x / 2 to size.x / 2 by 1
     box size: vec(0.05, size.y, 0.05), at: at + vec(x, size.y / 2, size.z / 2), material: frame, collide: no
@@ -335,12 +335,12 @@ to pip_dark(p)
 
 # streaks of rain hanging in the air (they fall, unless time is stopped)
 let rain_frozen = no
-to rain_streaks(center, count: 160, spread: 6, height: 8)
+to rain_streaks(center, count: 160, spread: 6, height: 8, thick: 0.006, brightness: 30)
   let drops = []
-  let wet_glow = material(like: "water", color: rgb(0.8, 0.9, 1.0), glow: rgb(0.6, 0.8, 1.0) * 30)
+  let wet_glow = material(like: "water", color: rgb(0.8, 0.9, 1.0), glow: rgb(0.6, 0.8, 1.0) * brightness)
   seed(31)
   repeat count times
-    drops.push(box(size: vec(0.006, 0.22, 0.006), at: center + vec(random(-spread, spread), random(0, height), random(-spread, spread)), material: wet_glow, collide: no))
+    drops.push(box(size: vec(thick, 0.22, thick), at: center + vec(random(-spread, spread), random(0, height), random(-spread, spread)), material: wet_glow, collide: no))
   every 1 / 30 s
     if not rain_frozen
       for each d in drops
@@ -349,8 +349,8 @@ to rain_streaks(center, count: 160, spread: 6, height: 8)
   return drops
 
 # a big flat hologram that flickers
-to hologram(at, size, color, facing: 0 deg)
-  let m = material(color: rgb(0, 0, 0), glow: color * 900)
+to hologram(at, size, color, facing: 0 deg, brightness: 900)
+  let m = material(color: rgb(0, 0, 0), glow: color * brightness)
   let b = box(size: size, at: at, turn: facing, material: m, collide: no)
   let l = light(at + vec(sin(facing) * 1, 0, cos(facing) * 1), lumens: 3000, color: color, radius: 0.6)
   every 1 / 12 s
@@ -418,8 +418,20 @@ let veyl_black = material(like: "velvet", color: rgb(0.03, 0.025, 0.02))
 to veyl_at(at, facing: 0 deg)
   let v = person(at: at, lift: at.y, height: 2.05, facing: facing, skin: skin_light, shirt: veyl_black, trousers: veyl_black)
   let crown = ring(0.13, 0.03, at: at + vec(0, 2.05, 0), material: material(like: "gold", roughness: 0.2), collide: no)
-  let glow = light(at + vec(0, 2.2, 0), lumens: 400, color: rgb(1, 0.75, 0.35), radius: 0.1)
+  let glow = light(at + vec(0, 2.2, 0), lumens: 1500, color: rgb(1, 0.75, 0.35), radius: 0.1)
   every 1 / 30 s
     crown.position = v.position + vec(0, 2.04, 0)
     glow.position = v.position + vec(0, 2.3, 0)
   return v
+
+# eyes that glow faintly (Milo, once the Mercy Shard is in him)
+to glowing_eyes(who, color: rgb(0.4, 0.85, 1.0), height: 1.47, strength: 600)
+  let m = material(color: rgb(0, 0, 0), glow: color * strength)
+  let eyes = [sphere(0.012, at: who.position, material: m, collide: no), sphere(0.012, at: who.position, material: m, collide: no)]
+  every 1 / 30 s
+    let f = who.facing
+    let fwd = vec(sin(f), 0, cos(f))
+    let side = vec(cos(f), 0, -sin(f))
+    for i from 0 to 1
+      eyes[i].position = who.position + vec(0, height, 0) + fwd * 0.085 + side * (0.032 * (i * 2 - 1))
+  return eyes

@@ -45,7 +45,7 @@ orbit "the king", 20 s, around: vec(0, 0.6, 0), radius: 10, height: 2.5, from: 9
 orbit "the king, again", 20 s, around: vec(0, 0.6, 0), radius: 10, height: 2.5, from: 90 deg, to: 180 deg, lens: 35 mm
 orbit "and again", 20 s, around: vec(0, 0.6, 0), radius: 10, height: 2.5, from: 90 deg, to: 180 deg, lens: 35 mm
 shot "nothing", 17 s, from: {at: vec(0, 30, 40), look_at: vec(0, 0, 0), lens: 50 mm}, to: {at: vec(0, 45, 60), look_at: vec(0, 0, 0), lens: 85 mm}, ease: "in_out", fade_out: 3 s
-render file: "ardane_18_hollow.png", quality: "good", width: 1280, at: 71 s
+render file: "ardane_18_hollow.png", quality: "good", width: 1280, at: 66 s
 
 task
   milo.sitting = yes
