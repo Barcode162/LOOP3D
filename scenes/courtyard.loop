@@ -1,0 +1,62 @@
+# A stone courtyard at golden hour: someone strolls between the fountain and
+# the bench, crates tumble when knocked, the fire crackles, birds call.
+#   live:   the player (game or movie)      still: loop render examples/courtyard.loop
+title "The Courtyard"
+mode "movie"
+
+ground 40, material: "stone"
+let wall = material("brick")
+box size: vec(14, 4, 0.4), at: vec(0, 2, -7), material: wall
+box size: vec(0.4, 4, 14), at: vec(-7, 2, 0), material: wall
+box size: vec(0.4, 2, 14), at: vec(7, 1, 0), material: wall
+
+# the fountain
+cylinder 1.4, 0.5, at: vec(0, 0.25, -2), material: "granite"
+cylinder 1.2, 0.05, at: vec(0, 0.47, -2), material: "water", collide: no
+cylinder 0.15, 1.4, at: vec(0, 0.9, -2), material: "granite"
+sphere 0.3, at: vec(0, 1.7, -2), material: "bronze"
+
+# a bench and the fire bowl
+box size: vec(1.8, 0.08, 0.5), at: vec(4, 0.45, 2), material: "oak", round: 0.02
+box size: vec(0.08, 0.45, 0.45), at: vec(3.2, 0.22, 2), material: "iron"
+box size: vec(0.08, 0.45, 0.45), at: vec(4.8, 0.22, 2), material: "iron"
+cylinder 0.5, 0.35, at: vec(-3.5, 0.18, 2.5), material: "iron"
+sphere 0.12, at: vec(-3.5, 0.42, 2.5), scale: vec(2.5, 1.4, 2.5), material: "ember", collide: no
+let fire = light(vec(-3.5, 0.7, 2.5), lumens: 1500, kelvin: 1900, radius: 0.25)
+sound "fire", at: vec(-3.5, 0.5, 2.5), volume: 0.9
+sound "birds", volume: 0.4
+room 0.25, echo: 0.2
+
+# crates and a ball: solid things that fall, tumble and knock
+let crates = []
+for i from 0 to 2
+  let c = box(size: vec(0.5, 0.5, 0.5), at: vec(-4 + i * 0.55, 0.25, -4), material: "pine")
+  crates.push(solid(c, mass: 8, friction: 0.7))
+let top = box(size: vec(0.5, 0.5, 0.5), at: vec(-3.45, 0.76, -4), turn: 15 deg, material: "pine")
+solid top, mass: 8
+let ball = sphere(0.15, at: vec(-3.6, 4, -4.2), material: "rubber")
+solid ball, mass: 0.6, bounce: 0.7
+after 4 s
+  push ball, vec(2.5, 3, 1.2)
+
+# a person, walking a slow loop and looking at the fountain
+let ada = person(at: vec(3, 0, 4), height: 1.68, shirt: material(color: rgb(0.55, 0.18, 0.12), roughness: 0.8), trousers: material(color: rgb(0.12, 0.13, 0.18), roughness: 0.9))
+let stops = [vec(3, 0, 4), vec(-2, 0, 3.5), vec(-2.5, 0, 0), vec(2.5, 0, 0.5)]
+task
+  let n = 0
+  repeat forever
+    n = (n + 1) % stops.length
+    ada.walk_to = stops[n]
+    ada.look_at = vec(0, 1.2, -2)
+    wait 4 s
+
+# light and the film
+sun elevation: 9 deg, toward: 250 deg, lux: 90000
+sky "physical", haze: 3
+every 1 / 30 s
+  fire.lumens = 1500 * (1 + 0.3 * flicker(time(), 7, 3))
+look "golden", bars: 2.39
+camera at: vec(6, 1.7, 7), look_at: vec(0, 1, -2), lens: 32 mm, f_stop: 4
+orbit "around the fountain", 10 s, around: vec(0, 0.8, -2), radius: 8, height: 2.2, from: 40 deg, to: 110 deg, lens: 30 mm, fade_in: 1 s
+shot "ada", 6 s, from: {at: vec(4.5, 1.5, 6), look_at: vec(2, 1.2, 2), lens: 50 mm, f_stop: 2}, to: {at: vec(3, 1.4, 5), look_at: vec(0, 1.1, 0), lens: 70 mm, f_stop: 2}, shake: 0.25, fade_out: 1 s
+render file: "courtyard.png", quality: "good", width: 1280, at: 5 s
