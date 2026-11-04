@@ -1,0 +1,82 @@
+# 1. The Room Above the Laundry — PLAYED. Dawn, rain.
+use "ardane_common"
+title "1 · The Room Above the Laundry"
+mode "game"
+forget_story()
+
+# ---- the room: plaster walls, old boards, one window over the street
+let plaster = material(like: "plaster", color: rgb(0.70, 0.64, 0.55))
+ground 12, material: "floorboards"
+box size: vec(6, 3, 0.2), at: vec(0, 1.5, -2.6), material: plaster
+box size: vec(0.2, 3, 5.4), at: vec(-3, 1.5, 0), material: plaster
+box size: vec(6, 0.2, 5.4), at: vec(0, 3.05, 0), material: "old wood"
+box size: vec(6, 3, 0.2), at: vec(0, 1.5, 2.6), material: plaster
+# the right wall, with the window
+box size: vec(0.2, 3, 2.2), at: vec(3, 1.5, -1.6), material: plaster
+box size: vec(0.2, 3, 2.0), at: vec(3, 1.5, 1.7), material: plaster
+box size: vec(0.2, 1.0, 1.2), at: vec(3, 0.5, 0.1), material: plaster
+box size: vec(0.2, 0.9, 1.2), at: vec(3, 2.55, 0.1), material: plaster
+box size: vec(0.03, 1.1, 1.2), at: vec(3, 1.55, 0.1), material: "glass"
+# grey morning coming in through the rain
+panel_light at: vec(3.3, 1.6, 0.1), facing: vec(-1, -0.2, 0), size: vec(1.2, 1.1), lumens: 2500, kelvin: 7000
+
+# Nana's bed under the window, the oil lamp beside it
+box size: vec(1.0, 0.45, 2.0), at: vec(2.3, 0.22, 0.6), material: "old wood"
+box size: vec(0.95, 0.12, 1.9), at: vec(2.3, 0.5, 0.6), material: material(like: "wool", color: rgb(0.55, 0.12, 0.1), pattern: "checker", pattern_color: rgb(0.35, 0.28, 0.2), pattern_scale: 4)
+box size: vec(0.5, 0.6, 0.5), at: vec(2.3, 0.3, -0.75), material: "walnut"
+lantern vec(2.3, 0.72, -0.75), lumens: 90
+# the table, the jar of coins
+box size: vec(1.2, 0.05, 0.8), at: vec(-1.6, 0.74, -1.4), material: "walnut"
+for each c in [vec(-2.1, 0.36, -1.7), vec(-1.1, 0.36, -1.7), vec(-2.1, 0.36, -1.1), vec(-1.1, 0.36, -1.1)]
+  box size: vec(0.05, 0.72, 0.05), at: c, material: "walnut"
+cylinder 0.06, 0.14, at: vec(-1.4, 0.84, -1.4), material: "green glass"
+candle vec(-1.9, 0.765, -1.25)
+# Bea's drawing on the floor (the back of the eviction notice)
+box size: vec(0.3, 0.005, 0.21), at: vec(0.3, 0.005, -0.4), turn: 20 deg, material: "paper"
+
+# ---- the family
+let nana = someone(vec(2.3, 0, 1.1), height: 1.5, shirt: cloth(0.4, 0.35, 0.45), skin: skin_warm, facing: 270 deg)
+nana.sitting = yes
+nana.look_at = vec(0, 1.5, 1)
+let rosa = someone(vec(-1.6, 0, -0.75), height: 1.65, shirt: cloth(0.45, 0.42, 0.38), skin: skin_warm, facing: 180 deg)
+rosa.sitting = yes
+rosa.look_at = vec(-1.4, 0.8, -1.4)
+let bea = someone(vec(0.1, 0, -0.1), height: 1.15, shirt: cloth(0.85, 0.55, 0.2), skin: skin_warm, facing: 160 deg)
+bea.look_at = vec(0.3, 0, -0.4)
+
+# ---- sound and look
+sound "rain", volume: 0.6
+sound "hum", at: vec(0, -1, 0), volume: 0.35      # the laundry machines below
+room 0.2, echo: 0.1
+sky "physical", haze: 9
+sun elevation: 3 deg, toward: 95 deg, lux: 2000, kelvin: 6500
+look "golden", warmth: 0.1, grain: 0.03, bars: 2.39
+camera at: vec(-0.4, 1.5, 1.9), look_at: vec(1.2, 1.0, 0.3), lens: 28 mm, f_stop: 2.8
+render file: "ardane_01_home.png", quality: "good", width: 1280, at: 6 s
+
+# ---- the morning
+task
+  wait 1.5 s
+  say "Rosa", "Forty-one. Forty-one... and the rent is ninety."
+  bea.look_at = vec(-0.4, 1.5, 1.9)
+  say "Bea", "I drew you, Milo. You're the big one."
+  bea.look_at = vec(0.3, 0, -0.4)
+  go_and_use(vec(2.0, 0, 0.6), "Go to Nana by the window. (walk, then Use)")
+  nana.look_at = player() + vec(0, 1.5, 0)
+  say "Nana", "Come here, little lamp. Give me your wrist."
+  sound "click", "cloth", at: vec(2.0, 1, 0.6)
+  say "", "She ties a knot of red thread around it. Her hands are slow and sure."
+  say "Nana", "Our family walked a long way to get to this room."
+  say "Nana", "One day you'll go and say hello to them."
+  say "Milo", "Who, Nana?"
+  say "Nana", "Everyone you come from."
+  remember "relics", 1
+  go_and_use(vec(-1.4, 0, -1.0), "The jar of coins is on the table.")
+  let c = choose("Forty-one coins.", ["Take them for bread", "Leave them for Nana's medicine"])
+  remember "took the coins", c == 0
+  if c == 0
+    say "Rosa", "...Bring back the heel of the loaf for Bea. She likes the heel."
+  else
+    say "Rosa", "You're a good boy. Go on. The Varens don't pay for lateness."
+  say "", "Calder Row. The Varen Arcade opens at seven."
+  next_scene "ardane_02_market"

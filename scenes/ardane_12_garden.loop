@@ -1,0 +1,100 @@
+# 12. The Garden Party — PLAYED. House Ashcombe's high garden, sunset.
+use "ardane_common"
+title "12 · The Garden Party"
+mode "game"
+
+sky_island vec(0, 0, 0), radius: 22, depth: 18, trees: 0, falls: no, pattern: 21
+sky_island vec(-50, -10, -40), radius: 12, depth: 14, trees: 8, pattern: 22
+sky_island vec(40, 6, -55), radius: 10, depth: 12, trees: 6, pattern: 23
+# the glasshouse at the head of the lawn, glowing
+glasshouse vec(0, 0, -12), size: vec(10, 5, 5), lumens: 12000
+# white paths, a fountain, tea tables
+box size: vec(2, 0.04, 20), at: vec(0, 0.02, -2), material: "marble", collide: no
+for each c in [vec(-6, 0, 0), vec(6, 0, 0), vec(-6, 0, 6), vec(6, 0, 6), vec(0, 0, 4)]
+  cylinder 0.7, 0.04, at: c + vec(0, 0.76, 0), material: material(like: "fabric", color: rgb(0.95, 0.94, 0.9))
+  cylinder 0.06, 0.74, at: c + vec(0, 0.37, 0), material: "iron"
+  cylinder 0.05, 0.1, at: c + vec(0.2, 0.83, 0), material: "porcelain", collide: no
+# the paper lanterns on strings across the lawn
+for x from -12 to 12 by 3
+  for each z in [-4, 2, 8]
+    paper_lantern vec(x, 3.2 + 0.3 * sin(x), z), color: [rgb(1, 0.7, 0.4), rgb(1, 0.5, 0.35), rgb(1, 0.85, 0.55)].pick()
+# willows and birches round the edge
+for i from 0 to 13
+  let a = i * tau / 14
+  tree kind: ["birch", "oak"].pick(), at: vec(cos(a) * 18, 0, sin(a) * 18), height: random(6, 10)
+# the rim: a low white balustrade, and below it the chains
+let rim = vec(0, 0, 21)
+for x from -8 to 8 by 0.6
+  cylinder 0.05, 0.8, at: vec(x, 0.4, 20.5), material: "marble"
+box size: vec(17, 0.08, 0.2), at: vec(0, 0.84, 20.5), material: "marble"
+for x from -6 to 6 by 3
+  cylinder 0.03, 14, at: vec(x, -7, 21.4), material: "iron", collide: no
+
+# ---- the party
+let ashcombe = someone(vec(0, 0, -7), height: 1.86, shirt: cloth(0.12, 0.2, 0.14), trousers: cloth(0.1, 0.1, 0.1), skin: skin_light, facing: 0 deg)
+let sela = someone(vec(7.5, 0, 9), height: 1.68, shirt: cloth(0.55, 0.62, 0.4), skin: skin_light, facing: 180 deg)
+sela.look_at = vec(0, -3, 30)
+let nobles = []
+seed(12)
+repeat 16 times
+  let n = someone(vec(random(-10, 10), 0, random(-6, 10)), shirt: cloth(random(0.3, 0.8), random(0.3, 0.6), random(0.2, 0.5)), skin: skin_light)
+  nobles.push(n)
+let quartet = []
+for i from 0 to 3
+  let q = someone(vec(-9 + i * 0.9, 0, -9), shirt: cloth(0.05, 0.05, 0.06), facing: 30 deg)
+  q.sitting = yes
+  quartet.push(q)
+let bram = someone(vec(1, -2.2, 21.6), height: 1.8, shirt: cloth(0.3, 0.26, 0.2), skin: skin_deep, facing: 180 deg)
+every 5 s
+  let n = nobles.pick()
+  n.walk_to = vec(random(-10, 10), 0, random(-6, 10))
+  n.look_at = player() + vec(0, 1.5, 0) if chance(30%) else nothing
+
+sound "strings", at: vec(-7.5, 1, -9), volume: 0.9
+sound "crowd", volume: 0.35
+sound "wind", volume: 0.3
+sound "chains", at: vec(0, -6, 22), volume: 0.6
+room 0.6, echo: 0.05
+sky "physical", haze: 3
+sun elevation: -1 deg, toward: 0 deg, lux: 6000
+fog 0.01, top: -6, glow: 0.85, color: rgb(1, 0.85, 0.7)
+look "golden", warmth: 0.35, bloom: 0.3, bars: 2.39
+camera at: vec(-2, 1.6, 12), look_at: vec(0, 1.3, 0), lens: 30 mm, f_stop: 2.8
+render file: "ardane_12_garden.png", quality: "good", width: 1280, at: 4 s
+
+task
+  wait 1 s
+  say "", "House Ashcombe's high garden. Milo, in a borrowed servant's jacket, carries a silver tray."
+  say "", "White tea at sunset. Nobody looks at the servants. That's the point of the jacket."
+  go_and_use(vec(6, 0, 6), "Carry the tray to the tea tables.")
+  sound "click", "glass", at: vec(6, 0.8, 6)
+  say "", "A lady takes a cup without looking up."
+  go_and_use(sela.position, "A girl stands alone at the edge, looking down.")
+  say "Sela", "You hold the tray like someone who's never been told he's allowed to put it down."
+  sela.look_at = player() + vec(0, 1.5, 0)
+  say "Sela", "Who are you?"
+  say "Milo", "Nobody."
+  say "Sela", "Everyone up here is nobody. They just have better coats."
+  sound "click", "cloth", at: sela.position
+  say "", "She takes off her brother's green coat and puts it round him."
+  say "Sela", "Wear this, and you're one of us for the evening."
+  # the coat: Milo is a noble now
+  say "", "For an hour, nobles nod at him. A lord asks his opinion of the weather. It feels like everything he ever wanted."
+  for each n in nobles
+    n.look_at = player() + vec(0, 1.5, 0)
+  wait 3 s
+  go_and_use(vec(1, 0, 20), "Something rattles beyond the balustrade.")
+  bram.look_at = player() + vec(0, 1.5, 0)
+  say "", "Below the rim, a man hangs in chains, tending a root as thick as a ship's mast."
+  say "Bram", "They nod at the coat, lad. Not at you."
+  let c = choose("The coat is warm.", ["Keep the coat on", "Give it back"])
+  remember "kept the coat", c == 0
+  if c == 0
+    say "", "He keeps it. It fits him better every minute."
+    say "Sela", "...It suits you. That's what worries me."
+  else
+    sound "click", "cloth", at: sela.position
+    say "", "He folds it and gives it back."
+    say "Sela", "Nobody's ever given anything back to me before. I don't know what to say."
+  say "Bram", "If you want to see what holds this place up, come down tonight. Bring a lamp."
+  next_scene "ardane_13_roots", delay: 2 s

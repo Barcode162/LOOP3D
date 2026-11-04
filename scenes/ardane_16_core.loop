@@ -1,0 +1,100 @@
+# 16. The Archive Core — WATCHED. The white heart of the Helix Tower.
+use "ardane_common"
+title "16 · The Archive Core"
+mode "movie"
+
+let white = material(like: "plastic", color: rgb(0.92, 0.93, 0.95), roughness: 0.3)
+ground 60, material: material(like: "tiles", color: rgb(0.9, 0.9, 0.92), roughness: 0.15)
+box size: vec(24, 0.4, 40), at: vec(0, 8, -10), material: white
+for each x in [-12, 12]
+  box size: vec(0.4, 8, 40), at: vec(x, 4, -10), material: white
+box size: vec(24, 8, 0.4), at: vec(0, 4, -30), material: white
+# rows of archive towers: white columns with a strip of data light
+let strips = []
+for x from -9 to 9 by 3
+  for z from -26 to -6 by 4
+    if abs(x) > 1
+      box size: vec(1.2, 6, 1.2), at: vec(x, 3, z), material: white
+      strips.push(box(size: vec(0.05, 5, 0.05), at: vec(x + (0.62 if x < 0 else -0.62), 3, z), material: material(color: rgb(0, 0, 0), glow: rgb(0.4, 0.8, 1.0) * 800), collide: no))
+let ceiling = panel_light(at: vec(0, 7.7, -12), facing: vec(0, -1, 0), size: vec(10, 30), lumens: 60000, kelvin: 6500)
+let alarms = []
+for z from -26 to -2 by 6
+  alarms.push(light(vec(0, 7, z), lumens: 0, color: rgb(1, 0.05, 0.03), radius: 0.2))
+# the core: a pillar of light at the far end, the shard forming in it
+let core_at = vec(0, 0, -24)
+cylinder 1.2, 0.3, at: core_at + vec(0, 0.15, 0), material: "chrome"
+let beam = cylinder(0.25, 7.5, at: core_at + vec(0, 4, 0), material: material(color: rgb(0, 0, 0), glow: rgb(0.5, 0.85, 1.0) * 1500), collide: no)
+let shard = sphere(0.08, at: core_at + vec(0, 1.3, 0.9), scale: vec(0.6, 1.6, 0.6), material: material(color: rgb(0, 0, 0), glow: rgb(0.3, 0.8, 1.0) * 6000), collide: no)
+shard.visible = no
+# the name, in letters of light along the back wall
+let name_wall = hologram(vec(0, 5.6, -29.7), vec(10, 1.6, 0.05), rgb(1.0, 0.85, 0.5))
+name_wall.visible = no
+let drones = []
+rain_frozen = no
+
+let milo = hero(vec(0, 0, -4), facing: 180 deg)
+let nia = someone(vec(-1, 0, -3), height: 1.62, shirt: cloth(0.15, 0.45, 0.42), skin: skin_deep, facing: 180 deg)
+let oren = someone(vec(1, 0, -3), height: 1.92, shirt: cloth(0.85, 0.7, 0.3), trousers: linen, skin: skin_deep, facing: 180 deg)
+let sela = someone(vec(0.3, 0, -2), height: 1.68, shirt: cloth(0.55, 0.62, 0.4), skin: skin_light, facing: 180 deg)
+let robot = pip(vec(-0.6, 0, -4.2))
+relic_orbit(milo, recall("relics", 4))
+
+sound "hum", volume: 0.3
+room 0.8, echo: 0.5
+sky "none"
+look "bleach", contrast: 1.1, bloom: 0.3, bars: 2.39
+camera at: vec(0, 1.6, 0), look_at: vec(0, 1.5, -24), lens: 28 mm
+shot "white silence", 16 s, from: {at: vec(0, 1.5, 2), look_at: vec(0, 1.5, -24), lens: 24 mm}, to: {at: vec(0, 1.5, -6), look_at: vec(0, 1.5, -24), lens: 28 mm}, fade_in: 1.5 s
+shot "the shard", 20 s, from: {at: vec(1.8, 1.4, -20), look_at: vec(0, 1.3, -23.2), lens: 50 mm, f_stop: 1.8}, to: {at: vec(1.0, 1.4, -21.5), look_at: vec(0, 1.3, -23.1), lens: 65 mm, f_stop: 1.8}
+shot "VEYL", 18 s, from: {at: vec(0, 1.2, -18), look_at: vec(0, 5.6, -29.7), lens: 24 mm}, to: {at: vec(0, 0.8, -20), look_at: vec(0, 5.6, -29.7), lens: 20 mm}, ease: "in"
+orbit "frozen rain", 24 s, around: vec(0, 1.2, -16), radius: 2.4, height: 1.4, from: 0 deg, to: 200 deg, lens: 35 mm
+shot "left behind", 18 s, from: {at: vec(-0.6, 0.5, -22), look_at: vec(0, 1.2, -8), lens: 35 mm, f_stop: 2}, to: {at: vec(-0.6, 0.5, -22), look_at: vec(0, 1.2, -6), lens: 50 mm, f_stop: 2}, fade_out: 2.5 s
+render file: "ardane_16_core.png", quality: "good", width: 1280, at: 70 s
+
+task
+  wait 2 s
+  say "", "The archive core. White floors above the rain. No sound at all."
+  for each p in [milo, nia, oren, sela]
+    p.walk_to = p.position + vec(0, 0, -16)
+  let start = time()
+  every 1 / 30 s
+    if time() - start < 10
+      pip_move(robot, vec(-0.6, 0, -4.2 - (time() - start) * 1.6), facing: 180 deg)
+  wait 8 s
+  milo.walk_to = core_at + vec(0, 0, 1.4)
+  wait 2 s
+  say "", "Ada's code is in pieces. He puts it back together, line by line, as if he'd always known it."
+  shard.visible = yes
+  sound "bell", "glass", at: core_at, strength: 0.6
+  say "", "Light gathers in his palm and hardens into a shard of blue glass. The Mercy Shard."
+  remember "relics", 5
+  name_wall.visible = yes
+  for each p in [milo, nia, oren, sela]
+    p.look_at = vec(0, 5.6, -29.7)
+  say "", "And the archive shows him everything. One name behind every great house in every world."
+  say "", "Veyra. The Sunborn. Ashcombe. Helix. Varen. All planted by one man, a thousand years ago."
+  say "", "VEYL."
+  say "Juno-7", "(over the radio) The war that broke Aelor's sky was his. He fought Ada. She was the only one who could stop him."
+  # the alarms, the drones
+  ceiling.lumens = 4000
+  sound "drones", volume: 1
+  every 0.5 s
+    for each a in alarms
+      a.lumens = 9000 if a.lumens < 100 else 0
+  for i from 0 to 7
+    drones.push(drone(vec(random(-6, 6), random(3, 6), random(-20, -6))))
+  say "Pip", "They are coming. All of them. I recommend running, at a speed I would describe as immediately."
+  # time slows for Milo
+  rain_streaks vec(0, 0, -16), count: 180, spread: 4, height: 7
+  wait 1 s
+  rain_frozen = yes
+  say "", "And time slows. The sprinklers' rain hangs in the air like glass beads."
+  say "", "He walks through it. He sees every drone's flight as a line of numbers. He sees the door."
+  milo.walk_to = vec(0, 0, -6)
+  robot.light.lumens = 60
+  say "Pip", "Go. I will keep them busy. I am very good at being in the way."
+  say "Milo", "Leave it. It'll slow them down."
+  say "", "It."
+  say "", "Pip's lens dims, just slightly, the way a person's eyes do."
+  say "", "Milo doesn't look back."
+  next_scene "ardane_17_return", delay: 2.5 s
