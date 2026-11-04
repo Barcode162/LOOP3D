@@ -80,6 +80,7 @@ A full story made in Loop3D, to show what it can do: [`stories/echoes_of_ardane/
 ## Writing for it
 
 - [`docs/LANGUAGE.md`](docs/LANGUAGE.md): the language and every word.
+- [`docs/TUNING.md`](docs/TUNING.md): every quality and look setting, what it costs, how they trade, and the performance tricks we have and are adding.
 - [`docs/STORY_GUIDE.md`](docs/STORY_GUIDE.md): how to turn a written story into Loop3D scenes, step by step. **Give this to the AI writing your story.**
 - `examples/`: `cabin.loop` (a candlelit room), `courtyard.loop` (a living courtyard: a person, physics, sound, shots).
 
