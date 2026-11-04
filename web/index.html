@@ -11,7 +11,7 @@
   #trailer { object-fit: cover; display: none; background: #000; }
   .bar { position: fixed; left: 0; right: 0; display: flex; gap: 8px; align-items: center; padding: 10px max(12px, env(safe-area-inset-left)); pointer-events: none; }
   .top { top: env(safe-area-inset-top); justify-content: space-between; }
-  .bottom { bottom: max(10px, env(safe-area-inset-bottom)); justify-content: center; }
+  .bottom { bottom: max(10px, env(safe-area-inset-bottom)); justify-content: center; flex-wrap: wrap; }
   .chip, button, select { pointer-events: auto; background: var(--glass); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font: inherit; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   button.on { border-color: var(--amber); color: var(--amber); }
   #title { font-weight: 650; letter-spacing: 0.02em; }
@@ -42,6 +42,11 @@
   <button id="modeBtn">Movie</button>
   <button id="trailerBtn" title="See the cinema render: the target look">Trailer view</button>
   <button id="soundBtn" title="Sound on (phones need a tap first)">Sound</button>
+  <select id="scene" title="Scene">
+    <option value="courtyard">Courtyard</option>
+    <option value="cabin">Cabin</option>
+    <option value="the_gate">The Gate (story)</option>
+  </select>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
     <option value="1">High</option>
@@ -57,7 +62,7 @@
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
-  const sceneName = (params.get('scene') || 'cabin').replace(/[^a-z0-9 _-]/gi, '');
+  const sceneName = (location.hash.slice(1) || params.get('scene') || 'courtyard').replace(/[^a-z0-9_-]/gi, '');
   const note = document.getElementById('note');
   const problemsBox = document.getElementById('problems');
   const modeBtn = document.getElementById('modeBtn');
@@ -120,6 +125,9 @@
     q.value = params.get('quality') || (touch ? '0' : '1');
     q.onchange = () => M._loop_set_quality(+q.value);
     M._loop_set_quality(+q.value);
+    const sc = document.getElementById('scene');
+    sc.value = sceneName;
+    sc.onchange = () => { location.hash = sc.value; window.loopGoTo(sc.value); };
     try {
       await loadScene(sceneName);
     } catch (e) {
