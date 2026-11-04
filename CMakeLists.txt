@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.20)
+project(Loop3D LANGUAGES CXX)
+
+# Loop3D: the engine (engine/), its language (Looped Script, engine/script),
+# the `loop` command (tools/) and the tests (tests/).
+#   Native:  cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+#   Web:     emcmake cmake -B build-web && cmake --build build-web -j
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS engine/*.cpp)
+# The GPU renderer and the web runtime need Emscripten's WebGPU.
+list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/engine/(gpu|web)/")
+
+if(EMSCRIPTEN)
+  file(GLOB_RECURSE GPU_SOURCES CONFIGURE_DEPENDS engine/gpu/*.cpp engine/web/*.cpp)
+  list(APPEND ENGINE_SOURCES ${GPU_SOURCES})
+endif()
+
+add_library(loop3d STATIC ${ENGINE_SOURCES})
+target_include_directories(loop3d PUBLIC ${CMAKE_SOURCE_DIR})
+target_compile_options(loop3d PRIVATE -Wall -Wextra -Werror)
+if(NOT EMSCRIPTEN)
+  find_package(Threads REQUIRED)
+  target_link_libraries(loop3d PUBLIC Threads::Threads)
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_options(loop3d PRIVATE -O3 -march=native)
+  endif()
+
+  add_executable(loop tools/loop.cpp)
+  target_link_libraries(loop PRIVATE loop3d)
+  target_compile_options(loop PRIVATE -Wall -Wextra -Werror)
+
+  file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp)
+  add_executable(loop_tests ${TEST_SOURCES})
+  target_link_libraries(loop_tests PRIVATE loop3d)
+  target_compile_options(loop_tests PRIVATE -Wall -Wextra -Werror)
+  enable_testing()
+  add_test(NAME loop_tests COMMAND loop_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+else()
+  target_compile_options(loop3d PUBLIC --use-port=emdawnwebgpu)
+  add_executable(player web/player.cpp)
+  target_link_libraries(player PRIVATE loop3d)
+  target_compile_options(player PRIVATE -Wall -Wextra -Werror)
+  target_link_options(player PRIVATE
+    --use-port=emdawnwebgpu
+    -sALLOW_MEMORY_GROWTH=1
+    -sINITIAL_MEMORY=64MB
+    -sSTACK_SIZE=2MB
+    -sENVIRONMENT=web
+    "-sEXPORTED_FUNCTIONS=_main,_loop_run_script,_loop_set_look,_loop_key,_loop_pointer,_loop_stats"
+    "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString"
+    -O3)
+endif()
