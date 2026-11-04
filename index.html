@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
+<meta name="loop-build" content="0d0a644 2026-11-04">
 <style>
   :root { --ink: #f4efe6; --dim: #b9ae9c; --glass: rgba(18, 14, 10, 0.55); --line: rgba(255, 220, 170, 0.18); --amber: #ffb35c; }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -29,6 +30,15 @@
   #ls { left: max(24px, env(safe-area-inset-left)); }
   #rs { right: max(24px, env(safe-area-inset-right)); }
   body.game.touch .stick { display: block; }
+  #stats { cursor: pointer; pointer-events: auto; }
+  #graph { position: fixed; top: calc(56px + env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 240px; height: 90px; background: rgba(10, 8, 6, 0.6); border: 1px solid var(--line); border-radius: 10px; display: none; }
+  #bench { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 92vw); max-height: 80vh; overflow: auto; background: rgba(14, 11, 8, 0.92); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: none; font-size: 13px; }
+  #bench h2 { margin: 0 0 8px; font-size: 17px; }
+  #bench table { width: 100%; border-collapse: collapse; font: 12px ui-monospace, monospace; }
+  #bench td, #bench th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  #bench td:first-child, #bench th:first-child { text-align: left; white-space: normal; }
+  #bench .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  #benchLive { position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); font: 12px ui-monospace, monospace; color: var(--amber); background: rgba(10, 8, 6, 0.6); padding: 6px 12px; border-radius: 999px; display: none; }
 </style>
 </head>
 <body>
@@ -49,6 +59,11 @@
     <option value="the_gate">The Gate (story)</option>
     <option value="ardane_01_home">Echoes of Ardane (the demo)</option>
   </select>
+  <select id="benchSel" title="Measure how smoothly it runs">
+    <option value="">Benchmark…</option>
+    <option value="scene">This scene</option>
+    <option value="story">The whole story (about 30 min)</option>
+  </select>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
     <option value="1">High</option>
@@ -59,6 +74,9 @@
 <div id="problems"></div>
 <div id="lines"></div>
 <div id="ask"></div>
+<canvas id="graph" width="480" height="180"></canvas>
+<div id="benchLive"></div>
+<div id="bench"></div>
 <div class="stick" id="ls"><i></i></div>
 <div class="stick" id="rs"><i></i></div>
 <script>
@@ -74,6 +92,12 @@
   if (touch) document.body.classList.add('touch');
   if (params.get('ui') === '0') document.querySelectorAll('.bar').forEach((b) => b.style.display = 'none');
   let movie = true, showTrailer = false, M = null;
+  // ---- benchmark: plays by itself and measures every scene
+  const bench = params.get('bench');            // 'scene' or 'story'
+  const benchChoices = (params.get('choices') || '').split(',').filter((x) => x !== '').map(Number);
+  let benchAsked = 0, benchSegments = [], benchScene = null, benchTimer = null, benchUse = null, benchStarted = 0;
+  const qualityNames = ['Phone', 'High', 'Ultra'];
+  const TRACKER = 'https://claude.ai/artifact/VxhkyF5io1MTR4heDYpGVb';
 
   window.loopNoGpu = () => { note.textContent = 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
   window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
@@ -90,6 +114,11 @@
       linesBox.appendChild(d);
       while (linesBox.children.length > 2) linesBox.firstChild.remove();
       setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 700); }, seconds * 1000);
+      return;
+    }
+    if (kind === 'ask' && bench) {
+      const pick = benchChoices.length ? benchChoices[(benchAsked++) % benchChoices.length] : 0;
+      setTimeout(() => M && M._loop_choose(Math.min(pick, options.split('\n').length - 1)), 1200);
       return;
     }
     if (kind === 'ask') {
@@ -128,7 +157,92 @@
     setTimeout(() => M._free(p), 1000);
     trailer.src = 'scenes/' + encodeURIComponent(name) + '.png';
   }
-  window.loopGoTo = (name) => { linesBox.innerHTML = ''; askBox.style.display = 'none'; loadScene(name).catch(() => {}); };
+  window.loopGoTo = (name) => {
+    linesBox.innerHTML = ''; askBox.style.display = 'none';
+    if (bench) {
+      benchEndScene();
+      const first = benchSegments.length ? benchSegments[0].scene : name;
+      if (bench === 'scene' || name === first || benchSegments.length >= 60) { benchFinish(); return; }
+      benchBegin(name);
+    }
+    loadScene(name).catch(() => {});
+  };
+  function benchBegin(name) {
+    benchScene = name;
+    M._loop_perf_begin();
+    clearTimeout(benchTimer);
+    // a scene that never moves on is cut off: 60 s, or 6 minutes in a story
+    benchTimer = setTimeout(() => { benchEndScene(); benchFinish(); }, (+params.get('seconds') || (bench === 'story' ? 360 : 60)) * 1000);
+  }
+  function benchEndScene() {
+    if (!benchScene) return;
+    const r = JSON.parse(M.UTF8ToString(M._loop_perf_end()));
+    r.scene = benchScene;
+    benchSegments.push(r);
+    benchScene = null;
+  }
+  async function deviceInfo() {
+    let gpu = {};
+    try { const a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' }); const i = a && (a.info || (a.requestAdapterInfo && await a.requestAdapterInfo())); if (i) gpu = { vendor: i.vendor, architecture: i.architecture, device: i.device, description: i.description }; } catch (e) {}
+    return { gpu, ua: navigator.userAgent, dpr: devicePixelRatio, screen: screen.width + 'x' + screen.height, cores: navigator.hardwareConcurrency || 0 };
+  }
+  async function benchFinish() {
+    clearTimeout(benchTimer); clearInterval(benchUse);
+    document.getElementById('benchLive').style.display = 'none';
+    const segs = benchSegments, frames = segs.reduce((t, x) => t + x.frames, 0), secs = segs.reduce((t, x) => t + x.seconds, 0);
+    const result = {
+      kind: 'loop3d-bench', v: 1, when: new Date().toISOString(), build: document.querySelector('meta[name=loop-build]').content,
+      bench, start: sceneName, quality: qualityNames[+document.getElementById('quality').value], msaa: +(params.get('msaa') || 4),
+      device: await deviceInfo(),
+      summary: {
+        scenes: segs.length, seconds: +secs.toFixed(1), frames, fps: +(secs ? frames / secs : 0).toFixed(2),
+        worstLow1Fps: Math.min(...segs.map((x) => x.low1Fps)), worstP99Ms: Math.max(...segs.map((x) => x.p99Ms)), maxMs: Math.max(...segs.map((x) => x.maxMs)),
+        hitches: segs.reduce((t, x) => t + x.hitches, 0), avgScale: +(segs.reduce((t, x) => t + x.scaleAvg * x.seconds, 0) / (secs || 1)).toFixed(3),
+        worstLoadMs: Math.max(...segs.map((x) => x.loadMs)),
+      },
+      segments: segs,
+    };
+    try { const h = JSON.parse(localStorage.getItem('loop3d.bench') || '[]'); h.unshift(result); localStorage.setItem('loop3d.bench', JSON.stringify(h.slice(0, 20))); } catch (e) {}
+    window.loopBenchResult = result;
+    showBench(result);
+  }
+  function showBench(r) {
+    const box = document.getElementById('bench'), s = r.summary;
+    const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    box.innerHTML = `<h2>Benchmark: ${s.fps} fps average, ${s.worstLow1Fps.toFixed(1)} fps at the worst 1%</h2>
+      <div>${esc(r.quality)} · ${s.scenes} scene(s) · ${Math.round(s.seconds)} s · ${s.hitches} hitches · ${Math.round(s.avgScale * 100)}% resolution · ${esc(r.device.gpu.description || r.device.gpu.vendor || 'GPU unknown')}</div>
+      <table><tr><th>Scene</th><th>fps</th><th>1% low</th><th>p99 ms</th><th>max ms</th><th>hitches</th><th>GPU ms</th><th>CPU ms</th><th>res</th><th>load ms</th></tr>
+      ${r.segments.map((x) => `<tr><td>${esc(x.title || x.scene)}</td><td>${x.fps.toFixed(1)}</td><td>${x.low1Fps.toFixed(1)}</td><td>${x.p99Ms.toFixed(1)}</td><td>${x.maxMs.toFixed(0)}</td><td>${x.hitches}</td><td>${x.gpuMs.toFixed(1)}</td><td>${x.cpuMs.toFixed(1)}</td><td>${Math.round(x.scaleAvg * 100)}%</td><td>${Math.round(x.loadMs)}</td></tr>`).join('')}</table>
+      <div class="row"><button id="bCopy">Copy results</button><button id="bSave">Save file</button>${TRACKER.startsWith('http') ? '<button id="bTrack">Open the tracker</button>' : ''}<button id="bClose">Close</button></div>
+      <div style="margin-top:8px;color:var(--dim)">Copy the results and paste them into the chat with Claude (or save the file and send it): Claude adds every run to the tracker and to the repo's perf/ folder.</div>`;
+    box.style.display = 'block';
+    const text = JSON.stringify(r);
+    document.getElementById('bCopy').onclick = async (e) => { try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied'; } catch (x) { prompt('Copy the results:', text); } };
+    document.getElementById('bSave').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = 'loop3d-bench-' + r.when.slice(0, 19).replace(/[:T]/g, '-') + '.json'; a.click(); };
+    const t = document.getElementById('bTrack'); if (t) t.onclick = () => open(TRACKER, '_blank');
+    document.getElementById('bClose').onclick = () => { box.style.display = 'none'; };
+  }
+  // the live graph: tap the stats to show the last 240 frames' times
+  const graph = document.getElementById('graph'), gctx = graph.getContext('2d');
+  let graphOn = false;
+  document.getElementById('stats').onclick = () => { graphOn = !graphOn; graph.style.display = graphOn ? 'block' : 'none'; if (graphOn) drawGraph(); };
+  function drawGraph() {
+    if (!graphOn) return;
+    if (M) {
+      const p = M._loop_perf_graph() >> 2, v = M.HEAPF32.subarray(p, p + 240), W = 480, H = 180, top = 50;
+      gctx.clearRect(0, 0, W, H);
+      gctx.fillStyle = 'rgba(255,220,170,0.25)';
+      for (const ms of [16.7, 33.3]) { const y = H - ms / top * H; gctx.fillRect(0, y, W, 1); }
+      gctx.fillStyle = '#b9ae9c'; gctx.font = '18px ui-monospace, monospace';
+      gctx.fillText('16.7 ms', 4, H - 16.7 / top * H - 4); gctx.fillText('33 ms', 4, H - 33.3 / top * H - 4);
+      for (let i = 0; i < 240; i++) {
+        const ms = v[i]; if (!ms) continue;
+        gctx.fillStyle = ms > 33.4 ? '#ff6b5c' : ms > 17.5 ? '#ffb35c' : '#8fd18f';
+        const h = Math.min(H, ms / top * H); gctx.fillRect(i * 2, H - h, 2, h);
+      }
+    }
+    requestAnimationFrame(drawGraph);
+  }
   window.loopStarted = (title, mode, shots) => {
     document.getElementById('title').textContent = title;
     movie = mode === 'movie' && shots > 0;
@@ -144,6 +258,18 @@
     const sc = document.getElementById('scene');
     sc.value = sceneName;
     sc.onchange = () => { location.hash = sc.value; window.loopGoTo(sc.value); };
+    document.getElementById('benchSel').onchange = (e) => {
+      const kind = e.target.value; e.target.value = '';
+      if (!kind) return;
+      const u = new URLSearchParams(location.search); u.set('bench', kind); u.set('quality', q.value);
+      location.href = location.pathname + '?' + u.toString() + '#' + (kind === 'story' && sceneName.startsWith('ardane_') ? 'ardane_01_home' : sceneName);
+    };
+    if (bench) {
+      M._loop_set_autoplay(1);
+      benchBegin(sceneName);
+      benchStarted = performance.now();
+      benchUse = setInterval(() => { if (!movie) useIt(); const l = document.getElementById('benchLive'); l.style.display = 'block'; l.textContent = 'Benchmark ' + qualityNames[+q.value] + ' · scene ' + (benchSegments.length + 1) + ' · ' + Math.round((performance.now() - benchStarted) / 1000) + ' s'; }, 500);
+    }
     try {
       await loadScene(sceneName);
     } catch (e) {
@@ -153,7 +279,7 @@
     setInterval(() => {
       try {
         const s = JSON.parse(M.UTF8ToString(M._loop_stats()));
-        document.getElementById('stats').textContent = (s.fps || 0).toFixed(0) + ' fps · ' + (s.cpu || 0).toFixed(1) + ' ms cpu · ' + Math.round((s.scale || 1) * 100) + '% res · ' + s.things + ' things';
+        document.getElementById('stats').textContent = (s.fps || 0).toFixed(0) + ' fps · ' + (s.gpu || 0).toFixed(1) + ' ms gpu · ' + (s.cpu || 0).toFixed(1) + ' ms cpu · ' + Math.round((s.scale || 1) * 100) + '% res · ' + s.things + ' things';
       } catch (e) {}
     }, 500);
   };
