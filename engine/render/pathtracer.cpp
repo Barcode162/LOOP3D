@@ -7,6 +7,7 @@
 #include "engine/core/time.h"
 #include "engine/render/bsdf.h"
 #include "engine/render/pattern.h"
+#include "engine/render/scene_bvh.h"
 
 namespace loop {
 
@@ -43,19 +44,10 @@ const Spectrum& spectrum() {
   return s;
 }
 
-struct TriData {
-  Vec3 n[3];
-  Vec2 uv[3];
-  Vec3 ng;
-  int material;
-  int emissive = -1;  // index in the emitter list
-};
-
 struct Emitter {
-  uint32_t tri;
   float area;
   Vec3 radiance;
-  Vec3 v0, e1, e2;
+  Vec3 v0, e1, e2, ng;
 };
 
 struct LightData {
@@ -88,8 +80,8 @@ inline Vec3 sampleHg(Vec3 wo, float g, Vec2 u) {
 
 struct PathTracer::Impl {
   const Scene* scene = nullptr;
-  Bvh bvh;
-  std::vector<TriData> tris;
+  SceneBvh geom;
+  std::vector<int> emitBase;  // per instance: its first emitter, or -1
   std::vector<Emitter> emitters;
   std::vector<float> emitterCdf;
   float emitterPower = 0;
@@ -117,7 +109,7 @@ struct PathTracer::Impl {
   // cut-outs, thin glass, fog).
   Vec3 transmittance(Vec3 p, Vec3 d, float dist);
   float fogDistance(Vec3 o, Vec3 d, float tmax, float& t0, float& t1) const;
-  bool surfaceAlphaCut(uint32_t prim, float u, float v, Vec3 p) const;
+  bool surfaceAlphaCut(int inst, uint32_t prim, float u, float v, Vec3 p) const;
   // Next event estimation from a surface (bsdf) or a fog point (phase g).
   Vec3 sampleLights(Vec3 p, Vec3 nOffset, const Bsdf* bsdf, Vec3 woLocal, Vec3 woWorld, float phaseG, Rng& rng);
   // Light reached along a BSDF-sampled ray that missed the scene / hit a lamp.
@@ -131,47 +123,26 @@ void PathTracer::setScene(const Scene& s) { impl_->build(s); }
 
 void PathTracer::Impl::build(const Scene& s) {
   scene = &s;
-  tris.clear();
   emitters.clear();
   emitterCdf.clear();
   lights.clear();
   hasCutouts = hasGlass = false;
-  std::vector<Triangle> geo;
-  for (const MeshInstance& in : s.instances) {
-    if (in.mesh < 0 || in.mesh >= static_cast<int>(s.meshes.size())) continue;
-    const Mesh& m = s.meshes[in.mesh];
-    int mat = clamp(in.material, 0, std::max(0, static_cast<int>(s.materials.size()) - 1));
-    const Material* M = s.materials.empty() ? nullptr : &s.materials[mat];
-    if (M && (M->opacity < 1 || M->leafShape)) hasCutouts = true;
-    if (M && M->transmission > 0) hasGlass = true;
-    Mat3 nm = in.transform.linear().inverse().transposed();
-    bool flip = in.transform.linear().determinant() < 0;
-    for (size_t i = 0; i + 2 < m.indices.size(); i += 3) {
-      uint32_t idx[3] = {m.indices[i], m.indices[i + 1], m.indices[i + 2]};
-      if (flip) std::swap(idx[1], idx[2]);
-      Vec3 p[3];
-      TriData td;
-      for (int k = 0; k < 3; ++k) {
-        p[k] = in.transform.point(m.positions[idx[k]]);
-        td.n[k] = idx[k] < m.normals.size() ? normalize(nm * m.normals[idx[k]]) : Vec3{};
-        td.uv[k] = idx[k] < m.uvs.size() ? m.uvs[idx[k]] : Vec2{};
-      }
-      Vec3 c = cross(p[1] - p[0], p[2] - p[0]);
-      float area2 = length(c);
-      if (area2 < 1e-14f) continue;
-      td.ng = c / area2;
-      for (auto& n : td.n)
-        if (lengthSq(n) < 0.5f) n = td.ng;
-      td.material = M ? mat : -1;
-      if (M && luminance(M->emission) > 0) {
-        td.emissive = static_cast<int>(emitters.size());
-        emitters.push_back({static_cast<uint32_t>(tris.size()), area2 * 0.5f, M->emission, p[0], p[1] - p[0], p[2] - p[0]});
-      }
-      tris.push_back(td);
-      geo.push_back({p[0], p[1] - p[0], p[2] - p[0]});
+  for (const Material& M : s.materials) {
+    if (M.opacity < 1 || M.leafShape) hasCutouts = true;
+    if (M.transmission > 0) hasGlass = true;
+  }
+  geom.build(s);
+  emitBase.assign(geom.instanceCount(), -1);
+  for (size_t i = 0; i < geom.instanceCount(); ++i) {
+    int mat = geom.materialOf(static_cast<int>(i));
+    if (mat < 0 || luminance(s.materials[mat].emission) <= 0) continue;
+    emitBase[i] = static_cast<int>(emitters.size());
+    for (uint32_t k = 0; k < geom.triangleCount(static_cast<int>(i)); ++k) {
+      TriInfo t = geom.triangle(static_cast<int>(i), k);
+      float area = 0.5f * length(cross(t.e1, t.e2));
+      emitters.push_back({std::max(area, 1e-12f), s.materials[mat].emission, t.v0, t.e1, t.e2, t.ng});
     }
   }
-  bvh.build(std::move(geo));
   emitterPower = 0;
   for (const Emitter& e : emitters) {
     emitterPower += e.area * luminance(e.radiance);
@@ -267,11 +238,12 @@ float PathTracer::Impl::fogDistance(Vec3 o, Vec3 d, float tmax, float& t0, float
   return std::max(0.0f, t1 - t0);
 }
 
-bool PathTracer::Impl::surfaceAlphaCut(uint32_t prim, float u, float v, Vec3 p) const {
-  const TriData& td = tris[prim];
-  if (td.material < 0) return false;
-  const Material& m = scene->materials[td.material];
+bool PathTracer::Impl::surfaceAlphaCut(int inst, uint32_t prim, float u, float v, Vec3 p) const {
+  int mat = geom.materialOf(inst);
+  if (mat < 0) return false;
+  const Material& m = scene->materials[mat];
   if (m.opacity >= 1 && !m.leafShape) return false;
+  TriInfo td = geom.triangle(inst, prim);
   Vec2 uv = td.uv[0] * (1 - u - v) + td.uv[1] * u + td.uv[2] * v;
   if (m.leafShape) {
     // a pointed leaf: widest a third of the way up, a tip at the top
@@ -297,18 +269,18 @@ Vec3 PathTracer::Impl::transmittance(Vec3 p, Vec3 d, float dist) {
   }
   if (!hasCutouts && !hasGlass) {
     rays++;
-    return bvh.occluded({p, d}, 1e-4f, dist * 0.9999f) ? Vec3(0) : T;
+    return geom.occluded({p, d}, 1e-4f, dist * 0.9999f) ? Vec3(0) : T;
   }
   float t = 1e-4f;
   for (int i = 0; i < 16; ++i) {
     rays++;
-    Hit h = bvh.closest({p, d}, t, dist * 0.9999f);
+    SceneHit h = geom.closest({p, d}, t, dist * 0.9999f);
     if (!h.valid()) return T;
     Vec3 hp = p + d * h.t;
-    const TriData& td = tris[h.prim];
-    if (surfaceAlphaCut(h.prim, h.u, h.v, hp)) { t = h.t + 1e-4f; continue; }
-    if (td.material >= 0) {
-      const Material& m = scene->materials[td.material];
+    if (surfaceAlphaCut(h.inst, h.prim, h.u, h.v, hp)) { t = h.t + 1e-4f; continue; }
+    int mat = geom.materialOf(h.inst);
+    if (mat >= 0) {
+      const Material& m = scene->materials[mat];
       if (m.transmission > 0) {
         // shadows through glass: its tint, minus what the surface reflects
         // (no refraction: true caustics come from `caustics` paths)
@@ -401,7 +373,7 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
     float dist = length(d);
     if (dist > 1e-5f) {
       Vec3 wi = d / dist;
-      float cl = std::fabs(dot(wi, tris[e.tri].ng));
+      float cl = std::fabs(dot(wi, e.ng));
       if (cl > 1e-6f) {
         float pSel = e.area * luminance(e.radiance) / emitterPower;
         float lightPdf = pSel * dist * dist / (cl * e.area);
@@ -474,7 +446,7 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
   };
   for (int guard = 0; guard < settings.maxBounces + 24; ++guard) {
     rays++;
-    Hit h = bvh.closest(ray);
+    SceneHit h = geom.closest(ray);
     float tSurf = h.valid() ? h.t : kInf;
     bool allowLamps = settings.caustics || !sawDiffuse || !lastDelta;
     float tLamp;
@@ -527,11 +499,12 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     if (luminance(insideAbsorb) > 0) {
       beta *= Vec3(std::exp(-insideAbsorb.x * h.t), std::exp(-insideAbsorb.y * h.t), std::exp(-insideAbsorb.z * h.t));
     }
-    if (surfaceAlphaCut(h.prim, h.u, h.v, p)) {
+    if (surfaceAlphaCut(h.inst, h.prim, h.u, h.v, p)) {
       ray.o = p + ray.d * 1e-4f;
       continue;
     }
-    const TriData& td = tris[h.prim];
+    TriInfo td = geom.triangle(h.inst, h.prim);
+    int emissiveIndex = emitBase[h.inst] >= 0 ? emitBase[h.inst] + static_cast<int>(h.prim) : -1;
     static const Material kDefault;
     const Material& M = td.material >= 0 ? S.materials[td.material] : kDefault;
     float w0 = 1 - h.u - h.v;
@@ -548,10 +521,10 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
 
     // glowing surfaces
     if (luminance(M.emission) > 0 && front) {
-      if (lastDelta || td.emissive < 0) {
+      if (lastDelta || emissiveIndex < 0) {
         if (settings.caustics || !sawDiffuse || !lastDelta) addLight(beta * M.emission);
       } else {
-        const Emitter& e = emitters[td.emissive];
+        const Emitter& e = emitters[emissiveIndex];
         float cl = std::fabs(dot(ray.d, td.ng));
         float lightPdf = (e.area * luminance(e.radiance) / emitterPower) * h.t * h.t / std::max(cl * e.area, 1e-9f);
         addLight(beta * M.emission * powerHeuristic(lastPdf, lightPdf));
