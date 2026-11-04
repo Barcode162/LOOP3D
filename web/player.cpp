@@ -112,7 +112,10 @@ Camera walkCamera(float dt) {
   Vec3 fwd{std::sin(g.yaw), 0, -std::cos(g.yaw)}, right{std::cos(g.yaw), 0, std::sin(g.yaw)};
   Vec3 want = (fwd * m.y + right * m.x) * speed;
   g.vel += (want - g.vel) * kMove;
-  g.pos += g.vel * dt;
+  // walk through the world, not through its walls: slide and step like a body
+  Vec3 body = g.pos - Vec3(0, 0.75f, 0);
+  g.stage->world.moveCharacter(body, Vec3(g.vel.x * dt, 0, g.vel.z * dt), 0.25f, 0.55f, 0.3f);
+  g.pos.x = body.x, g.pos.z = body.z;
   // stand on the land, with a gentle step bob when walking
   float ground = 0;
   if (!g.stage->terrains.empty()) ground = g.stage->terrains.back().height(g.pos.x, g.pos.z);
@@ -142,6 +145,7 @@ bool frame(double now, void*) {
   int steps = 0;
   while (g.accumulator >= 1.0 / 120 && steps++ < 12) {
     g.vm->update(1.0 / 120);
+    g.stage->update(1.0f / 120);
     g.accumulator -= 1.0 / 120;
   }
   syncScene();
@@ -157,6 +161,7 @@ bool frame(double now, void*) {
     cam = s.film.at(static_cast<float>(g.filmTime), s.scene.camera, &shot, &fade);
     if (!s.film.shots[shot].look.empty()) lookByName(s.film.shots[shot].look, look);
   } else cam = walkCamera(static_cast<float>(dt));
+  g.stage->setListener(cam);
   g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);
   ++g.frames;
   g.fpsTime += dt;
@@ -199,6 +204,11 @@ EMSCRIPTEN_KEEPALIVE void loop_capture() {
   g.renderer->capture([](int w, int h, const uint8_t* rgba) {
     EM_ASM({ if (window.loopCaptured) window.loopCaptured($0, $1, $2); }, w, h, rgba);
   });
+}
+// The page's audio callback asks for interleaved stereo frames.
+EMSCRIPTEN_KEEPALIVE void loop_audio(float* stereo, int frames) {
+  if (g.stage) g.stage->mixer.render(stereo, frames);
+  else std::memset(stereo, 0, sizeof(float) * frames * 2);
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];

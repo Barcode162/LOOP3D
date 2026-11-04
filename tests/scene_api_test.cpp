@@ -50,3 +50,49 @@ TEST(scene_api_helpful_errors) {
   vm.load("material(roughnes: 1)\n", "t.loop");
   CHECK(!vm.problems().empty() && vm.problems()[0].text().find("roughness") != std::string::npos);
 }
+
+TEST(scene_api_living_world) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  bool ok = vm.load(R"(
+ground 20, material: "floorboards"
+box size: vec(1, 1, 1), at: vec(3, 0.5, 0), material: "stone"
+let ball = sphere(0.2, at: vec(0, 3, 0), material: "rubber")
+solid ball, mass: 0.5, bounce: 0.6
+let mira = person(at: vec(-2, 0, 0), height: 1.7)
+mira.walk_to = vec(-2, 0, -4)
+mira.look_at = vec(0, 1.6, 0)
+room 0.4
+let fire = sound("fire", at: vec(0, 0.5, -2), volume: 0.8)
+)", "t.loop");
+  for (auto& p : vm.problems()) std::printf("    %s\n", p.text().c_str());
+  CHECK(ok);
+  CHECK(st.groundSurface == "wood");
+  float maxBounce = 0;
+  bool landed = false;
+  for (int i = 0; i < 6 * 60; ++i) {
+    vm.update(1.0 / 60);
+    st.update(1.0f / 60);
+    float y = st.placed[st.placed.size() > 0 ? 1 : 0].position.y;
+    (void)y;
+    const auto& b = st.world.body(0);
+    if (b.v.y > 0.5f) landed = true;
+    if (landed) maxBounce = std::max(maxBounce, b.x.y);
+  }
+  CHECK(landed);
+  CHECK_NEAR(st.world.body(0).x.y, 0.2, 0.03);  // resting on the floor
+  // the ball's shape follows its body
+  CHECK(st.scene.instances[2].transform.translationPart().y < 0.3f);
+  // Mira walked there and stopped
+  const anim::Animator& a = *st.people[0].animator;
+  CHECK(length(a.position - Vec3(-2, 0, -4)) < 0.15f);
+  CHECK(!st.people[0].walking);
+  CHECK(st.mixer.voices() >= 1);  // the fire (and knocks, footsteps)
+  std::vector<float> buf(1024 * 2);
+  st.mixer.render(buf.data(), 1024);
+  float e = 0;
+  for (float x : buf) e += x * x;
+  CHECK(e > 0);
+}

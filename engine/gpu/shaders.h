@@ -275,7 +275,26 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     if (abs(x) > width) { discard; }
   }
   if (m.pattern.x > 0.5) {
-    let pv = pattern(m, i.world, n);
+    var pv = pattern(m, i.world, n);
+    // detail smaller than a pixel fades to its average (no shimmer, no moire)
+    let kind = i32(m.pattern.x);
+    let sc = max(m.pattern.y, 0.01);
+    var feature = 0.5 / sc;
+    var avg = 0.5;
+    switch (kind) {
+      case 1: { feature = 1.0 / sc; }
+      case 2: { feature = 0.03 / sc; avg = 0.1; }
+      case 3: { feature = 0.008 / sc; avg = 0.15; }
+      case 4: { feature = 0.03 / sc; avg = 0.4; }
+      case 5: { feature = 0.08 / sc; avg = 0.3; }
+      case 6: { feature = 0.12 / sc; }
+      case 7: { feature = 0.06 / sc; avg = 0.3; }
+      case 8: { feature = 0.003 / sc; avg = 0.3; }
+      default: {}
+    }
+    let lod = length(fwidth(i.world));
+    let fade = smoothstep(0.4, 1.5, lod / feature);
+    pv = vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
     base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
     rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
     if (m.pattern.z > 0.0) {

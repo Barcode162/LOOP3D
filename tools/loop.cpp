@@ -97,7 +97,11 @@ int renderScript(const std::string& path, const Options& o) {
   for (const RenderRequest& req0 : todo) {
     RenderRequest req = adjust(req0);
     if (!req.film) {
-      while (vm.time() + 1e-9 < req.at) vm.update(std::min(1.0 / 60, req.at - vm.time()));
+      while (vm.time() + 1e-9 < req.at) {
+        double step = std::min(1.0 / 60, req.at - vm.time());
+        vm.update(step);
+        stage.update(static_cast<float>(step));
+      }
       Camera cam = stage.film.shots.empty() ? stage.scene.camera : stage.film.at(req.at, stage.scene.camera);
       Image pic = renderStill(stage.scene, cam, req.width, req.height, req.samples, 0, req.file);
       writePng(req.file, pic, true);
@@ -111,7 +115,11 @@ int renderScript(const std::string& path, const Options& o) {
     double dt = 1.0 / stage.film.fps;
     for (int f = 0; f < frames; ++f) {
       double t = f * dt;
-      while (vm.time() + 1e-9 < t) vm.update(std::min(1.0 / 60, t - vm.time()));
+      while (vm.time() + 1e-9 < t) {
+        double step = std::min(1.0 / 60, t - vm.time());
+        vm.update(step);
+        stage.update(static_cast<float>(step));
+      }
       int shotIndex = 0;
       float fade = 1;
       Camera cam = stage.film.at(static_cast<float>(t), stage.scene.camera, &shotIndex, &fade);
@@ -173,7 +181,7 @@ int main(int argc, char** argv) {
     Vm vm;
     Stage stage;
     if (!loadScript(target, vm, stage)) return 1;
-    for (double t = 0; t < o.seconds; t += 1.0 / 60) vm.update(1.0 / 60);
+    for (double t = 0; t < o.seconds; t += 1.0 / 60) vm.update(1.0 / 60), stage.update(1.0f / 60);
     printProblems(vm.problems());
     std::printf("%zu things, %zu lights, %zu shots (%.1f s)\n", stage.scene.instances.size(), stage.scene.lights.size(), stage.film.shots.size(),
                 stage.film.length());

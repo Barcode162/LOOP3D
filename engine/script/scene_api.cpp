@@ -1,5 +1,6 @@
 #include "engine/script/scene_api.h"
 
+#include <algorithm>
 #include <map>
 #include <unordered_map>
 
@@ -13,11 +14,70 @@ Vec3 unitLuminanceOr(Vec3 c);
 
 void Stage::updateTransform(int i) {
   Placed& p = placed[i];
-  Quat q = Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
+  Quat q = p.useQuat ? p.quat : Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
   Vec3 s = p.visible ? p.scale : Vec3(0);
   scene.instances[p.instance].transform = Mat4::trs(p.position, q, s);
   ++transformsVersion;
   ++version;
+}
+
+void Stage::setListener(const Camera& cam) {
+  mixer.listener.position = cam.position;
+  mixer.listener.forward = normalize(cam.target - cam.position);
+}
+
+void Stage::update(float dt) {
+  if (dt <= 0) return;
+  // fixed things to bump into: every simple shape that isn't solid
+  if (collidersDirty) {
+    world.clearStatic();
+    for (const Placed& p : placed)
+      if (p.collide && p.body < 0 && p.visible) world.addStaticMesh(scene.meshes[scene.instances[p.instance].mesh], scene.instances[p.instance].transform);
+    collidersDirty = false;
+  }
+  // physics: solid shapes follow their bodies
+  world.step(dt);
+  for (size_t i = 0; i < placed.size(); ++i) {
+    Placed& p = placed[i];
+    if (p.body < 0) continue;
+    const physics::Body& b = world.body(p.body);
+    // a sudden stop is a knock: play the material's sound, as hard as it hit
+    float dv = length(b.v - p.lastVelocity);
+    if (dv > 1.2f && !b.asleep) {
+      const Material& m = scene.materials[scene.instances[p.instance].material];
+      mixer.play(audio::makeSound("impact", audio::surfaceOf(m.name), clamp(dv / 6, 0.1f, 1.0f), static_cast<uint32_t>(i * 7919 + static_cast<int>(dv * 100))), b.x,
+                 clamp(dv / 5, 0.2f, 1.0f));
+    }
+    p.lastVelocity = b.v;
+    if (b.asleep && !p.useQuat) continue;
+    p.position = b.x, p.quat = b.q, p.useQuat = true;
+    updateTransform(static_cast<int>(i));
+  }
+  // people: steer, animate, and lay the body's shapes along the bones
+  for (Person& per : people) {
+    anim::Animator& a = *per.animator;
+    if (per.walking) {
+      Vec3 d = per.walkTo - a.position;
+      d.y = 0;
+      float dist = length(d);
+      // slow down as they arrive (no sudden stop)
+      float want = per.speed * std::max(0.12f, smoothstep(0.0f, 1.2f, dist));
+      a.velocity = dist > 0.04f ? d / dist * std::min(want, dist / std::max(dt, 1e-4f)) : Vec3(0);
+      if (dist <= 0.04f) per.walking = false, a.velocity = Vec3(0);
+    }
+    a.update(dt);
+    auto w = a.world();
+    for (auto& [pi, bones] : per.parts) {
+      Placed& p = placed[pi];
+      Vec3 from = w[bones.first].position, to = bones.second >= 0 ? w[bones.second].position : from + w[bones.first].rotation.rotate({0, 0.12f, 0});
+      p.position = (from + to) * 0.5f;
+      Vec3 dir = to - from;
+      p.quat = lengthSq(dir) > 1e-8f ? Quat::fromTo({0, 1, 0}, normalize(dir)) * Quat::axisAngle({0, 1, 0}, 0) : w[bones.first].rotation;
+      if (bones.second < 0) p.quat = w[bones.first].rotation;
+      p.useQuat = true;
+      updateTransform(pi);
+    }
+  }
 }
 
 namespace {
@@ -28,10 +88,7 @@ std::unordered_map<Vm*, Stage*>& stages() {
 }
 Stage& stageOf(Vm& vm) { return *stages().at(&vm); }
 
-std::map<std::string, int>& meshCache(Stage& s) {
-  static std::unordered_map<Stage*, std::map<std::string, int>> c;
-  return c[&s];
-}
+std::map<std::string, int>& meshCache(Stage& s) { return s.meshCache; }
 int cachedMesh(Stage& st, const std::string& key, const std::function<Mesh()>& make) {
   auto& c = meshCache(st);
   auto it = c.find(key);
@@ -57,6 +114,12 @@ const ThingClass kShapeClass{"shape", getShape, setShape, {"position", "at", "tu
 Value getLight(Vm& vm, Thing& t, const std::string& f, bool& found);
 bool setLight(Vm& vm, Thing& t, const std::string& f, const Value& v);
 const ThingClass kLightClass{"light", getLight, setLight, {"position", "at", "lumens", "brightness", "color", "kelvin", "radius", "aim", "on"}};
+Value getPerson(Vm& vm, Thing& t, const std::string& f, bool& found);
+bool setPerson(Vm& vm, Thing& t, const std::string& f, const Value& v);
+const ThingClass kPersonClass{"person", getPerson, setPerson, {"position", "at", "walk_to", "look_at", "sitting", "speed", "facing", "walking"}};
+Value getSound(Vm& vm, Thing& t, const std::string& f, bool& found);
+bool setSound(Vm& vm, Thing& t, const std::string& f, const Value& v);
+const ThingClass kSoundClass{"sound", getSound, setSound, {"volume", "position", "at", "playing"}};
 Value getTerrain(Vm& vm, Thing& t, const std::string& f, bool& found);
 const ThingClass kTerrainClass{"terrain", getTerrain, nullptr, {"size", "lowest", "highest"}};
 
@@ -216,6 +279,58 @@ Value getTerrain(Vm& vm, Thing& t, const std::string& f, bool& found) {
   return {};
 }
 
+Stage::Person& personOf(Vm& vm, Thing& t) {
+  Stage& s = stageOf(vm);
+  if (t.id < 0 || t.id >= static_cast<int>(s.people.size())) vm.fail("that person is gone");
+  return s.people[t.id];
+}
+Value getPerson(Vm& vm, Thing& t, const std::string& f, bool& found) {
+  Stage::Person& p = personOf(vm, t);
+  found = true;
+  if (f == "position" || f == "at") return Value::vec(p.animator->position);
+  if (f == "walk_to") return Value::vec(p.walkTo);
+  if (f == "look_at") return Value::vec(p.animator->lookAt);
+  if (f == "sitting") return Value::boolean(p.animator->sitting);
+  if (f == "walking") return Value::boolean(p.walking);
+  if (f == "speed") return Value::number(p.speed);
+  if (f == "facing") return Value::number(p.animator->facing);
+  found = false;
+  return {};
+}
+bool setPerson(Vm& vm, Thing& t, const std::string& f, const Value& v) {
+  Stage::Person& p = personOf(vm, t);
+  if (f == "position" || f == "at") p.animator->position = asVec(vm, v, f), p.walking = false;
+  else if (f == "walk_to") p.walkTo = asVec(vm, v, f), p.walking = true;
+  else if (f == "look_at") {
+    if (v.isNothing()) p.animator->looking = false;
+    else p.animator->lookAt = asVec(vm, v, f), p.animator->looking = true;
+  } else if (f == "sitting") p.animator->sitting = v.truthy();
+  else if (f == "speed") p.speed = static_cast<float>(v.n);
+  else if (f == "facing") p.animator->facing = static_cast<float>(v.n);
+  else return false;
+  return true;
+}
+Value getSound(Vm& vm, Thing& t, const std::string& f, bool& found) {
+  Stage& s = stageOf(vm);
+  Stage::SoundRef& r = s.sounds[t.id];
+  found = true;
+  if (f == "volume") return Value::number(r.volume);
+  if (f == "position" || f == "at") return Value::vec(r.at);
+  if (f == "playing") return Value::boolean(s.mixer.playing(r.mixerId));
+  found = false;
+  return {};
+}
+bool setSound(Vm& vm, Thing& t, const std::string& f, const Value& v) {
+  Stage& s = stageOf(vm);
+  Stage::SoundRef& r = s.sounds[t.id];
+  if (f == "volume") r.volume = static_cast<float>(v.n), s.mixer.setVolume(r.mixerId, r.volume);
+  else if (f == "position" || f == "at") r.at = asVec(vm, v, f), s.mixer.move(r.mixerId, r.at);
+  else if (f == "playing") {
+    if (!v.truthy()) s.mixer.stop(r.mixerId, 0.5f);
+  } else return false;
+  return true;
+}
+
 int materialFrom(Vm& vm, const Value& v) {
   Stage& s = stageOf(vm);
   if (Thing* t = v.as<Thing>(); t && t->cls == &kMaterialClass) return t->id;
@@ -244,7 +359,7 @@ int materialFrom(Vm& vm, const Value& v) {
 
 // A shape placed in the world, with the common settings: at, turn,
 // rotation, scale, material, name.
-Value place(Args& a, int mesh) {
+Value place(Args& a, int mesh, char kind = 'm', Vec3 size = Vec3(1)) {
   Stage& s = stageOf(a.vm);
   int mat = materialFrom(a.vm, a.get(-1, "material") ? *a.get(-1, "material") : (a.get(-1, "made_of") ? *a.get(-1, "made_of") : Value()));
   s.scene.add(mesh, mat);
@@ -256,6 +371,10 @@ Value place(Args& a, int mesh) {
   if (a.has(-1, "turn")) p.rotation.x = static_cast<float>(a.num(-1, "turn", 0));
   if (a.has(-1, "tilt")) p.rotation.y = static_cast<float>(a.num(-1, "tilt", 0));
   p.name = a.text(-1, "name", "");
+  p.kind = kind, p.size = size;
+  // simple shapes are things you bump into (walls, tables), unless told not
+  p.collide = a.flag(-1, "collide", true) && kind != 'm';
+  s.collidersDirty = true;
   s.placed.push_back(p);
   s.updateTransform(static_cast<int>(s.placed.size() - 1));
   return Value::object(a.vm.newThing(&kShapeClass, static_cast<int>(s.placed.size() - 1)));
@@ -339,15 +458,15 @@ void installSceneApi(Vm& vm, Stage& stage) {
     Vec3 sz = a.vec(0, "size", Vec3(1));
     float r = f32(a.num(-1, "round", 0));
     int m = cachedMesh(stageOf(a.vm), keyOf("box", {sz.x, sz.y, sz.z, r}), [&] { return r > 0 ? shapes::roundedBox(sz, r, 4) : shapes::box(sz); });
-    return place(a, m);
+    return place(a, m, 'b', sz);
   }, "box(size: vec(w, h, d), at, turn, material, round)");
   vm.native("sphere", [](Args& a) {
     float r = f32(a.num(0, "radius", a.num(-1, "size", 1) * 0.5));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r}), [&] { return shapes::sphere(r, 96, 48); }));
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r}), [&] { return shapes::sphere(r, 96, 48); }), 's', Vec3(r));
   }, "sphere(radius, at, material)");
   vm.native("cylinder", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), h = f32(a.num(1, "height", 1));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("cyl", {r, h}), [&] { return shapes::cylinder(r, h, 64); }));
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("cyl", {r, h}), [&] { return shapes::cylinder(r, h, 64); }), 'y', Vec3(r, h, r));
   }, "cylinder(radius, height, at, material)");
   vm.native("cone", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), h = f32(a.num(1, "height", 1));
@@ -355,7 +474,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
   }, "cone(radius, height, at, material)");
   vm.native("capsule", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.3)), h = f32(a.num(1, "height", 1.8));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("capsule", {r, h}), [&] { return shapes::capsule(r, h); }));
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("capsule", {r, h}), [&] { return shapes::capsule(r, h); }), 'c', Vec3(r, h, r));
   }, "capsule(radius, height, at, material)");
   vm.native("ring", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), t = f32(a.num(1, "thickness", 0.1));
@@ -363,7 +482,13 @@ void installSceneApi(Vm& vm, Stage& stage) {
   }, "ring(radius, thickness, at, material): a torus");
   vm.native("ground", [](Args& a) {
     float sz = f32(a.num(0, "size", 100));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("plane", {sz}), [&] { return shapes::plane({sz, sz}); }));
+    Stage& st = stageOf(a.vm);
+    st.world.groundPlane = true;
+    st.world.groundHeight = a.vec(-1, "at", {}).y;
+    Value v = place(a, cachedMesh(st, keyOf("plane", {sz}), [&] { return shapes::plane({sz, sz}); }));
+    const Material& gm = st.scene.materials[st.scene.instances.back().material];
+    st.groundSurface = audio::surfaceOf(gm.name);
+    return v;
   }, "ground(size, material): a flat floor");
   vm.native("rock", [](Args& a) {
     float sz = f32(a.num(0, "size", 1));
@@ -413,6 +538,8 @@ void installSceneApi(Vm& vm, Stage& stage) {
     for (int z = 0; z < h.resolution(); ++z)
       for (int x = 0; x < h.resolution(); ++x) h.at(x, z) -= mid;
     s.terrains.push_back(h);
+    s.world.setTerrain(&s.terrains.back());
+    s.world.groundPlane = false;
     int mesh = s.scene.addMesh(h.toMesh(1));
     int mat = materialFrom(a.vm, a.get(-1, "material") ? *a.get(-1, "material") : a.vm.text("grass"));
     s.scene.add(mesh, mat);
@@ -625,6 +752,124 @@ void installSceneApi(Vm& vm, Stage& stage) {
     s.film.shots.push_back(sh);
     return Value();
   }, "orbit(name, length, around, radius, height, from: 0 deg, to: 90 deg, lens)");
+
+  // ---- physics: things that fall, roll and knock
+  vm.native("solid", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    Thing* t = a.count ? a.pos[0].as<Thing>() : nullptr;
+    if (!t || t->cls != &kShapeClass) a.vm.fail("solid() needs a shape, like solid(ball, mass: 2)");
+    Stage::Placed& p = s.placed[t->id];
+    if (p.body >= 0) return a.pos[0];
+    physics::BodyDesc d;
+    switch (p.kind) {
+      case 's': d.shape = physics::ShapeKind::kSphere, d.radius = p.size.x * p.scale.x; break;
+      case 'c': d.shape = physics::ShapeKind::kCapsule, d.radius = p.size.x * p.scale.x, d.halfHeight = std::max(0.0f, p.size.y * 0.5f - p.size.x); break;
+      case 'y':  // a cylinder moves as a capsule of its size
+        d.shape = physics::ShapeKind::kCapsule, d.radius = p.size.x * p.scale.x, d.halfHeight = std::max(0.0f, p.size.y * 0.5f - p.size.x);
+        break;
+      default: d.shape = physics::ShapeKind::kBox, d.halfExtents = p.size * p.scale * 0.5f; break;
+    }
+    d.mass = f32(a.num(-1, "mass", 1));
+    d.restitution = f32(a.num(-1, "bounce", 0.2));
+    d.friction = f32(a.num(-1, "friction", 0.6));
+    d.position = p.position;
+    d.rotation = Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
+    d.velocity = a.vec(-1, "velocity", {});
+    p.body = s.world.addBody(d);
+    return a.pos[0];
+  }, "solid(shape, mass: 1 kg, bounce: 0.2, friction: 0.6): it falls, rolls and knocks");
+  vm.native("push", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    Thing* t = a.count ? a.pos[0].as<Thing>() : nullptr;
+    if (!t || t->cls != &kShapeClass || s.placed[t->id].body < 0) a.vm.fail("push() needs a solid shape");
+    physics::Body& b = s.world.body(s.placed[t->id].body);
+    s.world.applyImpulse(b.id, a.vec(1, "by", {}), a.vec(-1, "at", b.x));
+    return Value();
+  }, "push(shape, vec(0, 5, 0)): a shove, in kg·m/s");
+  vm.native("gravity", [](Args& a) {
+    stageOf(a.vm).world.gravity = a.vec(0, "pull", {0, -9.81f, 0});
+    return Value();
+  });
+
+  // ---- people
+  vm.native("person", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    Stage::Person per;
+    float h = f32(a.num(-1, "height", 1.75));
+    per.skeleton = std::make_unique<anim::Skeleton>(anim::humanSkeleton(h));
+    per.animator = std::make_unique<anim::Animator>(*per.skeleton);
+    per.animator->position = a.vec(0, "at", {});
+    per.animator->facing = f32(a.num(-1, "facing", 0));
+    Stage* sp = &s;
+    per.animator->ground = [sp](float x, float z) { return sp->terrains.empty() ? sp->world.groundHeight : sp->terrains.back().height(x, z); };
+    int index = static_cast<int>(s.people.size());
+    per.animator->onFootstep = [sp, index](int foot, Vec3 at, float strength) {
+      std::string surface = sp->people[index].footSurface.empty() ? (sp->terrains.empty() ? sp->groundSurface : std::string("grass")) : sp->people[index].footSurface;
+      sp->mixer.play(audio::makeSound("footstep", surface, strength, static_cast<uint32_t>(foot * 131 + at.x * 1000 + at.z * 977)), at, 0.7f);
+    };
+    // the body: limbs as capsules between joints, a head, a torso
+    const anim::Skeleton& sk = *per.skeleton;
+    int skin = materialFrom(a.vm, a.get(-1, "skin") ? *a.get(-1, "skin") : a.vm.text("skin"));
+    int shirt = materialFrom(a.vm, a.get(-1, "shirt") ? *a.get(-1, "shirt") : a.vm.text("fabric"));
+    int trousers = materialFrom(a.vm, a.get(-1, "trousers") ? *a.get(-1, "trousers") : a.vm.text("wool"));
+    float k = h / 1.75f;
+    auto part = [&](const char* from, const char* to, float radius, int mat) {
+      int fb = sk.find(from), tb = to ? sk.find(to) : -1;
+      float len = tb >= 0 ? length(sk.bones[tb].rest.position) : 0.24f * k;
+      int mesh = cachedMesh(s, keyOf("limb", {radius, len}), [&] { return shapes::capsule(radius, len + radius * 2); });
+      s.scene.add(mesh, mat);
+      Stage::Placed pl;
+      pl.instance = static_cast<int>(s.scene.instances.size() - 1);
+      pl.useQuat = true;
+      s.placed.push_back(pl);
+      per.parts.push_back({static_cast<int>(s.placed.size() - 1), {fb, tb}});
+    };
+    part("pelvis", "chest", 0.16f * k, shirt);
+    part("chest", "neck", 0.17f * k, shirt);
+    part("neck", "head", 0.05f * k, skin);
+    part("head", nullptr, 0.11f * k, skin);
+    for (const char* side : {"left ", "right "}) {
+      std::string sd = side;
+      part((sd + "shoulder").c_str(), (sd + "elbow").c_str(), 0.05f * k, shirt);
+      part((sd + "elbow").c_str(), (sd + "wrist").c_str(), 0.042f * k, skin);
+      part((sd + "hip").c_str(), (sd + "knee").c_str(), 0.075f * k, trousers);
+      part((sd + "knee").c_str(), (sd + "ankle").c_str(), 0.06f * k, trousers);
+    }
+    s.people.push_back(std::move(per));
+    s.update(1e-4f);
+    ++s.version;
+    return Value::object(a.vm.newThing(&kPersonClass, index));
+  }, "person(at, height, skin, shirt, trousers, facing): someone who breathes, walks, looks and sits");
+
+  // ---- sound
+  vm.native("sound", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    std::string name = a.text(0, "name", "fire");
+    std::unique_ptr<audio::Voice> v;
+    auto amb = audio::ambienceNames();
+    bool endless = std::find(amb.begin(), amb.end(), name) != amb.end();
+    if (endless) v = audio::makeAmbience(name, f32(a.num(-1, "intensity", 1)), static_cast<uint32_t>(s.sounds.size() + 1));
+    else v = audio::makeSound(name, a.text(1, "variant", "stone"), f32(a.num(-1, "strength", 0.7)), static_cast<uint32_t>(s.sounds.size() + 1));
+    if (!v) {
+      std::vector<std::string> all = amb;
+      for (auto& n : audio::soundNames()) all.push_back(n);
+      std::string c = closest(name, all);
+      a.vm.fail("there's no sound called \"" + name + "\"", c.empty() ? "" : "did you mean \"" + c + "\"?");
+    }
+    Stage::SoundRef r;
+    r.at = a.vec(-1, "at", {});
+    r.volume = f32(a.num(-1, "volume", 1));
+    bool everywhere = !a.has(-1, "at");
+    r.mixerId = s.mixer.play(std::move(v), r.at, r.volume, !everywhere, endless);
+    s.sounds.push_back(r);
+    return Value::object(a.vm.newThing(&kSoundClass, static_cast<int>(s.sounds.size() - 1)));
+  }, "sound(\"fire\", at: vec(…), volume) for endless sounds; sound(\"impact\", \"glass\", at: …) for one-offs");
+  vm.native("room", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    s.mixer.roomSize = f32(a.num(0, "size", 0.3));
+    s.mixer.roomWet = f32(a.num(-1, "echo", 0.15));
+    return Value();
+  }, "room(size: 0 outdoors .. 1 a cathedral, echo)");
 
   // ---- renders (made by the `loop` command with the cinema renderer)
   vm.native("render", [](Args& a) {

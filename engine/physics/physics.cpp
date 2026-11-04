@@ -481,7 +481,9 @@ void World::substep(float h) {
         apply(t * (c.tImpulse[k] - old));
         vr = A.v + cross(A.w, ra) - (B ? B->v + cross(B->w, rb) : Vec3(0));
       }
-      float jn = (-dot(vr, c.normal) + std::max(c.bias, c.restitutionVel)) * c.nMass;
+      // a real hit bounces; a gap about to close may close exactly, no more
+      float target = c.restitutionVel > 0 ? c.restitutionVel : c.bias;
+      float jn = (-dot(vr, c.normal) + target) * c.nMass;
       float old = c.nImpulse;
       c.nImpulse = std::max(0.0f, old + jn);
       apply(c.normal * (c.nImpulse - old));

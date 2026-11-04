@@ -11,10 +11,16 @@
 //   camera at: vec(0, 1.6, 4), look_at: vec(0, 0.8, 0), lens: 35 mm
 //   look "golden"
 //   render file: "table.png", quality: "cinema"
+#include <deque>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "engine/anim/anim.h"
+#include "engine/audio/audio.h"
 #include "engine/geometry/terrain.h"
+#include "engine/physics/physics.h"
 #include "engine/render/scene.h"
 #include "engine/render/shots.h"
 #include "engine/script/vm.h"
@@ -32,14 +38,48 @@ struct Stage {
   Scene scene;
   Film film;
   std::vector<RenderRequest> renders;
-  std::vector<HeightMap> terrains;
+  std::deque<HeightMap> terrains;  // a deque: physics keeps pointers into it
   struct Placed {
     int instance;
     Vec3 position{0}, scale{1};
     Vec3 rotation{0};  // yaw, pitch, roll (rad)
     bool visible = true;
     std::string name;
+    // what it is, for physics: 'b' box (size), 's' sphere (radius), 'c' capsule, 'm' other
+    char kind = 'm';
+    Vec3 size{1};
+    int body = -1;     // physics body when solid
+    bool useQuat = false;
+    Quat quat;
+    Vec3 lastVelocity{0};
+    bool collide = false;
   };
+  // People: a skeleton, its animator and the shapes that make the body.
+  struct Person {
+    std::unique_ptr<anim::Skeleton> skeleton;
+    std::unique_ptr<anim::Animator> animator;
+    std::vector<std::pair<int, std::pair<int, int>>> parts;  // placed index, (from bone, to bone)
+    Vec3 walkTo{0};
+    bool walking = false;
+    float speed = 1.4f;
+    std::string footSurface;  // "" = from the ground's material
+  };
+  std::vector<Person> people;
+  struct SoundRef {
+    int mixerId;
+    Vec3 at{0};
+    float volume = 1;
+  };
+  std::vector<SoundRef> sounds;
+  physics::World world;
+  audio::Mixer mixer;
+  std::string groundSurface = "stone";
+  bool collidersDirty = false;
+  std::map<std::string, int> meshCache;  // shapes already made (shared between copies)
+  // Moves the living world on: physics, people, sounds. Call each frame
+  // with the script's update.
+  void update(float dt);
+  void setListener(const Camera& cam);
   std::vector<Placed> placed;   // shape things → instances
   uint64_t version = 0;         // bumps on any change (the live renderer re-reads)
   uint64_t transformsVersion = 0;

@@ -106,6 +106,7 @@ class World {
   // Static things bodies collide with.
   void addStaticMesh(const Mesh& m, const Mat4& xf = Mat4());
   void setTerrain(const HeightMap* h) { terrain_ = h; }
+  void clearStatic() { staticTris_.clear(), staticDirty_ = true; }
 
   int addJoint(const Joint& j);
   Cloth& addCloth(Vec3 corner, Vec3 alongX, Vec3 alongY, int nx, int ny, float mass, float stretch = 0, float bend = 1e-3f);

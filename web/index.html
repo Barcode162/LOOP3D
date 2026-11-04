@@ -35,6 +35,7 @@
 <div class="bar bottom">
   <button id="modeBtn">Movie</button>
   <button id="trailerBtn" title="See the cinema render: the target look">Trailer view</button>
+  <button id="soundBtn" title="Sound on (phones need a tap first)">Sound</button>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
     <option value="1">High</option>
@@ -102,6 +103,24 @@
     if (M) M._loop_set_mode(movie ? 1 : 0);
   }
   modeBtn.onclick = () => setMode(!movie);
+  // sound: the engine mixes; the page just hands the samples to the speakers
+  let audioCtx = null;
+  const soundBtn = document.getElementById('soundBtn');
+  soundBtn.onclick = () => {
+    if (!M) return;
+    if (audioCtx) { audioCtx.close(); audioCtx = null; soundBtn.classList.remove('on'); return; }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+    const frames = 2048, node = audioCtx.createScriptProcessor(frames, 0, 2);
+    const ptr = M._malloc(frames * 2 * 4);
+    node.onaudioprocess = (e) => {
+      M._loop_audio(ptr, frames);
+      const buf = M.HEAPF32.subarray(ptr >> 2, (ptr >> 2) + frames * 2);
+      const L = e.outputBuffer.getChannelData(0), R = e.outputBuffer.getChannelData(1);
+      for (let i = 0; i < frames; i++) { L[i] = buf[i * 2]; R[i] = buf[i * 2 + 1]; }
+    };
+    node.connect(audioCtx.destination);
+    soundBtn.classList.add('on');
+  };
   trailerBtn.onclick = () => {
     showTrailer = !showTrailer;
     trailer.style.display = showTrailer ? 'block' : 'none';
