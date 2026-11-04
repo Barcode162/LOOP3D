@@ -26,8 +26,9 @@ struct Player {
   std::unique_ptr<gpu::Renderer> renderer;
   std::unique_ptr<Vm> vm;
   std::unique_ptr<Stage> stage;
-  uint64_t seenVersion = ~0ull, seenTransforms = ~0ull;
-  size_t seenMeshes = 0;
+  uint64_t seenVersion = ~0ull, seenTransforms = ~0ull, seenLights = ~0ull;
+  uint64_t lastPresented = 0;
+  size_t seenMeshes = 0, seenInstances = 0, seenMaterials = 0, seenLightCount = 0;
   uint64_t skyKey = 0;
   double lastTime = 0, accumulator = 0, filmTime = 0;
   bool movie = true;
@@ -40,6 +41,7 @@ struct Player {
   int frames = 0;
   double fpsTime = 0;
   float fps = 0;
+  double cpuMs = 0;
 };
 Player g;
 
@@ -68,7 +70,7 @@ void startScript(const std::string& src) {
   g.vm->load(src, "scene.loop");
   for (auto& p : g.vm->problems()) g.problems += p.text() + "\n";
   if (!g.problems.empty()) EM_ASM({ if (window.loopProblems) window.loopProblems(UTF8ToString($0)); }, g.problems.c_str());
-  g.seenVersion = ~0ull, g.seenTransforms = ~0ull, g.seenMeshes = 0;
+  g.seenVersion = ~0ull, g.seenTransforms = ~0ull, g.seenLights = ~0ull, g.seenMeshes = 0, g.seenInstances = 0, g.seenMaterials = 0, g.seenLightCount = 0;
   g.movie = g.stage->mode == "movie" && !g.stage->film.shots.empty();
   g.filmTime = 0;
   const Camera& c = g.stage->scene.camera;
@@ -83,15 +85,27 @@ void startScript(const std::string& src) {
 
 void syncScene() {
   Stage& s = *g.stage;
-  if (s.version != g.seenVersion) {
+  // new shapes, or anything else about the world: read it all again
+  if (s.version != g.seenVersion || s.scene.meshes.size() != g.seenMeshes || s.scene.instances.size() != g.seenInstances || s.scene.materials.size() != g.seenMaterials ||
+      s.scene.lights.size() != g.seenLightCount) {
     uint64_t sk = skySignature(s.scene);
     bool geometry = s.scene.meshes.size() != g.seenMeshes;
     g.renderer->sync(s.scene, geometry, sk != g.skyKey);
     g.skyKey = sk;
     g.seenMeshes = s.scene.meshes.size();
+    g.seenInstances = s.scene.instances.size();
+    g.seenMaterials = s.scene.materials.size();
+    g.seenLightCount = s.scene.lights.size();
     g.seenVersion = s.version;
     g.seenTransforms = s.transformsVersion;
-  } else if (s.transformsVersion != g.seenTransforms) {
+    g.seenLights = s.lightsVersion;
+    return;
+  }
+  if (s.lightsVersion != g.seenLights) {
+    g.renderer->syncLights(s.scene);
+    g.seenLights = s.lightsVersion;
+  }
+  if (s.transformsVersion != g.seenTransforms) {
     g.renderer->syncTransforms(s.scene);
     g.seenTransforms = s.transformsVersion;
   }
@@ -133,7 +147,16 @@ Camera walkCamera(float dt) {
   return c;
 }
 
+bool frameBody(double now);
+// The time each frame spends on the CPU (script, world, sending to the GPU),
+// smoothed: shown in the stats so a slow script is easy to tell from a slow GPU.
 bool frame(double now, void*) {
+  double t0 = emscripten_get_now();
+  bool r = frameBody(now);
+  g.cpuMs += (emscripten_get_now() - t0 - g.cpuMs) * 0.05;
+  return r;
+}
+bool frameBody(double now) {
   if (!g.pendingScript.empty()) {
     startScript(g.pendingScript);
     g.pendingScript.clear();
@@ -144,11 +167,14 @@ bool frame(double now, void*) {
   // scripts tick on a fixed clock
   g.accumulator += dt;
   int steps = 0;
-  while (g.accumulator >= 1.0 / 120 && steps++ < 12) {
+  while (g.accumulator >= 1.0 / 120 && steps++ < 4) {
     g.vm->update(1.0 / 120);
     g.stage->update(1.0f / 120);
     g.accumulator -= 1.0 / 120;
   }
+  // a slow frame doesn't pile up work for the next one: the world just runs
+  // a little slower for a moment
+  if (g.accumulator > 1.0 / 120) g.accumulator = 0;
   syncScene();
   Stage& s = *g.stage;
   // lines, questions and the next scene go to the page
@@ -192,9 +218,13 @@ bool frame(double now, void*) {
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
   g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);
-  ++g.frames;
+  // frames per second that reached the screen (dropped ones don't count)
   g.fpsTime += dt;
-  if (g.fpsTime > 0.5) g.fps = static_cast<float>(g.frames / g.fpsTime), g.frames = 0, g.fpsTime = 0;
+  if (g.fpsTime > 0.5) {
+    uint64_t shown = g.renderer->presentedFrames();
+    g.fps = static_cast<float>((shown - g.lastPresented) / g.fpsTime);
+    g.lastPresented = shown, g.fpsTime = 0;
+  }
   return true;
 }
 
@@ -246,8 +276,8 @@ EMSCRIPTEN_KEEPALIVE void loop_audio(float* stereo, int frames) {
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];
   if (!g.stage) return "{}";
-  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f}", g.fps,
-                g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
+  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f}", g.fps, g.cpuMs,
+                g.renderer ? g.renderer->renderScale() : 1.0f, g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
                 g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime);
   return buf;
 }

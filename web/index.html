@@ -153,7 +153,7 @@
     setInterval(() => {
       try {
         const s = JSON.parse(M.UTF8ToString(M._loop_stats()));
-        document.getElementById('stats').textContent = (s.fps || 0).toFixed(0) + ' fps · ' + s.things + ' things · ' + s.draws + ' draws';
+        document.getElementById('stats').textContent = (s.fps || 0).toFixed(0) + ' fps · ' + (s.cpu || 0).toFixed(1) + ' ms cpu · ' + Math.round((s.scale || 1) * 100) + '% res · ' + s.things + ' things';
       } catch (e) {}
     }, 500);
   };

@@ -83,7 +83,8 @@ struct Stage {
   void setListener(const Camera& cam);
   std::vector<Placed> placed;   // shape things → instances
   uint64_t version = 0;         // bumps on any change (the live renderer re-reads)
-  uint64_t transformsVersion = 0;
+  uint64_t transformsVersion = 0;  // only placements moved
+  uint64_t lightsVersion = 0;      // only lamps changed
   std::string title = "Untitled";
   std::string mode = "game";    // "game" or "movie"
   // For the page: lines to show, questions to ask, the next scene to load.

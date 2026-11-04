@@ -87,6 +87,7 @@ A full story made in Loop3D, to show what it can do: [`stories/echoes_of_ardane/
 
 - **Size:** about 16,500 lines of engine, tools, player and tests, plus 2,450 lines of Looped Script in the demo story; 58 automated checks, all passing. A strong foundation, not yet Unreal-sized.
 - **Real phones untested:** the live renderer was tested in a headless browser with a software GPU. Frame rate on the iPhone needs checking on the phone.
-- **Lamp shadows are ray-traced** live, for the nearest lamps (4 on Phone, 8 on High; Ultra traces them all).
+- **Lamp shadows are ray-traced** live, for the brightest lamps near the camera (3 on Phone, 6 on High; Ultra traces them all).
+- **Resolution adapts by itself:** when the GPU falls behind, the player draws fewer pixels (down to half, or a third on Ultra) and climbs back when it can. The stats line shows real frames drawn, the CPU time per frame and the resolution in use.
 - **People are simple** (capsule bodies, no faces) and walk straight to where they're sent, without steering around things.
 - **Not yet:** an editor app, model import (glTF), character faces and hair, streaming big worlds, multiplayer.

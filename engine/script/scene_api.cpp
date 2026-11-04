@@ -18,7 +18,6 @@ void Stage::updateTransform(int i) {
   Vec3 s = p.visible ? p.scale : Vec3(0);
   scene.instances[p.instance].transform = Mat4::trs(p.position, q, s);
   ++transformsVersion;
-  ++version;
 }
 
 void Stage::setListener(const Camera& cam) {
@@ -275,7 +274,9 @@ bool setLight(Vm& vm, Thing& t, const std::string& f, const Value& v) {
   else if (f == "radius") l.radius = static_cast<float>(v.n);
   else if (f == "aim") l.direction = normalize(asVec(vm, v, f));
   else return false;
-  ++stageOf(vm).version;
+  // a sun changes the sky too; a lamp only itself
+  if (l.kind == Light::Kind::kSun) ++stageOf(vm).version;
+  else ++stageOf(vm).lightsVersion;
   return true;
 }
 
