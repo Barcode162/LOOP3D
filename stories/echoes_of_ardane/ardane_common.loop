@@ -349,8 +349,8 @@ to rain_streaks(center, count: 160, spread: 6, height: 8)
   return drops
 
 # a big flat hologram that flickers
-to hologram(at, size, color, facing: 0 deg)
-  let m = material(color: rgb(0, 0, 0), glow: color * 900)
+to hologram(at, size, color, facing: 0 deg, brightness: 900)
+  let m = material(color: rgb(0, 0, 0), glow: color * brightness)
   let b = box(size: size, at: at, turn: facing, material: m, collide: no)
   let l = light(at + vec(sin(facing) * 1, 0, cos(facing) * 1), lumens: 3000, color: color, radius: 0.6)
   every 1 / 12 s
