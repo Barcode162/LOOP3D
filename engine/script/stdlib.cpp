@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "engine/core/ease.h"
 #include "engine/core/random.h"
 #include "engine/geometry/noise.h"
 #include "engine/render/scene.h"
@@ -35,27 +36,10 @@ const std::string& selfText(Args& a) {
 }
 Value callFn(Args& a, const Value& fn, std::vector<Value> args) { return a.vm.call(fn, args); }
 
-// ---- easing: t in 0..1 → 0..1 (Penner's curves and a critically damped spring)
 double easeValue(const std::string& name, double t, Vm& vm) {
-  t = std::clamp(t, 0.0, 1.0);
-  const double c1 = 1.70158, c3 = c1 + 1;
-  if (name == "linear") return t;
-  if (name == "in" || name == "ease_in") return t * t * t;
-  if (name == "out" || name == "ease_out") return 1 - std::pow(1 - t, 3);
-  if (name == "in_out" || name == "ease_in_out" || name == "smooth") return t < 0.5 ? 4 * t * t * t : 1 - std::pow(-2 * t + 2, 3) / 2;
-  if (name == "smoother") return t * t * t * (t * (t * 6 - 15) + 10);
-  if (name == "sine") return -(std::cos(kPi * t) - 1) / 2;
-  if (name == "back") return 1 + c3 * std::pow(t - 1, 3) + c1 * std::pow(t - 1, 2);
-  if (name == "elastic") return t == 0 || t == 1 ? t : std::pow(2, -10 * t) * std::sin((t * 10 - 0.75) * (2 * kPi / 3)) + 1;
-  if (name == "bounce") {
-    const double n1 = 7.5625, d1 = 2.75;
-    if (t < 1 / d1) return n1 * t * t;
-    if (t < 2 / d1) return t -= 1.5 / d1, n1 * t * t + 0.75;
-    if (t < 2.5 / d1) return t -= 2.25 / d1, n1 * t * t + 0.9375;
-    return t -= 2.625 / d1, n1 * t * t + 0.984375;
-  }
-  if (name == "spring") return 1 - (1 + 8 * t) * std::exp(-8 * t);  // critically damped: no overshoot
-  vm.fail("there's no easing called `" + name + "`", "try linear, in, out, in_out, smoother, sine, back, elastic, bounce or spring");
+  Ease e;
+  if (!easeByName(name, e)) vm.fail("there's no easing called `" + name + "`", "try linear, in, out, in_out, smoother, sine, back, elastic, bounce or spring");
+  return ease(e, t);
 }
 
 }  // namespace
