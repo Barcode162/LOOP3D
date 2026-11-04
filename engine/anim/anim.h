@@ -82,6 +82,7 @@ class Animator {
   bool sitting = false;
   float seatHeight = 0.45f;
   std::function<float(float x, float z)> ground;  // ground height (null = 0)
+  float lift = 0;  // stand this far above the ground (a ledge, a dais, the air)
   // Called when a foot lands: which foot (0 left, 1 right), where, how hard.
   std::function<void(int foot, Vec3 at, float strength)> onFootstep;
 

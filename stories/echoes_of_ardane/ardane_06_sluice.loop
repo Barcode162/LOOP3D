@@ -44,11 +44,11 @@ fog 0.04, glow: 0.4, color: rgb(0.6, 0.65, 0.7)
 look "blockbuster", contrast: 1.25, saturation: 0.8, grain: 0.04
 
 camera at: vec(6, 15, 4), look_at: vec(0, 14.5, -4), lens: 28 mm
-shot "the storm", 7 s, from: {at: vec(14, 6, 16), look_at: vec(0, 10, -4), lens: 24 mm, f_stop: 4}, to: {at: vec(9, 10, 10), look_at: vec(0, 13, -4), lens: 28 mm}, shake: 0.5, fade_in: 1.5 s
-shot "the guards", 7 s, from: {at: vec(-2.5, 14.8, 0), look_at: vec(1.5, 14.6, -3), lens: 35 mm, f_stop: 2.8}, to: {at: vec(-2.0, 14.9, -0.5), look_at: vec(1.5, 14.6, -3), lens: 40 mm}, shake: 0.6
-shot "the wheel", 9 s, from: {at: vec(0.8, 14.8, -1.2), look_at: vec(0, 15, -4.2), lens: 50 mm, f_stop: 2}, to: {at: vec(0.5, 14.9, -2.0), look_at: vec(0, 15, -4.2), lens: 65 mm, f_stop: 2}, shake: 0.4
-orbit "the compass", 9 s, around: vec(0, 14.2, -3.5), radius: 4, height: 1.8, from: 60 deg, to: 140 deg, lens: 32 mm, fade_out: 2 s
-render file: "ardane_06_sluice.png", quality: "good", width: 1280, at: 17 s
+shot "the storm", 10 s, from: {at: vec(14, 6, 16), look_at: vec(0, 10, -4), lens: 24 mm, f_stop: 4}, to: {at: vec(9, 10, 10), look_at: vec(0, 13, -4), lens: 28 mm}, shake: 0.5, fade_in: 1.5 s
+shot "the guards", 10 s, from: {at: vec(-2.5, 14.8, 0), look_at: vec(1.5, 14.6, -3), lens: 35 mm, f_stop: 2.8}, to: {at: vec(-2.0, 14.9, -0.5), look_at: vec(1.5, 14.6, -3), lens: 40 mm}, shake: 0.6
+shot "the wheel", 12 s, from: {at: vec(0.8, 14.8, -1.2), look_at: vec(0, 15, -4.2), lens: 50 mm, f_stop: 2}, to: {at: vec(0.5, 14.9, -2.0), look_at: vec(0, 15, -4.2), lens: 65 mm, f_stop: 2}, shake: 0.4
+orbit "the compass", 12 s, around: vec(0, 14.2, -3.5), radius: 4, height: 1.8, from: 60 deg, to: 140 deg, lens: 32 mm, fade_out: 2 s
+render file: "ardane_06_sluice.png", quality: "good", width: 1280, at: 23 s
 
 task
   wait 2 s

@@ -170,7 +170,7 @@ Every setting has a sensible default; give only what matters.
   - `person(at, height, skin, shirt, trousers, facing)`: breathes, shifts weight, walks and runs with planted feet, swings their arms, and their footsteps match the floor
   - Fields: `.walk_to = vec(..)`, `.look_at = vec(..)` (or `nothing`), `.sitting = yes`, `.speed`, `.position`, `.facing`, `.walking`
 - **Sound:**
-  - `sound("fire" | "wind" | "rain" | "stream" | "birds" | "crickets" | "night" | "hum", at, volume)` for endless sounds; without `at:` it's everywhere
+  - `sound("fire" | "wind" | "rain" | "stream" | "birds" | "crickets" | "night" | "hum" | "applause" | "crowd" | "strings" | "chains" | "synth" | "drones" | "heartbeat", at, volume)` for endless sounds; without `at:` it's everywhere
   - `sound("footstep" | "impact" | "bell" | "click" | "thud" | "whoosh", variant, at)` for one-offs (variants: wood, metal, glass, stone, grass, gravel, snow, water, carpet, plastic)
   - Fields: `.volume .position .playing`
   - `room(size, echo)` sets how big the space sounds.

@@ -1,0 +1,86 @@
+# 13. The Root Warrens — PLAYED. Beneath the islands, among the iron roots. Night.
+use "ardane_common"
+title "13 · The Root Warrens"
+mode "game"
+
+# a walkway of planks hung beneath the island, roots crossing everywhere
+let island_floor = box(size: vec(40, 1, 40), at: vec(0, 9, 0), material: island_rock)
+box size: vec(2, 0.1, 30), at: vec(0, -0.05, -8), material: "old wood"
+box size: vec(12, 0.1, 2), at: vec(0, -0.05, -22), material: "old wood"
+for z from 6 to -22 by -2
+  for each x in [-1, 1]
+    cylinder 0.03, 9, at: vec(x, 4.5, z), material: "iron", collide: no
+# the roots: half of them dead and grey, half barely glowing
+let dying = []
+seed(13)
+for i from 0 to 13
+  let z = -i * 2
+  let parts = root(vec(-14, 8, z + random(-1, 1)), vec(14, 8.5, z + random(-1, 1)), sag: random(4, 8), alive: chance(40%), thick: random(0.12, 0.3))
+  for each p in parts
+    dying.push(p)
+# Lune's root-engine: a great knot of roots at the end of the walk
+let engine_at = vec(0, 0, -22)
+let heart = sphere(1.4, at: engine_at + vec(0, 2.2, -1.8), material: dead_root)
+let heart_light = light(engine_at + vec(0, 2.2, -0.6), lumens: 30, color: rgb(0.3, 1, 0.4), radius: 0.5)
+for i from 0 to 5
+  let a = i * tau / 6
+  root engine_at + vec(0, 2.2, -1.8), engine_at + vec(cos(a) * 9, 8, -1.8 + sin(a) * 6), sag: -1, alive: no, thick: 0.35
+# lamps of the chain-workers
+for z from 4 to -20 by -6
+  lantern vec(1.1, 1.2, z), temp: 2000, lumens: 140
+# the stars below
+sky "physical", stars: 1.6, haze: 2
+sun elevation: -20 deg, lux: 0.05
+
+let workers = []
+seed(131)
+for i from 0 to 5
+  let w = someone(vec(random(-0.6, 0.6), 0, -2 - i * 3), shirt: cloth(0.3, 0.26, 0.2), skin: [skin_deep, skin_warm].pick(), facing: 90 deg)
+  workers.push(w)
+let bram = someone(vec(0.4, 0, 2), height: 1.8, shirt: cloth(0.3, 0.26, 0.2), skin: skin_deep, facing: 180 deg)
+let sela = someone(vec(-0.4, 0, 8), height: 1.68, shirt: cloth(0.55, 0.62, 0.4), skin: skin_light, facing: 180 deg)
+sela.visible = no
+relic_orbit(nothing, recall("relics", 3))
+
+sound "chains", volume: 0.8
+sound "wind", volume: 0.6
+sound "heartbeat", at: engine_at + vec(0, 2, -1.8), volume: 0.7
+room 0.7, echo: 0.3
+fog 0.02, glow: 0.6, color: rgb(0.6, 0.9, 0.7)
+look "dream", contrast: 1.1, saturation: 1.1, bars: 2.39
+camera at: vec(0, 1.6, 6), look_at: vec(0, 1.2, -6), lens: 26 mm
+render file: "ardane_13_roots.png", quality: "good", width: 1280, at: 4 s
+
+task
+  wait 1 s
+  say "", "Under the island, the rootless work by lamplight. The stars are below their feet."
+  sound "thud", "wood", at: vec(0, 6, -8), strength: 1
+  say "", "A crack runs across the rock overhead. Dust falls through the lamplight."
+  bram.look_at = player() + vec(0, 1.5, 0)
+  say "Bram", "The roots are dying. A month ago they glowed like a city. Now look."
+  say "Bram", "Lune grew them. Lune Ardane. She's still down there, they say. Holding on."
+  say "Milo", "...Ardane."
+  go_to_place(vec(0, 0, -12), "Walk the planks down into the roots.")
+  say "", "The heartbeat gets louder. Slower."
+  go_and_use(engine_at, "Lune's root-engine. Plant the Seed in it.")
+  sound "whoosh", at: engine_at + vec(0, 2, -1)
+  say "", "He presses the Seed into the dead heart of the roots."
+  heart.material = living_root
+  heart_light.lumens = 6000
+  every 1 / 20 s
+    if dying.length > 0
+      let p = dying.pick()
+      p.material = living_root
+  wait 2 s
+  say "", "Green light runs out along every root, like blood coming back to a hand. The island holds."
+  remember "relics", 4
+  sela.visible = yes
+  sela.walk_to = vec(-0.4, 0, -10)
+  say "Lord Ashcombe", "Sela! Come back up, or never come back."
+  wait 1 s
+  say "Sela", "Then never, Father."
+  say "", "She takes Milo's hand. The workers are cheering."
+  say "", "Milo steps off the planks and doesn't fall. He's standing on air."
+  say "", "He laughs. He feels so light. He can't remember, quite, what day it is at home."
+  say "", "It is Bea's birthday."
+  next_scene "ardane_14_nexus", delay: 3 s

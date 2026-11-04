@@ -1,6 +1,7 @@
 #include "engine/audio/audio.h"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <functional>
 
@@ -114,7 +115,9 @@ std::string surfaceOf(const std::string& m) {
 }
 
 std::vector<std::string> soundNames() { return {"footstep", "impact", "bell", "click", "whoosh", "thud"}; }
-std::vector<std::string> ambienceNames() { return {"fire", "wind", "rain", "stream", "birds", "crickets", "hum", "night"}; }
+std::vector<std::string> ambienceNames() {
+  return {"fire", "wind", "rain", "stream", "birds", "crickets", "hum", "night", "applause", "crowd", "strings", "chains", "synth", "drones", "heartbeat"};
+}
 
 std::unique_ptr<Voice> makeSound(const std::string& name, const std::string& variant, float strength, uint32_t seed) {
   strength = saturate(strength);
@@ -259,6 +262,108 @@ std::unique_ptr<Voice> makeAmbience(const std::string& name, float k, uint32_t s
     return std::make_unique<FnVoice>(-1, [k](int i) {
       float t = static_cast<float>(i) / kRate;
       return (std::sin(kTwoPi * 50 * t) * 0.3f + std::sin(kTwoPi * 100 * t) * 0.15f + std::sin(kTwoPi * 150 * t) * 0.05f) * 0.3f * k;
+    });
+  }
+  if (name == "applause") {
+    // many hands: each clap a few ms of bright noise, hundreds a second
+    st->a.set('b', 1800, 0.8f);
+    st->b.set('h', 400, 0.7f);
+    return std::make_unique<FnVoice>(-1, [st, k](int) {
+      if (st->r.uniform() < 0.012f) st->crackle = std::max(st->crackle, 0.4f + 0.6f * st->r.uniform());
+      st->crackle *= 0.992f;
+      return st->b(st->a(st->n.white()) * st->crackle + st->n.pinkish() * 0.04f) * 0.9f * k;
+    });
+  }
+  if (name == "crowd") {
+    // a room of talk: noise through two vowel bands that keep moving
+    return std::make_unique<FnVoice>(-1, [st, k](int i) {
+      if (i % 48 == 0) {
+        float t = static_cast<float>(i) / kRate;
+        st->a.set('b', 500 + 250 * std::sin(t * 5.1f) + 120 * std::sin(t * 11.7f), 4);
+        st->b.set('b', 1500 + 500 * std::sin(t * 4.3f + 1) + 200 * std::sin(t * 9.1f), 4);
+      }
+      float t = static_cast<float>(i) / kRate;
+      float swell = 0.7f + 0.2f * std::sin(t * 0.4f) + 0.1f * std::sin(t * 1.7f);
+      float x = st->n.pinkish();
+      return (st->a(x) + st->b(x) * 0.6f) * swell * 1.4f * k;
+    });
+  }
+  if (name == "strings") {
+    // a slow quartet: four bowed voices with vibrato, walking round I-vi-IV-V
+    static const float chords[4][4] = {{196.0f, 293.7f, 392.0f, 493.9f}, {164.8f, 261.6f, 329.6f, 440.0f},
+                                       {174.6f, 261.6f, 349.2f, 440.0f}, {196.0f, 246.9f, 392.0f, 587.3f}};
+    auto ph = std::make_shared<std::array<float, 4>>();
+    return std::make_unique<FnVoice>(-1, [ph, k](int i) {
+      float t = static_cast<float>(i) / kRate;
+      int c = static_cast<int>(t / 3.2f) % 4;
+      float u = std::fmod(t, 3.2f) / 3.2f;
+      float bow = std::min(1.0f, u * 6) * (1 - 0.35f * u);
+      float s = 0;
+      for (int v = 0; v < 4; ++v) {
+        float f = chords[c][v] * (1 + 0.004f * std::sin(kTwoPi * (5.2f + v * 0.3f) * t));
+        (*ph)[v] = std::fmod((*ph)[v] + f / kRate, 1.0f);
+        float p = (*ph)[v];
+        s += (std::sin(kTwoPi * p) * 0.6f + std::sin(2 * kTwoPi * p) * 0.25f + std::sin(3 * kTwoPi * p) * 0.12f) * (v == 3 ? 0.8f : 1.0f);
+      }
+      return s * bow * 0.06f * k;
+    });
+  }
+  if (name == "chains") {
+    // iron links knocking now and then, far off
+    struct Ring {
+      float ph[3] = {0, 0, 0}, f = 0, a = 0;
+    };
+    auto rg = std::make_shared<Ring>();
+    return std::make_unique<FnVoice>(-1, [st, rg, k](int) {
+      if (st->r.uniform() < 0.00012f) rg->f = 1800 + 1400 * st->r.uniform(), rg->a = 0.5f + 0.5f * st->r.uniform();
+      rg->a *= 0.9993f;
+      const float ratio[3] = {1.0f, 2.76f, 5.4f};
+      float s = 0;
+      for (int j = 0; j < 3; ++j) {
+        rg->ph[j] = std::fmod(rg->ph[j] + rg->f * ratio[j] / kRate, 1.0f);
+        s += std::sin(kTwoPi * rg->ph[j]) / (1 + j);
+      }
+      return (s * rg->a * 0.12f + st->n.pinkish() * 0.01f) * k;
+    });
+  }
+  if (name == "synth") {
+    // music bleeding from a stall: a pulsing bass and a little arpeggio
+    static const float notes[8] = {220.0f, 261.6f, 329.6f, 392.0f, 329.6f, 261.6f, 246.9f, 293.7f};
+    auto ph = std::make_shared<std::array<float, 2>>();
+    st->a.set('l', 1400, 0.9f);
+    return std::make_unique<FnVoice>(-1, [st, ph, k](int i) {
+      float t = static_cast<float>(i) / kRate;
+      float beat = std::fmod(t * 2.0f, 1.0f);
+      float bassF = (static_cast<int>(t / 4) % 2 ? 49.0f : 55.0f);
+      (*ph)[0] = std::fmod((*ph)[0] + bassF / kRate, 1.0f);
+      float bass = ((*ph)[0] * 2 - 1) * std::exp(-beat * 5) * 0.5f;
+      float arpF = notes[static_cast<int>(t * 8) % 8] * 2;
+      (*ph)[1] = std::fmod((*ph)[1] + arpF / kRate, 1.0f);
+      float arp = ((*ph)[1] < 0.5f ? 1.0f : -1.0f) * std::exp(-std::fmod(t * 8, 1.0f) * 4) * 0.12f;
+      return st->a(bass + arp) * 0.35f * k;
+    });
+  }
+  if (name == "drones") {
+    // small rotors overhead: two whining tones that drift and beat
+    return std::make_unique<FnVoice>(-1, [st, k](int i) {
+      float t = static_cast<float>(i) / kRate;
+      float f1 = 640 + 30 * std::sin(t * 0.7f), f2 = 655 + 40 * std::sin(t * 0.43f + 2);
+      st->lfo = std::fmod(st->lfo + f1 / kRate, 1.0f);
+      st->chirpF = std::fmod(st->chirpF + f2 / kRate, 1.0f);
+      float whine = std::sin(kTwoPi * st->lfo) + std::sin(kTwoPi * st->chirpF);
+      float chop = 0.75f + 0.25f * std::sin(kTwoPi * 38 * t);
+      return (whine * chop * 0.05f + st->n.pinkish() * 0.03f) * (0.6f + 0.4f * std::sin(t * 0.3f)) * k;
+    });
+  }
+  if (name == "heartbeat") {
+    // lub-dub, slow: two low thumps a beat
+    return std::make_unique<FnVoice>(-1, [k](int i) {
+      float t = static_cast<float>(i) / kRate;
+      float u = std::fmod(t, 1.1f);
+      float lub = std::exp(-u * 30) * std::sin(kTwoPi * 55 * u);
+      float v = u - 0.28f;
+      float dub = v > 0 ? std::exp(-v * 35) * std::sin(kTwoPi * 48 * v) * 0.7f : 0;
+      return (lub + dub) * 0.6f * k;
     });
   }
   return nullptr;

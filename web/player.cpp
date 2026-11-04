@@ -169,11 +169,26 @@ bool frame(double now, void*) {
   if (g.movie) {
     g.filmTime += dt;
     float len = s.film.length();
-    if (len > 0 && g.filmTime > len) g.filmTime = 0;  // plays again
+    if (len > 0 && g.filmTime > len) {
+      // a story scene holds its last shot (just before it fades) until the
+      // script moves on; anything else plays again
+      if (s.story) g.filmTime = len - std::max(s.film.shots.back().fadeOut, 0.05f);
+      else g.filmTime = 0;
+    }
     int shot = 0;
     cam = s.film.at(static_cast<float>(g.filmTime), s.scene.camera, &shot, &fade);
     if (!s.film.shots[shot].look.empty()) lookByName(s.film.shots[shot].look, look);
-  } else cam = walkCamera(static_cast<float>(dt));
+  } else {
+    if (s.teleport) {
+      g.pos = s.teleportTo + Vec3(0, 1.6f, 0);
+      Vec3 f = normalize(s.teleportLook - g.pos);
+      g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
+      g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
+      g.vel = Vec3(0);
+      s.teleport = false;
+    }
+    cam = walkCamera(static_cast<float>(dt));
+  }
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
   g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);

@@ -126,7 +126,7 @@ bool setLight(Vm& vm, Thing& t, const std::string& f, const Value& v);
 const ThingClass kLightClass{"light", getLight, setLight, {"position", "at", "lumens", "brightness", "color", "kelvin", "radius", "aim", "on"}};
 Value getPerson(Vm& vm, Thing& t, const std::string& f, bool& found);
 bool setPerson(Vm& vm, Thing& t, const std::string& f, const Value& v);
-const ThingClass kPersonClass{"person", getPerson, setPerson, {"position", "at", "walk_to", "look_at", "sitting", "speed", "facing", "walking"}};
+const ThingClass kPersonClass{"person", getPerson, setPerson, {"position", "at", "walk_to", "look_at", "sitting", "speed", "facing", "walking", "visible", "lift"}};
 Value getSound(Vm& vm, Thing& t, const std::string& f, bool& found);
 bool setSound(Vm& vm, Thing& t, const std::string& f, const Value& v);
 const ThingClass kSoundClass{"sound", getSound, setSound, {"volume", "position", "at", "playing"}};
@@ -304,6 +304,8 @@ Value getPerson(Vm& vm, Thing& t, const std::string& f, bool& found) {
   if (f == "walking") return Value::boolean(p.walking);
   if (f == "speed") return Value::number(p.speed);
   if (f == "facing") return Value::number(p.animator->facing);
+  if (f == "visible") return Value::boolean(p.visible);
+  if (f == "lift") return Value::number(p.animator->lift);
   found = false;
   return {};
 }
@@ -317,7 +319,15 @@ bool setPerson(Vm& vm, Thing& t, const std::string& f, const Value& v) {
   } else if (f == "sitting") p.animator->sitting = v.truthy();
   else if (f == "speed") p.speed = static_cast<float>(v.n);
   else if (f == "facing") p.animator->facing = static_cast<float>(v.n);
-  else return false;
+  else if (f == "lift") p.animator->lift = static_cast<float>(v.n);
+  else if (f == "visible") {
+    Stage& s = stageOf(vm);
+    p.visible = v.truthy();
+    for (auto& part : p.parts) {
+      s.placed[part.first].visible = p.visible;
+      s.updateTransform(part.first);
+    }
+  } else return false;
   return true;
 }
 Value getSound(Vm& vm, Thing& t, const std::string& f, bool& found) {
@@ -810,6 +820,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     per.animator = std::make_unique<anim::Animator>(*per.skeleton);
     per.animator->position = a.vec(0, "at", {});
     per.animator->facing = f32(a.num(-1, "facing", 0));
+    per.animator->lift = f32(a.num(-1, "lift", 0));
     Stage* sp = &s;
     per.animator->ground = [sp](float x, float z) { return sp->terrains.empty() ? sp->world.groundHeight : sp->terrains.back().height(x, z); };
     int index = static_cast<int>(s.people.size());
@@ -886,6 +897,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     Stage& s = stageOf(a.vm);
     Stage::UiMessage m;
     m.kind = "line";
+    s.story = true;
     if (a.count >= 2) m.speaker = a.vm.show(a.pos[0]), m.text = a.vm.show(a.pos[1]);
     else m.text = a.text(0, "text", "");
     m.speaker = a.text(-1, "speaker", m.speaker);
@@ -898,6 +910,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     Stage& s = stageOf(a.vm);
     Stage::UiMessage m;
     m.kind = "ask";
+    s.story = true;
     m.text = a.text(0, "question", "");
     const Value* o = a.get(1, "options");
     List* l = o ? o->as<List>() : nullptr;
@@ -933,10 +946,19 @@ void installSceneApi(Vm& vm, Stage& stage) {
   }, "forget_story(): start the story's memory afresh");
   vm.native("player", [](Args& a) { return Value::vec(stageOf(a.vm).playerPos); }, "player(): where the player is");
   vm.native("near", [](Args& a) {
+    if (stageOf(a.vm).autoplay) return Value::boolean(true);
     Vec3 p = stageOf(a.vm).playerPos, q = a.vec(0, "place", {});
     float r = f32(a.num(1, "within", 2));
     return Value::boolean(sqr(p.x - q.x) + sqr(p.z - q.z) < r * r);
   }, "near(vec(…), within: 2 m): is the player that close (on the ground)?");
+  vm.native("move_player", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    s.teleportTo = a.vec(0, "at", s.playerPos);
+    s.teleportLook = a.vec(1, "look_at", s.teleportTo + Vec3(0, 1.6f, -1));
+    s.teleport = true;
+    s.playerPos = s.teleportTo;
+    return Value();
+  }, "move_player(at: vec(…), look_at: vec(…)): carry the player somewhere new (feet at `at`)");
   vm.native("go_to", [](Args& a) {
     stageOf(a.vm).nextScene = a.text(0, "scene", "");
     return Value();
