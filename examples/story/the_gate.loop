@@ -27,7 +27,7 @@ when "choice"
     wait line("Mira", "Then stay close.")
     mira.walk_to = vec(0, 0, -5)
     wait 4 s
-    go_to "the woods"
+    go_to "the_woods"
   else
     wait line("Mira", "Then I'll go alone.")
     mira.walk_to = vec(0, 0, -6)

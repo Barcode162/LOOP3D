@@ -6,7 +6,7 @@ This guide is for whoever turns a written story into Loop3D: usually an AI worki
 
 - **One `.loop` file is one scene:** one place and what happens there.
 - **A story is a folder of scenes.** The player starts with one, and each scene says where to go next with `go_to "next scene"`.
-- **Scene names are file names:** `go_to "the woods"` loads `scenes/the woods.loop`.
+- **Scene names are file names:** `go_to "the_woods"` loads `scenes/the_woods.loop`.
 - **Each scene starts with:**
   - `title "…"`
   - `mode "movie"` (it plays its shots by itself) or `mode "game"` (the player walks; the left thumb walks and the right thumb looks)
