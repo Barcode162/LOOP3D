@@ -9,7 +9,7 @@ sky_island vec(-8, 18, -14), radius: 7, depth: 8, trees: 4, pattern: 211
 # Sela's roots: they come down from the island to the street
 let roots = []
 for i from 0 to 4
-  roots.push(root(vec(-8 + i * 0.8, 10, -14 + i * 0.5), vec(-0.5 + i * 0.3, 0.2, -14 + i * 0.6), sag: -2, alive: yes, thick: 0.22))
+  roots.push(root(vec(-8 + i * 0.8, 10, -14 + i * 0.5), vec(-0.5 + i * 0.3, 0.2, -14 + i * 0.6), sag: -2, alive: no, thick: 0.22))
 for each r in roots
   for each part in r
     part.visible = no
@@ -22,7 +22,7 @@ let milo = hero(vec(0, 0, -6), facing: 180 deg)
 let nia = nia_at(vec(-2.5, 0, -6), facing: 160 deg)
 let oren = oren_at(vec(1.0, 0, -7), facing: 180 deg)
 let sela = sela_at(vec(-1.6, 0, -2), facing: 200 deg)
-let veyl = veyl_at(vec(0, 0, -13), facing: 0 deg)
+let veyl = veyl_at(vec(0, 1.0, -10.5), facing: 0 deg)
 veyl.look_at = vec(0, 1.4, -6)
 let robot = pip(vec(6, 0, -10), facing: 270 deg)
 for each part in [robot.body, robot.head, robot.lens]
@@ -48,9 +48,9 @@ orbit "five lights", 18 s, around: vec(0, 0, -6), radius: 4.5, height: 1.8, from
 shot "boat and roots", 18 s, from: {at: vec(-5, 1, 0), look_at: vec(-2.5, 1, -6), lens: 28 mm}, to: {at: vec(-4, 5, -2), look_at: vec(-1, 6, -14), lens: 20 mm}, shake: 0.6
 shot "the shield", 14 s, from: {at: vec(2.5, 1.2, -4), look_at: vec(0.5, 1.6, -9), lens: 35 mm}, to: {at: vec(1.6, 1.4, -6), look_at: vec(0.5, 1.6, -9), lens: 50 mm}, shake: 0.9
 shot "Pip", 18 s, from: {at: vec(4, 0.5, -6), look_at: vec(2.5, 0.4, -9), lens: 50 mm, f_stop: 1.8}, to: {at: vec(3.4, 0.4, -7.2), look_at: vec(2.4, 0.3, -9), lens: 65 mm, f_stop: 1.8}
-orbit "one knee", 15 s, around: vec(0, 0, -6), radius: 3, height: 1.2, from: 200 deg, to: 260 deg, lens: 35 mm, shake: 0.3
-shot "the rain stops", 15 s, from: {at: vec(0.6, 1.2, -4.4), look_at: vec(0, 1.1, -6), lens: 50 mm, f_stop: 1.8}, to: {at: vec(0.15, 1.15, -5.3), look_at: vec(0, 1.1, -6), lens: 85 mm, f_stop: 1.4}, ease: "in", fade_out: 3 s
-render file: "ardane_21_battle.png", quality: "good", width: 1280, at: 88 s
+shot "one knee", 15 s, from: {at: vec(2.0, 0.45, -3.6), look_at: vec(0, 1.5, -10), lens: 24 mm, f_stop: 4}, to: {at: vec(1.6, 0.5, -4.0), look_at: vec(0, 1.8, -11), lens: 28 mm, f_stop: 4}, shake: 0.3
+shot "the rain stops", 15 s, from: {at: vec(0.7, 1.0, -8.0), look_at: vec(0, 0.95, -6), lens: 50 mm, f_stop: 1.8}, to: {at: vec(0.12, 0.98, -6.75), look_at: vec(0, 0.95, -6), lens: 85 mm, f_stop: 1.4}, ease: "in", fade_out: 3 s
+render file: "ardane_21_battle.png", quality: "good", width: 1280, at: 80 s
 
 to flash()
   lightning.lumens = 3000000
@@ -81,7 +81,7 @@ task
   wait 3 s
   strike.visible = yes
   sound "impact", "metal", at: vec(0.6, 1.4, -8), strength: 1
-  oren.walk_to = vec(0.4, 0, -8)
+  oren.walk_to = vec(1.5, 0, -8.6)
   say "", "Veyl's strike comes like a falling bar of the sun. Oren steps into it."
   say "Oren", "Guard the right thing, boy!"
   say "", "It takes him on the sword arm. He goes down and doesn't get up."
@@ -110,6 +110,10 @@ task
   milo.sitting = yes
   for each o in orbs
     o.glow.lumens = 30
+  for each r in roots
+    for each part in r
+      part.visible = no
+  sound "impact", "wood", at: vec(0, 1, -10.5), strength: 1
   say "", "Veyl tears free of the roots. A thousand years of practice. Milo goes down on one knee. The lights around him flicker."
   say "Veyl", "You see? You can't keep anything. Nobody can. So I keep everything."
   pause 2 s

@@ -418,7 +418,7 @@ let veyl_black = material(like: "velvet", color: rgb(0.03, 0.025, 0.02))
 to veyl_at(at, facing: 0 deg)
   let v = person(at: at, lift: at.y, height: 2.05, facing: facing, skin: skin_light, shirt: veyl_black, trousers: veyl_black)
   let crown = ring(0.13, 0.03, at: at + vec(0, 2.05, 0), material: material(like: "gold", roughness: 0.2), collide: no)
-  let glow = light(at + vec(0, 2.2, 0), lumens: 400, color: rgb(1, 0.75, 0.35), radius: 0.1)
+  let glow = light(at + vec(0, 2.2, 0), lumens: 1500, color: rgb(1, 0.75, 0.35), radius: 0.1)
   every 1 / 30 s
     crown.position = v.position + vec(0, 2.04, 0)
     glow.position = v.position + vec(0, 2.3, 0)
