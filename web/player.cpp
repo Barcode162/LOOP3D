@@ -58,6 +58,7 @@ uint64_t skySignature(const Scene& s) {
 }
 
 void startScript(const std::string& src) {
+  if (g.renderer) g.renderer->reset();
   g.vm = std::make_unique<Vm>();
   g.stage = std::make_unique<Stage>();
   installStandardLibrary(*g.vm);
@@ -150,6 +151,18 @@ bool frame(double now, void*) {
   }
   syncScene();
   Stage& s = *g.stage;
+  // lines, questions and the next scene go to the page
+  for (const Stage::UiMessage& m : s.ui) {
+    std::string opts;
+    for (auto& o : m.options) opts += (opts.empty() ? "" : "\n") + o;
+    EM_ASM({ if (window.loopUi) window.loopUi(UTF8ToString($0), UTF8ToString($1), UTF8ToString($2), UTF8ToString($3), $4); }, m.kind.c_str(), m.speaker.c_str(),
+           m.text.c_str(), opts.c_str(), m.seconds);
+  }
+  s.ui.clear();
+  if (!s.nextScene.empty()) {
+    EM_ASM({ if (window.loopGoTo) window.loopGoTo(UTF8ToString($0)); }, s.nextScene.c_str());
+    s.nextScene.clear();
+  }
   Camera cam;
   float fade = 1;
   Look look = s.scene.look;
@@ -197,6 +210,10 @@ EMSCRIPTEN_KEEPALIVE void loop_set_quality(int q) {
 }
 EMSCRIPTEN_KEEPALIVE void loop_emit(const char* event) {
   if (g.vm) g.vm->emit(event ? event : "");
+}
+// The page's answer to `ask`: which option (0 = the first).
+EMSCRIPTEN_KEEPALIVE void loop_choose(int option) {
+  if (g.vm) g.vm->emit("choice", Value::number(option));
 }
 // Reads the next frame back and hands it to window.loopCaptured(w, h, rgbaPointer).
 EMSCRIPTEN_KEEPALIVE void loop_capture() {

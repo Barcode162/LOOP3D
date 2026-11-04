@@ -17,6 +17,12 @@
   #title { font-weight: 650; letter-spacing: 0.02em; }
   #stats { font: 12px ui-monospace, monospace; color: var(--dim); }
   #note { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: min(520px, 86vw); text-align: center; background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 18px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  #lines { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); width: min(680px, 90vw); text-align: center; pointer-events: none; }
+  #lines .line { display: inline-block; margin: 4px auto; padding: 8px 14px; border-radius: 12px; background: rgba(10, 8, 6, 0.6); font-size: 17px; line-height: 1.4; transition: opacity 0.6s; }
+  #lines .who { color: var(--amber); font-weight: 650; margin-right: 6px; }
+  #ask { position: fixed; inset: auto 0 calc(80px + env(safe-area-inset-bottom)) 0; display: none; flex-direction: column; align-items: center; gap: 8px; }
+  #ask .q { background: var(--glass); padding: 10px 16px; border-radius: 14px; font-size: 17px; }
+  #ask button { min-width: min(320px, 80vw); font-size: 16px; }
   #problems { position: fixed; left: 12px; right: 12px; bottom: 70px; max-height: 30vh; overflow: auto; white-space: pre-wrap; font: 12px ui-monospace, monospace; background: rgba(60, 10, 10, 0.75); border-radius: 12px; padding: 10px; display: none; }
   .stick { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); width: 120px; height: 120px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,0.04); display: none; }
   .stick i { position: absolute; left: 40px; top: 40px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 210, 160, 0.35); }
@@ -44,12 +50,14 @@
 </div>
 <div id="note">Loading Loop3D…</div>
 <div id="problems"></div>
+<div id="lines"></div>
+<div id="ask"></div>
 <div class="stick" id="ls"><i></i></div>
 <div class="stick" id="rs"><i></i></div>
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
-  const sceneName = (params.get('scene') || 'cabin').replace(/[^a-z0-9_-]/gi, '');
+  const sceneName = (params.get('scene') || 'cabin').replace(/[^a-z0-9 _-]/gi, '');
   const note = document.getElementById('note');
   const problemsBox = document.getElementById('problems');
   const modeBtn = document.getElementById('modeBtn');
@@ -63,6 +71,43 @@
   window.loopNoGpu = () => { note.textContent = 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
   window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
   window.loopSay = (t) => console.log('[say]', t);
+  // dialogue lines fade in, stay long enough to read, fade out
+  const linesBox = document.getElementById('lines'), askBox = document.getElementById('ask');
+  window.loopUi = (kind, speaker, text, options, seconds) => {
+    if (kind === 'clear') { linesBox.innerHTML = ''; return; }
+    if (kind === 'line') {
+      const d = document.createElement('div');
+      d.className = 'line';
+      if (speaker) { const w = document.createElement('span'); w.className = 'who'; w.textContent = speaker; d.appendChild(w); }
+      d.appendChild(document.createTextNode(text));
+      linesBox.appendChild(d);
+      while (linesBox.children.length > 2) linesBox.firstChild.remove();
+      setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 700); }, seconds * 1000);
+      return;
+    }
+    if (kind === 'ask') {
+      askBox.innerHTML = '';
+      if (text) { const q = document.createElement('div'); q.className = 'q'; q.textContent = text; askBox.appendChild(q); }
+      options.split('\n').forEach((o, i) => {
+        const b = document.createElement('button');
+        b.textContent = o;
+        b.onclick = () => { askBox.style.display = 'none'; M._loop_choose(i); };
+        askBox.appendChild(b);
+      });
+      askBox.style.display = 'flex';
+    }
+  };
+  async function loadScene(name) {
+    const res = await fetch('scenes/' + encodeURIComponent(name) + '.loop');
+    if (!res.ok) throw new Error(res.status);
+    const text = await res.text();
+    const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
+    M.stringToUTF8(text, p, n);
+    M._loop_run_script(p);
+    setTimeout(() => M._free(p), 1000);
+    trailer.src = 'scenes/' + encodeURIComponent(name) + '.png';
+  }
+  window.loopGoTo = (name) => { linesBox.innerHTML = ''; askBox.style.display = 'none'; loadScene(name).catch(() => {}); };
   window.loopStarted = (title, mode, shots) => {
     document.getElementById('title').textContent = title;
     movie = mode === 'movie' && shots > 0;
@@ -76,19 +121,11 @@
     q.onchange = () => M._loop_set_quality(+q.value);
     M._loop_set_quality(+q.value);
     try {
-      const res = await fetch('scenes/' + sceneName + '.loop');
-      if (!res.ok) throw new Error(res.status);
-      const text = await res.text();
-      const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
-      M.stringToUTF8(text, p, n);
-      M._loop_run_script(p);
-      // the scene's own pointer is copied by the engine on its next frame
-      setTimeout(() => M._free(p), 1000);
+      await loadScene(sceneName);
     } catch (e) {
       note.style.display = 'block';
       note.textContent = 'Couldn\'t load the scene "' + sceneName + '".';
     }
-    trailer.src = 'scenes/' + sceneName + '.png';
     setInterval(() => {
       try {
         const s = JSON.parse(M.UTF8ToString(M._loop_stats()));

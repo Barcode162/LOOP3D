@@ -8,7 +8,7 @@ emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build build-web -j4
 rm -rf site && mkdir -p site/scenes
 cp web/index.html build-web/player.js build-web/player.wasm site/
-cp examples/*.loop site/scenes/
+cp examples/*.loop examples/story/*.loop site/scenes/
 for f in examples/*.loop; do
   n=$(basename "$f" .loop)
   [ -f "examples/stills/$n.png" ] && cp "examples/stills/$n.png" "site/scenes/$n.png"

@@ -1,0 +1,19 @@
+# The second scene of "The Gate": the woods beyond it.
+title "The Woods"
+mode "movie"
+terrain size: 400, height: 25, ridges: 0.3, seed: 6, material: "grass"
+forest kind: "pine", around: vec(0, 0, -30), radius: 90, spacing: 6, clearing: 8, clear_around: vec(0, 0, 0)
+let mira = person(at: vec(0, height_at(vec(0, 0, 2)), 2), facing: 180 deg, shirt: material(color: rgb(0.25, 0.35, 0.2)))
+mira.walk_to = vec(0, 0, -6)
+sun elevation: 4 deg, toward: 260 deg
+sky "physical", haze: 5
+fog 0.012, top: 20, glow: 0.7
+sound "wind", volume: 0.6
+sound "crickets", volume: 0.3
+look "golden", bars: 2.39
+let y = height_at(vec(0, 0, 6))
+camera at: vec(1.5, y + 1.5, 6), look_at: vec(0, y + 1, -4), lens: 28 mm
+shot "into the woods", 20 s, from: {at: vec(1.5, y + 1.5, 6), look_at: vec(0, y + 1.2, -4), lens: 28 mm}, to: {at: vec(0.5, y + 1.4, 1), look_at: vec(0, y + 1.2, -8), lens: 35 mm}, fade_in: 2 s
+task
+  wait 3 s
+  wait line("Mira", "Stay on the path. The trees remember everything.")

@@ -54,7 +54,7 @@ else()
     -sINITIAL_MEMORY=64MB
     -sSTACK_SIZE=2MB
     -sENVIRONMENT=web
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_capture,_loop_audio"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_capture,_loop_audio,_loop_choose"
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,stringToUTF8,lengthBytesUTF8,HEAPU8,HEAPF32"
     -O3)
 endif()

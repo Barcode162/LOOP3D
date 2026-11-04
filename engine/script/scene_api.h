@@ -85,6 +85,15 @@ struct Stage {
   uint64_t transformsVersion = 0;
   std::string title = "Untitled";
   std::string mode = "game";    // "game" or "movie"
+  // For the page: lines to show, questions to ask, the next scene to load.
+  struct UiMessage {
+    std::string kind;     // "line", "ask", "clear"
+    std::string speaker, text;
+    std::vector<std::string> options;
+    float seconds = 0;
+  };
+  std::vector<UiMessage> ui;     // taken by the player each frame
+  std::string nextScene;         // set by go_to
   void updateTransform(int placedIndex);
 };
 

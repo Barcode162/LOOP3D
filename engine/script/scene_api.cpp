@@ -871,6 +871,42 @@ void installSceneApi(Vm& vm, Stage& stage) {
     return Value();
   }, "room(size: 0 outdoors .. 1 a cathedral, echo)");
 
+  // ---- story: lines on screen, questions, the next scene
+  vm.native("line", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    Stage::UiMessage m;
+    m.kind = "line";
+    if (a.count >= 2) m.speaker = a.vm.show(a.pos[0]), m.text = a.vm.show(a.pos[1]);
+    else m.text = a.text(0, "text", "");
+    m.speaker = a.text(-1, "speaker", m.speaker);
+    // long enough to read: about 15 characters a second, at least 2 s
+    m.seconds = f32(a.num(-1, "seconds", std::max(2.0, m.text.size() / 15.0 + 1)));
+    s.ui.push_back(m);
+    return Value::number(m.seconds);
+  }, "line(\"Mira\", \"The ember has gone out.\"): a line of dialogue on screen; gives back how long it shows");
+  vm.native("ask", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    Stage::UiMessage m;
+    m.kind = "ask";
+    m.text = a.text(0, "question", "");
+    const Value* o = a.get(1, "options");
+    List* l = o ? o->as<List>() : nullptr;
+    if (!l || l->items.empty()) a.vm.fail("ask() needs a list of options, like ask(\"Which way?\", [\"The woods\", \"The river\"])");
+    for (auto& v : l->items) m.options.push_back(a.vm.show(v));
+    s.ui.push_back(m);
+    return Value();
+  }, "ask(question, [options]): buttons appear; `when \"choice\"` gets the number picked (0 = the first)");
+  vm.native("go_to", [](Args& a) {
+    stageOf(a.vm).nextScene = a.text(0, "scene", "");
+    return Value();
+  }, "go_to(\"the woods\"): load the scene file scenes/the woods.loop next");
+  vm.native("clear_lines", [](Args& a) {
+    Stage::UiMessage m;
+    m.kind = "clear";
+    stageOf(a.vm).ui.push_back(m);
+    return Value();
+  });
+
   // ---- renders (made by the `loop` command with the cinema renderer)
   vm.native("render", [](Args& a) {
     Stage& s = stageOf(a.vm);

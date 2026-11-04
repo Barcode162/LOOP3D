@@ -227,6 +227,14 @@ class GpuRenderer final : public Renderer {
     syncTransforms(scene);
   }
 
+  void reset() override {
+    meshes_.clear();
+    batches_.clear();
+    lastScene_ = nullptr;
+    skyBuilt_ = false;
+    ultraFrame_ = 0;
+  }
+
   void syncTransforms(const Scene& scene) override {
     lastScene_ = &scene;
     if (quality_ == Quality::kUltra) buildUltra(scene);

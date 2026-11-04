@@ -24,6 +24,8 @@ class Renderer {
   virtual ~Renderer() = default;
   // The scene's shapes, materials, lights, sky changed: read them again.
   virtual void sync(const Scene& scene, bool geometryChanged, bool skyChanged) = 0;
+  // A new scene: forget the old one's shapes.
+  virtual void reset() = 0;
   // Only placements moved (cheap).
   virtual void syncTransforms(const Scene& scene) = 0;
   // Draws one frame with this camera and look; fade 0..1 (black..clear).
