@@ -151,7 +151,7 @@ std::vector<Transform> Animator::world() const {
 
 void Animator::update(float dt) {
   time_ += dt;
-  float groundY = ground ? ground(position.x, position.z) : 0;
+  float groundY = (ground ? ground(position.x, position.z) : 0) + lift;
   float targetSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
   speed_ += (targetSpeed - speed_) * (1 - std::exp(-6 * dt));
   sit_ += ((sitting ? 1.0f : 0.0f) - sit_) * (1 - std::exp(-3 * dt));
@@ -219,7 +219,7 @@ void Animator::update(float dt) {
     float along = walkAmt * c * stride * 0.25f;
     Vec3 hip = w[leg[0]].position;
     Vec3 foot{hip.x + fwd.x * along, 0, hip.z + fwd.z * along};
-    float gy = ground ? ground(foot.x, foot.z) : groundY;
+    float gy = ground ? ground(foot.x, foot.z) + lift : groundY;
     foot.y = gy + 0.08f * k + walkAmt * liftAmt * lerp(0.08f, 0.18f, run) * k;
     if (sit_ > 0.01f) foot = vlerp(foot, Vec3(hip.x + fwd.x * 0.45f * k, gy + 0.08f * k, hip.z + fwd.z * 0.45f * k), sit_);
     Vec3 knee = w[leg[1]].position, ankle = w[leg[2]].position;

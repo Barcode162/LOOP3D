@@ -41,7 +41,8 @@ stories/harthwake/
 3. **The people.** `person(at, height, shirt, trousers)`, then give them life:
    - `walk_to` somewhere, `look_at` what they'd look at, `sitting = yes` on a seat.
    - Footsteps sound by themselves.
-4. **The sound.** Every place has a bed of sound: `sound "wind"`, `"birds"`, `"crickets"`, `"stream"`, `"rain"`, `"night"`.
+4. **The sound.** Every place has a bed of sound: `sound "wind"`, `"birds"`, `"crickets"`, `"stream"`, `"rain"`, `"night"`, `"fire"`, `"hum"`.
+   - There are also beds for people and machines: `"crowd"`, `"applause"`, `"strings"` (a slow quartet), `"synth"`, `"chains"`, `"drones"` and `"heartbeat"`.
    - Put endless sounds where they come from (`at:` the fire, the river).
    - `room size: …` sets how big the space sounds (outdoors 0, a small room 0.3, a hall 0.7).
 5. **The story beats:** a `task` that runs the scene in order.
@@ -61,7 +62,12 @@ stories/harthwake/
        wait line("Mira", "Then I'll go alone.")
    ```
 
-   - Things the story must remember between choices go in plain names at the top level (`let kindness = 0`; later `kindness += 1`).
+   - Within one scene, plain names at the top level remember things (`let kindness = 0`; later `kindness += 1`).
+   - Across scenes, use the story's memory, which survives `go_to`:
+     - `remember "took the coins", yes` stores a value
+     - `recall("took the coins", otherwise: no)` reads it back
+     - `forget_story()` clears it (the first scene calls it, so a new playthrough starts fresh)
+
 6. **The camera and the look.**
    - A `look` that fits the mood: "golden" for warmth, "noir" for mystery, "horror" for dread, "dream" for memories, "natural" otherwise. Add `bars: 2.39` for a film frame.
    - For movie scenes, `shot`s in order:
@@ -70,7 +76,24 @@ stories/harthwake/
      - use `ease: "smooth"` (the default) so moves start and stop gently
      - a little `shake: 0.2` for tension
      - `fade_in` on the first shot, `fade_out` on the last
+     - make the shots together last about as long as the scene's talking. A story scene holds its last shot until the script moves on, and `loop play` prints both lengths so you can match them.
 7. **The trailer still.** `render file: "<scene>.png", quality: "cinema", at: 5 s` gives the Trailer view its picture. Pick the moment that best sells the scene.
+
+## The player's part (game scenes)
+
+- `player()` is where the player stands; `near(vec(…), within: 2 m)` says if they're that close.
+- Pressing **Use** (the E key, or the Use button on a phone) sends the event `"use"`:
+
+  ```
+  let used_at = -1
+  when "use"
+    used_at = time()
+  ```
+
+- `move_player(at: vec(…), look_at: vec(…))` carries the player somewhere new: waking up somewhere else, a door into another place.
+- People can be hidden (`.visible = no`) and stood above or below the ground (`lift: 0.6` or `.lift = 0.6` for a dais, a tower top or the air).
+- Scenes can share their pieces: `use "common"` at the top of a scene brings in `common.loop` from the same folder (once), with its materials, people and helper functions.
+  - [`stories/echoes_of_ardane/ardane_common.loop`](../stories/echoes_of_ardane/ardane_common.loop) is a full example. Its `go_and_use(place, hint)` waits for the player to walk somewhere and press Use, and its `choose(question, options)` asks and returns the answer.
 
 ## Rules that keep it believable
 
@@ -84,8 +107,9 @@ stories/harthwake/
 
 1. Run `loop check scene.loop` on every file. Fix every problem it names; the messages say the line and usually the fix.
 2. Run `loop run scene.loop --seconds 30`. It plays the scene without pictures and reports problems that only show while running.
-3. Run `loop render scene.loop --quality draft`, then look at the picture. Too dark or bright? Wrong mood? Things floating or sunk into the floor?
-4. Open it in the player (`?scene=<name>`) for the live version, in movie and game mode.
+3. Run `loop play first_scene.loop --choices 0,1,0` to play the whole story with no picture. It presses Use, answers the questions (with the options listed, then the first), follows every `go_to`, prints every line, and reports any problem in any scene. Try every choice at least once.
+4. Run `loop render scene.loop --quality draft`, then look at the picture. Too dark or bright? Wrong mood? Things floating or sunk into the floor?
+5. Open it in the player (`?scene=<name>`) for the live version, in movie and game mode.
 
 ## What to ask the author
 

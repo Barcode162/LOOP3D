@@ -168,12 +168,17 @@ Every setting has a sensible default; give only what matters.
   - Simple shapes are things to bump into (unless `collide: no`).
 - **People:**
   - `person(at, height, skin, shirt, trousers, facing)`: breathes, shifts weight, walks and runs with planted feet, swings their arms, and their footsteps match the floor
-  - Fields: `.walk_to = vec(..)`, `.look_at = vec(..)` (or `nothing`), `.sitting = yes`, `.speed`, `.position`, `.facing`, `.walking`
+  - Fields: `.walk_to = vec(..)`, `.look_at = vec(..)` (or `nothing`), `.sitting = yes`, `.speed`, `.position`, `.facing`, `.walking`, `.visible`, `.lift` (metres above the ground; also `person(…, lift: 0.6)`)
 - **Sound:**
-  - `sound("fire" | "wind" | "rain" | "stream" | "birds" | "crickets" | "night" | "hum", at, volume)` for endless sounds; without `at:` it's everywhere
+  - `sound("fire" | "wind" | "rain" | "stream" | "birds" | "crickets" | "night" | "hum" | "applause" | "crowd" | "strings" | "chains" | "synth" | "drones" | "heartbeat", at, volume)` for endless sounds; without `at:` it's everywhere
   - `sound("footstep" | "impact" | "bell" | "click" | "thud" | "whoosh", variant, at)` for one-offs (variants: wood, metal, glass, stone, grass, gravel, snow, water, carpet, plastic)
   - Fields: `.volume .position .playing`
   - `room(size, echo)` sets how big the space sounds.
+- **Story** (see [`STORY_GUIDE.md`](STORY_GUIDE.md)):
+  - `line(speaker, text)` shows a line and gives back its seconds; `ask(question, [options])` sends `"choice"` with `event` = the option picked
+  - `go_to("next scene")`; `remember(key, value)`, `recall(key, otherwise)` and `forget_story()` for what the story keeps between scenes
+  - `player()`, `near(place, within)`, `move_player(at, look_at)`; pressing Use sends `"use"`
+  - `use "common"` at the start of a line brings in `common.loop` from the same folder
 - **Renders** (made by `loop render`):
   - `render(file, quality: "draft" | "good" | "cinema" | "ultra", width, height, samples, at)` for a still
   - `film(folder, quality, width, fps)` for every frame of the shots

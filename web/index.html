@@ -42,10 +42,12 @@
   <button id="modeBtn">Movie</button>
   <button id="trailerBtn" title="See the cinema render: the target look">Trailer view</button>
   <button id="soundBtn" title="Sound on (phones need a tap first)">Sound</button>
+  <button id="useBtn" title="Use / talk (E)">Use</button>
   <select id="scene" title="Scene">
     <option value="courtyard">Courtyard</option>
     <option value="cabin">Cabin</option>
     <option value="the_gate">The Gate (story)</option>
+    <option value="ardane_01_home">Echoes of Ardane (the demo)</option>
   </select>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
@@ -102,10 +104,24 @@
       askBox.style.display = 'flex';
     }
   };
+  async function expandUses(text, seen) {
+    const out = [];
+    for (const line of text.split('\n')) {
+      const m = line.match(/^\s*use\s+"([^"]+)"/);
+      if (!m) { out.push(line); continue; }
+      if (!seen.has(m[1])) {
+        seen.add(m[1]);
+        const r = await fetch('scenes/' + encodeURIComponent(m[1]) + '.loop');
+        out.push(r.ok ? await expandUses(await r.text(), seen) : 'say "can\'t find ' + m[1] + '.loop"');
+      }
+      out.push('');
+    }
+    return out.join('\n');
+  }
   async function loadScene(name) {
     const res = await fetch('scenes/' + encodeURIComponent(name) + '.loop');
     if (!res.ok) throw new Error(res.status);
-    const text = await res.text();
+    const text = await expandUses(await res.text(), new Set());
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
     M.stringToUTF8(text, p, n);
     M._loop_run_script(p);
@@ -137,7 +153,7 @@
     setInterval(() => {
       try {
         const s = JSON.parse(M.UTF8ToString(M._loop_stats()));
-        document.getElementById('stats').textContent = (s.fps || 0).toFixed(0) + ' fps · ' + s.things + ' things · ' + s.draws + ' draws';
+        document.getElementById('stats').textContent = (s.fps || 0).toFixed(0) + ' fps · ' + (s.cpu || 0).toFixed(1) + ' ms cpu · ' + Math.round((s.scale || 1) * 100) + '% res · ' + s.things + ' things';
       } catch (e) {}
     }, 500);
   };
@@ -149,6 +165,9 @@
     if (M) M._loop_set_mode(movie ? 1 : 0);
   }
   modeBtn.onclick = () => setMode(!movie);
+  const useIt = () => { if (M) { const n = M.lengthBytesUTF8('use') + 1, p = M._malloc(n); M.stringToUTF8('use', p, n); M._loop_emit(p); M._free(p); } };
+  document.getElementById('useBtn').onclick = useIt;
+  addEventListener('keydown', (e) => { if (e.code === 'KeyE') useIt(); });
   // sound: the engine mixes; the page just hands the samples to the speakers
   let audioCtx = null;
   const soundBtn = document.getElementById('soundBtn');

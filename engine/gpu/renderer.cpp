@@ -167,6 +167,8 @@ class GpuRenderer final : public Renderer {
     quality_ = q;
     ultraFrame_ = 0;
     ultraScale_ = 1;
+    renderScale_ = scaleCeil_ = 1, calmSeconds_ = 0, sinceScale_ = 0;
+    lightsDirty_ = true;
     maxRatio_ = q == Quality::kPhone ? 1.5f : 2.0f;
     shadowSize_ = q == Quality::kUltra ? 4096 : 2048;
     makeShadowMap();
@@ -192,37 +194,7 @@ class GpuRenderer final : public Renderer {
     }
     ensureStorage(materialsBuf_, materialsCap_, sizeof(MaterialU), mats.size());
     queue_.WriteBuffer(materialsBuf_, 0, mats.data(), mats.size() * sizeof(MaterialU));
-    // lamps
-    lights_.clear();
-    sunOn_ = false;
-    for (const Light& l : scene.lights) {
-      if (l.kind == Light::Kind::kSun) {
-        sunOn_ = true;
-        sunDir_ = normalize(-l.direction);
-        sunLux_ = l.lux;
-        sunTint_ = l.color;
-        continue;
-      }
-      if (lights_.size() >= kMaxLights) continue;
-      LightU u;
-      float r = std::max(l.radius, 0.01f);
-      u.pos = {l.position, r};
-      if (l.kind == Light::Kind::kRect) {
-        u.color = {l.color * (l.lumens / (kPi * std::max(l.size.x * l.size.y, 1e-4f))), 0};
-        u.dir = {normalize(l.direction), 2};
-        u.cone = {0, 0, l.size.x, l.size.y};
-      } else if (l.kind == Light::Kind::kSpot) {
-        float ci = std::cos(l.innerAngle), co = std::cos(std::max(l.outerAngle, l.innerAngle + 1e-3f));
-        u.color = {l.color * (l.lumens / (kTwoPi * (1 - 0.5f * (ci + co)))), 0};
-        u.dir = {normalize(l.direction), 1};
-        u.cone = {ci, co, 0, 0};
-      } else {
-        u.color = {l.color * (l.lumens / (4 * kPi)), 0};
-        u.dir = {0, -1, 0, 0};
-      }
-      lights_.push_back(u);
-    }
-    if (!lights_.empty()) queue_.WriteBuffer(lightsBuf_, 0, lights_.data(), lights_.size() * sizeof(LightU));
+    readLights(scene);
     fog_ = scene.fog;
     if (skyChanged || !skyBuilt_) {
       SkyModel m;
@@ -232,6 +204,11 @@ class GpuRenderer final : public Renderer {
       skyBuilt_ = true;
     }
     syncTransforms(scene);
+  }
+
+  void syncLights(const Scene& scene) override {
+    readLights(scene);
+    fog_ = scene.fog;
   }
 
   void reset() override {
@@ -244,6 +221,9 @@ class GpuRenderer final : public Renderer {
     batches_.clear();
     lastScene_ = nullptr;
     skyBuilt_ = false;
+    lights_.clear();
+    lightsDirty_ = true;
+    lastPlaces_.clear();
     ultraFrame_ = 0;
   }
 
@@ -251,7 +231,22 @@ class GpuRenderer final : public Renderer {
     lastScene_ = &scene;
     buildRayMeshes(scene);
     buildRayInstances(scene);
-    if (ultraFrame_ > 3) ultraFrame_ = 3;  // things moved: let the old picture fade, don't wipe it
+    // something moved more than a couple of millimetres (not just breathing):
+    // let the old picture fade quickly instead of smearing
+    float moved = 0;
+    if (lastPlaces_.size() != scene.instances.size()) moved = 1;
+    else
+      for (size_t i = 0; i < scene.instances.size() && moved < 0.002f; ++i) {
+        const Mat4& a = scene.instances[i].transform;
+        const Mat4& b = lastPlaces_[i];
+        for (int c = 0; c < 4; ++c)
+          for (int r = 0; r < 3; ++r) moved = std::max(moved, std::fabs(a.m[c][r] - b.m[c][r]));
+      }
+    if (moved >= 0.002f) {
+      lastPlaces_.resize(scene.instances.size());
+      for (size_t i = 0; i < scene.instances.size(); ++i) lastPlaces_[i] = scene.instances[i].transform;
+      if (ultraFrame_ > 8) ultraFrame_ = 8;
+    }
     // instances sorted into batches: same mesh, opaque or glass, drawn at once
     std::vector<uint32_t> order(scene.instances.size());
     for (size_t i = 0; i < order.size(); ++i) order[i] = static_cast<uint32_t>(i);
@@ -285,21 +280,30 @@ class GpuRenderer final : public Renderer {
     if (!data.empty()) queue_.WriteBuffer(instancesBuf_, 0, data.data(), data.size() * sizeof(InstanceU));
   }
 
-  void draw(const Camera& cam, const Look& look, float dt, float time, float fade) override {
+  bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) override {
     // at most two frames waiting on the GPU: a slow GPU drops frames instead
     // of falling further and further behind
+    adaptResolution(dt);
     if (inFlight_ >= 2) {
-      ++skippedFrames_;
-      return;
+      ++perfSkipped_;
+      // a GPU that never says it's done (a lost callback, a hidden tab) must
+      // not freeze the picture for good
+      if (++stuckFrames_ > 90) inFlight_ = 0, stuckFrames_ = 0;
+      return false;
     }
-    ++drawnFrames_;
+    stuckFrames_ = 0;
+    ++perfDrawn_;
     resize();
     wgpu::SurfaceTexture st;
     if (!(g_skipPasses & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)
       surface_.GetCurrentTexture(&st);
-      if (st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal && st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal) return;
+      if (st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal && st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal) {
+        width_ = 0;  // the surface needs configuring again
+        return false;
+      }
     }
     if (bindGroupsDirty_) makeBindGroups();
+    uploadLights(cam.position);
     drawCalls_ = 0;
 
     // ---- frame constants
@@ -327,7 +331,7 @@ class GpuRenderer final : public Renderer {
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
     f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
     f.fogColor = {fog_.albedo, 0};
-    f.params = {static_cast<float>(lights_.size()), (g_skipPasses & 512) ? 0.0f : quality_ == Quality::kPhone ? 4.0f : 8.0f, static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
+    f.params = {static_cast<float>(lights_.size()), (g_skipPasses & 512) ? 0.0f : quality_ == Quality::kPhone ? 3.0f : 6.0f, static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
     f.screen = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_};
     // a first guess for the eyes: the camera's own settings, or a sunny / indoor guess
     float guess = cam.autoExposure ? (sunOn_ && sunLux_ > 1000 ? 1.0f / 6000 : 1.0f / 30) : exposureFromEv100(cam.ev100());
@@ -362,15 +366,6 @@ class GpuRenderer final : public Renderer {
         bool cut = moved > 0.5f || turned > 0.05f || key[2].x != ultraCamKey_[2].x;
         std::memcpy(ultraCamKey_, key, sizeof key);
         ultraFrame_ = cut ? 0 : std::min(ultraFrame_, 3u);
-      }
-      // too slow? draw Ultra in 2x2 blocks until the GPU keeps up
-      ultraClock_ += dt;
-      if (ultraClock_ > 1.0f) {
-        float skipped = static_cast<float>(skippedFrames_) / std::max(1, skippedFrames_ + drawnFrames_);
-        if (skipped > 0.25f && ultraScale_ < 2) ultraScale_ = 2, ultraFrame_ = 0;
-        else if (skipped == 0 && ultraScale_ > 1 && ++ultraCalm_ > 5) ultraScale_ = 1, ultraFrame_ = 0, ultraCalm_ = 0;
-        skippedFrames_ = drawnFrames_ = 0;
-        ultraClock_ = 0;
       }
       UltraU u{};
       Vec3 f = normalize(cam.target - cam.position), r = normalize(cross(f, cam.up)), up = cross(r, f);
@@ -493,9 +488,93 @@ class GpuRenderer final : public Renderer {
       captureDone_ = nullptr;
       jsCapture(device_.Get(), captureTex.Get(), static_cast<int>(width_), static_cast<int>(height_), format_ == wgpu::TextureFormat::BGRA8Unorm ? 1 : 0);
     }
+    ++presented_;
+    return true;
+  }
+
+  uint64_t presentedFrames() const override { return presented_; }
+  float renderScale() const override { return renderScale_; }
+
+  // Once a second: if the GPU dropped frames, draw fewer pixels; after a few
+  // calm seconds, try more again, but not past a size that was too slow
+  // a moment ago (so it settles instead of swinging back and forth).
+  void adaptResolution(float dt) {
+    perfClock_ += dt;
+    sinceScale_ += dt;
+    if (perfClock_ < 1.0f) return;
+    float skipped = static_cast<float>(perfSkipped_) / std::max(1, perfSkipped_ + perfDrawn_);
+    perfSkipped_ = perfDrawn_ = 0;
+    perfClock_ = 0;
+    float lowest = quality_ == Quality::kUltra ? 0.35f : 0.5f;
+    if (skipped > 0.12f && renderScale_ > lowest && sinceScale_ > 1.5f) {
+      scaleCeil_ = renderScale_ - 0.05f;  // this size was too much
+      renderScale_ = std::max(lowest, renderScale_ * (skipped > 0.4f ? 0.7f : 0.85f));
+      calmSeconds_ = 0, sinceScale_ = 0;
+      width_ = 0;  // re-make targets at the new size
+    } else if (skipped == 0) {
+      if (++calmSeconds_ >= 4 && renderScale_ < scaleCeil_ && sinceScale_ > 4) {
+        renderScale_ = std::min(scaleCeil_, renderScale_ + 0.1f);
+        calmSeconds_ = 0, sinceScale_ = 0;
+        width_ = 0;
+      }
+      if (calmSeconds_ >= 30) scaleCeil_ = std::min(1.0f, scaleCeil_ + 0.1f), calmSeconds_ = 4;  // conditions change: try again now and then
+    } else calmSeconds_ = 0;
   }
 
  private:
+  void readLights(const Scene& scene) {
+    lights_.clear();
+    sunOn_ = false;
+    for (const Light& l : scene.lights) {
+      if (l.kind == Light::Kind::kSun) {
+        sunOn_ = true;
+        sunDir_ = normalize(-l.direction);
+        sunLux_ = l.lux;
+        sunTint_ = l.color;
+        continue;
+      }
+      if (lights_.size() >= kMaxLights) continue;
+      LightU u;
+      float r = std::max(l.radius, 0.01f);
+      u.pos = {l.position, r};
+      if (l.kind == Light::Kind::kRect) {
+        u.color = {l.color * (l.lumens / (kPi * std::max(l.size.x * l.size.y, 1e-4f))), 0};
+        u.dir = {normalize(l.direction), 2};
+        u.cone = {0, 0, l.size.x, l.size.y};
+      } else if (l.kind == Light::Kind::kSpot) {
+        float ci = std::cos(l.innerAngle), co = std::cos(std::max(l.outerAngle, l.innerAngle + 1e-3f));
+        u.color = {l.color * (l.lumens / (kTwoPi * (1 - 0.5f * (ci + co)))), 0};
+        u.dir = {normalize(l.direction), 1};
+        u.cone = {ci, co, 0, 0};
+      } else {
+        u.color = {l.color * (l.lumens / (4 * kPi)), 0};
+        u.dir = {0, -1, 0, 0};
+      }
+      lights_.push_back(u);
+    }
+    lightsDirty_ = true;
+  }
+
+  // The lamps go to the GPU brightest-near-the-camera first: the shader
+  // gives its shadow rays to the first few, so they go where they show.
+  void uploadLights(const Vec3& eye) {
+    if (lights_.empty()) return;
+    if (!lightsDirty_ && length(eye - lightsEye_) < 0.5f) return;
+    lightsDirty_ = false;
+    lightsEye_ = eye;
+    std::vector<std::pair<float, uint32_t>> rank(lights_.size());
+    for (size_t i = 0; i < lights_.size(); ++i) {
+      const LightU& L = lights_[i];
+      Vec3 d = L.pos.xyz() - eye;
+      float power = luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w : 1.0f);
+      rank[i] = {power / std::max(dot(d, d), 0.25f), static_cast<uint32_t>(i)};
+    }
+    std::stable_sort(rank.begin(), rank.end(), [](auto& a, auto& b) { return a.first > b.first; });
+    sortedLights_.resize(lights_.size());
+    for (size_t i = 0; i < rank.size(); ++i) sortedLights_[i] = lights_[rank[i].second];
+    queue_.WriteBuffer(lightsBuf_, 0, sortedLights_.data(), sortedLights_.size() * sizeof(LightU));
+  }
+
   static Vec3 whiteBalanceGains(float temperature, float tint) {
     Vec3 g = kelvin(6500 - temperature * 3000) / kelvin(6500);
     if (temperature < 0) g = kelvin(6500 / (1 + temperature * 0.6f)) / kelvin(6500);
@@ -833,7 +912,7 @@ class GpuRenderer final : public Renderer {
   void resize() {
     double cw = 0, ch = 0;
     emscripten_get_element_css_size(canvas_.c_str(), &cw, &ch);
-    ratio_ = std::min(maxRatio_, static_cast<float>(emscripten_get_device_pixel_ratio()));
+    ratio_ = std::min(maxRatio_, static_cast<float>(emscripten_get_device_pixel_ratio())) * renderScale_;
     uint32_t w = static_cast<uint32_t>(std::max(1.0, cw * ratio_)), h = static_cast<uint32_t>(std::max(1.0, ch * ratio_));
     if (w == width_ && h == height_) return;
     width_ = w, height_ = h;
@@ -941,7 +1020,9 @@ class GpuRenderer final : public Renderer {
 
   std::vector<GpuMesh> meshes_;
   std::vector<Batch> batches_;
-  std::vector<LightU> lights_;
+  std::vector<LightU> lights_, sortedLights_;
+  bool lightsDirty_ = true;
+  Vec3 lightsEye_{1e9f};
   Fog fog_;
   bool sunOn_ = false;
   Vec3 sunDir_{0, 1, 0}, sunTint_{1}, sunIllum_{0};
@@ -969,9 +1050,7 @@ class GpuRenderer final : public Renderer {
   std::vector<NodeU> rayBlasCpu_;
   std::vector<uint32_t> meshRoot_;  // per mesh: its tree's root node (~0: none)
   std::vector<AABB> meshBox_;
-  uint32_t ultraScale_ = 1, ultraCalm_ = 0;
-  int skippedFrames_ = 0, drawnFrames_ = 0;
-  float ultraClock_ = 0;
+  uint32_t ultraScale_ = 1;
 
   static NodeU packNode(const AABB& box, uint32_t first, uint32_t count) {
     NodeU u;
@@ -1123,6 +1202,11 @@ class GpuRenderer final : public Renderer {
     uploadStorage(rayTlas_, nodes.data(), nodes.size() * sizeof(NodeU));
   }
   int inFlight_ = 0;
+  std::vector<Mat4> lastPlaces_;
+  // automatic resolution: fewer pixels when the GPU falls behind
+  float renderScale_ = 1, scaleCeil_ = 1, perfClock_ = 0, sinceScale_ = 0;
+  int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, stuckFrames_ = 0;
+  uint64_t presented_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
 };
 

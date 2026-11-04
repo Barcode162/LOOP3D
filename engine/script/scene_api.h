@@ -63,6 +63,7 @@ struct Stage {
     bool walking = false;
     float speed = 1.4f;
     std::string footSurface;  // "" = from the ground's material
+    bool visible = true;
   };
   std::vector<Person> people;
   struct SoundRef {
@@ -82,7 +83,8 @@ struct Stage {
   void setListener(const Camera& cam);
   std::vector<Placed> placed;   // shape things → instances
   uint64_t version = 0;         // bumps on any change (the live renderer re-reads)
-  uint64_t transformsVersion = 0;
+  uint64_t transformsVersion = 0;  // only placements moved
+  uint64_t lightsVersion = 0;      // only lamps changed
   std::string title = "Untitled";
   std::string mode = "game";    // "game" or "movie"
   // For the page: lines to show, questions to ask, the next scene to load.
@@ -94,6 +96,12 @@ struct Stage {
   };
   std::vector<UiMessage> ui;     // taken by the player each frame
   std::string nextScene;         // set by go_to
+  Vec3 playerPos{0};             // where the player is (the player sets it each frame)
+  bool autoplay = false;
+  // move_player(): the player is carried somewhere new (the player takes it)
+  bool teleport = false;
+  Vec3 teleportTo{0}, teleportLook{0, 0, -1};
+  bool story = false;            // the script has spoken a line or asked (a story scene)         // `loop play`: the player is always near enough
   void updateTransform(int placedIndex);
 };
 

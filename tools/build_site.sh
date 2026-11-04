@@ -9,6 +9,11 @@ cmake --build build-web -j4
 rm -rf site && mkdir -p site/scenes
 cp web/index.html build-web/player.js build-web/player.wasm site/
 cp examples/*.loop examples/story/*.loop site/scenes/
+# whole stories: every scene and its trailer still
+for d in stories/*/; do
+  cp "$d"*.loop site/scenes/ 2>/dev/null || true
+  [ -d "$d/stills" ] && cp "$d"stills/*.png site/scenes/ 2>/dev/null || true
+done
 for f in examples/*.loop examples/story/*.loop; do
   n=$(basename "$f" .loop)
   [ -f "examples/stills/$n.png" ] && cp "examples/stills/$n.png" "site/scenes/$n.png"

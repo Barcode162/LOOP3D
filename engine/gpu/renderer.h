@@ -28,8 +28,14 @@ class Renderer {
   virtual void reset() = 0;
   // Only placements moved (cheap).
   virtual void syncTransforms(const Scene& scene) = 0;
+  // Only lamps changed (brightness, colour, place): cheap.
+  virtual void syncLights(const Scene& scene) = 0;
   // Draws one frame with this camera and look; fade 0..1 (black..clear).
-  virtual void draw(const Camera& cam, const Look& look, float dt, float time, float fade) = 0;
+  // False when the frame was dropped (the GPU is still busy with older ones).
+  virtual bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) = 0;
+  // Frames that reached the screen, and the share of full resolution drawn.
+  virtual uint64_t presentedFrames() const = 0;
+  virtual float renderScale() const = 0;
   virtual void setQuality(Quality q) = 0;
   virtual float pixelRatio() const = 0;
   virtual size_t drawCalls() const = 0;

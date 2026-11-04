@@ -1,11 +1,14 @@
 // `loop`: the engine's command line.
 //   loop check  <script.loop>                 read a script and report problems
 //   loop run    <script.loop> [--seconds N]   run it (no picture) and print what it says
+//   loop play   <first.loop> [--choices 0,1]  play a story through every go_to, no picture:
+//               it presses Use, picks the choices and prints every line
 //   loop render <script.loop> [--quality q] [--width W] [--samples N] [--look L]
 //               makes the stills and films the script asks for (render / film)
 //               with the cinema renderer; with none asked, one still of its camera
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
 #include <cstdio>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <sys/stat.h>
@@ -27,13 +30,14 @@ int usage() {
   std::puts(
       "loop check  <script.loop>\n"
       "loop run    <script.loop> [--seconds 10]\n"
+      "loop play   <first scene.loop> [--choices 0,1,0]\n"
       "loop render <script.loop> [--quality draft|good|cinema|ultra] [--width 1920] [--samples N] [--look name]\n"
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]");
   return 1;
 }
 
 struct Options {
-  std::string quality, look, out;
+  std::string quality, look, out, choices;
   int width = 0, samples = 0, w = 960, h = 540;
   double seconds = 10;
 };
@@ -42,12 +46,39 @@ void printProblems(const std::vector<Problem>& ps) {
   for (const Problem& p : ps) std::fprintf(stderr, "problem: %s\n", p.text().c_str());
 }
 
+// `use "common"` lines bring in another script from the same folder (once).
+std::string expandUses(const std::string& src, const std::string& dir, std::vector<std::string>& seen) {
+  std::string out, line;
+  size_t i = 0;
+  while (i <= src.size()) {
+    size_t e = src.find('\n', i);
+    if (e == std::string::npos) e = src.size();
+    line = src.substr(i, e - i);
+    size_t a = line.find_first_not_of(" \t");
+    if (a != std::string::npos && line.compare(a, 5, "use \"") == 0) {
+      size_t q = line.find('"', a + 5);
+      std::string name = line.substr(a + 5, q - a - 5);
+      std::string file = joinPath(dir, name + ".loop"), text;
+      if (std::find(seen.begin(), seen.end(), file) == seen.end()) {
+        seen.push_back(file);
+        if (readText(file, text)) out += expandUses(text, dir, seen) + "\n";
+        else out += "say \"can't find " + name + ".loop\"\n";
+      }
+      out += "\n";
+    } else out += line + "\n";
+    i = e + 1;
+  }
+  return out;
+}
+
 bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
   std::string src;
   if (!readText(path, src)) {
     std::fprintf(stderr, "can't read %s\n", path.c_str());
     return false;
   }
+  std::vector<std::string> seen;
+  src = expandUses(src, directoryOf(path), seen);
   installStandardLibrary(vm);
   installSceneApi(vm, stage);
   vm.onSay = [](const std::string& s) { std::printf("%s\n", s.c_str()); };
@@ -138,6 +169,68 @@ int renderScript(const std::string& path, const Options& o) {
   return 0;
 }
 
+// Plays a story from its first scene to its last, with no picture: Use is
+// pressed every half second, questions are answered (from --choices, then
+// the first option) and `go_to` loads the next file from the same folder.
+int playStory(const std::string& first, const Options& o) {
+  std::vector<int> picks;
+  for (size_t i = 0; i < o.choices.size();) {
+    size_t e = o.choices.find(',', i);
+    if (e == std::string::npos) e = o.choices.size();
+    picks.push_back(std::atoi(o.choices.substr(i, e - i).c_str()));
+    i = e + 1;
+  }
+  size_t asked = 0;
+  std::string path = first, dir = directoryOf(first);
+  int scenes = 0, failures = 0;
+  double total = 0;
+  while (!path.empty() && scenes < 200) {
+    Vm vm;
+    Stage stage;
+    stage.autoplay = true;
+    if (!loadScript(path, vm, stage)) return 1;
+    ++scenes;
+    std::printf("\n==== %s  (%s, %s)\n", stage.title.c_str(), path.c_str(), stage.mode.c_str());
+    double t = 0, nextUse = 0.5, answerAt = -1;
+    int answer = 0;
+    const double limit = std::max(900.0, o.seconds);
+    while (t < limit && stage.nextScene.empty()) {
+      vm.update(1.0 / 60), stage.update(1.0f / 60), t += 1.0 / 60;
+      for (const Stage::UiMessage& m : stage.ui) {
+        if (m.kind == "line" && !m.text.empty()) std::printf(m.speaker.empty() ? "   %s%s\n" : "   %s: %s\n", m.speaker.c_str(), m.text.c_str());
+        if (m.kind == "ask") {
+          answer = asked < picks.size() ? picks[asked] : 0;
+          answer = std::clamp(answer, 0, static_cast<int>(m.options.size()) - 1);
+          ++asked;
+          std::printf("   ? %s\n", m.text.c_str());
+          for (size_t i = 0; i < m.options.size(); ++i) std::printf("     %s %s\n", static_cast<int>(i) == answer ? "->" : "  ", m.options[i].c_str());
+          answerAt = t + 0.5;
+        }
+      }
+      stage.ui.clear();
+      if (answerAt >= 0 && t >= answerAt) vm.emit("choice", Value::number(answer)), answerAt = -1;
+      if (t >= nextUse) vm.emit("use"), nextUse = t + 0.5;
+    }
+    printProblems(vm.problems());
+    failures += static_cast<int>(vm.problems().size());
+    total += t;
+    if (stage.nextScene.empty()) {
+      std::printf("==== the end (%.0f s in this scene)\n", t);
+      if (t >= limit) std::printf("     (stopped after %.0f s without a go_to)\n", limit);
+      break;
+    }
+    if (stage.film.shots.empty()) std::printf("     -> %s  (after %.0f s)\n", stage.nextScene.c_str(), t);
+    else std::printf("     -> %s  (after %.0f s; the shots last %.0f s)\n", stage.nextScene.c_str(), t, stage.film.length());
+    path = joinPath(dir, stage.nextScene + ".loop");
+    if (path == first || stage.nextScene + ".loop" == first.substr(first.find_last_of('/') + 1)) {
+      std::printf("==== the end (the story goes back to its start)\n");
+      break;
+    }
+  }
+  std::printf("\n%d scenes, %.1f minutes, %d problems\n", scenes, total / 60, failures);
+  return failures ? 1 : 0;
+}
+
 int demo(const std::string& name, const Options& o) {
   Scene scene;
   if (!buildDemoScene(name, scene)) return usage();
@@ -165,12 +258,15 @@ int main(int argc, char** argv) {
     else if (a == "--seconds") o.seconds = std::atof(val().c_str());
     else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h);
     else if (a == "-o") o.out = val();
+    else if (a == "--choices") o.choices = val();
     else return usage();
   }
   if (cmd == "demo") return demo(target, o);
   if (cmd == "check") {
     std::string src;
     if (!readText(target, src)) return std::fprintf(stderr, "can't read %s\n", target.c_str()), 1;
+    std::vector<std::string> seen;
+    src = expandUses(src, directoryOf(target), seen);
     std::vector<Problem> ps;
     bool ok = Vm::check(src, target, ps);
     printProblems(ps);
@@ -188,5 +284,6 @@ int main(int argc, char** argv) {
     return vm.problems().empty() ? 0 : 1;
   }
   if (cmd == "render") return renderScript(target, o);
+  if (cmd == "play") return playStory(target, o);
   return usage();
 }
