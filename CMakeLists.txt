@@ -42,17 +42,19 @@ if(NOT EMSCRIPTEN)
   enable_testing()
   add_test(NAME loop_tests COMMAND loop_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 else()
-  target_compile_options(loop3d PUBLIC --use-port=emdawnwebgpu)
+  # script errors use C++ exceptions (caught inside the VM)
+  target_compile_options(loop3d PUBLIC --use-port=emdawnwebgpu -fexceptions)
   add_executable(player web/player.cpp)
   target_link_libraries(player PRIVATE loop3d)
   target_compile_options(player PRIVATE -Wall -Wextra -Werror)
   target_link_options(player PRIVATE
     --use-port=emdawnwebgpu
+    -fexceptions
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=64MB
     -sSTACK_SIZE=2MB
     -sENVIRONMENT=web
-    "-sEXPORTED_FUNCTIONS=_main,_loop_run_script,_loop_set_look,_loop_key,_loop_pointer,_loop_stats"
-    "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_capture"
+    "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,stringToUTF8,lengthBytesUTF8,HEAPU8"
     -O3)
 endif()
