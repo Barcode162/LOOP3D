@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "engine/gpu/shaders.h"
+#include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
 
 
@@ -81,6 +82,16 @@ struct InstanceU {
 struct PostU {
   Vec4 exposure, look0, wb, lift, gamma, gain, shadowTint, highlightTint, fx, fx2, screen;
 };
+struct UltraU {
+  Vec4 camPos, camFwd, camRight, camUp;
+  uint32_t info[4];
+};
+struct TriU {
+  Vec4 v0, e1, e2, n0, n1, n2;
+};
+struct NodeU {
+  Vec4 lo, hi;
+};
 struct ExposureU {
   Vec4 size, limits;
 };
@@ -147,6 +158,8 @@ class GpuRenderer final : public Renderer {
 
   void setQuality(Quality q) override {
     quality_ = q;
+    ultraFrame_ = 0;
+    if (q == Quality::kUltra && lastScene_) buildUltra(*lastScene_);
     maxRatio_ = q == Quality::kPhone ? 1.5f : 2.0f;
     shadowSize_ = q == Quality::kUltra ? 4096 : 2048;
     makeShadowMap();
@@ -215,6 +228,8 @@ class GpuRenderer final : public Renderer {
   }
 
   void syncTransforms(const Scene& scene) override {
+    lastScene_ = &scene;
+    if (quality_ == Quality::kUltra) buildUltra(scene);
     // instances sorted into batches: same mesh, opaque or glass, drawn at once
     std::vector<uint32_t> order(scene.instances.size());
     for (size_t i = 0; i < order.size(); ++i) order[i] = static_cast<uint32_t>(i);
@@ -310,8 +325,28 @@ class GpuRenderer final : public Renderer {
     lastExposure_ = fixedExp;
 
     wgpu::CommandEncoder enc = device_.CreateCommandEncoder();
+    bool ultra = quality_ == Quality::kUltra && ultraTris_ && ultraNodes_;
+    if (ultra) {
+      // restart the average when anything that changes the picture moved
+      Vec3 key[3] = {cam.position, cam.target, Vec3(cam.focalLength, cam.fStop, cam.focusDistance)};
+      if (std::memcmp(key, ultraCamKey_, sizeof key) != 0) {
+        std::memcpy(ultraCamKey_, key, sizeof key);
+        ultraFrame_ = 0;
+      }
+      UltraU u{};
+      Vec3 f = normalize(cam.target - cam.position), r = normalize(cross(f, cam.up)), up = cross(r, f);
+      float ty = std::tan(cam.fovY() * 0.5f);
+      float focus = cam.focusDistance > 0 ? cam.focusDistance : length(cam.target - cam.position);
+      u.camPos = {cam.position, (cam.focalLength / 1000.0f) / (2 * std::max(cam.fStop, 0.5f))};
+      u.camFwd = {f, focus};
+      u.camRight = {r, ty * static_cast<float>(width_) / height_};
+      u.camUp = {up, ty};
+      u.info[0] = ultraFrame_, u.info[1] = width_, u.info[2] = height_, u.info[3] = 6;
+      queue_.WriteBuffer(ultraUbo_, 0, &u, sizeof u);
+      ++ultraFrame_;
+    }
     // ---- 1. sun shadow
-    if (!(g_skipPasses & 32)) {
+    if (!ultra && !(g_skipPasses & 32)) {
       wgpu::RenderPassDepthStencilAttachment da;
       da.view = shadowView_;
       da.depthLoadOp = wgpu::LoadOp::Clear;
@@ -333,8 +368,16 @@ class GpuRenderer final : public Renderer {
       }
       pass.End();
     }
+    if (ultra) {
+      wgpu::ComputePassEncoder cp = enc.BeginComputePass();
+      cp.SetPipeline(ultraPipe_);
+      cp.SetBindGroup(0, sceneGroup0_);
+      cp.SetBindGroup(1, ultraGroup_);
+      cp.DispatchWorkgroups((width_ + 7) / 8, (height_ + 7) / 8);
+      cp.End();
+    }
     // ---- 2. the scene, in light (HDR), 4x multisampled
-    if (!(g_skipPasses & 64)) {
+    if (!ultra && !(g_skipPasses & 64)) {
       wgpu::RenderPassColorAttachment ca;
       ca.view = g_samples > 1 ? msaaView_ : hdrView_;
       if (g_samples > 1) ca.resolveTarget = hdrView_;
@@ -511,7 +554,18 @@ class GpuRenderer final : public Renderer {
   void buildPipelines() {
     const auto VF = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     const auto F = wgpu::ShaderStage::Fragment;
-    scene0Layout_ = layout({ubo(0, VF), ssbo(1, VF), ssbo(2, VF), ssbo(3, VF), ssbo(4, F)});
+    const auto VFC = VF | wgpu::ShaderStage::Compute;
+    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VFC), ssbo(4, F | wgpu::ShaderStage::Compute)});
+    {
+      const auto C = wgpu::ShaderStage::Compute;
+      wgpu::BindGroupLayoutEntry st;
+      st.binding = 3, st.visibility = C;
+      st.storageTexture.access = wgpu::StorageTextureAccess::WriteOnly;
+      st.storageTexture.format = wgpu::TextureFormat::RGBA16Float;
+      st.storageTexture.viewDimension = wgpu::TextureViewDimension::e2D;
+      wgpu::BindGroupLayoutEntry skyT = tex(4, C), skyS = samp(5, C);
+      ultraLayout_ = layout({ssbo(0, C), ssbo(1, C), ssbo(2, C, true), st, skyT, skyS, ubo(6, C)});
+    }
     scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F)});
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
@@ -623,6 +677,15 @@ class GpuRenderer final : public Renderer {
     upPipe_ = postPipe("fsUp", wgpu::TextureFormat::RGBA16Float, true);
     finalPipe_ = postPipe("fsPost", format_, false);
     {
+      std::string code = std::string(kCommonWgsl) + kUltraWgsl;
+      // the common part declares group 1 nothing; Ultra adds its own
+      wgpu::ComputePipelineDescriptor d;
+      d.layout = pipeLayout({scene0Layout_, ultraLayout_});
+      d.compute.module = module(code, "ultra");
+      d.compute.entryPoint = "main";
+      ultraPipe_ = device_.CreateComputePipeline(&d);
+    }
+    {
       wgpu::ComputePipelineDescriptor d;
       d.layout = pipeLayout({expLayout_});
       d.compute.module = em;
@@ -728,7 +791,9 @@ class GpuRenderer final : public Renderer {
     };
     if (g_samples > 1) msaaView_ = target(w, h, wgpu::TextureFormat::RGBA16Float, static_cast<uint32_t>(g_samples), wgpu::TextureUsage::RenderAttachment);
     depthView_ = target(w, h, wgpu::TextureFormat::Depth32Float, static_cast<uint32_t>(g_samples), wgpu::TextureUsage::RenderAttachment);
-    hdrView_ = target(w, h, wgpu::TextureFormat::RGBA16Float, 1, wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding);
+    hdrView_ = target(w, h, wgpu::TextureFormat::RGBA16Float, 1, wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding);
+    ultraFrame_ = 0;
+    accumBuf_ = buffer(static_cast<size_t>(w) * h * 16, wgpu::BufferUsage::Storage);
     for (int i = 0; i < kBloomLevels; ++i)
       bloomViews_[i] = target(w >> (i + 1), h >> (i + 1), wgpu::TextureFormat::RGBA16Float, 1,
                               wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding);
@@ -772,6 +837,8 @@ class GpuRenderer final : public Renderer {
     }
     finalGroup_ = group(postLayout_, {bufE(0, postUbo_), texE(1, hdrView_), texE(2, bloomViews_[0]), sampE(3, linear_), bufE(4, exposureBuf_)});
     exposureGroup_ = group(expLayout_, {bufE(0, expUbo_), texE(1, hdrView_), bufE(2, exposureBuf_)});
+    if (ultraTris_ && ultraNodes_ && accumBuf_)
+      ultraGroup_ = group(ultraLayout_, {bufE(0, ultraTris_), bufE(1, ultraNodes_), bufE(2, accumBuf_), texE(3, hdrView_), texE(4, skyView_), sampE(5, linear_), bufE(6, ultraUbo_)});
     bindGroupsDirty_ = false;
   }
 
@@ -808,6 +875,64 @@ class GpuRenderer final : public Renderer {
   Vec3 sh_[9];
   size_t drawCalls_ = 0;
   float lastExposure_ = 1;
+  // Ultra
+  const Scene* lastScene_ = nullptr;
+  wgpu::BindGroupLayout ultraLayout_;
+  wgpu::ComputePipeline ultraPipe_;
+  wgpu::Buffer ultraTris_, ultraNodes_, ultraUbo_, accumBuf_;
+  wgpu::BindGroup ultraGroup_;
+  uint32_t ultraFrame_ = 0;
+  Vec3 ultraCamKey_[3];
+
+  // Every placed triangle in world space and a BVH over them, for Ultra.
+  void buildUltra(const Scene& scene) {
+    std::vector<Triangle> geo;
+    std::vector<TriU> data;
+    const size_t cap = 3000000;
+    for (const MeshInstance& in : scene.instances) {
+      if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size())) continue;
+      const Mesh& m = scene.meshes[in.mesh];
+      Mat3 nm = in.transform.linear().inverse().transposed();
+      for (size_t i = 0; i + 2 < m.indices.size() && geo.size() < cap; i += 3) {
+        Vec3 p[3], n[3];
+        for (int k = 0; k < 3; ++k) {
+          uint32_t idx = m.indices[i + k];
+          p[k] = in.transform.point(m.positions[idx]);
+          n[k] = idx < m.normals.size() ? normalize(nm * m.normals[idx]) : Vec3(0, 1, 0);
+        }
+        if (lengthSq(cross(p[1] - p[0], p[2] - p[0])) < 1e-20f) continue;
+        geo.push_back({p[0], p[1] - p[0], p[2] - p[0]});
+        TriU t;
+        t.v0 = {p[0], static_cast<float>(std::max(0, in.material))};
+        t.e1 = {p[1] - p[0], 0}, t.e2 = {p[2] - p[0], 0};
+        t.n0 = {n[0], 0}, t.n1 = {n[1], 0}, t.n2 = {n[2], 0};
+        data.push_back(t);
+      }
+    }
+    if (geo.empty()) return;
+    Bvh bvh;
+    bvh.build(geo, 2);
+    // triangles in the BVH's leaf order
+    std::vector<TriU> ordered(data.size());
+    for (size_t i = 0; i < bvh.order().size(); ++i) ordered[i] = data[bvh.order()[i]];
+    std::vector<NodeU> nodes;
+    nodes.reserve(bvh.nodes().size());
+    for (const Bvh::Node& n : bvh.nodes()) {
+      NodeU u;
+      float first, count;
+      std::memcpy(&first, &n.left, 4);
+      std::memcpy(&count, &n.count, 4);
+      u.lo = {n.box.lo, first}, u.hi = {n.box.hi, count};
+      nodes.push_back(u);
+    }
+    ultraTris_ = buffer(ordered.size() * sizeof(TriU), wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
+    queue_.WriteBuffer(ultraTris_, 0, ordered.data(), ordered.size() * sizeof(TriU));
+    ultraNodes_ = buffer(nodes.size() * sizeof(NodeU), wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
+    queue_.WriteBuffer(ultraNodes_, 0, nodes.data(), nodes.size() * sizeof(NodeU));
+    if (!ultraUbo_) ultraUbo_ = buffer(sizeof(UltraU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+    ultraFrame_ = 0;
+    bindGroupsDirty_ = true;
+  }
   int inFlight_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
 };

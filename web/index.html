@@ -72,8 +72,9 @@
   window.loopReady = async () => {
     note.style.display = 'none';
     const q = document.getElementById('quality');
-    q.value = touch ? '0' : '1';
+    q.value = params.get('quality') || (touch ? '0' : '1');
     q.onchange = () => M._loop_set_quality(+q.value);
+    M._loop_set_quality(+q.value);
     try {
       const res = await fetch('scenes/' + sceneName + '.loop');
       if (!res.ok) throw new Error(res.status);

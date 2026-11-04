@@ -612,6 +612,289 @@ fn grain(p : vec2f, t : f32) -> f32 {
 }
 )";
 
+
+// ---- Ultra: real path tracing on the GPU, one sample a frame, averaged
+// over frames (it sharpens while the camera holds still). The cinema
+// renderer's rules, lighter: diffuse, glossy, metal, glass, glow, the sun
+// and lamps with shadows, the sky, many bounces.
+inline const char* kUltraWgsl = R"(
+struct Tri {
+  v0 : vec4f,  // xyz, material (as float)
+  e1 : vec4f,
+  e2 : vec4f,
+  n0 : vec4f, n1 : vec4f, n2 : vec4f,  // normals; n0.w, n1.w = uv of v0? (unused)
+};
+struct Node {
+  lo : vec4f,  // xyz, first (left child or first triangle) as bits
+  hi : vec4f,  // xyz, count (0 = inner) as bits
+};
+struct Ultra {
+  camPos : vec4f,   // xyz, lens radius
+  camFwd : vec4f,   // xyz, focus distance
+  camRight : vec4f, // xyz, tan(fov x / 2)
+  camUp : vec4f,    // xyz, tan(fov y / 2)
+  info : vec4u,     // frame index, width, height, max bounces
+};
+@group(1) @binding(0) var<storage, read> tris : array<Tri>;
+@group(1) @binding(1) var<storage, read> nodes : array<Node>;
+@group(1) @binding(2) var<storage, read_write> accum : array<vec4f>;
+@group(1) @binding(3) var outTex : texture_storage_2d<rgba16float, write>;
+@group(1) @binding(4) var skyTex : texture_2d<f32>;
+@group(1) @binding(5) var skySampler : sampler;
+@group(1) @binding(6) var<uniform> U : Ultra;
+
+var<private> seed : u32;
+fn rand() -> f32 {
+  seed = seed * 747796405u + 2891336453u;
+  var w = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u;
+  w = (w >> 22u) ^ w;
+  return f32(w) / 4294967296.0;
+}
+fn dirToUv(d : vec3f) -> vec2f {
+  let elev = asin(clamp(d.y, -1.0, 1.0));
+  var az = atan2(d.z, d.x);
+  if (az < 0.0) { az += 2.0 * PI; }
+  let s = elev / (PI * 0.5);
+  let v = 0.5 + 0.5 * sign(s) * sqrt(abs(s));
+  return vec2f(az / (2.0 * PI), 1.0 - v);
+}
+fn sky(d : vec3f) -> vec3f { return textureSampleLevel(skyTex, skySampler, dirToUv(d), 0.0).rgb; }
+
+struct HitInfo { t : f32, tri : u32, u : f32, v : f32 };
+
+fn hitBox(lo : vec3f, hi : vec3f, o : vec3f, inv : vec3f, tmax : f32) -> f32 {
+  let t0 = (lo - o) * inv;
+  let t1 = (hi - o) * inv;
+  let a = min(t0, t1);
+  let b = max(t0, t1);
+  let tn = max(max(a.x, a.y), max(a.z, 1e-4));
+  let tf = min(min(b.x, b.y), min(b.z, tmax));
+  return select(1e30, tn, tn <= tf);
+}
+
+fn trace(o : vec3f, d : vec3f, tmax : f32, any : bool) -> HitInfo {
+  var h = HitInfo(tmax, 0xffffffffu, 0.0, 0.0);
+  if (arrayLength(&nodes) == 0u) { return h; }
+  let inv = 1.0 / select(d, vec3f(1e-20), abs(d) < vec3f(1e-20));
+  var stack : array<u32, 40>;
+  var sp = 0;
+  stack[0] = 0u;
+  sp = 1;
+  while (sp > 0) {
+    sp -= 1;
+    let n = nodes[stack[sp]];
+    if (hitBox(n.lo.xyz, n.hi.xyz, o, inv, h.t) >= 1e29) { continue; }
+    let first = bitcast<u32>(n.lo.w);
+    let count = bitcast<u32>(n.hi.w);
+    if (count > 0u) {
+      for (var k = 0u; k < count; k++) {
+        let tr = tris[first + k];
+        let p = cross(d, tr.e2.xyz);
+        let det = dot(tr.e1.xyz, p);
+        if (abs(det) < 1e-12) { continue; }
+        let id = 1.0 / det;
+        let sv = o - tr.v0.xyz;
+        let u = dot(sv, p) * id;
+        if (u < 0.0 || u > 1.0) { continue; }
+        let q = cross(sv, tr.e1.xyz);
+        let v = dot(d, q) * id;
+        if (v < 0.0 || u + v > 1.0) { continue; }
+        let t = dot(tr.e2.xyz, q) * id;
+        if (t > 1e-4 && t < h.t) {
+          h = HitInfo(t, first + k, u, v);
+          if (any) { return h; }
+        }
+      }
+    } else if (sp < 38) {
+      stack[sp] = first;
+      stack[sp + 1] = first + 1u;
+      sp += 2;
+    }
+  }
+  return h;
+}
+
+fn ggxD(nh : f32, a : f32) -> f32 {
+  let a2 = a * a;
+  let dd = nh * nh * (a2 - 1.0) + 1.0;
+  return a2 / (PI * dd * dd);
+}
+fn smithG(nv : f32, nl : f32, a : f32) -> f32 {
+  let k = a * 0.5;
+  return (nv / (nv * (1.0 - k) + k)) * (nl / (nl * (1.0 - k) + k));
+}
+fn basis(n : vec3f) -> mat3x3f {
+  let s = select(-1.0, 1.0, n.z >= 0.0);
+  let a = -1.0 / (s + n.z);
+  let b = n.x * n.y * a;
+  return mat3x3f(vec3f(1.0 + s * n.x * n.x * a, s * b, -s * n.x), vec3f(b, s + n.y * n.y * a, -n.y), n);
+}
+
+// light arriving from the sun and lamps, through a surface's BSDF
+fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32, diffuseW : f32) -> vec3f {
+  var L = vec3f(0.0);
+  if (frame.sunDir.w > 0.5) {
+    // a jittered direction inside the sun's disk: soft shadows
+    let b = basis(frame.sunDir.xyz);
+    let r = 0.0047 * sqrt(rand());
+    let ph = 2.0 * PI * rand();
+    let l = normalize(frame.sunDir.xyz + b[0] * (r * cos(ph)) + b[1] * (r * sin(ph)));
+    let nl = dot(n, l);
+    if (nl > 0.0) {
+      let sh = trace(p + n * 1e-3, l, 1e7, true);
+      if (sh.tri == 0xffffffffu) {
+        let hv = normalize(l + v);
+        let nv = max(dot(n, v), 1e-4);
+        let F = f0 + (vec3f(1.0) - f0) * pow(1.0 - max(dot(v, hv), 0.0), 5.0);
+        let spec = F * ggxD(max(dot(n, hv), 0.0), alpha) * smithG(nv, nl, alpha) / (4.0 * nv * nl + 1e-5);
+        L += (base * diffuseW * (vec3f(1.0) - F) / PI + spec) * nl * frame.sunColor.rgb;
+      }
+    }
+  }
+  let count = min(u32(frame.params.x), 16u);
+  for (var k = 0u; k < count; k++) {
+    let li = lights[k];
+    // a random point on the bulb
+    let rp = li.pos.xyz + normalize(vec3f(rand() - 0.5, rand() - 0.5, rand() - 0.5) + 1e-4) * li.pos.w * 0.9;
+    let tl = rp - p;
+    let d2 = max(dot(tl, tl), li.pos.w * li.pos.w);
+    let dist = sqrt(dot(tl, tl));
+    let l = tl / max(dist, 1e-6);
+    let nl = dot(n, l);
+    if (nl <= 0.0) { continue; }
+    var I = li.color.rgb / d2;
+    if (li.dir.w > 0.5 && li.dir.w < 1.5) { I *= smoothstep(li.cone.y, li.cone.x, dot(-l, li.dir.xyz)); }
+    else if (li.dir.w > 1.5) { I = li.color.rgb * li.cone.z * li.cone.w * max(dot(-l, li.dir.xyz), 0.0) / d2; }
+    let sh = trace(p + n * 1e-3, l, dist - li.pos.w, true);
+    if (sh.tri != 0xffffffffu) { continue; }
+    let hv = normalize(l + v);
+    let nv = max(dot(n, v), 1e-4);
+    let F = f0 + (vec3f(1.0) - f0) * pow(1.0 - max(dot(v, hv), 0.0), 5.0);
+    let spec = F * ggxD(max(dot(n, hv), 0.0), alpha) * smithG(nv, nl, alpha) / (4.0 * nv * nl + 1e-5);
+    L += (base * diffuseW * (vec3f(1.0) - F) / PI + spec) * nl * I;
+  }
+  return L;
+}
+
+@compute @workgroup_size(8, 8) fn main(@builtin(global_invocation_id) gid : vec3u) {
+  let W = U.info.y;
+  let H = U.info.z;
+  if (gid.x >= W || gid.y >= H) { return; }
+  let frameNo = U.info.x;
+  seed = (gid.x * 1973u + gid.y * 9277u + frameNo * 26699u) | 1u;
+  _ = rand();
+  // a camera ray with a little jitter (anti-aliasing) and lens blur
+  let sx = ((f32(gid.x) + rand()) / f32(W) * 2.0 - 1.0) * U.camRight.w;
+  let sy = (1.0 - (f32(gid.y) + rand()) / f32(H) * 2.0) * U.camUp.w;
+  var d = normalize(U.camFwd.xyz + U.camRight.xyz * sx + U.camUp.xyz * sy);
+  var o = U.camPos.xyz;
+  if (U.camPos.w > 0.0) {
+    let focus = o + d * (U.camFwd.w / dot(d, U.camFwd.xyz));
+    let r = sqrt(rand()) * U.camPos.w;
+    let a = 2.0 * PI * rand();
+    o += U.camRight.xyz * (r * cos(a)) + U.camUp.xyz * (r * sin(a));
+    d = normalize(focus - o);
+  }
+  var beta = vec3f(1.0);
+  var L = vec3f(0.0);
+  var specular = true;
+  for (var bounce = 0u; bounce < U.info.w; bounce++) {
+    let h = trace(o, d, 1e7, false);
+    if (h.tri == 0xffffffffu) {
+      var c = sky(d);
+      if (specular && frame.sunDir.w > 0.5 && dot(d, frame.sunDir.xyz) > 0.99998) { c += frame.sunColor.rgb / 6.8e-5; }
+      L += beta * c;
+      break;
+    }
+    let tr = tris[h.tri];
+    let m = materials[u32(tr.v0.w)];
+    let p = o + d * h.t;
+    let w0 = 1.0 - h.u - h.v;
+    var n = normalize(tr.n0.xyz * w0 + tr.n1.xyz * h.u + tr.n2.xyz * h.v);
+    var ng = normalize(cross(tr.e1.xyz, tr.e2.xyz));
+    let front = dot(d, ng) < 0.0;
+    if (!front) { n = -n; ng = -ng; }
+    if (dot(n, -d) < 0.0) { n = ng; }
+    var base = m.base.rgb;
+    var rough = m.base.w;
+    if (m.pattern.x > 0.5) {
+      let pv = pattern(m, p, n);
+      base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
+      rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
+    }
+    if (front) { L += beta * m.emission.rgb; }
+    let metal = m.props.x;
+    let glass = m.props.y;
+    let alpha = max(rough * rough, 0.002);
+    let f0 = mix(vec3f(0.04), base, metal);
+    let v = -d;
+    // glass: reflect or refract by Fresnel
+    if (glass > 0.5) {
+      let eta = select(m.extra.w, 1.0 / m.extra.w, front);
+      let c = clamp(dot(v, n), 0.0, 1.0);
+      let r0 = (1.0 - eta) / (1.0 + eta);
+      let F = r0 * r0 + (1.0 - r0 * r0) * pow(1.0 - c, 5.0);
+      let rd = refract(d, n, eta);
+      if (rand() < F || dot(rd, rd) < 1e-6) {
+        d = reflect(d, n);
+        o = p + n * 1e-3;
+      } else {
+        d = normalize(rd);
+        o = p - n * 1e-3;
+        beta *= base;
+      }
+      specular = true;
+      continue;
+    }
+    let diffuseW = (1.0 - metal);
+    L += beta * direct(p + ng * 1e-4, n, v, base, f0, alpha, diffuseW);
+    // the next bounce: glossy or diffuse, picked by how much each reflects
+    let pSpec = clamp(0.1 + 0.9 * max(max(f0.x, f0.y), f0.z) + metal * 0.5, 0.1, 0.95);
+    let b = basis(n);
+    if (rand() < pSpec) {
+      // GGX normal (sampled by D), reflected
+      let u1 = rand();
+      let u2 = rand();
+      let cosT = sqrt((1.0 - u1) / (1.0 + (alpha * alpha - 1.0) * u1));
+      let sinT = sqrt(max(0.0, 1.0 - cosT * cosT));
+      let ph = 2.0 * PI * u2;
+      let hl = b * vec3f(sinT * cos(ph), sinT * sin(ph), cosT);
+      let nd = reflect(d, hl);
+      let nl = dot(n, nd);
+      if (nl <= 0.0) { break; }
+      let F = f0 + (vec3f(1.0) - f0) * pow(1.0 - max(dot(v, hl), 0.0), 5.0);
+      let nv = max(dot(n, v), 1e-4);
+      // weight = f cos / pdf, pdf = D nh / (4 vh)
+      beta *= F * smithG(nv, nl, alpha) * max(dot(v, hl), 0.0) / (nv * max(dot(n, hl), 1e-4)) / pSpec;
+      d = nd;
+      specular = alpha < 0.02;
+    } else {
+      let r1 = rand();
+      let ph = 2.0 * PI * rand();
+      let rr = sqrt(r1);
+      d = normalize(b * vec3f(rr * cos(ph), rr * sin(ph), sqrt(max(0.0, 1.0 - r1))));
+      beta *= base * diffuseW / (1.0 - pSpec);
+      specular = false;
+    }
+    o = p + ng * 1e-3;
+    // the bulbs' and sun's light is counted by `direct`, so skip it when hit later
+    if (bounce > 2u) {
+      let q = clamp(max(max(beta.x, beta.y), beta.z), 0.05, 0.95);
+      if (rand() > q) { break; }
+      beta /= q;
+    }
+  }
+  // firefly guard: no single sample brighter than a sunlit white wall
+  let lum = dot(L, vec3f(0.2126, 0.7152, 0.0722));
+  if (lum > 60000.0) { L *= 60000.0 / lum; }
+  let idx = gid.y * W + gid.x;
+  let prev = select(accum[idx], vec4f(0.0), frameNo == 0u);
+  let avg = prev + (vec4f(L, 1.0) - prev) / f32(frameNo + 1u);
+  accum[idx] = avg;
+  textureStore(outTex, vec2u(gid.xy), vec4f(min(avg.rgb * preExposure(), vec3f(60000.0)), 1.0));
+}
+)";
+
 // Auto exposure: the frame's average log brightness, eased over time like eyes.
 inline const char* kExposureWgsl = R"(
 struct Params {
