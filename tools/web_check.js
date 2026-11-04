@@ -33,7 +33,7 @@ const fs = require('fs');
         resolve(c.toDataURL('image/png'));
       };
       Module._loop_capture();
-      setTimeout(() => resolve(null), 20000);
+      setTimeout(() => resolve(null), 120000);
     })).catch((e) => { errors.push('capture: ' + e); return null; });
   }
   if (data) fs.writeFileSync(out, Buffer.from(data.split(',')[1], 'base64'));

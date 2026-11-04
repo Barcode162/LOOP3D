@@ -1,0 +1,156 @@
+# Echoes of Ardane — the pieces every scene shares.
+# A scene starts with:  use "ardane_common"
+
+# ---- the cast's look
+let jacket_navy = material(like: "wool", color: rgb(0.13, 0.17, 0.32), roughness: 0.9)
+let worn_denim = material(like: "fabric", color: rgb(0.22, 0.25, 0.32))
+let skin_warm = material(like: "skin", color: rgb(0.72, 0.52, 0.40))
+let skin_deep = material(like: "skin", color: rgb(0.45, 0.30, 0.22))
+let skin_light = material(like: "skin", color: rgb(0.85, 0.68, 0.58))
+
+to cloth(r, g, b)
+  return material(like: "fabric", color: rgb(r, g, b), roughness: 0.85)
+
+# Milo: small, in his father's navy jacket
+to hero(at, facing: 0 deg)
+  return person(at: at, height: 1.58, facing: facing, skin: skin_warm, shirt: jacket_navy, trousers: worn_denim)
+
+to someone(at, height: 1.7, shirt: nothing, trousers: nothing, skin: nothing, facing: 0 deg)
+  let s = shirt if shirt else cloth(random(0.2, 0.7), random(0.2, 0.6), random(0.2, 0.6))
+  let t = trousers if trousers else cloth(0.15, 0.15, 0.18)
+  let k = skin if skin else [skin_warm, skin_deep, skin_light].pick()
+  return person(at: at, height: height, facing: facing, skin: k, shirt: s, trousers: t)
+
+# ---- talking: a line on screen, then the time it takes to read
+to say(who, text)
+  wait line(who, text)
+to pause(seconds)
+  wait seconds
+
+# ---- the player's part in PLAYED scenes
+let used_at = -1
+when "use"
+  used_at = time()
+# walk to a place (shows a hint), then press Use there
+to go_and_use(place, hint, within: 2.2)
+  let asked = time()
+  line "", hint, seconds: 4
+  while not (near(place, within) and used_at > asked)
+    if used_at > asked and not near(place, within)
+      used_at = -1
+    wait 0.15 s
+# walk somewhere
+to go_to_place(place, hint, within: 2.5)
+  line "", hint, seconds: 4
+  while not near(place, within)
+    wait 0.2 s
+
+# ---- choices: ask, then wait for the answer (0 = the first option)
+let answer = -1
+when "choice"
+  answer = event
+to choose(question, options)
+  answer = -1
+  ask question, options
+  while answer < 0
+    wait 0.1 s
+  return answer
+
+# ---- the portal: a turning ring of light in the brick
+to portal(at, facing: 0 deg, size: 1.3, color: rgb(0.75, 0.6, 1.0))
+  let glow = material(color: rgb(0.05, 0.05, 0.08), glow: color * 6000)
+  let core = material(color: rgb(0.02, 0.02, 0.03), glow: color * 1500)
+  let rings = []
+  for i from 0 to 2
+    let r = ring(size * (1 - i * 0.18), 0.03 + i * 0.01, at: at, material: glow, collide: no)
+    rings.push(r)
+  let disc = cylinder(size * 0.8, 0.02, at: at, material: core, collide: no)
+  disc.rotation = vec(facing, 90 deg, 0)
+  let l = light(at, lumens: 4000, color: color, radius: 0.3)
+  sound "hum", at: at, volume: 0.7
+  every 1 / 30 s
+    for i from 0 to 2
+      let r = rings[i]
+      r.rotation = vec(facing + time() * (0.6 + i * 0.5), 90 deg + 0.3 * sin(time() * (1 + i)), time() * (1.3 - i * 0.4))
+    l.lumens = 4000 * (1 + 0.25 * flicker(time(), 3, 7))
+  return {rings: rings, light: l, disc: disc}
+
+# a smaller faint portal (the one that stays)
+to faint_portal(at, facing: 0 deg)
+  let glow = material(color: rgb(0.02, 0.02, 0.03), glow: rgb(0.7, 0.6, 1.0) * 300)
+  let r = ring(0.9, 0.015, at: at, material: glow, collide: no)
+  r.rotation = vec(facing, 90 deg, 0)
+  light at, lumens: 60, color: rgb(0.7, 0.6, 1.0), radius: 0.2
+  every 1 / 20 s
+    r.rotation = vec(facing + time() * 0.2, 90 deg, 0)
+
+# ---- lamps and lights
+to street_lamp(at, temp: 2100, lumens: 1800, height: 4.5)
+  cylinder 0.06, height, at: at + vec(0, height / 2, 0), material: "iron"
+  sphere 0.12, at: at + vec(0, height, 0), material: material(color: rgb(0, 0, 0), glow: kelvin(temp) * 9000), collide: no
+  return light(at + vec(0, height - 0.05, 0), lumens: lumens, kelvin: temp, radius: 0.12)
+
+to lantern(at, temp: 1900, lumens: 120)
+  box size: vec(0.16, 0.24, 0.16), at: at, material: material(like: "glass", color: rgb(1, 0.9, 0.7)), collide: no
+  sphere 0.03, at: at, material: material(color: rgb(0, 0, 0), glow: kelvin(temp) * 12000), collide: no
+  let l = light(at, lumens: lumens, kelvin: temp, radius: 0.04)
+  every 1 / 30 s
+    l.lumens = lumens * (1 + 0.15 * flicker(time(), 6, at.x * 13 + at.z))
+  return l
+
+to candle(at)
+  cylinder 0.03, 0.2, at: at + vec(0, 0.1, 0), material: "wax"
+  sphere 0.01, at: at + vec(0, 0.215, 0), scale: vec(1, 2.2, 1), material: "flame", collide: no
+  let l = light(at + vec(0, 0.225, 0), lumens: 13, kelvin: 1850, radius: 0.008)
+  every 1 / 30 s
+    l.lumens = 13 * (1 + 0.15 * flicker(time(), 9, at.x * 7))
+  return l
+
+to neon_sign(at, size, color, facing: 0 deg)
+  let m = material(color: rgb(0.02, 0.02, 0.02), glow: color * 2500)
+  let b = box(size: size, at: at, turn: facing, material: m, collide: no)
+  let l = light(at, lumens: 600, color: color, radius: 0.3)
+  every 1 / 15 s
+    l.lumens = 600 * (1 + 0.1 * flicker(time(), 18, at.x))
+  return b
+
+# ---- the relics: lights that circle Milo once he has them
+let relic_colors = [rgb(0.9, 0.2, 0.2), rgb(0.2, 0.9, 0.7), rgb(1.0, 0.75, 0.3), rgb(0.4, 1.0, 0.3), rgb(0.3, 0.8, 1.0)]
+to relic_orbit(who, count, radius: 0.8, height: 1.2)
+  let orbs = []
+  if count < 1
+    return orbs
+  for i from 0 to count - 1
+    let m = material(color: rgb(0, 0, 0), glow: relic_colors[i] * 4000)
+    orbs.push({ball: sphere(0.06, at: who.position, material: m, collide: no), glow: light(who.position, lumens: 150, color: relic_colors[i], radius: 0.06)})
+  every 1 / 30 s
+    for i from 0 to orbs.length - 1
+      let a = time() * 1.4 + i * tau / orbs.length
+      let p = who.position + vec(cos(a) * radius, height + 0.15 * sin(time() * 2 + i), sin(a) * radius)
+      orbs[i].ball.position = p
+      orbs[i].glow.position = p
+  return orbs
+
+# ---- places
+# Thirteenth Alley, in any world: two long walls and a floor
+to alley(wall, floor, length: 18, width: 3.2, height: 9)
+  box size: vec(0.5, height, length), at: vec(-width / 2 - 0.25, height / 2, -length / 2 + 2), material: wall
+  box size: vec(0.5, height, length), at: vec(width / 2 + 0.25, height / 2, -length / 2 + 2), material: wall
+  box size: vec(width, 0.1, length), at: vec(0, -0.05, -length / 2 + 2), material: floor
+  box size: vec(width + 1, height, 0.5), at: vec(0, height / 2, -length + 2), material: wall
+
+to crate(at, turn: 0 deg)
+  return box(size: vec(0.55, 0.55, 0.55), at: at + vec(0, 0.275, 0), turn: turn, material: "pine", round: 0.01)
+
+to barrel(at)
+  return cylinder(0.3, 0.9, at: at + vec(0, 0.45, 0), material: "old wood")
+
+to scatter_rocks(center, count, spread, pattern: 1)
+  seed(pattern)
+  repeat count times
+    rock random(0.3, 1.4), at: center + vec(random(-spread, spread), 0, random(-spread, spread)), seed: random_int(1, 50), material: "stone", turn: random(0, tau)
+
+# the next scene, after a moment of black
+to next_scene(name, delay: 1 s)
+  wait delay
+  go_to name
