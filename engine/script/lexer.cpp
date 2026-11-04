@@ -64,7 +64,7 @@ std::string closest(std::string_view w, const std::vector<std::string>& options)
     int d = dist(w, o);
     if (d < bd) bd = d, best = o;
   }
-  int limit = w.size() <= 3 ? 1 : w.size() <= 6 ? 2 : 3;
+  int limit = w.size() <= 2 ? 1 : w.size() <= 6 ? 2 : 3;
   return bd <= limit && best != w ? best : std::string();
 }
 
