@@ -57,30 +57,30 @@ to choose(question, options)
   return answer
 
 # ---- the portal: a turning ring of light in the brick
-to portal(at, facing: 0 deg, size: 1.3, color: rgb(0.75, 0.6, 1.0))
-  let glow = material(color: rgb(0.05, 0.05, 0.08), glow: color * 6000)
-  let core = material(color: rgb(0.02, 0.02, 0.03), glow: color * 1500)
+to portal(at, facing: 0 deg, size: 1.3, color: rgb(0.75, 0.6, 1.0), brightness: 1)
+  let glow = material(color: rgb(0.05, 0.05, 0.08), glow: color * 6000 * brightness)
+  let core = material(color: rgb(0.02, 0.02, 0.03), glow: color * 1500 * brightness)
   let rings = []
   for i from 0 to 2
     let r = ring(size * (1 - i * 0.18), 0.03 + i * 0.01, at: at, material: glow, collide: no)
     rings.push(r)
   let disc = cylinder(size * 0.8, 0.02, at: at, material: core, collide: no)
   disc.rotation = vec(facing, 90 deg, 0)
-  let l = light(at, lumens: 4000, color: color, radius: 0.3)
+  let l = light(at, lumens: 4000 * brightness, color: color, radius: 0.3)
   sound "hum", at: at, volume: 0.7
   every 1 / 30 s
     for i from 0 to 2
       let r = rings[i]
       r.rotation = vec(facing + time() * (0.6 + i * 0.5), 90 deg + 0.3 * sin(time() * (1 + i)), time() * (1.3 - i * 0.4))
-    l.lumens = 4000 * (1 + 0.25 * flicker(time(), 3, 7))
+    l.lumens = 4000 * brightness * (1 + 0.25 * flicker(time(), 3, 7))
   return {rings: rings, light: l, disc: disc}
 
 # a smaller faint portal (the one that stays)
 to faint_portal(at, facing: 0 deg)
-  let glow = material(color: rgb(0.02, 0.02, 0.03), glow: rgb(0.7, 0.6, 1.0) * 300)
-  let r = ring(0.9, 0.015, at: at, material: glow, collide: no)
+  let glow = material(color: rgb(0.02, 0.02, 0.03), glow: rgb(0.7, 0.6, 1.0) * 1200)
+  let r = ring(0.9, 0.03, at: at, material: glow, collide: no)
   r.rotation = vec(facing, 90 deg, 0)
-  light at, lumens: 60, color: rgb(0.7, 0.6, 1.0), radius: 0.2
+  light at, lumens: 150, color: rgb(0.7, 0.6, 1.0), radius: 0.2
   every 1 / 20 s
     r.rotation = vec(facing + time() * 0.2, 90 deg, 0)
 
