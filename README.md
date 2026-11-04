@@ -45,12 +45,37 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
 ./build/loop run    examples/courtyard.loop --seconds 10
 ./build/loop render examples/courtyard.loop --quality good     # draft | good | cinema | ultra
 
+# play a whole story with no picture: every scene, every line, the choices made for you
+./build/loop play   stories/echoes_of_ardane/ardane_01_home.loop --choices 0,1,0
+
 # the web player (needs Emscripten), then open site/ in a browser
 ./tools/build_site.sh
 cd site && python3 -m http.server 8000      # http://localhost:8000/?scene=courtyard
 ```
 
 A scene's script asks for renders itself (`render file: "x.png", quality: "cinema"`), and for a whole film with `film "frames", fps: 24` (numbered PNGs).
+
+## The demo: *Echoes of Ardane*
+
+A full story made in Loop3D, to show what it can do: [`stories/echoes_of_ardane/`](stories/echoes_of_ardane/).
+
+- **The story:** Milo Ardane, fourteen, poor, in his father's jacket, runs from the rich family that owns his street, through a ring of light in Thirteenth Alley. He crosses four worlds and a thousand years to meet his ancestors, gathers their five relics, nearly loses himself in a city that claps forever, and faces the first boy who ever went through the portal.
+- **The script:** [`STORY.md`](stories/echoes_of_ardane/STORY.md) is the director's script: the world bible, the cast, the relics, every scene's light, sound and beats, and the final speech in full.
+- **The game:** 24 scene files, about 30 minutes, played in order. Eleven are PLAYED (you walk, press Use, and choose) and thirteen are WATCHED (shot like a film).
+  - The choices are remembered and come back: the coins in scene 1 decide a line in the epilogue.
+  - Every scene shares its people, lamps, portals and places through `ardane_common.loop`.
+- **Play it:** open the player with `#ardane_01_home` (`site/index.html#ardane_01_home`, or pick it from the scene list). Walk with WASD or the left thumb, look with the mouse or the right thumb, and press E or the Use button.
+
+| Act | Scenes | Where |
+|---|---|---|
+| One | 1–3 | Calder Row: the room above the laundry, the Varen Arcade, Thirteenth Alley |
+| Two | 4–6 | Velasse, the drowned city: the Low Water, the Great Sluice in a storm |
+| Three | 7–10 | Qadesh, the red city: the Sunborn's palace, the cisterns, the Deep Well |
+| Four | 11–13 | Aelor, islands in the sky: the garden party, the Root Warrens |
+| Five | 14–16 | Nexus 9: neon rain, the Undercity, the archive core |
+| Six | 17–19 | Home as a stranger, the Hollow, the Scar |
+| Seven | 20–23 | The Convergence, the last battle, inside Veyl, morning |
+| Epilogue | 24 | The room above the laundry, in spring |
 
 ## Writing for it
 
@@ -60,8 +85,8 @@ A scene's script asks for renders itself (`render file: "x.png", quality: "cinem
 
 ## Honest status
 
-- **Size:** about 15,700 lines of engine, tools, player and tests; 58 automated checks, all passing. A strong foundation, not yet Unreal-sized.
+- **Size:** about 16,500 lines of engine, tools, player and tests, plus 2,450 lines of Looped Script in the demo story; 58 automated checks, all passing. A strong foundation, not yet Unreal-sized.
 - **Real phones untested:** the live renderer was tested in a headless browser with a software GPU. Frame rate on the iPhone needs checking on the phone.
-- **Live lamps have no shadows yet** (the sun does). Light spills a bit evenly indoors.
-- **People are simple** (capsule bodies) and walk straight to where they're sent, without steering around things.
+- **Lamp shadows are ray-traced** live, for the nearest lamps (4 on Phone, 8 on High; Ultra traces them all).
+- **People are simple** (capsule bodies, no faces) and walk straight to where they're sent, without steering around things.
 - **Not yet:** an editor app, model import (glTF), character faces and hair, streaming big worlds, multiplayer.
