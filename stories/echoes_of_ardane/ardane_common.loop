@@ -247,7 +247,7 @@ to the_family()
 # ---- Aelor: green islands hanging in gold air
 let island_rock = material(like: "stone", color: rgb(0.42, 0.36, 0.30), bump: 4 mm)
 let lawn = material(like: "grass", color: rgb(0.30, 0.48, 0.18))
-let living_root = material(color: rgb(0.05, 0.12, 0.05), glow: rgb(0.25, 1.0, 0.35) * 220, roughness: 0.6)
+let living_root = material(color: rgb(0.05, 0.12, 0.05), glow: rgb(0.25, 1.0, 0.35) * 12, roughness: 0.6)
 let dead_root = material(like: "bark", color: rgb(0.18, 0.16, 0.14))
 # an island: a lawn on top of an upside-down cone of rock, roots and a waterfall below
 to sky_island(at, radius: 8, depth: 10, trees: 6, falls: yes, pattern: 4)
@@ -273,7 +273,7 @@ to tether(start, finish)
 
 to glasshouse(at, size: vec(6, 4, 4), lumens: 5000)
   let frame = material(like: "iron", color: rgb(0.9, 0.9, 0.88), roughness: 0.4)
-  let pane = material(like: "glass", color: rgb(0.95, 1, 0.97))
+  let pane = material(like: "frosted glass", color: rgb(0.95, 1, 0.97), glow: kelvin(2800) * 18)
   box size: vec(size.x, size.y, size.z), at: at + vec(0, size.y / 2, 0), material: pane, collide: no
   for x from -size.x / 2 to size.x / 2 by 1
     box size: vec(0.05, size.y, 0.05), at: at + vec(x, size.y / 2, size.z / 2), material: frame, collide: no

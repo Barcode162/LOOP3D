@@ -46,8 +46,8 @@ sound "chains", volume: 0.8
 sound "wind", volume: 0.6
 sound "heartbeat", at: engine_at + vec(0, 2, -1.8), volume: 0.7
 room 0.7, echo: 0.3
-fog 0.02, glow: 0.6, color: rgb(0.6, 0.9, 0.7)
-look "dream", contrast: 1.1, saturation: 1.1, bars: 2.39
+fog 0.01, glow: 0.6, color: rgb(0.75, 0.8, 0.85)
+look "dream", contrast: 1.2, saturation: 0.95, bars: 2.39
 camera at: vec(0, 1.6, 6), look_at: vec(0, 1.2, -6), lens: 26 mm
 render file: "ardane_13_roots.png", quality: "good", width: 1280, at: 4 s
 
