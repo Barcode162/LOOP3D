@@ -46,6 +46,7 @@ struct Material {
   float translucency = 0;     // thin sheets: leaves, paper, lampshades
   Vec3 emission{0};           // nits (cd/m²)
   float opacity = 1;          // < 0.5 cut away (in pattern/image alpha)
+  bool leafShape = false;     // cut the mesh's UV square to a leaf outline
   Pattern pattern;
 };
 
@@ -79,6 +80,7 @@ struct Fog {
   Vec3 albedo{0.9f};
   float anisotropy = 0.6f;    // Henyey-Greenstein g: forward-scattering god rays
   float top = 1e6f;           // fog only below this height
+  AABB box{Vec3(-1e6f), Vec3(1e6f)};  // and only inside this box (a room, a valley)
 };
 
 struct Camera {
