@@ -152,7 +152,11 @@ struct Parser {
     if (!accept("(")) return true;
     while (!at(")")) {
       const Token& t = peek();
-      if (t.kind != Tok::kName || isKeyword(t.text)) {
+      if (t.kind == Tok::kName && isKeyword(t.text)) {
+        error(t, "`" + t.text + "` can't name a setting", "it's one of Looped Script's own words; pick another name, like `" + t.text + "_at`");
+        return false;
+      }
+      if (t.kind != Tok::kName) {
         error(t, "expected a name for this setting", describeFound());
         return false;
       }

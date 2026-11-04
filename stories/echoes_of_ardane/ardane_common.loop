@@ -154,3 +154,49 @@ to scatter_rocks(center, count, spread, pattern: 1)
 to next_scene(name, delay: 1 s)
   wait delay
   go_to name
+
+# ---- Velasse: towers standing in green water
+to velasse_city(center: vec(0, 0, 0), count: 26, spread: 40, pattern: 3)
+  let seawall = material(like: "stone", color: rgb(0.52, 0.46, 0.38))
+  let stained = material(like: "plaster", color: rgb(0.78, 0.62, 0.45), pattern: "noise", pattern_color: rgb(0.45, 0.4, 0.33), pattern_scale: 1.5)
+  box size: vec(400, 0.4, 400), at: center + vec(0, -0.6, 0), material: "water", collide: no
+  box size: vec(400, 0.2, 400), at: center + vec(0, -3, 0), material: material(color: rgb(0.03, 0.07, 0.06), roughness: 1), collide: no
+  seed(pattern)
+  repeat count times
+    let x = random(-spread, spread)
+    let z = random(-spread, spread)
+    if abs(x) > 4.5
+      let h = random(8, 22)
+      let w = random(3, 6)
+      box size: vec(w, h, random(3, 6)), at: center + vec(x, h / 2 - 0.5, z), material: [stained, seawall].pick()
+      box size: vec(w + 0.4, 0.5, 0.5), at: center + vec(x, h * 0.6, z + 1.6), material: "old wood", collide: no
+
+to raft(at, size: vec(3, 0.3, 2), turn: 0 deg)
+  let r = box(size: size, at: at + vec(0, -0.3, 0), turn: turn, material: material(like: "old wood", color: rgb(0.42, 0.33, 0.24)))
+  every 1 / 20 s
+    r.position = vec(r.position.x, at.y - 0.3 + 0.03 * sin(time() * 1.3 + at.x), r.position.z)
+  return r
+
+to rope_bridge(start, finish)
+  let mid = (start + finish) * 0.5
+  let d = finish - start
+  box size: vec(1.2, 0.08, d.length), at: mid, turn: atan(d.x, d.z), material: "old wood"
+
+# ---- Qadesh: red sandstone in white sun
+let sandstone = material(like: "sand", color: rgb(0.78, 0.48, 0.30), pattern: "noise", pattern_color: rgb(0.62, 0.36, 0.22), pattern_scale: 1.2, bump: 1 mm)
+let linen = material(like: "fabric", color: rgb(0.88, 0.84, 0.74))
+to qadesh_houses(center, count: 30, spread: 40, pattern: 2)
+  seed(pattern)
+  repeat count times
+    let x = random(-spread, spread)
+    let z = random(-spread, spread)
+    if abs(x) > 5 or abs(z) > 8
+      let h = random(3, 9)
+      let w = random(3, 7)
+      box size: vec(w, h, random(3, 7)), at: center + vec(x, h / 2, z), material: sandstone
+      if chance(40%)
+        box size: vec(w * 0.6, 0.05, 2), at: center + vec(x, h * 0.7, z + 2.2), tilt: 15 deg, material: linen, collide: no
+to palm(at)
+  cylinder 0.15, 6, at: at + vec(0, 3, 0), material: "bark"
+  for i from 0 to 6
+    box size: vec(0.4, 0.04, 2.4), at: at + vec(cos(i * 0.9) * 1.1, 6, sin(i * 0.9) * 1.1), turn: -i * 0.9 + 90 deg, tilt: 20 deg, material: "leaves", collide: no

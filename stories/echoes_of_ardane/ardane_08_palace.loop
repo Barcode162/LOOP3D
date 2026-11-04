@@ -1,0 +1,74 @@
+# 8. The Palace of the Sunborn — PLAYED. Evening, torches, fountains.
+use "ardane_common"
+title "8 · The Palace of the Sunborn"
+mode "game"
+
+let marble = material("marble")
+ground 80, material: material(like: "tiles", color: rgb(0.85, 0.78, 0.62), pattern_scale: 1.5)
+# the courtyard: colonnades round a pool, the fountain in the middle
+for x from -10 to 10 by 2.5
+  for each z in [-10, 10]
+    cylinder 0.35, 6, at: vec(x, 3, z), material: marble
+for z from -7.5 to 7.5 by 2.5
+  for each x in [-10, 10]
+    cylinder 0.35, 6, at: vec(x, 3, z), material: marble
+box size: vec(21, 0.5, 21), at: vec(0, 6.2, 0), material: sandstone, collide: no
+box size: vec(8, 0.4, 5), at: vec(0, 0.1, 0), material: marble
+box size: vec(7.4, 0.1, 4.4), at: vec(0, 0.32, 0), material: "water", collide: no
+cylinder 0.5, 1.4, at: vec(0, 0.9, 0), material: "gold"
+let fountain_jet = cylinder(0.08, 1.2, at: vec(0, 2.2, 0), material: "water", collide: no)
+let pipe = vec(3.6, 0, 2.8)
+box size: vec(0.4, 0.4, 0.4), at: pipe + vec(0, 0.2, 0), material: "bronze"
+# a feast table and torches
+box size: vec(6, 0.8, 1.4), at: vec(0, 0.4, -6.5), material: "walnut"
+for x from -2.5 to 2.5 by 1
+  sphere 0.15, at: vec(x, 0.95, -6.5), material: ["gold", "brass", "copper"].pick()
+for each p in [vec(-9, 0, -9), vec(9, 0, -9), vec(-9, 0, 9), vec(9, 0, 9), vec(-5, 0, -8), vec(5, 0, -8)]
+  cylinder 0.06, 2.2, at: p + vec(0, 1.1, 0), material: "bronze"
+  sphere 0.12, at: p + vec(0, 2.3, 0), scale: vec(1, 1.8, 1), material: "flame", collide: no
+  let t = light(p + vec(0, 2.35, 0), lumens: 1200, kelvin: 1900, radius: 0.12)
+palm(vec(-7, 0, 6))
+palm(vec(7, 0, 5))
+
+let priest = someone(vec(0, 0, -7.6), height: 1.8, shirt: cloth(0.95, 0.9, 0.8), skin: skin_deep, facing: 0 deg)
+let courtiers = []
+seed(9)
+repeat 10 times
+  courtiers.push(someone(vec(random(-6, 6), 0, random(-8.5, -5)), shirt: cloth(random(0.6, 0.95), random(0.4, 0.8), random(0.2, 0.5)), skin: skin_deep))
+let oren = someone(vec(-6, 0, 2), height: 1.92, shirt: cloth(0.85, 0.7, 0.3), trousers: linen, skin: skin_deep, facing: 90 deg)
+let nia = someone(vec(7.6, 0, -2), height: 1.62, shirt: linen, skin: skin_deep)
+every 4 s
+  let c = courtiers.pick()
+  c.walk_to = vec(random(-6, 6), 0, random(-8.5, -4))
+  c.look_at = vec(0, 1.5, -6.5)
+
+sound "stream", at: vec(0, 1, 0), volume: 0.6
+sound "crickets", volume: 0.3
+room 0.3, echo: 0.25
+sky "physical", haze: 2
+sun elevation: 2 deg, toward: 250 deg, lux: 4000
+look "golden", warmth: 0.25, bars: 2.39
+camera at: vec(-4, 1.6, 7), look_at: vec(0, 1.2, 0), lens: 28 mm
+render file: "ardane_08_palace.png", quality: "good", width: 1280, at: 3 s
+
+task
+  wait 1 s
+  say "", "Captured, Milo is dressed in servant's linen and set to pour wine at the feast."
+  say "", "Outside the walls, a city queues at dawn for one cup each. In here, the fountain runs for beauty."
+  go_and_use(oren.position, "Oren is on guard by the columns.")
+  oren.look_at = player() + vec(0, 1.5, 0)
+  say "Oren", "The king cries at night. Did you know that?"
+  say "Oren", "He is afraid of the city. Fear builds walls. Walls need water."
+  wait 1 s
+  fountain_jet.visible = no
+  sound "thud", "stone", at: vec(0, 1, 0)
+  say "", "The fountain chokes and dies. The courtiers gasp."
+  say "Ankh-Ra", "The gods are displeased! Who has done this?"
+  go_and_use(pipe, "In Velasse you learned how water moves. Find where it's stuck.")
+  sound "impact", "metal", at: pipe
+  fountain_jet.visible = yes
+  say "", "A stone in the bronze pipe. He pulls it out. The fountain leaps."
+  priest.look_at = player() + vec(0, 1.5, 0)
+  say "Ankh-Ra", "...The servant is clever. Give him a room. And a cup."
+  say "", "For the first time in his life, someone powerful has thanked him. He likes it. He likes it a lot."
+  next_scene "ardane_09_cisterns", delay: 1.5 s
