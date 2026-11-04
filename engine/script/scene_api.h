@@ -94,6 +94,7 @@ struct Stage {
   };
   std::vector<UiMessage> ui;     // taken by the player each frame
   std::string nextScene;         // set by go_to
+  Vec3 playerPos{0};             // where the player is (the player sets it each frame)
   void updateTransform(int placedIndex);
 };
 

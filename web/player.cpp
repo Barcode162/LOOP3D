@@ -175,6 +175,7 @@ bool frame(double now, void*) {
     if (!s.film.shots[shot].look.empty()) lookByName(s.film.shots[shot].look, look);
   } else cam = walkCamera(static_cast<float>(dt));
   g.stage->setListener(cam);
+  g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
   g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);
   ++g.frames;
   g.fpsTime += dt;

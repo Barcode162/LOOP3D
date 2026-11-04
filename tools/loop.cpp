@@ -6,6 +6,7 @@
 //               with the cinema renderer; with none asked, one still of its camera
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
 #include <cstdio>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <sys/stat.h>
@@ -42,12 +43,39 @@ void printProblems(const std::vector<Problem>& ps) {
   for (const Problem& p : ps) std::fprintf(stderr, "problem: %s\n", p.text().c_str());
 }
 
+// `use "common"` lines bring in another script from the same folder (once).
+std::string expandUses(const std::string& src, const std::string& dir, std::vector<std::string>& seen) {
+  std::string out, line;
+  size_t i = 0;
+  while (i <= src.size()) {
+    size_t e = src.find('\n', i);
+    if (e == std::string::npos) e = src.size();
+    line = src.substr(i, e - i);
+    size_t a = line.find_first_not_of(" \t");
+    if (a != std::string::npos && line.compare(a, 5, "use \"") == 0) {
+      size_t q = line.find('"', a + 5);
+      std::string name = line.substr(a + 5, q - a - 5);
+      std::string file = joinPath(dir, name + ".loop"), text;
+      if (std::find(seen.begin(), seen.end(), file) == seen.end()) {
+        seen.push_back(file);
+        if (readText(file, text)) out += expandUses(text, dir, seen) + "\n";
+        else out += "say \"can't find " + name + ".loop\"\n";
+      }
+      out += "\n";
+    } else out += line + "\n";
+    i = e + 1;
+  }
+  return out;
+}
+
 bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
   std::string src;
   if (!readText(path, src)) {
     std::fprintf(stderr, "can't read %s\n", path.c_str());
     return false;
   }
+  std::vector<std::string> seen;
+  src = expandUses(src, directoryOf(path), seen);
   installStandardLibrary(vm);
   installSceneApi(vm, stage);
   vm.onSay = [](const std::string& s) { std::printf("%s\n", s.c_str()); };
@@ -171,6 +199,8 @@ int main(int argc, char** argv) {
   if (cmd == "check") {
     std::string src;
     if (!readText(target, src)) return std::fprintf(stderr, "can't read %s\n", target.c_str()), 1;
+    std::vector<std::string> seen;
+    src = expandUses(src, directoryOf(target), seen);
     std::vector<Problem> ps;
     bool ok = Vm::check(src, target, ps);
     printProblems(ps);

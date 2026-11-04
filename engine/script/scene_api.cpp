@@ -82,6 +82,16 @@ void Stage::update(float dt) {
 
 namespace {
 
+struct StoryValue {
+  int kind = 0;  // 0 nothing, 1 number, 2 true/false, 3 text
+  double n = 0;
+  std::string s;
+};
+std::map<std::string, StoryValue>& storyMemory() {
+  static std::map<std::string, StoryValue> m;
+  return m;
+}
+
 std::unordered_map<Vm*, Stage*>& stages() {
   static std::unordered_map<Vm*, Stage*> m;
   return m;
@@ -896,6 +906,37 @@ void installSceneApi(Vm& vm, Stage& stage) {
     s.ui.push_back(m);
     return Value();
   }, "ask(question, [options]): buttons appear; `when \"choice\"` gets the number picked (0 = the first)");
+  // what the story remembers from scene to scene (survives go_to)
+  vm.native("remember", [](Args& a) {
+    StoryValue v;
+    const Value* x = a.get(1, "value");
+    if (!x || x->isNothing()) v.kind = 0;
+    else if (x->isNumber()) v.kind = 1, v.n = x->n;
+    else if (x->isBool()) v.kind = 2, v.n = x->b ? 1 : 0;
+    else v.kind = 3, v.s = a.vm.show(*x);
+    storyMemory()[a.text(0, "key", "")] = v;
+    return Value();
+  }, "remember(\"helped nia\", yes): kept for the rest of the story");
+  vm.native("recall", [](Args& a) {
+    auto& m = storyMemory();
+    auto it = m.find(a.text(0, "key", ""));
+    if (it == m.end()) return a.get(1, "otherwise") ? *a.get(1, "otherwise") : Value();
+    const StoryValue& v = it->second;
+    if (v.kind == 1) return Value::number(v.n);
+    if (v.kind == 2) return Value::boolean(v.n != 0);
+    if (v.kind == 3) return a.vm.text(v.s);
+    return Value();
+  }, "recall(\"helped nia\", otherwise: no): what the story remembered");
+  vm.native("forget_story", [](Args&) {
+    storyMemory().clear();
+    return Value();
+  }, "forget_story(): start the story's memory afresh");
+  vm.native("player", [](Args& a) { return Value::vec(stageOf(a.vm).playerPos); }, "player(): where the player is");
+  vm.native("near", [](Args& a) {
+    Vec3 p = stageOf(a.vm).playerPos, q = a.vec(0, "place", {});
+    float r = f32(a.num(1, "within", 2));
+    return Value::boolean(sqr(p.x - q.x) + sqr(p.z - q.z) < r * r);
+  }, "near(vec(…), within: 2 m): is the player that close (on the ground)?");
   vm.native("go_to", [](Args& a) {
     stageOf(a.vm).nextScene = a.text(0, "scene", "");
     return Value();
