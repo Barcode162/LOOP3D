@@ -56,6 +56,13 @@ fn exposed(c : vec3f) -> vec3f { return min(c * preExposure(), vec3f(60000.0)); 
 
 const PI = 3.14159265;
 
+// A value that went bad (not a number, or infinite) is replaced, so one
+// unlucky pixel can never spread through blur and bloom.
+fn finite3(v : vec3f) -> vec3f {
+  let b = (bitcast<vec3u>(v) & vec3u(0x7fffffffu)) >= vec3u(0x7f800000u);
+  return select(v, vec3f(0.0), b);
+}
+
 fn hash3(p : vec3f) -> f32 {
   var q = fract(p * 0.3183099 + vec3f(0.1, 0.2, 0.3));
   q *= 17.0;
@@ -88,6 +95,29 @@ fn planar(p : vec3f, n : vec3f) -> vec2f {
   return p.xy;
 }
 fn cellHash(v : vec2f) -> f32 { return hash3(vec3f(v, 7.0)); }
+
+// The pattern with detail finer than `lod` (metres per pixel) faded to its
+// average: no shimmer when a pixel covers many bricks or grains.
+fn patternLod(m : Material, p : vec3f, n : vec3f, lod : f32) -> vec3f {
+  var pv = pattern(m, p, n);
+  let kind = i32(m.pattern.x);
+  let sc = max(m.pattern.y, 0.01);
+  var feature = 0.5 / sc;
+  var avg = 0.5;
+  switch (kind) {
+    case 1: { feature = 1.0 / sc; }
+    case 2: { feature = 0.03 / sc; avg = 0.1; }
+    case 3: { feature = 0.008 / sc; avg = 0.15; }
+    case 4: { feature = 0.03 / sc; avg = 0.4; }
+    case 5: { feature = 0.08 / sc; avg = 0.3; }
+    case 6: { feature = 0.12 / sc; }
+    case 7: { feature = 0.06 / sc; avg = 0.3; }
+    case 8: { feature = 0.003 / sc; avg = 0.3; }
+    default: {}
+  }
+  let fade = smoothstep(0.4, 1.5, lod / feature);
+  return vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
+}
 
 // The pattern's mix (x), height (y) and brightness tint (z), as the cinema renderer.
 fn pattern(m : Material, p : vec3f, n : vec3f) -> vec3f {
@@ -260,10 +290,40 @@ struct Shaded {
   alpha : f32,
 };
 
+// How much of a lamp a point sees, 0..1: one ray to a small bulb; for a
+// big light (a fire, a window) a few rays spread over it, turned per pixel,
+// so shadows get soft edges where they should.
+fn lampVisibility(p : vec3f, L : Light, pix : vec2f) -> f32 {
+  let r = L.pos.w;
+  let toL = L.pos.xyz - p;
+  let dist = length(toL);
+  if (dist <= r) { return 1.0; }
+  let dir = toL / dist;
+  if (r < 0.04) {
+    return select(0.0, 1.0, traceRay(p, dir, 1e-4, dist - r, true).tri == 0xffffffffu);
+  }
+  // interleaved gradient noise: a stable, even pattern from pixel to pixel
+  let ign = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))));
+  let a = abs(dir.y) < 0.99;
+  let t = normalize(cross(select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), a), dir));
+  let b = cross(dir, t);
+  var seen = 0.0;
+  for (var k = 0; k < 4; k++) {
+    let ang = (f32(k) + ign) * 1.5707963;
+    let rad = r * sqrt((f32(k) + 0.5) / 4.0);
+    let q = L.pos.xyz + (t * cos(ang) + b * sin(ang)) * rad;
+    let d = q - p;
+    let len = length(d);
+    if (traceRay(p, d / len, 1e-4, len - 0.01, true).tri == 0xffffffffu) { seen += 0.25; }
+  }
+  return seen;
+}
+
 fn shade(i : VsOut, front : bool) -> Shaded {
   let m = materials[i.mat];
   var n = normalize(i.nrm);
   if (!front) { n = -n; }
+  let ng = n;  // the surface's own direction, before bumps (for shadow rays)
   let v = normalize(frame.camPos.xyz - i.world);
   var base = m.base.rgb;
   var rough = m.base.w;
@@ -340,6 +400,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   }
   // lamps (inverse-square, as bulbs with a size)
   let count = u32(frame.params.x);
+  var shadowed = 0u;
   for (var k = 0u; k < count; k++) {
     let L = lights[k];
     var tl = L.pos.xyz - i.world;
@@ -353,7 +414,12 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     } else if (L.dir.w > 1.5) {  // panel: radiance x area x cosines
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
-    // reach: fade smoothly to nothing past 0.05 lux
+    // a real shadow: can this point see the lamp? (rays through the scene)
+    if (shadowed < u32(frame.params.y) && dot(I, vec3f(0.3333)) * preExposure() > 2e-4) {
+      shadowed += 1u;
+      I *= lampVisibility(i.world + ng * 0.004, L, i.clip.xy);
+      if (dot(I, I) == 0.0) { continue; }
+    }
     let h = normalize(l + v);
     let nh = max(dot(n, h), 0.0);
     // a bulb's size softens highlights (Karis' sphere-light trick)
@@ -590,6 +656,8 @@ fn grain(p : vec2f, t : f32) -> f32 {
   let w = array<f32, 13>(0.125, 0.125, 0.125, 0.125, 0.125, 0.03125, 0.0625, 0.03125, 0.0625, 0.0625, 0.03125, 0.0625, 0.03125);
   for (var k = 0; k < 13; k++) {
     var s = textureSampleLevel(hdr, linearSampler, i.uv + o[k] * px, 0.0).rgb;
+    let bad = (bitcast<vec3u>(s) & vec3u(0x7fffffffu)) >= vec3u(0x7f800000u);
+    s = select(s, vec3f(0.0), bad);
     let l = lum(s);
     let e = select(1.0, exposureBuf[0] / max(exposureBuf[1], 1e-12), post.exposure.z > 0.5);
     let cap = 8.0 / max(e, 1e-9);
@@ -613,35 +681,149 @@ fn grain(p : vec2f, t : f32) -> f32 {
 )";
 
 
+// ---- Rays through the scene, for real shadows (live) and Ultra. Every
+// shape has its own tree of boxes (built once); a small top tree over the
+// placed copies is rebuilt as things move. Lamps' shadows in the live
+// picture are found by casting a ray from each point to the lamp.
+inline const char* kRayWgsl = R"(
+struct RTri {
+  v0 : vec4f, e1 : vec4f, e2 : vec4f,  // corner and edges (local); w: uv parts
+  n0 : vec4f, n1 : vec4f, n2 : vec4f,  // corner normals (local); w: uv parts
+};
+struct RNode {
+  lo : vec4f,  // xyz, first (child or item) as bits
+  hi : vec4f,  // xyz, count (0 = inner) as bits
+};
+struct RInst {
+  inv : mat4x4f,                       // world → local
+  n0 : vec4f, n1 : vec4f, n2 : vec4f,  // local → world for normals
+  info : vec4u,                        // shape's tree root, material, flags (1 glows, 2 glass, 4 leaf), 0
+};
+@group(2) @binding(0) var<storage, read> rTris : array<RTri>;
+@group(2) @binding(1) var<storage, read> rBlas : array<RNode>;
+@group(2) @binding(2) var<storage, read> rInst : array<RInst>;
+@group(2) @binding(3) var<storage, read> rTlas : array<RNode>;
+
+struct RayHit { t : f32, tri : u32, inst : u32, u : f32, v : f32 };
+
+fn rayBox(lo : vec3f, hi : vec3f, o : vec3f, inv : vec3f, tmax : f32) -> f32 {
+  let t0 = (lo - o) * inv;
+  let t1 = (hi - o) * inv;
+  let a = min(t0, t1);
+  let b = max(t0, t1);
+  let tn = max(max(a.x, a.y), max(a.z, 0.0));
+  let tf = min(min(b.x, b.y), min(b.z, tmax));
+  return select(1e30, tn, tn <= tf);
+}
+fn triUv(tr : RTri, u : f32, v : f32) -> vec2f {
+  let uv0 = vec2f(tr.n0.w, tr.n1.w);
+  let uv1 = vec2f(tr.n2.w, tr.e1.w);
+  let uv2 = vec2f(tr.e2.w, tr.v0.w);
+  return uv0 * (1.0 - u - v) + uv1 * u + uv2 * v;
+}
+// a leaf card's outline: true where the card is cut away
+fn leafCut(uv : vec2f) -> bool {
+  let y = 1.0 - uv.y;
+  let x = (uv.x - 0.5) * 2.0;
+  return abs(x) > sin(3.14159265 * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95;
+}
+
+// The nearest hit along o + d t, t in (tmin, tmax). `shadow`: stop at the
+// first blocker, and let glowing things and glass through (the light comes
+// from them, or passes them).
+fn traceRay(o : vec3f, d : vec3f, tmin : f32, tmax : f32, shadow : bool) -> RayHit {
+  var h = RayHit(tmax, 0xffffffffu, 0xffffffffu, 0.0, 0.0);
+  if (arrayLength(&rTlas) == 0u || arrayLength(&rInst) == 0u) { return h; }
+  let inv = 1.0 / select(d, vec3f(1e-20), abs(d) < vec3f(1e-20));
+  var top : array<u32, 32>;
+  var tsp = 1;
+  top[0] = 0u;
+  while (tsp > 0) {
+    tsp -= 1;
+    let n = rTlas[top[tsp]];
+    if (rayBox(n.lo.xyz, n.hi.xyz, o, inv, h.t) >= 1e29) { continue; }
+    let first = bitcast<u32>(n.lo.w);
+    let count = bitcast<u32>(n.hi.w);
+    if (count == 0u) {
+      if (tsp < 30) { top[tsp] = first; top[tsp + 1] = first + 1u; tsp += 2; }
+      continue;
+    }
+    for (var k = first; k < first + count; k++) {
+      let ins = rInst[k];
+      if (shadow && (ins.info.z & 3u) != 0u) { continue; }
+      // the ray in the shape's own space (not renormalised: t stays the same)
+      let lo = (ins.inv * vec4f(o, 1.0)).xyz;
+      let ld = (ins.inv * vec4f(d, 0.0)).xyz;
+      let linv = 1.0 / select(ld, vec3f(1e-20), abs(ld) < vec3f(1e-20));
+      var st : array<u32, 48>;
+      var sp = 1;
+      st[0] = ins.info.x;
+      while (sp > 0) {
+        sp -= 1;
+        let b = rBlas[st[sp]];
+        if (rayBox(b.lo.xyz, b.hi.xyz, lo, linv, h.t) >= 1e29) { continue; }
+        let bf = bitcast<u32>(b.lo.w);
+        let bc = bitcast<u32>(b.hi.w);
+        if (bc == 0u) {
+          if (sp < 46) { st[sp] = bf; st[sp + 1] = bf + 1u; sp += 2; }
+          continue;
+        }
+        for (var q = bf; q < bf + bc; q++) {
+          let tr = rTris[q];
+          let p = cross(ld, tr.e2.xyz);
+          let det = dot(tr.e1.xyz, p);
+          if (abs(det) < 1e-14) { continue; }
+          let id = 1.0 / det;
+          let sv = lo - tr.v0.xyz;
+          let u = dot(sv, p) * id;
+          if (u < 0.0 || u > 1.0) { continue; }
+          let qv = cross(sv, tr.e1.xyz);
+          let v = dot(ld, qv) * id;
+          if (v < 0.0 || u + v > 1.0) { continue; }
+          let t = dot(tr.e2.xyz, qv) * id;
+          if (t <= tmin || t >= h.t) { continue; }
+          if ((ins.info.z & 4u) != 0u && leafCut(triUv(tr, u, v))) { continue; }
+          h = RayHit(t, q, k, u, v);
+          if (shadow) { return h; }
+        }
+      }
+    }
+  }
+  return h;
+}
+fn hitNormals(h : RayHit, shading : ptr<function, vec3f>, geometric : ptr<function, vec3f>) {
+  let tr = rTris[h.tri];
+  let ins = rInst[h.inst];
+  let nm = mat3x3f(ins.n0.xyz, ins.n1.xyz, ins.n2.xyz);
+  let w0 = 1.0 - h.u - h.v;
+  *shading = normalize(nm * (tr.n0.xyz * w0 + tr.n1.xyz * h.u + tr.n2.xyz * h.v));
+  *geometric = normalize(nm * cross(tr.e1.xyz, tr.e2.xyz));
+}
+)";
+
 // ---- Ultra: real path tracing on the GPU, one sample a frame, averaged
 // over frames (it sharpens while the camera holds still). The cinema
 // renderer's rules, lighter: diffuse, glossy, metal, glass, glow, the sun
 // and lamps with shadows, the sky, many bounces.
 inline const char* kUltraWgsl = R"(
-struct Tri {
-  v0 : vec4f,  // xyz, material (as float)
-  e1 : vec4f,
-  e2 : vec4f,
-  n0 : vec4f, n1 : vec4f, n2 : vec4f,  // normals; n0.w, n1.w = uv of v0? (unused)
-};
-struct Node {
-  lo : vec4f,  // xyz, first (left child or first triangle) as bits
-  hi : vec4f,  // xyz, count (0 = inner) as bits
-};
 struct Ultra {
   camPos : vec4f,   // xyz, lens radius
   camFwd : vec4f,   // xyz, focus distance
   camRight : vec4f, // xyz, tan(fov x / 2)
   camUp : vec4f,    // xyz, tan(fov y / 2)
   info : vec4u,     // frame index, width, height, max bounces
+  extra : vec4u,    // pixel block size (1 full, 2 half), lamps, 0, 0
 };
-@group(1) @binding(0) var<storage, read> tris : array<Tri>;
-@group(1) @binding(1) var<storage, read> nodes : array<Node>;
-@group(1) @binding(2) var<storage, read_write> accum : array<vec4f>;
-@group(1) @binding(3) var outTex : texture_storage_2d<rgba16float, write>;
-@group(1) @binding(4) var skyTex : texture_2d<f32>;
-@group(1) @binding(5) var skySampler : sampler;
-@group(1) @binding(6) var<uniform> U : Ultra;
+struct Px {
+  color : vec4f,   // averaged light
+  nd : vec4f,      // first hit: surface direction, distance
+  albedo : vec4f,  // first hit: surface colour
+};
+@group(1) @binding(0) var<storage, read_write> accum : array<Px>;
+@group(1) @binding(1) var outTex : texture_storage_2d<rgba16float, write>;
+@group(1) @binding(2) var skyTex : texture_2d<f32>;
+@group(1) @binding(3) var skySampler : sampler;
+@group(1) @binding(4) var<uniform> U : Ultra;
 
 var<private> seed : u32;
 fn rand() -> f32 {
@@ -660,60 +842,6 @@ fn dirToUv(d : vec3f) -> vec2f {
 }
 fn sky(d : vec3f) -> vec3f { return textureSampleLevel(skyTex, skySampler, dirToUv(d), 0.0).rgb; }
 
-struct HitInfo { t : f32, tri : u32, u : f32, v : f32 };
-
-fn hitBox(lo : vec3f, hi : vec3f, o : vec3f, inv : vec3f, tmax : f32) -> f32 {
-  let t0 = (lo - o) * inv;
-  let t1 = (hi - o) * inv;
-  let a = min(t0, t1);
-  let b = max(t0, t1);
-  let tn = max(max(a.x, a.y), max(a.z, 1e-4));
-  let tf = min(min(b.x, b.y), min(b.z, tmax));
-  return select(1e30, tn, tn <= tf);
-}
-
-fn trace(o : vec3f, d : vec3f, tmax : f32, any : bool) -> HitInfo {
-  var h = HitInfo(tmax, 0xffffffffu, 0.0, 0.0);
-  if (arrayLength(&nodes) == 0u) { return h; }
-  let inv = 1.0 / select(d, vec3f(1e-20), abs(d) < vec3f(1e-20));
-  var stack : array<u32, 40>;
-  var sp = 0;
-  stack[0] = 0u;
-  sp = 1;
-  while (sp > 0) {
-    sp -= 1;
-    let n = nodes[stack[sp]];
-    if (hitBox(n.lo.xyz, n.hi.xyz, o, inv, h.t) >= 1e29) { continue; }
-    let first = bitcast<u32>(n.lo.w);
-    let count = bitcast<u32>(n.hi.w);
-    if (count > 0u) {
-      for (var k = 0u; k < count; k++) {
-        let tr = tris[first + k];
-        let p = cross(d, tr.e2.xyz);
-        let det = dot(tr.e1.xyz, p);
-        if (abs(det) < 1e-12) { continue; }
-        let id = 1.0 / det;
-        let sv = o - tr.v0.xyz;
-        let u = dot(sv, p) * id;
-        if (u < 0.0 || u > 1.0) { continue; }
-        let q = cross(sv, tr.e1.xyz);
-        let v = dot(d, q) * id;
-        if (v < 0.0 || u + v > 1.0) { continue; }
-        let t = dot(tr.e2.xyz, q) * id;
-        if (t > 1e-4 && t < h.t) {
-          h = HitInfo(t, first + k, u, v);
-          if (any) { return h; }
-        }
-      }
-    } else if (sp < 38) {
-      stack[sp] = first;
-      stack[sp + 1] = first + 1u;
-      sp += 2;
-    }
-  }
-  return h;
-}
-
 fn ggxD(nh : f32, a : f32) -> f32 {
   let a2 = a * a;
   let dd = nh * nh * (a2 - 1.0) + 1.0;
@@ -730,48 +858,44 @@ fn basis(n : vec3f) -> mat3x3f {
   return mat3x3f(vec3f(1.0 + s * n.x * n.x * a, s * b, -s * n.x), vec3f(b, s + n.y * n.y * a, -n.y), n);
 }
 
-// light arriving from the sun and lamps, through a surface's BSDF
+// light arriving from the sun and one lamp (picked at random, weighted
+// back up), through a surface's BSDF, with shadow rays
+fn brdf(n : vec3f, v : vec3f, l : vec3f, base : vec3f, f0 : vec3f, alpha : f32, diffuseW : f32) -> vec3f {
+  let nl = max(dot(n, l), 0.0);
+  let hv = normalize(l + v);
+  let nv = max(dot(n, v), 1e-4);
+  let F = f0 + (vec3f(1.0) - f0) * pow(1.0 - max(dot(v, hv), 0.0), 5.0);
+  let spec = F * ggxD(max(dot(n, hv), 0.0), alpha) * smithG(nv, nl, alpha) / (4.0 * nv * nl + 1e-5);
+  return (base * diffuseW * (vec3f(1.0) - F) / PI + spec) * nl;
+}
 fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32, diffuseW : f32) -> vec3f {
   var L = vec3f(0.0);
   if (frame.sunDir.w > 0.5) {
-    // a jittered direction inside the sun's disk: soft shadows
     let b = basis(frame.sunDir.xyz);
     let r = 0.0047 * sqrt(rand());
     let ph = 2.0 * PI * rand();
     let l = normalize(frame.sunDir.xyz + b[0] * (r * cos(ph)) + b[1] * (r * sin(ph)));
-    let nl = dot(n, l);
-    if (nl > 0.0) {
-      let sh = trace(p + n * 1e-3, l, 1e7, true);
-      if (sh.tri == 0xffffffffu) {
-        let hv = normalize(l + v);
-        let nv = max(dot(n, v), 1e-4);
-        let F = f0 + (vec3f(1.0) - f0) * pow(1.0 - max(dot(v, hv), 0.0), 5.0);
-        let spec = F * ggxD(max(dot(n, hv), 0.0), alpha) * smithG(nv, nl, alpha) / (4.0 * nv * nl + 1e-5);
-        L += (base * diffuseW * (vec3f(1.0) - F) / PI + spec) * nl * frame.sunColor.rgb;
-      }
+    if (dot(n, l) > 0.0 && traceRay(p, l, 1e-4, 1e7, true).tri == 0xffffffffu) {
+      L += brdf(n, v, l, base, f0, alpha, diffuseW) * frame.sunColor.rgb;
     }
   }
-  let count = min(u32(frame.params.x), 16u);
-  for (var k = 0u; k < count; k++) {
+  let count = u32(frame.params.x);
+  if (count > 0u) {
+    let k = min(u32(rand() * f32(count)), count - 1u);
     let li = lights[k];
-    // a random point on the bulb
     let rp = li.pos.xyz + normalize(vec3f(rand() - 0.5, rand() - 0.5, rand() - 0.5) + 1e-4) * li.pos.w * 0.9;
     let tl = rp - p;
-    let d2 = max(dot(tl, tl), li.pos.w * li.pos.w);
-    let dist = sqrt(dot(tl, tl));
+    let dist = length(tl);
     let l = tl / max(dist, 1e-6);
-    let nl = dot(n, l);
-    if (nl <= 0.0) { continue; }
-    var I = li.color.rgb / d2;
-    if (li.dir.w > 0.5 && li.dir.w < 1.5) { I *= smoothstep(li.cone.y, li.cone.x, dot(-l, li.dir.xyz)); }
-    else if (li.dir.w > 1.5) { I = li.color.rgb * li.cone.z * li.cone.w * max(dot(-l, li.dir.xyz), 0.0) / d2; }
-    let sh = trace(p + n * 1e-3, l, dist - li.pos.w, true);
-    if (sh.tri != 0xffffffffu) { continue; }
-    let hv = normalize(l + v);
-    let nv = max(dot(n, v), 1e-4);
-    let F = f0 + (vec3f(1.0) - f0) * pow(1.0 - max(dot(v, hv), 0.0), 5.0);
-    let spec = F * ggxD(max(dot(n, hv), 0.0), alpha) * smithG(nv, nl, alpha) / (4.0 * nv * nl + 1e-5);
-    L += (base * diffuseW * (vec3f(1.0) - F) / PI + spec) * nl * I;
+    if (dot(n, l) > 0.0) {
+      let d2 = max(dist * dist, li.pos.w * li.pos.w);
+      var I = li.color.rgb / d2;
+      if (li.dir.w > 0.5 && li.dir.w < 1.5) { I *= smoothstep(li.cone.y, li.cone.x, dot(-l, li.dir.xyz)); }
+      else if (li.dir.w > 1.5) { I = li.color.rgb * li.cone.z * li.cone.w * max(dot(-l, li.dir.xyz), 0.0) / d2; }
+      if (traceRay(p, l, 1e-4, dist - li.pos.w, true).tri == 0xffffffffu) {
+        L += brdf(n, v, l, base, f0, alpha, diffuseW) * I * f32(count);
+      }
+    }
   }
   return L;
 }
@@ -779,13 +903,18 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
 @compute @workgroup_size(8, 8) fn main(@builtin(global_invocation_id) gid : vec3u) {
   let W = U.info.y;
   let H = U.info.z;
-  if (gid.x >= W || gid.y >= H) { return; }
+  let B = max(U.extra.x, 1u);          // each thread draws a B x B block
+  let bw = (W + B - 1u) / B;
+  let bh = (H + B - 1u) / B;
+  if (gid.x >= bw || gid.y >= bh) { return; }
   let frameNo = U.info.x;
   seed = (gid.x * 1973u + gid.y * 9277u + frameNo * 26699u) | 1u;
   _ = rand();
   // a camera ray with a little jitter (anti-aliasing) and lens blur
-  let sx = ((f32(gid.x) + rand()) / f32(W) * 2.0 - 1.0) * U.camRight.w;
-  let sy = (1.0 - (f32(gid.y) + rand()) / f32(H) * 2.0) * U.camUp.w;
+  let px = f32(gid.x * B) + rand() * f32(B);
+  let py = f32(gid.y * B) + rand() * f32(B);
+  let sx = (px / f32(W) * 2.0 - 1.0) * U.camRight.w;
+  let sy = (1.0 - py / f32(H) * 2.0) * U.camUp.w;
   var d = normalize(U.camFwd.xyz + U.camRight.xyz * sx + U.camUp.xyz * sy);
   var o = U.camPos.xyz;
   if (U.camPos.w > 0.0) {
@@ -798,27 +927,31 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   var beta = vec3f(1.0);
   var L = vec3f(0.0);
   var specular = true;
+  var firstN = -d;
+  var firstD = 1e4;
+  var firstA = vec3f(1.0);
   for (var bounce = 0u; bounce < U.info.w; bounce++) {
-    let h = trace(o, d, 1e7, false);
+    let h = traceRay(o, d, 1e-4, 1e7, false);
     if (h.tri == 0xffffffffu) {
       var c = sky(d);
       if (specular && frame.sunDir.w > 0.5 && dot(d, frame.sunDir.xyz) > 0.99998) { c += frame.sunColor.rgb / 6.8e-5; }
       L += beta * c;
       break;
     }
-    let tr = tris[h.tri];
-    let m = materials[u32(tr.v0.w)];
+    let m = materials[rInst[h.inst].info.y];
     let p = o + d * h.t;
-    let w0 = 1.0 - h.u - h.v;
-    var n = normalize(tr.n0.xyz * w0 + tr.n1.xyz * h.u + tr.n2.xyz * h.v);
-    var ng = normalize(cross(tr.e1.xyz, tr.e2.xyz));
+    var n : vec3f;
+    var ng : vec3f;
+    hitNormals(h, &n, &ng);
     let front = dot(d, ng) < 0.0;
     if (!front) { n = -n; ng = -ng; }
     if (dot(n, -d) < 0.0) { n = ng; }
     var base = m.base.rgb;
     var rough = m.base.w;
     if (m.pattern.x > 0.5) {
-      let pv = pattern(m, p, n);
+      // how wide this pixel is out there (after a bounce: blurry anyway)
+      let lod = select(1.0, h.t * 2.0 * U.camUp.w / f32(H) * f32(B), bounce == 0u);
+      let pv = patternLod(m, p, n, lod);
       base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
       rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
     }
@@ -828,6 +961,11 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     let alpha = max(rough * rough, 0.002);
     let f0 = mix(vec3f(0.04), base, metal);
     let v = -d;
+    if (bounce == 0u) {
+      firstN = n;
+      firstD = h.t;
+      firstA = select(max(base * (1.0 - metal) + f0 * metal, vec3f(0.03)), vec3f(1.0), glass > 0.5);
+    }
     // glass: reflect or refract by Fresnel
     if (glass > 0.5) {
       let eta = select(m.extra.w, 1.0 / m.extra.w, front);
@@ -847,7 +985,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
       continue;
     }
     let diffuseW = (1.0 - metal);
-    L += beta * direct(p + ng * 1e-4, n, v, base, f0, alpha, diffuseW);
+    L += beta * direct(p + ng * 2e-3, n, v, base, f0, alpha, diffuseW);
     // the next bounce: glossy or diffuse, picked by how much each reflects
     let pSpec = clamp(0.1 + 0.9 * max(max(f0.x, f0.y), f0.z) + metal * 0.5, 0.1, 0.95);
     let b = basis(n);
@@ -884,14 +1022,93 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
       beta /= q;
     }
   }
-  // firefly guard: no single sample brighter than a sunlit white wall
+  // firefly guard: one sample may be at most a few times brighter than white
+  // on screen (rare lucky paths otherwise sparkle as dots)
+  L = max(finite3(L), vec3f(0.0));
   let lum = dot(L, vec3f(0.2126, 0.7152, 0.0722));
-  if (lum > 60000.0) { L *= 60000.0 / lum; }
-  let idx = gid.y * W + gid.x;
-  let prev = select(accum[idx], vec4f(0.0), frameNo == 0u);
+  let cap = 4.0 / max(preExposure(), 1e-12);
+  if (lum > cap) { L *= cap / lum; }
+  let idx = gid.y * bw + gid.x;
+  let prev = select(accum[idx].color, vec4f(0.0), frameNo == 0u);
   let avg = prev + (vec4f(L, 1.0) - prev) / f32(frameNo + 1u);
-  accum[idx] = avg;
-  textureStore(outTex, vec2u(gid.xy), vec4f(min(avg.rgb * preExposure(), vec3f(60000.0)), 1.0));
+  accum[idx].color = avg;
+  accum[idx].nd = vec4f(firstN, firstD);
+  accum[idx].albedo = vec4f(firstA, 1.0);
+  _ = outTex;
+}
+)";
+
+// ---- Ultra's noise filter: an edge-aware a-trous wavelet (Dammertz et al.)
+// on light divided by surface colour, guided by each pixel's surface
+// direction and distance, so edges and textures stay sharp.
+inline const char* kDenoiseWgsl = R"(
+struct Px { color : vec4f, nd : vec4f, albedo : vec4f };
+struct P {
+  size : vec4u,     // blocks across, blocks down, step, last pass
+  screen : vec4u,   // width, height, block size, samples so far
+  exposure : vec4f, // fixed exposure, auto (1/0)
+};
+@group(0) @binding(0) var<uniform> prm : P;
+@group(0) @binding(1) var<storage, read> px : array<Px>;
+@group(0) @binding(2) var<storage, read> src : array<vec4f>;
+@group(0) @binding(3) var<storage, read_write> dst : array<vec4f>;
+@group(0) @binding(4) var outTex : texture_storage_2d<rgba16float, write>;
+@group(0) @binding(5) var<storage, read> exposureState : array<f32>;
+
+fn lum(c : vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
+
+@compute @workgroup_size(8, 8) fn main(@builtin(global_invocation_id) g : vec3u) {
+  let bw = prm.size.x;
+  let bh = prm.size.y;
+  if (g.x >= bw || g.y >= bh) { return; }
+  let i = g.y * bw + g.x;
+  let step = i32(prm.size.z);
+  let me = px[i];
+  // the first pass reads the path tracer's average (as light per unit colour)
+  var c0 : vec3f;
+  let fin = (bitcast<vec3u>(me.color.rgb) & vec3u(0x7fffffffu)) >= vec3u(0x7f800000u);
+  if (step == 0) { c0 = select(me.color.rgb, vec3f(0.0), fin) / max(me.albedo.rgb, vec3f(0.01)); }
+  else { c0 = src[i].rgb; }
+  var outc = c0;
+  if (step > 0) {
+    let k = array<f32, 3>(0.375, 0.25, 0.0625);
+    let l0 = lum(c0);
+    // fewer samples, noisier: let more neighbours in
+    let n = f32(prm.screen.w) + 1.0;
+    let sigmaL = (0.5 + 3.0 / sqrt(n)) * (l0 + 0.02 * (l0 + 1e-3) + 1e-4);
+    var sum = vec3f(0.0);
+    var wsum = 0.0;
+    for (var y = -2; y <= 2; y++) {
+      for (var x = -2; x <= 2; x++) {
+        let q = vec2i(i32(g.x) + x * step, i32(g.y) + y * step);
+        if (q.x < 0 || q.y < 0 || q.x >= i32(bw) || q.y >= i32(bh)) { continue; }
+        let j = u32(q.y) * bw + u32(q.x);
+        let o = px[j];
+        let c = src[j].rgb;
+        let wn = pow(max(dot(me.nd.xyz, o.nd.xyz), 0.0), 16.0);
+        let wd = exp(-abs(me.nd.w - o.nd.w) / (0.02 * me.nd.w + 0.01));
+        // early passes average freely within a surface; the last keeps light edges
+        let wl = select(1.0, exp(-abs(lum(c) - l0) / sigmaL), step >= 4);
+        let w = k[abs(x)] * k[abs(y)] * wn * wd * wl;
+        sum += c * w;
+        wsum += w;
+      }
+    }
+    outc = select(c0, sum / wsum, wsum > 1e-6);
+  }
+  dst[i] = vec4f(outc, 1.0);
+  if (prm.size.w == 1u) {
+    let e = exposureState[0];
+    let pre = select(prm.exposure.x, e, prm.exposure.y > 0.5 && e > 0.0);
+    let color = vec4f(min(outc * me.albedo.rgb * pre, vec3f(60000.0)), 1.0);
+    let B = prm.screen.z;
+    for (var by = 0u; by < B; by++) {
+      for (var bx = 0u; bx < B; bx++) {
+        let p = vec2u(g.x * B + bx, g.y * B + by);
+        if (p.x < prm.screen.x && p.y < prm.screen.y) { textureStore(outTex, p, color); }
+      }
+    }
+  }
 }
 )";
 

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "engine/gpu/shaders.h"
@@ -85,9 +86,15 @@ struct PostU {
 struct UltraU {
   Vec4 camPos, camFwd, camRight, camUp;
   uint32_t info[4];
+  uint32_t extra[4];
 };
 struct TriU {
   Vec4 v0, e1, e2, n0, n1, n2;
+};
+struct RayInstU {
+  Mat4 inv;
+  Vec4 n0, n1, n2;
+  uint32_t info[4];
 };
 struct NodeU {
   Vec4 lo, hi;
@@ -159,7 +166,7 @@ class GpuRenderer final : public Renderer {
   void setQuality(Quality q) override {
     quality_ = q;
     ultraFrame_ = 0;
-    if (q == Quality::kUltra && lastScene_) buildUltra(*lastScene_);
+    ultraScale_ = 1;
     maxRatio_ = q == Quality::kPhone ? 1.5f : 2.0f;
     shadowSize_ = q == Quality::kUltra ? 4096 : 2048;
     makeShadowMap();
@@ -229,6 +236,11 @@ class GpuRenderer final : public Renderer {
 
   void reset() override {
     meshes_.clear();
+    meshRoot_.clear();
+    meshBox_.clear();
+    rayTrisCpu_.clear();
+    rayBlasCpu_.clear();
+    rayTris_ = nullptr;
     batches_.clear();
     lastScene_ = nullptr;
     skyBuilt_ = false;
@@ -237,7 +249,9 @@ class GpuRenderer final : public Renderer {
 
   void syncTransforms(const Scene& scene) override {
     lastScene_ = &scene;
-    if (quality_ == Quality::kUltra) buildUltra(scene);
+    buildRayMeshes(scene);
+    buildRayInstances(scene);
+    if (ultraFrame_ > 3) ultraFrame_ = 3;  // things moved: let the old picture fade, don't wipe it
     // instances sorted into batches: same mesh, opaque or glass, drawn at once
     std::vector<uint32_t> order(scene.instances.size());
     for (size_t i = 0; i < order.size(); ++i) order[i] = static_cast<uint32_t>(i);
@@ -274,7 +288,11 @@ class GpuRenderer final : public Renderer {
   void draw(const Camera& cam, const Look& look, float dt, float time, float fade) override {
     // at most two frames waiting on the GPU: a slow GPU drops frames instead
     // of falling further and further behind
-    if (inFlight_ >= 2) return;
+    if (inFlight_ >= 2) {
+      ++skippedFrames_;
+      return;
+    }
+    ++drawnFrames_;
     resize();
     wgpu::SurfaceTexture st;
     if (!(g_skipPasses & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)
@@ -309,7 +327,7 @@ class GpuRenderer final : public Renderer {
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
     f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
     f.fogColor = {fog_.albedo, 0};
-    f.params = {static_cast<float>(lights_.size()), 0, static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
+    f.params = {static_cast<float>(lights_.size()), (g_skipPasses & 512) ? 0.0f : quality_ == Quality::kPhone ? 4.0f : 8.0f, static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
     f.screen = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_};
     // a first guess for the eyes: the camera's own settings, or a sunny / indoor guess
     float guess = cam.autoExposure ? (sunOn_ && sunLux_ > 1000 ? 1.0f / 6000 : 1.0f / 30) : exposureFromEv100(cam.ev100());
@@ -328,18 +346,31 @@ class GpuRenderer final : public Renderer {
     p.fx2 = {look.blackLevel, time, look.halation, look.chromaticAberration};
     p.screen = {static_cast<float>(width_), static_cast<float>(height_), fade, static_cast<float>(g_debugView)};
     queue_.WriteBuffer(postUbo_, 0, &p, sizeof p);
-    ExposureU e{{static_cast<float>(width_), static_cast<float>(height_), dt, f.fixedExposure.x}, {1e-7f, 20.0f, 3.0f, 1.2f}};
+    ExposureU e{{static_cast<float>(width_), static_cast<float>(height_), dt, f.fixedExposure.x}, {1e-7f, 5000.0f, 3.0f, 1.2f}};  // eyes adapt from sunlight down to a candle-lit room
     queue_.WriteBuffer(expUbo_, 0, &e, sizeof e);
     lastExposure_ = fixedExp;
 
     wgpu::CommandEncoder enc = device_.CreateCommandEncoder();
-    bool ultra = quality_ == Quality::kUltra && ultraTris_ && ultraNodes_;
+    bool ultra = quality_ == Quality::kUltra && rayTris_ && accumBuf_;
     if (ultra) {
-      // restart the average when anything that changes the picture moved
+      // when the camera moves a little, the picture blends toward the new
+      // view (a short trail, never a burst of noise); a cut starts afresh
       Vec3 key[3] = {cam.position, cam.target, Vec3(cam.focalLength, cam.fStop, cam.focusDistance)};
       if (std::memcmp(key, ultraCamKey_, sizeof key) != 0) {
+        float moved = length(key[0] - ultraCamKey_[0]);
+        float turned = 1 - dot(normalize(key[1] - key[0]), normalize(ultraCamKey_[1] - ultraCamKey_[0] + Vec3(1e-9f)));
+        bool cut = moved > 0.5f || turned > 0.05f || key[2].x != ultraCamKey_[2].x;
         std::memcpy(ultraCamKey_, key, sizeof key);
-        ultraFrame_ = 0;
+        ultraFrame_ = cut ? 0 : std::min(ultraFrame_, 3u);
+      }
+      // too slow? draw Ultra in 2x2 blocks until the GPU keeps up
+      ultraClock_ += dt;
+      if (ultraClock_ > 1.0f) {
+        float skipped = static_cast<float>(skippedFrames_) / std::max(1, skippedFrames_ + drawnFrames_);
+        if (skipped > 0.25f && ultraScale_ < 2) ultraScale_ = 2, ultraFrame_ = 0;
+        else if (skipped == 0 && ultraScale_ > 1 && ++ultraCalm_ > 5) ultraScale_ = 1, ultraFrame_ = 0, ultraCalm_ = 0;
+        skippedFrames_ = drawnFrames_ = 0;
+        ultraClock_ = 0;
       }
       UltraU u{};
       Vec3 f = normalize(cam.target - cam.position), r = normalize(cross(f, cam.up)), up = cross(r, f);
@@ -349,7 +380,8 @@ class GpuRenderer final : public Renderer {
       u.camFwd = {f, focus};
       u.camRight = {r, ty * static_cast<float>(width_) / height_};
       u.camUp = {up, ty};
-      u.info[0] = ultraFrame_, u.info[1] = width_, u.info[2] = height_, u.info[3] = 6;
+      u.info[0] = ultraFrame_, u.info[1] = width_, u.info[2] = height_, u.info[3] = 5;
+      u.extra[0] = ultraScale_, u.extra[1] = static_cast<uint32_t>(lights_.size());
       queue_.WriteBuffer(ultraUbo_, 0, &u, sizeof u);
       ++ultraFrame_;
     }
@@ -381,7 +413,19 @@ class GpuRenderer final : public Renderer {
       cp.SetPipeline(ultraPipe_);
       cp.SetBindGroup(0, sceneGroup0_);
       cp.SetBindGroup(1, ultraGroup_);
-      cp.DispatchWorkgroups((width_ + 7) / 8, (height_ + 7) / 8);
+      cp.SetBindGroup(2, rayGroup_);
+      uint32_t bw = (width_ + ultraScale_ - 1) / ultraScale_, bh = (height_ + ultraScale_ - 1) / ultraScale_;
+      cp.DispatchWorkgroups((bw + 7) / 8, (bh + 7) / 8);
+      // clean the noise, keeping edges
+      cp.SetPipeline(denoisePipe_);
+      for (int k = 0; k < 4; ++k) {
+        uint32_t prm[12] = {bw, bh, k == 0 ? 0u : (1u << (k - 1)), k == 3 ? 1u : 0u, width_, height_, ultraScale_, ultraFrame_, 0, 0, 0, 0};
+        float fe[2] = {f.fixedExposure.x, cam.autoExposure ? 1.0f : 0.0f};
+        std::memcpy(&prm[8], fe, 8);
+        queue_.WriteBuffer(denoiseUbo_[k], 0, prm, sizeof prm);
+        cp.SetBindGroup(0, denoiseGroup_[k]);
+        cp.DispatchWorkgroups((bw + 7) / 8, (bh + 7) / 8);
+      }
       cp.End();
     }
     // ---- 2. the scene, in light (HDR), 4x multisampled
@@ -404,6 +448,7 @@ class GpuRenderer final : public Renderer {
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
       pass.SetBindGroup(0, sceneGroup0_);
       pass.SetBindGroup(1, sceneGroup1_);
+      pass.SetBindGroup(2, rayGroup_);
       if (!(g_skipPasses & 2)) {
         pass.SetPipeline(opaquePipe_);
         drawBatches(pass, false, false);
@@ -563,21 +608,25 @@ class GpuRenderer final : public Renderer {
     const auto VF = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     const auto F = wgpu::ShaderStage::Fragment;
     const auto VFC = VF | wgpu::ShaderStage::Compute;
-    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VFC), ssbo(4, F | wgpu::ShaderStage::Compute)});
+    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VF), ssbo(4, F | wgpu::ShaderStage::Compute)});
+    rayLayout_ = layout({ssbo(0, F | wgpu::ShaderStage::Compute), ssbo(1, F | wgpu::ShaderStage::Compute), ssbo(2, F | wgpu::ShaderStage::Compute),
+                         ssbo(3, F | wgpu::ShaderStage::Compute)});
     {
       const auto C = wgpu::ShaderStage::Compute;
       wgpu::BindGroupLayoutEntry st;
-      st.binding = 3, st.visibility = C;
+      st.binding = 1, st.visibility = C;
       st.storageTexture.access = wgpu::StorageTextureAccess::WriteOnly;
       st.storageTexture.format = wgpu::TextureFormat::RGBA16Float;
       st.storageTexture.viewDimension = wgpu::TextureViewDimension::e2D;
-      wgpu::BindGroupLayoutEntry skyT = tex(4, C), skyS = samp(5, C);
-      ultraLayout_ = layout({ssbo(0, C), ssbo(1, C), ssbo(2, C, true), st, skyT, skyS, ubo(6, C)});
+      ultraLayout_ = layout({ssbo(0, C, true), st, tex(2, C), samp(3, C), ubo(4, C)});
+      wgpu::BindGroupLayoutEntry st2 = st;
+      st2.binding = 4;
+      denoiseLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C, true), st2, ssbo(5, C)});
     }
     scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F)});
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
-    std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kSceneWgsl;
+    std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl;
     wgpu::ShaderModule sm = module(sceneCode, "scene");
     wgpu::ShaderModule pm = module(kPostWgsl, "post");
     wgpu::ShaderModule em = module(kExposureWgsl, "exposure");
@@ -588,7 +637,7 @@ class GpuRenderer final : public Renderer {
       d.bindGroupLayouts = ls.data();
       return device_.CreatePipelineLayout(&d);
     };
-    wgpu::PipelineLayout sceneL = pipeLayout({scene0Layout_, scene1Layout_});
+    wgpu::PipelineLayout sceneL = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_});
     wgpu::PipelineLayout shadowL = pipeLayout({scene0Layout_});
     wgpu::PipelineLayout postL = pipeLayout({postLayout_});
 
@@ -685,13 +734,20 @@ class GpuRenderer final : public Renderer {
     upPipe_ = postPipe("fsUp", wgpu::TextureFormat::RGBA16Float, true);
     finalPipe_ = postPipe("fsPost", format_, false);
     {
-      std::string code = std::string(kCommonWgsl) + kUltraWgsl;
-      // the common part declares group 1 nothing; Ultra adds its own
+      std::string code = std::string(kCommonWgsl) + kRayWgsl + kUltraWgsl;
       wgpu::ComputePipelineDescriptor d;
-      d.layout = pipeLayout({scene0Layout_, ultraLayout_});
+      d.layout = pipeLayout({scene0Layout_, ultraLayout_, rayLayout_});
       d.compute.module = module(code, "ultra");
       d.compute.entryPoint = "main";
       ultraPipe_ = device_.CreateComputePipeline(&d);
+    }
+    {
+      wgpu::ComputePipelineDescriptor d;
+      d.layout = pipeLayout({denoiseLayout_});
+      d.compute.module = module(kDenoiseWgsl, "denoise");
+      d.compute.entryPoint = "main";
+      denoisePipe_ = device_.CreateComputePipeline(&d);
+      for (auto& u : denoiseUbo_) u = buffer(48, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     }
     {
       wgpu::ComputePipelineDescriptor d;
@@ -801,7 +857,9 @@ class GpuRenderer final : public Renderer {
     depthView_ = target(w, h, wgpu::TextureFormat::Depth32Float, static_cast<uint32_t>(g_samples), wgpu::TextureUsage::RenderAttachment);
     hdrView_ = target(w, h, wgpu::TextureFormat::RGBA16Float, 1, wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding);
     ultraFrame_ = 0;
-    accumBuf_ = buffer(static_cast<size_t>(w) * h * 16, wgpu::BufferUsage::Storage);
+    accumBuf_ = buffer(static_cast<size_t>(w) * h * 48, wgpu::BufferUsage::Storage);
+    denoiseA_ = buffer(static_cast<size_t>(w) * h * 16, wgpu::BufferUsage::Storage);
+    denoiseB_ = buffer(static_cast<size_t>(w) * h * 16, wgpu::BufferUsage::Storage);
     for (int i = 0; i < kBloomLevels; ++i)
       bloomViews_[i] = target(w >> (i + 1), h >> (i + 1), wgpu::TextureFormat::RGBA16Float, 1,
                               wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding);
@@ -845,8 +903,16 @@ class GpuRenderer final : public Renderer {
     }
     finalGroup_ = group(postLayout_, {bufE(0, postUbo_), texE(1, hdrView_), texE(2, bloomViews_[0]), sampE(3, linear_), bufE(4, exposureBuf_)});
     exposureGroup_ = group(expLayout_, {bufE(0, expUbo_), texE(1, hdrView_), bufE(2, exposureBuf_)});
-    if (ultraTris_ && ultraNodes_ && accumBuf_)
-      ultraGroup_ = group(ultraLayout_, {bufE(0, ultraTris_), bufE(1, ultraNodes_), bufE(2, accumBuf_), texE(3, hdrView_), texE(4, skyView_), sampE(5, linear_), bufE(6, ultraUbo_)});
+    if (!rayTris_) emptyRayScene();
+    rayGroup_ = group(rayLayout_, {bufE(0, rayTris_), bufE(1, rayBlas_), bufE(2, rayInst_), bufE(3, rayTlas_)});
+    if (!ultraUbo_) ultraUbo_ = buffer(sizeof(UltraU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+    if (accumBuf_) {
+      ultraGroup_ = group(ultraLayout_, {bufE(0, accumBuf_), texE(1, hdrView_), texE(2, skyView_), sampE(3, linear_), bufE(4, ultraUbo_)});
+      // passes: average → A, A → B (step 1), B → A (step 2), A → B (step 4, onto the picture)
+      wgpu::Buffer srcs[4] = {denoiseB_, denoiseA_, denoiseB_, denoiseA_}, dsts[4] = {denoiseA_, denoiseB_, denoiseA_, denoiseB_};
+      for (int k = 0; k < 4; ++k)
+        denoiseGroup_[k] = group(denoiseLayout_, {bufE(0, denoiseUbo_[k]), bufE(1, accumBuf_), bufE(2, srcs[k]), bufE(3, dsts[k]), texE(4, hdrView_), bufE(5, exposureBuf_)});
+    }
     bindGroupsDirty_ = false;
   }
 
@@ -887,59 +953,174 @@ class GpuRenderer final : public Renderer {
   const Scene* lastScene_ = nullptr;
   wgpu::BindGroupLayout ultraLayout_;
   wgpu::ComputePipeline ultraPipe_;
-  wgpu::Buffer ultraTris_, ultraNodes_, ultraUbo_, accumBuf_;
+  wgpu::Buffer ultraUbo_, accumBuf_, denoiseA_, denoiseB_, denoiseUbo_[4];
+  wgpu::BindGroupLayout denoiseLayout_;
+  wgpu::ComputePipeline denoisePipe_;
+  wgpu::BindGroup denoiseGroup_[4];
   wgpu::BindGroup ultraGroup_;
   uint32_t ultraFrame_ = 0;
   Vec3 ultraCamKey_[3];
 
-  // Every placed triangle in world space and a BVH over them, for Ultra.
-  void buildUltra(const Scene& scene) {
-    std::vector<Triangle> geo;
-    std::vector<TriU> data;
-    const size_t cap = 3000000;
-    for (const MeshInstance& in : scene.instances) {
-      if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size())) continue;
-      const Mesh& m = scene.meshes[in.mesh];
-      Mat3 nm = in.transform.linear().inverse().transposed();
-      for (size_t i = 0; i + 2 < m.indices.size() && geo.size() < cap; i += 3) {
+  // ---- rays through the scene: a tree per shape (once), a tree over the copies
+  wgpu::BindGroupLayout rayLayout_;
+  wgpu::BindGroup rayGroup_;
+  wgpu::Buffer rayTris_, rayBlas_, rayInst_, rayTlas_;
+  std::vector<TriU> rayTrisCpu_;
+  std::vector<NodeU> rayBlasCpu_;
+  std::vector<uint32_t> meshRoot_;  // per mesh: its tree's root node (~0: none)
+  std::vector<AABB> meshBox_;
+  uint32_t ultraScale_ = 1, ultraCalm_ = 0;
+  int skippedFrames_ = 0, drawnFrames_ = 0;
+  float ultraClock_ = 0;
+
+  static NodeU packNode(const AABB& box, uint32_t first, uint32_t count) {
+    NodeU u;
+    float f, c;
+    std::memcpy(&f, &first, 4);
+    std::memcpy(&c, &count, 4);
+    u.lo = {box.lo, f}, u.hi = {box.hi, c};
+    return u;
+  }
+  std::unordered_map<const void*, size_t> storageCap_;
+  // Writes into the buffer, making a bigger one only when it doesn't fit.
+  void uploadStorage(wgpu::Buffer& b, const void* data, size_t bytes) {
+    size_t& cap = storageCap_[&b];
+    if (!b || bytes > cap) {
+      cap = std::max<size_t>(std::max<size_t>(bytes, 256), cap * 3 / 2);
+      b = buffer(cap, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
+      bindGroupsDirty_ = true;
+    }
+    if (bytes) queue_.WriteBuffer(b, 0, data, (bytes + 3) & ~size_t(3));
+  }
+  void emptyRayScene() {
+    // a single empty box: every ray misses
+    NodeU empty = packNode(AABB(Vec3(1), Vec3(-1)), 0, 1);
+    RayInstU ri{};
+    TriU t{};
+    uploadStorage(rayTris_, &t, sizeof t);
+    uploadStorage(rayBlas_, &empty, sizeof empty);
+    uploadStorage(rayInst_, &ri, sizeof ri);
+    uploadStorage(rayTlas_, &empty, sizeof empty);
+  }
+
+  // Each new shape's own tree, in its own space; built once.
+  void buildRayMeshes(const Scene& scene) {
+    if (meshRoot_.size() >= scene.meshes.size()) return;
+    for (size_t mi = meshRoot_.size(); mi < scene.meshes.size(); ++mi) {
+      const Mesh& m = scene.meshes[mi];
+      std::vector<Triangle> geo;
+      std::vector<TriU> local;
+      for (size_t i = 0; i + 2 < m.indices.size(); i += 3) {
         Vec3 p[3], n[3];
+        Vec2 uv[3];
         for (int k = 0; k < 3; ++k) {
           uint32_t idx = m.indices[i + k];
-          p[k] = in.transform.point(m.positions[idx]);
-          n[k] = idx < m.normals.size() ? normalize(nm * m.normals[idx]) : Vec3(0, 1, 0);
+          p[k] = m.positions[idx];
+          n[k] = idx < m.normals.size() ? m.normals[idx] : Vec3(0, 1, 0);
+          uv[k] = idx < m.uvs.size() ? m.uvs[idx] : Vec2{};
         }
-        if (lengthSq(cross(p[1] - p[0], p[2] - p[0])) < 1e-20f) continue;
+        if (lengthSq(cross(p[1] - p[0], p[2] - p[0])) < 1e-24f) continue;
         geo.push_back({p[0], p[1] - p[0], p[2] - p[0]});
         TriU t;
-        t.v0 = {p[0], static_cast<float>(std::max(0, in.material))};
-        t.e1 = {p[1] - p[0], 0}, t.e2 = {p[2] - p[0], 0};
-        t.n0 = {n[0], 0}, t.n1 = {n[1], 0}, t.n2 = {n[2], 0};
-        data.push_back(t);
+        t.v0 = {p[0], uv[2].y};
+        t.e1 = {p[1] - p[0], uv[1].y}, t.e2 = {p[2] - p[0], uv[2].x};
+        t.n0 = {n[0], uv[0].x}, t.n1 = {n[1], uv[0].y}, t.n2 = {n[2], uv[1].x};
+        local.push_back(t);
       }
+      if (geo.empty()) {
+        meshRoot_.push_back(~0u);
+        meshBox_.push_back(AABB());
+        continue;
+      }
+      Bvh bvh;
+      bvh.build(geo, 4);
+      uint32_t nodeBase = static_cast<uint32_t>(rayBlasCpu_.size()), triBase = static_cast<uint32_t>(rayTrisCpu_.size());
+      for (uint32_t k : bvh.order()) rayTrisCpu_.push_back(local[k]);
+      for (const Bvh::Node& n : bvh.nodes())
+        rayBlasCpu_.push_back(packNode(n.box, n.count ? n.left + triBase : n.left + nodeBase, n.count));
+      meshRoot_.push_back(nodeBase);
+      meshBox_.push_back(bvh.bounds());
     }
-    if (geo.empty()) return;
-    Bvh bvh;
-    bvh.build(geo, 2);
-    // triangles in the BVH's leaf order
-    std::vector<TriU> ordered(data.size());
-    for (size_t i = 0; i < bvh.order().size(); ++i) ordered[i] = data[bvh.order()[i]];
+    uploadStorage(rayTris_, rayTrisCpu_.data(), rayTrisCpu_.size() * sizeof(TriU));
+    uploadStorage(rayBlas_, rayBlasCpu_.data(), rayBlasCpu_.size() * sizeof(NodeU));
+  }
+
+  // The top tree over every placed copy; cheap, rebuilt as things move.
+  void buildRayInstances(const Scene& scene) {
+    struct Item {
+      AABB box;
+      RayInstU ri;
+    };
+    std::vector<Item> items;
+    items.reserve(scene.instances.size());
+    for (const MeshInstance& in : scene.instances) {
+      if (in.mesh < 0 || in.mesh >= static_cast<int>(meshRoot_.size()) || meshRoot_[in.mesh] == ~0u) continue;
+      if (std::fabs(in.transform.linear().determinant()) < 1e-12f) continue;  // hidden (scaled to nothing)
+      Item it;
+      it.box = meshBox_[in.mesh].transformed(in.transform);
+      it.ri.inv = in.transform.inverse();
+      Mat3 nm = in.transform.linear().inverse().transposed();
+      it.ri.n0 = {nm.c[0], 0}, it.ri.n1 = {nm.c[1], 0}, it.ri.n2 = {nm.c[2], 0};
+      uint32_t flags = 0;
+      if (in.material >= 0 && in.material < static_cast<int>(scene.materials.size())) {
+        const Material& m = scene.materials[in.material];
+        if (luminance(m.emission) > 0) flags |= 1;
+        if (m.transmission > 0) flags |= 2;
+        if (m.leafShape) flags |= 4;
+      }
+      it.ri.info[0] = meshRoot_[in.mesh], it.ri.info[1] = static_cast<uint32_t>(std::max(0, in.material)), it.ri.info[2] = flags, it.ri.info[3] = 0;
+      items.push_back(it);
+    }
+    if (items.empty()) {
+      NodeU empty = packNode(AABB(Vec3(1), Vec3(-1)), 0, 1);
+      RayInstU ri{};
+      uploadStorage(rayInst_, &ri, sizeof ri);
+      uploadStorage(rayTlas_, &empty, sizeof empty);
+      return;
+    }
+    // median splits on the longest axis; leaves of up to 2 copies
     std::vector<NodeU> nodes;
-    nodes.reserve(bvh.nodes().size());
-    for (const Bvh::Node& n : bvh.nodes()) {
-      NodeU u;
-      float first, count;
-      std::memcpy(&first, &n.left, 4);
-      std::memcpy(&count, &n.count, 4);
-      u.lo = {n.box.lo, first}, u.hi = {n.box.hi, count};
-      nodes.push_back(u);
+    std::vector<RayInstU> ordered;
+    ordered.reserve(items.size());
+    struct Task {
+      uint32_t node, first, count;
+    };
+    std::vector<uint32_t> idx(items.size());
+    for (size_t i = 0; i < idx.size(); ++i) idx[i] = static_cast<uint32_t>(i);
+    nodes.push_back({});
+    std::vector<Task> stack = {{0, 0, static_cast<uint32_t>(items.size())}};
+    std::vector<std::pair<uint32_t, std::pair<uint32_t, uint32_t>>> leaves;  // node, (first, count) in idx
+    while (!stack.empty()) {
+      Task t = stack.back();
+      stack.pop_back();
+      AABB box, cbox;
+      for (uint32_t k = 0; k < t.count; ++k) box.grow(items[idx[t.first + k]].box), cbox.grow(items[idx[t.first + k]].box.center());
+      if (t.count <= 2) {
+        nodes[t.node] = packNode(box, 0, t.count);
+        leaves.push_back({t.node, {t.first, t.count}});
+        continue;
+      }
+      int axis = maxAxis(cbox.extent());
+      uint32_t mid = t.first + t.count / 2;
+      std::nth_element(idx.begin() + t.first, idx.begin() + mid, idx.begin() + t.first + t.count,
+                       [&](uint32_t a, uint32_t b) { return items[a].box.center()[axis] < items[b].box.center()[axis]; });
+      uint32_t l = static_cast<uint32_t>(nodes.size());
+      nodes.push_back({});
+      nodes.push_back({});
+      nodes[t.node] = packNode(box, l, 0);
+      stack.push_back({l, t.first, mid - t.first});
+      stack.push_back({l + 1, mid, t.first + t.count - mid});
     }
-    ultraTris_ = buffer(ordered.size() * sizeof(TriU), wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
-    queue_.WriteBuffer(ultraTris_, 0, ordered.data(), ordered.size() * sizeof(TriU));
-    ultraNodes_ = buffer(nodes.size() * sizeof(NodeU), wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
-    queue_.WriteBuffer(ultraNodes_, 0, nodes.data(), nodes.size() * sizeof(NodeU));
-    if (!ultraUbo_) ultraUbo_ = buffer(sizeof(UltraU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
-    ultraFrame_ = 0;
-    bindGroupsDirty_ = true;
+    // leaves point at runs of copies in the order they're stored
+    for (auto& [node, run] : leaves) {
+      uint32_t first = static_cast<uint32_t>(ordered.size());
+      for (uint32_t k = 0; k < run.second; ++k) ordered.push_back(items[idx[run.first + k]].ri);
+      float f;
+      std::memcpy(&f, &first, 4);
+      nodes[node].lo.w = f;
+    }
+    uploadStorage(rayInst_, ordered.data(), ordered.size() * sizeof(RayInstU));
+    uploadStorage(rayTlas_, nodes.data(), nodes.size() * sizeof(NodeU));
   }
   int inFlight_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;

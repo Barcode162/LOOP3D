@@ -16,15 +16,18 @@ box size: vec(0.2, 0.9, 1.6), at: vec(-4, 0.45, 0), material: walls
 box size: vec(0.2, 1.0, 1.6), at: vec(-4, 2.5, 0), material: walls
 box size: vec(0.03, 1.1, 1.6), at: vec(-4, 1.45, 0), material: "glass"
 
-# ---- the hearth
+# ---- the hearth: an open stone fireplace against the back wall
 let stone = material("stone")
-box size: vec(1.8, 1.2, 0.6), at: vec(1.6, 0.6, -2.6), material: stone
-box size: vec(1.0, 0.6, 0.62), at: vec(1.6, 0.4, -2.55), material: "black"
+box size: vec(1.8, 1.3, 0.2), at: vec(1.6, 0.65, -2.8), material: stone          # back
+box size: vec(0.35, 1.0, 0.5), at: vec(0.88, 0.5, -2.55), material: stone        # left side
+box size: vec(0.35, 1.0, 0.5), at: vec(2.32, 0.5, -2.55), material: stone        # right side
+box size: vec(1.9, 0.22, 0.6), at: vec(1.6, 1.11, -2.5), material: "old wood"    # mantel
+box size: vec(1.1, 0.06, 0.5), at: vec(1.6, 0.03, -2.5), material: stone         # hearth floor
 for i from 0 to 5
-  let log = cylinder(0.06, 0.6, at: vec(1.6 + (i - 2.5) * 0.08, 0.18, -2.45), material: "bark")
+  let log = cylinder(0.06, 0.6, at: vec(1.6 + (i - 2.5) * 0.08, 0.15, -2.45), material: "bark")
   log.rotation = vec(0, 0, 90 deg + i * 7 deg)
-box size: vec(0.5, 0.12, 0.25), at: vec(1.6, 0.28, -2.45), material: "ember"
-let fire = light(vec(1.6, 0.45, -2.35), lumens: 900, kelvin: 1900, radius: 0.12)
+box size: vec(0.5, 0.1, 0.25), at: vec(1.6, 0.12, -2.45), material: "ember", collide: no
+let fire = light(vec(1.6, 0.42, -2.35), lumens: 900, kelvin: 1900, radius: 0.12)
 
 # ---- the table and its candle
 box size: vec(1.6, 0.06, 0.9), at: vec(-0.6, 0.74, 0.2), material: "walnut", round: 0.01
@@ -48,7 +51,7 @@ every 1 / 30 s
 
 # ---- the shots
 look "golden", grain: 0.03, bars: 2.39
-camera at: vec(-2.6, 1.4, 2.4), look_at: vec(0, 0.8, -1), lens: 28 mm, f_stop: 2.8
+camera at: vec(-2.6, 1.4, 2.4), look_at: vec(0, 0.8, -1), lens: 28 mm, f_stop: 2.8, exposure: -1
 shot "wide", 3 s, from: {at: vec(-2.6, 1.5, 2.6), look_at: vec(0.4, 0.8, -1.5), lens: 24 mm}, to: {at: vec(-2.2, 1.3, 2.0), look_at: vec(0.6, 0.7, -1.6), lens: 28 mm}, fade_in: 1 s
 shot "candle", 3 s, from: {at: vec(0.4, 1.05, 1.2), look_at: vec(-0.4, 0.95, 0.25), lens: 50 mm, f_stop: 1.8}, to: {at: vec(0.2, 1.0, 0.9), look_at: vec(-0.4, 0.95, 0.25), lens: 85 mm, f_stop: 1.8}, shake: 0.3, fade_out: 1 s
 
