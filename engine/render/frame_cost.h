@@ -1,0 +1,78 @@
+#pragma once
+// What one live frame costs, counted on the processor: the things and
+// triangles each pass draws, the draw calls, how many surfaces stack up behind
+// each pixel, and how many lamps each pixel works out against how many really
+// light it. `loop budget` prints it against each quality's budget, so a speed
+// change is measured here before it reaches a phone. It follows the live
+// renderer (engine/gpu/renderer.cpp) pass by pass: change one, change both.
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "engine/core/math.h"
+#include "engine/render/scene.h"
+
+namespace loop {
+
+// The view a frame is drawn from, set up as the live renderer sets it up.
+struct FrameView {
+  Camera camera;
+  int width = 374, height = 811;   // pixels drawn (the screen x pixel density x resolution share)
+  float drawDistance = 4000;       // world.drawDistance: the far plane
+  float shadowRadius = 25;         // half-width of the sun's shadow box (Phone 25 m, High 40 m)
+  int maxLights = 256;             // render.maxLights
+  bool cullOffscreen = false;      // things outside a pass's view are skipped
+  bool cullBackFaces = false;      // the backs of closed shapes are skipped
+};
+
+struct FrameCost {
+  size_t things = 0;                          // copies in the scene
+  size_t hidden = 0;                          // of them scaled to nothing (drawn anyway, unless culled)
+  size_t sceneThings = 0, shadowThings = 0;   // copies each pass draws
+  uint64_t sceneTriangles = 0, shadowTriangles = 0;
+  size_t sceneDraws = 0, shadowDraws = 0;     // draw calls (one per shape and kind of surface)
+  bool sun = false;                           // a sun, so a shadow pass
+  // what skipping off-screen copies would leave
+  size_t inViewThings = 0, inShadowThings = 0;
+  uint64_t inViewTriangles = 0, inShadowTriangles = 0;
+  size_t inViewDraws = 0, inShadowDraws = 0;
+  // per pixel, from rays through a grid of the frame's pixels
+  int samples = 0;
+  float coverage = 0;            // share of pixels that show a surface (the rest is sky)
+  float layers = 0;              // surfaces behind a covered pixel, fronts and backs
+  float frontLayers = 0;         // of them facing the camera
+  float shadedPerPixel = 0;      // fragments shaded per covered pixel (expected, with no depth pre-pass)
+  float shadedFrontsOnly = 0;    // the same with the backs of shapes skipped
+  int lampsComputed = 0;         // lamps the shader loops over for every shaded fragment
+  float lampsThatMatter = 0;     // lamps giving 95% of a visible point's direct light (average)
+  int lampsThatMatterMost = 0;   // and at the worst point
+  float lampsFor99 = 0;          // lamps giving 99% of it (average)
+  float patternShare = 0;        // share of covered pixels with a computed pattern (wood, stone...)
+  uint64_t triangles() const { return sceneTriangles + shadowTriangles; }
+  size_t draws() const { return sceneDraws + shadowDraws; }
+  // per-pixel work today: fragments shaded x lamps each works out
+  float lampWorkPerPixel() const { return shadedPerPixel * static_cast<float>(lampsComputed); }
+};
+
+// The view's camera matrices, exactly as the renderer builds them.
+Mat4 frameViewProj(const FrameView& view);
+Mat4 frameShadowViewProj(const FrameView& view, Vec3 towardSun, int shadowMapSize);
+
+FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples = 40000);
+
+// One quality's budget for a frame on the user's phone. First guesses from
+// what phones of 2023 sustain at 60 frames a second; the phone's benchmark
+// runs set them for real.
+struct FrameBudget {
+  std::string quality;
+  int width = 0, height = 0;   // pixels drawn on an iPhone 15 Pro Max held upright (430 x 932 points)
+  uint64_t triangles = 0;      // all passes
+  size_t draws = 0;            // all passes
+  float shadedPerPixel = 0;
+  float lampWorkPerPixel = 0;  // fragments x lamps each works out
+};
+FrameBudget budgetFor(const std::string& quality);  // "phone" or "high"
+// The budget's lines a frame goes over, in plain words (empty: it fits).
+std::vector<std::string> overBudget(const FrameCost& c, const FrameBudget& b);
+
+}  // namespace loop

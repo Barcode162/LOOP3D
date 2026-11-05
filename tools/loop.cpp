@@ -7,9 +7,13 @@
 //               makes the stills and films the script asks for (render / film)
 //               with the cinema renderer; with none asked, one still of its camera
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
+//   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
+//               what one live frame costs (things, triangles, draw calls,
+//               surfaces and lamps per pixel) against that quality's budget
 #include <cstdio>
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <sys/stat.h>
 
@@ -19,6 +23,7 @@
 #include "engine/core/time.h"
 #include "engine/render/demo_scenes.h"
 #include "engine/render/film.h"
+#include "engine/render/frame_cost.h"
 #include "engine/render/pathtracer.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
@@ -35,6 +40,7 @@ int usage() {
       "loop play   <first scene.loop> [--choices 0,1,0]\n"
       "loop render <script.loop> [--quality draft|good|cinema|ultra] [--width 1920] [--samples N] [--look name]\n"
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
+      "loop budget <script.loop> [--quality phone|high] [--seconds 1] [--size 374x811]\n"
       "loop settings list    every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help");
   return 1;
@@ -44,6 +50,7 @@ struct Options {
   std::string quality, look, out, choices;
   int width = 0, samples = 0, w = 960, h = 540;
   double seconds = 10;
+  bool secondsGiven = false, sizeGiven = false;
 };
 
 void printProblems(const std::vector<Problem>& ps) {
@@ -273,6 +280,114 @@ int demo(const std::string& name, const Options& o) {
 
 }  // namespace
 
+// `loop budget`: what one live frame of a scene costs on a quality, counted the
+// way the live renderer draws it today, with what skipping off-screen things
+// and the backs of shapes would leave, against that quality's budget. A folder
+// (a project, or projects/) gives one line per scene.
+struct Measured {
+  std::string title, name;
+  FrameCost cost;
+  FrameBudget budget;
+  FrameView view;
+  size_t lamps = 0;
+};
+
+bool measureScene(const std::string& path, const Options& o, Measured& m) {
+  Vm vm;
+  Stage stage;
+  if (!loadScript(path, vm, stage)) return false;
+  double secs = o.secondsGiven ? o.seconds : 1;
+  for (double t = 0; t < secs; t += 1.0 / 60) vm.update(1.0 / 60), stage.update(1.0f / 60);
+  m.budget = budgetFor(o.quality == "high" ? "high" : "phone");
+  const Config& C = config();
+  FrameView& v = m.view;
+  v.camera = stage.scene.camera;
+  if (stage.mode == "movie" && !stage.film.shots.empty()) v.camera = stage.film.at(static_cast<float>(secs), stage.scene.camera);
+  v.width = o.sizeGiven ? o.w : m.budget.width, v.height = o.sizeGiven ? o.h : m.budget.height;
+  v.drawDistance = C.world.drawDistance, v.maxLights = C.render.maxLights;
+  v.shadowRadius = C.render.shadowDistance > 0 ? C.render.shadowDistance : m.budget.quality == "high" ? 40.0f : 25.0f;
+  m.cost = measureFrame(stage.scene, v);
+  m.title = stage.title;
+  for (const Light& l : stage.scene.lights) m.lamps += l.kind != Light::Kind::kSun;
+  return true;
+}
+
+int budgetScene(const std::string& path, const Options& o) {
+  Measured m;
+  if (!measureScene(path, o, m)) return 1;
+  const FrameCost& c = m.cost;
+  std::string q = m.budget.quality == "high" ? "High" : "Phone";
+  std::printf("%s · %s · %d x %d pixels · %zu things (%zu hidden) · %zu lamps%s\n", m.title.c_str(), q.c_str(), m.view.width, m.view.height,
+              c.things, c.hidden, m.lamps, c.sun ? " · sun" : "");
+  std::printf("                                today          skipping what's off screen\n");
+  std::printf("  things drawn (scene + shadow) %6zu + %-6zu  %6zu + %zu\n", c.sceneThings, c.shadowThings, c.inViewThings, c.inShadowThings);
+  std::printf("  triangles (all passes)        %8.2f M      %8.2f M\n", static_cast<double>(c.triangles()) / 1e6,
+              static_cast<double>(c.inViewTriangles + c.inShadowTriangles) / 1e6);
+  std::printf("  draw calls                    %8zu        %8zu\n", c.draws(), c.inViewDraws + c.inShadowDraws);
+  std::printf("  surfaces behind a pixel       %8.1f        (%.1f facing the camera)\n", static_cast<double>(c.layers), static_cast<double>(c.frontLayers));
+  std::printf("  surfaces shaded per pixel     %8.2f        %8.2f with the backs of shapes skipped\n", static_cast<double>(c.shadedPerPixel),
+              static_cast<double>(c.shadedFrontsOnly));
+  std::printf("  lamps worked out per surface  %8d        lamps giving 95%% of the light: %.1f on average, %d at most (99%%: %.1f)\n",
+              c.lampsComputed, static_cast<double>(c.lampsThatMatter), c.lampsThatMatterMost, static_cast<double>(c.lampsFor99));
+  std::printf("  lamp work per pixel           %8.0f        %8.0f if each pixel added only the lamps that matter\n",
+              static_cast<double>(c.lampWorkPerPixel()), static_cast<double>(c.shadedFrontsOnly * c.lampsThatMatter));
+  std::printf("  sky                           %7.0f%%\n", static_cast<double>(1 - c.coverage) * 100);
+  std::printf("  computed patterns (wood...)   %7.0f%% of the surfaces seen\n", static_cast<double>(c.patternShare) * 100);
+  std::vector<std::string> over = overBudget(c, m.budget);
+  if (over.empty()) {
+    std::printf("fits the %s budget\n", q.c_str());
+    return 0;
+  }
+  std::printf("over the %s budget:\n", q.c_str());
+  for (const std::string& s : over) std::printf("  %s\n", s.c_str());
+  return 2;
+}
+
+// Every scene of every project.json in a folder (the folder itself, or one
+// level down), one line each.
+int budgetFolder(const std::string& dir, const Options& o) {
+  namespace fs = std::filesystem;
+  std::vector<fs::path> manifests;
+  if (fs::exists(fs::path(dir) / "project.json")) manifests.push_back(fs::path(dir) / "project.json");
+  else
+    for (const auto& e : fs::directory_iterator(dir))
+      if (e.is_directory() && fs::exists(e.path() / "project.json")) manifests.push_back(e.path() / "project.json");
+  std::sort(manifests.begin(), manifests.end());
+  std::printf("%-28s %15s %15s %11s %7s %13s %11s  %s\n", "scene", "things drawn", "triangles (M)", "draw calls", "shaded", "lamps (95%)",
+              "lamp work", "over the budget on");
+  std::printf("%-28s %15s %15s %11s %7s %13s %11s\n", "", "today > seen", "today > seen", "today > seen", "/pixel", "each > need", "/pixel");
+  int overCount = 0, scenes = 0;
+  for (const fs::path& mf : manifests) {
+    std::string text;
+    Json p;
+    if (!readText(mf.string(), text) || !Json::parse(text, p)) continue;
+    for (const Json& name : p["scenes"].items()) {
+      std::string path = (mf.parent_path() / (name.string() + ".loop")).string();
+      Measured m;
+      if (!measureScene(path, o, m)) continue;
+      const FrameCost& c = m.cost;
+      std::vector<std::string> over = overBudget(c, m.budget);
+      std::string words;
+      for (const std::string& w : over) words += (words.empty() ? "" : ", ") + w.substr(0, w.find(' ', w.find(' ') == 4 ? 5 : 0));
+      char things[32], tris[32], draws[32], lamps[32];
+      std::snprintf(things, sizeof things, "%zu > %zu", c.sceneThings + c.shadowThings, c.inViewThings + c.inShadowThings);
+      std::snprintf(tris, sizeof tris, "%.2f > %.2f", static_cast<double>(c.triangles()) / 1e6, static_cast<double>(c.inViewTriangles + c.inShadowTriangles) / 1e6);
+      std::snprintf(draws, sizeof draws, "%zu > %zu", c.draws(), c.inViewDraws + c.inShadowDraws);
+      std::snprintf(lamps, sizeof lamps, "%d > %.1f", c.lampsComputed, static_cast<double>(c.lampsThatMatter));
+      std::printf("%-28s %15s %15s %11s %7.2f %13s %11.0f  %s\n", name.string().c_str(), things, tris, draws, static_cast<double>(c.shadedPerPixel), lamps,
+                  static_cast<double>(c.lampWorkPerPixel()), over.empty() ? "fits" : words.c_str());
+      ++scenes, overCount += !over.empty();
+    }
+  }
+  std::printf("%d of %d scenes over the %s budget\n", overCount, scenes, o.quality == "high" ? "High" : "Phone");
+  return overCount ? 2 : 0;
+}
+
+int budget(const std::string& target, const Options& o) {
+  if (std::filesystem::is_directory(target)) return budgetFolder(target, o);
+  return budgetScene(target, o);
+}
+
 int main(int argc, char** argv) {
   if (argc < 3) return usage();
   std::string cmd = argv[1], target = argv[2];
@@ -284,13 +399,14 @@ int main(int argc, char** argv) {
     else if (a == "--look") o.look = val();
     else if (a == "--width") o.width = std::atoi(val().c_str());
     else if (a == "--samples") o.samples = std::atoi(val().c_str());
-    else if (a == "--seconds") o.seconds = std::atof(val().c_str());
-    else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h);
+    else if (a == "--seconds") o.seconds = std::atof(val().c_str()), o.secondsGiven = true;
+    else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h), o.sizeGiven = true;
     else if (a == "-o") o.out = val();
     else if (a == "--choices") o.choices = val();
     else return usage();
   }
   if (cmd == "demo") return demo(target, o);
+  if (cmd == "budget") return budget(target, o);
   if (cmd == "words") {
     // `loop words js` writes web/editor/words.js: every word of Looped Script and its help
     Vm vm;

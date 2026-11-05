@@ -6,14 +6,17 @@ The order of work, top first. A step is done when it works on the user's phone.
 1. **A clean picture:** no live film grain, nothing that fizzes from frame to frame. *(Built 2026-11-05; the
    phone check is next.)*
 2. **See what the phone draws:** pictures of the live renderer taken here (`xvfb-run -a node tools/web_check.js`,
-   software graphics, checking only) from the site GitHub's **Check** builds, and a work budget per quality level
-   that a scene must fit (things drawn, triangles, lamps per pixel, passes).
+   software graphics, checking only), and the **work budget**: `loop budget <scene or folder>` counts what a frame
+   costs (things, triangles, draw calls, surfaces and lamps per pixel) against each quality's budget. *(Built
+   2026-11-05; the "before": `perf/budget.md`, 18 of 41 scenes over the Phone budget.)*
 3. **Measured on the phone:** the user runs the Benchmark (toolbar ⏱, or `?bench=scene`) on `showcase_glade`,
    `showcase_hall`, an Ardane scene and the bar: the baseline.
 4. **Draw less:** skip what's off screen (scene and sun shadows); back faces off for closed shapes; levels of
    detail and clusters (3D's `looped/draw/clusters.*` can come over).
-5. **Light less:** each pixel adds only the lamps that reach it (clustered lights: the bar has 103 lamps); wood,
-   stone and brick made once into textures; the sun's shadow cached until something moves.
+5. **Light less:** each pixel adds only the lamps that reach it (clustered lights); for the bar's many small bulbs
+   (51 of its 103 lamps give 95% of a pixel's light) that's not enough: group them, or sample a few per frame and
+   blend over frames (with step 6); wood, stone and brick made once into textures; the sun's shadow cached until
+   something moves.
 6. **Frame blending (TAA, then temporal upscaling):** fewer pixels drawn, averaged over frames: sharp, steady, no
    noise. Replaces MSAA (settings `render.taa`, `render.upscaler` are waiting for it).
 7. **The project file (`.looped`) and the pack:** a project in one folder with one readable project file;

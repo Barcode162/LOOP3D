@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-05** · "Didn't you have more stuff to do before optimization? And go": yes, step 2 first. Built the
+  work budget (`loop budget`, `engine/render/frame_cost.*`, 4 tests, 77 in all) and measured every scene:
+  `perf/budget.md` (18 of 41 over the Phone budget: forests by triangles, the bar by lamps).
 - **2026-11-05** · "I have perms": Emscripten now installs here (the web player builds in 27 s); a cloud setup,
   **J Production (Loop3D)**, does it at every session start. Starting workflows from Claude is still refused by
   GitHub (the app's own permission), so publishing stays on the `gh-pages` route.
