@@ -145,3 +145,31 @@ TEST(tube_sides_face_out) {
   Vec3 n = cross(b - a, c - a), mid = (a + b + c) / 3;
   CHECK(dot(n, Vec3(mid.x, 0, mid.z)) > 0);
 }
+
+TEST(geometry_glade_models) {
+  // a fern: arching fronds of leaflet cards, all above the ground
+  Mesh fern = makeFern(1.0f, 9, 3);
+  CHECK(fern.triangleCount() > 300 && fern.triangleCount() < 6000);
+  CHECK(fern.bounds().lo.y > -0.05f && fern.bounds().hi.y < 1.0f);
+  // a flower: stem, petals round the head, a centre at the top
+  FlowerShape fs;
+  FlowerMeshes f = makeFlower(fs);
+  CHECK(f.petals.triangleCount() == static_cast<size_t>(fs.petals) * 2);
+  CHECK(f.centre.bounds().center().y > fs.height * 0.9f);
+  // a column stands its height; a broken one is shorter and has no capital
+  ColumnShape cs;
+  Mesh whole = makeColumn(cs);
+  CHECK_NEAR(whole.bounds().hi.y, cs.height, 0.05);
+  cs.broken = true;
+  Mesh broken = makeColumn(cs);
+  CHECK(broken.bounds().hi.y < cs.height - 0.1f);
+  // flutes cut in: the shaft is never wider than its radius
+  CHECK(whole.triangleCount() > 1000);
+  // a log lies along X, about its length
+  LogMeshes lg = makeLog(3, 0.2f, 1);
+  CHECK_NEAR(lg.bark.bounds().hi.x - lg.bark.bounds().lo.x, 3, 0.2);
+  CHECK(lg.ends.triangleCount() > 0);
+  // a wing has two faces; a mote is small and cheap
+  CHECK(makeWing(0.05f).triangleCount() == 4);
+  CHECK(makeMote(0.01f).triangleCount() < 100);
+}

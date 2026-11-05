@@ -103,7 +103,7 @@
 
   // a GPU that's gone leaves its last "done" promises rejected: expected, not news
   addEventListener('unhandledrejection', (e) => { if (String(e.reason).includes('external Instance reference')) e.preventDefault(); });
-  window.loopNoGpu = () => { note.textContent = 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
+  window.loopNoGpu = () => { note.style.display = 'block'; note.textContent = M ? 'The graphics card stopped answering twice: this scene may be too heavy for it. Try Phone quality, then reload.' : 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
   window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
   // the loading screen stays until the scene's first frame is on screen
   const showNote = (t, spinning) => { note.textContent = t; note.classList.toggle('loading', !!spinning); note.style.display = 'block'; };

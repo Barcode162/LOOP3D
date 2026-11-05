@@ -1,0 +1,37 @@
+# Sky: an open courtyard under the sky. Before: a flat colour. After: the
+# physical sky with the sun going round: noon, sunset, night with stars.
+use "showcase_common"
+title "Sky"
+mode "game"
+ground 60, material: "stone"
+for each x in [-6, 6]
+  for i from 0 to 3
+    column(at: vec(x, 0, -6 + i * 4), height: 4, radius: 0.3)
+sphere 0.6, at: vec(0, 0.6, -3), material: "chrome"
+sphere 0.5, at: vec(-1.6, 0.5, -2), material: "white"
+let cycling = yes
+let angle = 30
+to show(on)
+  cycling = on
+  if on
+    sky "physical", haze: 2.5, stars: 0.02
+  else
+    sky "color", color: rgb(0.55, 0.65, 0.8), nits: 4000
+    sun elevation: 45 deg, toward: 160 deg
+every 0.25 s
+  if cycling
+    angle += 1.5
+    let e = 50 * sin(radians(angle))
+    sun elevation: e * 1 deg, toward: 200 deg, lux: 100000 if e > 0 else 0.3
+sun elevation: 30 deg, toward: 200 deg
+before_after(vec(3, 0, 4), show, what: "the physical sky, from noon to sunset to stars")
+move_player at: vec(0, 0, 6), look_at: vec(0, 2, -6)
+camera at: vec(0, 1.6, 6), look_at: vec(0, 3, -6), lens: 24 mm
+task
+  wait 2 s
+  repeat forever
+    if near(vec(0, 0, 9), 1.2)
+      go_to "showcase_hall"
+      return
+    wait 0.2 s
+look "natural"

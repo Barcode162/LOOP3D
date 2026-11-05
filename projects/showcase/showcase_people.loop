@@ -1,0 +1,34 @@
+# People: three of them. Before: they stand still. After: one walks a loop,
+# one sits on the bench, one turns to look at you wherever you go.
+use "showcase_common"
+title "People"
+mode "game"
+room_shell(size: vec(14, 4.5, 14), floor: "tiles", walls: "plaster")
+box size: vec(1.8, 0.45, 0.5), at: vec(-3, 0.225, -4), material: "oak"
+let walker = person(at: vec(2, 0, -3), shirt: material(color: rgb(0.7, 0.25, 0.2)))
+let sitter = person(at: vec(-3, 0, -3.7), facing: 180 deg, shirt: material(color: rgb(0.2, 0.35, 0.6)))
+let watcher = person(at: vec(0, 0, -5), height: 1.65, shirt: material(color: rgb(0.3, 0.55, 0.3)))
+let alive = no
+to show(on)
+  alive = on
+  sitter.sitting = on
+  if not on
+    walker.walk_to = walker.position
+    watcher.look_at = nothing
+task
+  let stops = [vec(2, 0, -3), vec(4, 0, 2), vec(-1, 0, 3), vec(-4, 0, -1)]
+  let k = 0
+  repeat forever
+    if alive
+      walker.walk_to = stops[k % 4]
+      k += 1
+      wait 4 s
+    else
+      wait 0.3 s
+every 0.2 s
+  if alive
+    watcher.look_at = player() + vec(0, 1.6, 0)
+before_after(vec(4.5, 0, 4.5), show, what: "people who walk, sit and look")
+enter_room(depth: 14)
+door_back(depth: 14)
+look "natural"

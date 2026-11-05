@@ -1,0 +1,150 @@
+# The Glade: a forest ruin in late-morning sun. The showcase's hero room,
+# everything the engine has at its best in one place: an eroded land, a ring
+# of pines and oaks for walls, a cliff behind, a fluted stone ruin under moss,
+# a meadow of grass, ferns and wild flowers, butterflies and drifting motes,
+# birds, wind and a far stream, haze with the sun glowing through it.
+#
+# Press Use at the mossy plinth by the path to see it before and after.
+use "showcase_common"
+title "The Glade"
+mode "movie"
+
+# ---- what this scene asks of the engine
+# no lamps here (the sun does it all), so no ray-traced lamp shadows to keep up
+setting "render.lamps", 0
+setting "render.skyLight", 1.25
+setting "render.occlusion", 1.3
+setting "world.patternFade", 1.2
+setting "story.speakerNames", no
+
+# ---- the land: a gentle eroded valley; the glade sits on its floor
+let land = terrain(size: 260, height: 18, ridges: 0.35, seed: 12, erosion: yes, material: "forest floor")
+to y_at(x, z)
+  return height_at(vec(x, 0, z))
+
+# ---- the cliff behind: big weathered rocks stacked into a face
+let cliff_stone = material(like: "granite", color: rgb(0.52, 0.50, 0.46), roughness: 0.92)
+for i from 0 to 9
+  let x = -26 + i * 6 + random(-1.5, 1.5)
+  let z = -42 + random(-3, 3)
+  rock size: random(10, 16), at: vec(x, y_at(x, z) - 2, z), seed: i + 3, material: cliff_stone
+  rock size: random(7, 11), at: vec(x + 2, y_at(x, z) + 7, z - 3), seed: i + 40, material: cliff_stone
+
+# ---- the walls: a ring of tall pines and oaks round a clearing
+forest kind: "pine", around: vec(0, 0, -6), radius: 46, spacing: 5.5, clearing: 14, clear_around: vec(0, 0, -2), seed: 4, leaf_size: 0.7, detail: 0.45
+forest kind: "oak", around: vec(0, 0, -4), radius: 36, spacing: 8, clearing: 12, clear_around: vec(0, 0, -2), seed: 8, leaf_size: 0.32, detail: 0.5
+# hero trees that frame the picture: a big pine right of the path, an oak left
+let hero_pine = tree("pine", at: vec(4.6, y_at(4.6, -1) - 0.2, -1), height: 19, variant: 2, leaf_size: 0.7)
+let hero_oak = tree("oak", at: vec(-10, y_at(-10, -4) - 0.2, -4), height: 13, variant: 1, leaf_size: 0.32)
+let back_pine = tree("pine", at: vec(-4.5, y_at(-4.5, -14) - 0.2, -14), height: 22, variant: 3, leaf_size: 0.7)
+let back_birch = tree("birch", at: vec(7, y_at(7, -13) - 0.2, -13), height: 14, variant: 1, leaf_size: 0.5)
+
+# ---- the ruin: two fluted columns under a lintel, one broken beside them
+let ruin_z = -8
+let base_y = y_at(0, ruin_z)
+let col_left = column(at: vec(-1.15, base_y - 0.08, ruin_z), height: 3.5, radius: 0.3, seed: 2)
+let col_right = column(at: vec(1.15, base_y - 0.12, ruin_z), height: 3.5, radius: 0.3, seed: 5)
+let beam = lintel(vec(-1.15, base_y + 3.62, ruin_z), vec(1.15, base_y + 3.62, ruin_z), height: 0.42, depth: 0.78)
+beam.material = "mossy stone"
+let broken_col = column(at: vec(-3.1, y_at(-3.1, ruin_z + 0.6) - 0.1, ruin_z + 0.6), height: 3.5, radius: 0.3, broken: yes, seed: 7)
+broken_col.material = "mossy stone"
+# a drum of a fallen column, lying in the grass, and a slab of the old floor
+let drum = column(at: vec(-2.4, y_at(-2.4, ruin_z + 2.3) + 0.3, ruin_z + 2.3), height: 1.1, radius: 0.3, seed: 9, tilt: 90 deg, turn: 25 deg)
+drum.material = "mossy stone"
+let boulder = rock(size: 1.3, at: vec(0.4, y_at(0.4, ruin_z + 1.2) - 0.15, ruin_z + 1.2), seed: 21, material: "mossy stone")
+for i from 0 to 5
+  let x = random(-2.2, 2.2)
+  let z = ruin_z + random(-0.6, 1.4)
+  box size: vec(random(0.6, 1.0), 0.12, random(0.5, 0.8)), at: vec(x, y_at(x, z) - 0.02, z), turn: random(-0.3, 0.3), material: "ruin stone", collide: no
+
+# ---- the old path: sunken stone slabs from where you stand to the ruin
+let path_stones = []
+for i from 0 to 13
+  let z = 7 - i * 1.05
+  let x = 0.4 * sin(i * 0.7) + random(-0.15, 0.15)
+  path_stones.push(box(size: vec(random(0.7, 1.0), 0.1, random(0.55, 0.75)), at: vec(x, y_at(x, z) - 0.03, z), turn: random(-0.25, 0.25), material: "ruin stone", round: 0.03, collide: no))
+
+# fallen planks and logs, half in the grass
+box size: vec(2.4, 0.08, 0.24), at: vec(1.6, y_at(1.6, 2.4) + 0.03, 2.4), turn: 0.3, material: "old wood", collide: no
+box size: vec(1.8, 0.07, 0.22), at: vec(2.1, y_at(2.1, 3.0) + 0.05, 3.0), turn: 0.45, material: "old wood", collide: no
+let log_a = log(at: vec(-4.2, 0, 2.2), length: 4.2, radius: 0.26, turn: 20 deg, seed: 1)
+let log_b = log(at: vec(5.0, 0, -5.5), length: 3.0, radius: 0.18, turn: -50 deg, seed: 2)
+
+# ---- the green life
+let meadow = grass(around: vec(0, 0, -1), radius: 15, density: 9, height: 0.6, seed: 3)
+let meadow_far = grass(around: vec(0, 0, -4), radius: 24, density: 1.8, height: 0.9, clearing: 14, clear_around: vec(0, 0, -2), seed: 11)
+let wild = flowers(around: vec(0.5, 0, -1), radius: 8, count: 260, kinds: ["daisy", "violet", "daisy", "bluebell"], size: 1.6, seed: 6)
+let reds = flowers(around: vec(-0.5, 0, 2), radius: 3, count: 24, kinds: ["poppy"], size: 1.4, seed: 2)
+let ferns = []
+for each spot in [vec(-1.6, 0, -7.4), vec(1.7, 0, -7.2), vec(-3.6, 0, -7.0), vec(2.6, 0, -6.4), vec(-5.5, 0, -3), vec(5.8, 0, -2), vec(-6.5, 0, 1.5), vec(4.2, 0, 2.8), vec(-2.8, 0, 3.6), vec(6.5, 0, -8), vec(-7, 0, -9), vec(3.5, 0, -10.5)]
+  ferns.push(fern(spot, size: random(0.9, 1.5), seed: random_int(0, 3)))
+let bushes = []
+for each spot in [vec(-6, 0, -6), vec(7.5, 0, -4.5), vec(-9, 0, 3), vec(8.5, 0, 1), vec(-3.5, 0, -12), vec(3.5, 0, -12.5)]
+  bushes.push(tree("bush", at: vec(spot.x, y_at(spot.x, spot.z) - 0.1, spot.z), height: random(1.8, 2.8), variant: random_int(0, 3), leaves: "fresh leaves", leaf_size: 0.6))
+
+# ---- creatures: butterflies over the flowers, motes drifting in the light
+let butterflies = []
+for i from 0 to 9
+  let c = ["orange", "white", "blue"][i % 3]
+  butterflies.push(butterfly(around: vec(random(-4, 4), y_at(0, -1), random(-5, 3)), radius: 3, color: c, height: 1.2, seed: i + 1))
+let motes = fireflies(around: vec(0, y_at(0, -4), -4), radius: 10, count: 70, height: 4, size: 0.8)
+
+# ---- light: a warm sun low behind the ruin, through the haze
+sun elevation: 24 deg, toward: 345 deg, lux: 85000, kelvin: 5000, size: 0.7 deg
+sky "physical", haze: 3.6, ground: vec(0.18, 0.24, 0.10)
+fog 0.008, top: 14, glow: 0.78, color: vec(0.86, 0.92, 0.78)
+
+# ---- sound: birds, a breeze in the leaves, a stream off to the left
+sound "birds", volume: 0.65
+sound "wind", volume: 0.3
+sound "stream", at: vec(-22, y_at(-22, -12), -12), volume: 1.0
+sound "crickets", volume: 0.12
+room size: 0.04, echo: 0.04
+
+# ---- the film: natural colour, a touch warm, soft glow and a little grain
+look "natural", warmth: 0.12, saturation: 1.12, contrast: 1.08, bloom: 0.07, halation: 0.08, vignette: 0.32, grain: 0.015, sharpen: 0.2
+
+# ---- where you stand, and the shots
+let eye_y = y_at(0.9, 4.5)
+camera at: vec(0.9, eye_y + 1.3, 4.5), look_at: vec(0.2, base_y + 2.1, ruin_z), lens: 26 mm, f_stop: 5.6, exposure: -0.5
+move_player at: vec(0.8, y_at(0.8, 9), 9), look_at: vec(0, base_y + 1.6, ruin_z)
+shot "into the glade", 14 s, from: {at: vec(0.9, eye_y + 1.3, 4.5), look_at: vec(0.2, base_y + 2.1, ruin_z), lens: 26 mm, f_stop: 5.6}, to: {at: vec(0.5, y_at(0.5, 1) + 1.2, 1), look_at: vec(0, base_y + 1.8, ruin_z), lens: 28 mm, f_stop: 5.6}, fade_in: 2 s
+orbit "round the ruin", 16 s, around: vec(0, base_y + 1.6, ruin_z), radius: 7, height: 2.2, from: 20 deg, to: 140 deg, lens: 30 mm
+shot "the flowers", 10 s, from: {at: vec(1.8, y_at(1.8, 1.5) + 0.32, 1.5), look_at: vec(0.6, y_at(0.6, -0.5) + 0.15, -0.5), lens: 85 mm, f_stop: 2}, to: {at: vec(1.5, y_at(1.5, 1.2) + 0.36, 1.2), look_at: vec(0.6, y_at(0.6, -0.5) + 0.2, -0.5), lens: 85 mm, f_stop: 2}, fade_out: 1.5 s
+
+# the cinema still (made by `loop render`), for the editor's Trailer compare
+render "showcase_glade.png", quality: "cinema", width: 1280, samples: 64, at: 0.5 s
+
+# ---- before and after
+# before: the scene blocked out, the way it starts life: land, trees and a grey
+# ruin under a flat light. After: all of it.
+let life = [meadow, meadow_far, wild, reds, motes, log_a, log_b] + ferns + bushes
+to show(on)
+  for each m in life
+    m.visible = on
+  for each b in butterflies
+    b.visible = on
+  for each s in path_stones
+    s.visible = on
+  let stone = "mossy stone" if on else "grey"
+  col_left.material = "ruin stone" if on else "grey"
+  col_right.material = "ruin stone" if on else "grey"
+  beam.material = stone
+  broken_col.material = stone
+  drum.material = stone
+  if on
+    fog 0.008, top: 14, glow: 0.78, color: vec(0.86, 0.92, 0.78)
+    look "natural", warmth: 0.12, saturation: 1.12, contrast: 1.08, bloom: 0.07, halation: 0.08, vignette: 0.32, grain: 0.015, sharpen: 0.2
+  else
+    fog 0
+    look "natural"
+before_after(vec(2.4, y_at(2.4, 7.5), 7.5), show, what: "the glade's life, light and stone")
+
+# ---- the way to the other rooms: the hall is through the trees behind you
+task
+  wait 3 s
+  repeat forever
+    if near(vec(0.8, 0, 13), 1.5)
+      go_to "showcase_hall"
+      return
+    wait 0.25 s

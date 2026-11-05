@@ -502,8 +502,9 @@ window.LE = window.LE || {};
     metals: [['gold', '#e3b448'], ['silver', '#d8d8dc'], ['copper', '#c47a4f'], ['brass', '#c9a248'], ['bronze', '#a3713a'], ['iron', '#5e5c5a'], ['steel', '#9aa0a6'], ['chrome', '#e8ecf0'], ['aluminium', '#c2c6ca'], ['rust', '#8a4126']],
     'glass, water & ice': [['glass', '#cfe8ef'], ['crystal', '#e6f6fb'], ['frosted glass', '#dbe7ea'], ['green glass', '#7fb79a'], ['water', '#3d7f9c'], ['ice', '#cbe7f2']],
     'soft things': [['fabric', '#8a6f8f'], ['velvet', '#6b1f33'], ['wool', '#cdbfa8'], ['leather', '#6a3f24'], ['rubber', '#2a2a2a'], ['plastic', '#d84e4e'], ['car paint', '#b0162a'], ['paper', '#f2eee4'], ['wax', '#efe1c0'], ['skin', '#d7a283'], ['hair', '#3a2a1e']],
-    nature: [['leaves', '#4f7a34'], ['needles', '#2f5232'], ['autumn leaves', '#c26a2a'], ['grass', '#5f8f3a'], ['soil', '#5a4430'], ['sand', '#d8c08c'], ['snow', '#f4f7fb'], ['moss', '#5c7a2e']],
-    glowing: [['flame', '#ffb347'], ['ember', '#ff5a1f'], ['neon', '#ff3cc8'], ['screen', '#8fd0ff'], ['lamp shade', '#ffe2a8']],
+    nature: [['fern', '#3a6a22'], ['fresh leaves', '#7a9a2a'], ['blades', '#5a8a2a'], ['dry blades', '#a89a55'], ['forest floor', '#4a5530'], ['mossy stone', '#6a7058'], ['ruin stone', '#a19b8a'], ['leaves', '#4f7a34'], ['needles', '#2f5232'], ['autumn leaves', '#c26a2a'], ['grass', '#5f8f3a'], ['soil', '#5a4430'], ['sand', '#d8c08c'], ['snow', '#f4f7fb'], ['moss', '#5c7a2e']],
+    'flowers & wings': [['daisy', '#f4f4ee'], ['violet', '#8a5ad2'], ['poppy', '#dc2010'], ['bluebell', '#4a60dc'], ['pollen', '#f2b81a'], ['stem', '#436b24'], ['wing blue', '#338cf2'], ['wing orange', '#f28014'], ['wing white', '#f4f2e0']],
+    glowing: [['firefly', '#c8ff5a'], ['flame', '#ffb347'], ['ember', '#ff5a1f'], ['neon', '#ff3cc8'], ['screen', '#8fd0ff'], ['lamp shade', '#ffe2a8']],
     plain: [['white', '#f2f2f2'], ['black', '#141414'], ['grey', '#808080']],
   };
   const SOUNDS = ['fire', 'wind', 'rain', 'stream', 'birds', 'crickets', 'night', 'hum', 'applause', 'crowd', 'strings', 'chains', 'synth', 'drones', 'heartbeat'];
@@ -521,6 +522,11 @@ window.LE = window.LE || {};
     ['Orbit', 'orbit "around", length: 8 s, around: vec(0, 1, 0), radius: 5 m, height: 2 m'],
     ['Line', 'wait line("Mira", "Did you hear that?")'], ['Choice', 'ask "Which way?", ["Left", "Right"]\nwhen choice\n  say "picked {event}"'],
     ['Fog', 'fog density: 0.02, top: 8 m'], ['Every', 'every 2 s\n  say "tick"'],
+    ['Grass', 'let meadow = grass(around: vec(0, 0, 0), radius: 10, density: 6, height: 0.5)'], ['Fern', 'fern vec(1, 0, -2), size: 1.2'],
+    ['Flowers', 'flowers around: vec(0, 0, 0), radius: 5, count: 80, kinds: ["daisy", "violet", "poppy"]'],
+    ['Column', 'column at: vec(0, 0, -4), height: 3.5'], ['Broken column', 'column at: vec(2, 0, -4), height: 3.5, broken: yes'],
+    ['Log', 'log at: vec(-2, 0, 1), length: 3, radius: 0.25, turn: 30 deg'],
+    ['Butterfly', 'butterfly around: vec(0, 0, 0), color: "blue"'], ['Fireflies', 'fireflies around: vec(0, 0, 0), radius: 6, count: 40'],
   ];
   P.content = {
     tab: 'materials',

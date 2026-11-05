@@ -1,0 +1,25 @@
+# Settings: a scene changing the engine's own settings as it runs, by the same
+# names as the editor's Project Settings. Before: the project's settings.
+# After: slow motion (script.timeScale), long reading time (story.textSpeed),
+# fast walking (player.walk) and a stronger glow from the sky (render.skyLight).
+use "showcase_common"
+title "Settings"
+mode "game"
+room_shell(size: vec(12, 6, 12), floor: "tiles", walls: "plaster")
+let balls = []
+for i from 0 to 5
+  let b = sphere(0.2, at: vec(-2.5 + i, 4 + i * 0.3, -2), material: ["rubber", "plastic", "glass", "steel", "oak", "copper"][i])
+  balls.push(solid(b, mass: 1, bounce: 0.85))
+to show(on)
+  setting "script.timeScale", 0.25 if on else 1
+  setting "story.textSpeed", 6 if on else 15
+  setting "player.walk", 4 if on else 1.6
+  setting "render.skyLight", 2 if on else 1
+  line "", "World speed " + text(get_setting("script.timeScale")) + "x, walking " + text(get_setting("player.walk")) + " m/s.", seconds: 3
+every 6 s
+  for i from 0 to balls.length - 1
+    balls[i].position = vec(-2.5 + i, 4 + i * 0.3, -2)
+before_after(vec(4, 0, 4), show, what: "a scene setting the engine's settings")
+enter_room()
+door_back()
+look "natural"

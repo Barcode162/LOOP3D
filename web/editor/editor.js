@@ -383,7 +383,7 @@
   });
 
   // ------------------------------------------------------------ engine events
-  E.on('nogpu', () => { showNote('This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari. The editor still works; the viewport needs WebGPU.', false); LE.log('error', 'No WebGPU in this browser.'); LE.status(); });
+  E.on('nogpu', () => { if (E.ready) { showNote('The graphics card stopped answering twice: this scene may be too heavy for it. Try Phone quality, or lower Forest density and Grass in Project Settings → World, then reload.', false); LE.log('error', 'The GPU was lost and could not be got back.'); LE.status(); return; } showNote('This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari. The editor still works; the viewport needs WebGPU.', false); LE.log('error', 'No WebGPU in this browser.'); LE.status(); });
   E.on('loading', (name) => { const s = E.projectOf(name)?.scenes.find((x) => x.name === name); showNote(LoopUI.loadingText(E.M, s ? s.title : name || 'the scene'), true); linesBox.innerHTML = ''; askBox.style.display = 'none'; if (store.get('con.clearOnLoad')) LE.run('clearConsole'); });
   E.on('shown', () => { note.style.display = 'none'; LE.status(); });
   E.on('problems', (t) => { P.script.pendingProblems = true; for (const l of t.trim().split('\n')) LE.log('error', l); dock.show('script'); LE.status(); });

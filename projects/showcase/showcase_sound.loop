@@ -1,0 +1,39 @@
+# Sound: a fire, a fountain, birds and a bell, each heard from where it is.
+# Before: silence in a small dead room. After: every sound, and the echo of a
+# great stone hall. Walk around: they move between your ears.
+use "showcase_common"
+title "Sound"
+mode "game"
+room_shell(size: vec(16, 7, 16), floor: "stone", walls: "stone", lumens: 5000)
+# the fire bowl, the fountain, the birdcage, the bell
+cylinder 0.5, 0.35, at: vec(-5, 0.18, -5), material: "iron"
+sphere 0.12, at: vec(-5, 0.45, -5), scale: vec(2.5, 1.2, 2.5), material: "ember", collide: no
+let fire_light = light(at: vec(-5, 0.9, -5), lumens: 1200, kelvin: 1900, radius: 0.25)
+cylinder 1.0, 0.5, at: vec(5, 0.25, -5), material: "granite"
+cylinder 0.9, 0.05, at: vec(5, 0.47, -5), material: "water", collide: no
+for i from 0 to 7
+  cylinder 0.01, 1.2, at: vec(-5 + 0.25 * cos(i * 0.785), 1.6, 5 + 0.25 * sin(i * 0.785)), material: "brass", collide: no
+cylinder 0.3, 0.05, at: vec(-5, 1.0, 5), material: "brass"
+cone 0.3, 0.4, at: vec(5, 2.4, 5), material: "bronze"
+let fire = sound("fire", at: vec(-5, 0.5, -5))
+let water = sound("stream", at: vec(5, 0.5, -5))
+let birds = sound("birds", at: vec(-5, 1.6, 5))
+let ringing = yes
+to show(on)
+  fire.volume = 1 if on else 0
+  water.volume = 1 if on else 0
+  birds.volume = 0.8 if on else 0
+  ringing = on
+  room size: 0.9 if on else 0.05, echo: 0.6 if on else 0
+every 4 s
+  if ringing
+    sound "bell", "metal", at: vec(5, 2.2, 5), strength: 0.6
+every 1/30 s
+  fire_light.lumens = 1200 * (0.8 + 0.4 * flicker(time(), 8, 3))
+before_after(vec(0, 0, 4), show, what: "sound placed in 3D, and a hall's echo")
+enter_room(depth: 16)
+door_back(depth: 16)
+look "natural"
+task
+  wait 6 s
+  line "", "Turn on Sound (the speaker button), then walk round the room.", seconds: 5

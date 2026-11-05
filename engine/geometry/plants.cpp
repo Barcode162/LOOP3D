@@ -12,7 +12,8 @@ struct Grower {
   TreeMeshes out;
 
   void leafCluster(Vec3 at, Vec3 dir, float scale) {
-    for (int i = 0; i < s.leavesPerTip; ++i) {
+    const int leaves = std::max(2, static_cast<int>(std::lround(s.leavesPerTip * std::sqrt(std::min(s.detail, 1.0f)))));
+    for (int i = 0; i < leaves; ++i) {
       Vec3 off = uniformSphere(rng.uniform2()) * (s.leafSize * 3 * scale);
       Vec3 c = at + off + dir * (s.leafSize * rng.uniform());
       Vec3 n = normalize(off + Vec3(0, 0.6f, 0));
@@ -31,7 +32,7 @@ struct Grower {
   }
 
   void branch(Vec3 start, Vec3 dir, float len, float radius, int level) {
-    const int steps = std::max(3, 8 - level);
+    const int steps = std::max(2, static_cast<int>(std::lround((8 - level) * s.detail)));
     std::vector<Vec3> path = {start};
     std::vector<float> radii = {radius};
     Vec3 p = start, d = dir;
@@ -41,7 +42,7 @@ struct Grower {
       path.push_back(p);
       radii.push_back(radius * (1 - 0.7f * i / steps));
     }
-    out.bark.append(shapes::tube(path, radii, std::max(5, 12 - level * 2), false));
+    out.bark.append(shapes::tube(path, radii, std::max(3, static_cast<int>(std::lround((12 - level * 2) * s.detail))), false));
     if (level >= s.levels) {
       leafCluster(p, d, 1.0f);
       return;
@@ -126,5 +127,186 @@ Mesh makeGrassTuft(int blades, float height, uint32_t seed) {
   }
   return m;
 }
+
+namespace {
+// a card (two triangles, uv 0..1) from `base` along `along`, `width` wide, facing `n`
+void card(Mesh& m, Vec3 base, Vec3 along, Vec3 side, Vec3 n, float width) {
+  uint32_t b = static_cast<uint32_t>(m.positions.size());
+  m.addVertex(base - side * (width / 2), n, {0, 1});
+  m.addVertex(base + side * (width / 2), n, {1, 1});
+  m.addVertex(base + side * (width / 2) + along, n, {1, 0});
+  m.addVertex(base - side * (width / 2) + along, n, {0, 0});
+  m.addQuad(b, b + 1, b + 2, b + 3);
+}
+}  // namespace
+
+Mesh makeFern(float size, int fronds, uint32_t seed) {
+  Mesh m;
+  Rng rng(seed);
+  for (int f = 0; f < fronds; ++f) {
+    float az = kTwoPi * f / fronds + rng.uniform() * 0.4f;
+    float len = size * (0.45f + 0.25f * rng.uniform());
+    float rise = 0.9f + 0.4f * rng.uniform();  // how high it arches before falling
+    Vec3 out{std::cos(az), 0, std::sin(az)}, side{-out.z, 0, out.x};
+    const int seg = 12;
+    std::vector<Vec3> path;
+    for (int i = 0; i <= seg; ++i) {
+      float t = static_cast<float>(i) / seg;
+      // an arch: up and out, then curling down at the tip
+      path.push_back(out * (len * t) + Vec3(0, len * rise * (t * 0.9f - t * t * 0.75f), 0));
+    }
+    std::vector<float> radii(path.size());
+    for (size_t i = 0; i < path.size(); ++i) radii[i] = size * 0.006f * (1 - 0.8f * i / path.size());
+    m.append(shapes::tube(path, radii, 4, false));
+    // leaflets in pairs along the stem, longest in the middle
+    for (int i = 1; i < seg; ++i) {
+      float t = static_cast<float>(i) / seg;
+      Vec3 at = path[i], dir = normalize(path[i + 1] - path[i - 1]);
+      float l = len * 0.28f * std::sin(kPi * std::min(1.0f, t * 1.1f)) * (0.85f + 0.3f * rng.uniform());
+      if (l < 0.01f) continue;
+      for (int sgn : {-1, 1}) {
+        Vec3 sd = normalize(side * static_cast<float>(sgn) + dir * 0.35f - Vec3(0, 0.15f, 0));
+        Vec3 n = normalize(cross(sd, dir) * static_cast<float>(sgn) + Vec3(0, 0.5f, 0));
+        card(m, at, sd * l, dir, n, l * 0.42f);
+      }
+    }
+  }
+  return m;
+}
+
+FlowerMeshes makeFlower(const FlowerShape& s) {
+  FlowerMeshes o;
+  Rng rng(s.seed);
+  // the stem leans and bends a little
+  std::vector<Vec3> path;
+  Vec3 lean{rng.uniform() - 0.5f, 0, rng.uniform() - 0.5f};
+  for (int i = 0; i <= 6; ++i) {
+    float t = i / 6.0f;
+    path.push_back(Vec3(0, s.height * t, 0) + lean * (s.height * 0.25f * t * t));
+  }
+  std::vector<float> radii(path.size(), s.height * 0.012f + 0.0015f);
+  o.stem = shapes::tube(path, radii, 5, false);
+  // two small leaves low on the stem
+  for (int k = 0; k < 2; ++k) {
+    float a = kTwoPi * (k * 0.5f + rng.uniform() * 0.2f);
+    Vec3 d{std::cos(a), 0.5f, std::sin(a)};
+    d = normalize(d);
+    Vec3 side = normalize(cross(d, Vec3(0, 1, 0)));
+    o.stem.append([&] { Mesh c; card(c, path[1], d * (s.height * 0.3f), side, normalize(cross(side, d)), s.height * 0.08f); return c; }());
+  }
+  Vec3 head = path.back(), up = normalize(path.back() - path[path.size() - 2]);
+  Vec3 t, b;
+  orthonormalBasis(up, t, b);
+  for (int i = 0; i < s.petals; ++i) {
+    float a = kTwoPi * i / s.petals + rng.uniform() * 0.15f;
+    Vec3 radial = t * std::cos(a) + b * std::sin(a);
+    // cup: petals tilt up from flat (daisy) to closed (bell)
+    Vec3 dir = normalize(radial * (1 - s.cup) + up * (s.cup * 1.4f + 0.08f));
+    Vec3 side = normalize(cross(up, radial));
+    Vec3 n = normalize(cross(side, dir));
+    card(o.petals, head + radial * (s.headSize * 0.25f), dir * s.headSize, side, n, s.headSize * 0.55f);
+  }
+  o.centre = shapes::icosphere(s.headSize * 0.32f, 1);
+  o.centre.transform(Mat4::translation(head + up * (s.headSize * 0.05f)));
+  return o;
+}
+
+Mesh makeColumn(const ColumnShape& s) {
+  Mesh m;
+  Rng rng(s.seed);
+  const int seg = s.flutes * 4, rings = 16;
+  float shaftR = s.radius;
+  float baseH = s.radius * 0.6f, capH = s.broken ? 0 : s.radius * 0.6f;
+  float shaftH = s.height - baseH - capH;
+  // a broken top: snapped at a slant, ragged
+  float breakTilt = s.broken ? s.radius * (0.6f + 0.8f * rng.uniform()) : 0;
+  float phase = rng.uniform() * kTwoPi;
+  // `height` is how tall it stood; broken, it snapped somewhere up its shaft
+  const float snap = shaftH * (0.6f + 0.25f * rng.uniform());
+  auto topAt = [&](float a) {
+    if (!s.broken) return shaftH;
+    float rag = 0.12f * s.radius * (std::sin(a * 7 + phase) + 0.5f * std::sin(a * 13 + phase * 2));
+    return snap - breakTilt * (0.5f + 0.5f * std::sin(a + phase)) + rag;
+  };
+  auto rAt = [&](float a, float t) {
+    float fl = 0.5f - 0.5f * std::cos(a * s.flutes);  // 0 at the ridge, 1 in the flute
+    float taper = 1 - 0.12f * t;                     // entasis: a little thinner up top
+    return shaftR * taper * (1 - s.fluteDepth * fl * fl);
+  };
+  // the shaft
+  uint32_t first = static_cast<uint32_t>(m.positions.size());
+  for (int j = 0; j <= rings; ++j)
+    for (int i = 0; i <= seg; ++i) {
+      float a = kTwoPi * i / seg, t = static_cast<float>(j) / rings;
+      float y = baseH + topAt(a) * t, r = rAt(a, y / s.height);
+      m.addVertex({r * std::cos(a), y, -r * std::sin(a)}, {std::cos(a), 0, -std::sin(a)}, {static_cast<float>(i) / seg, t});
+    }
+  for (int j = 0; j < rings; ++j)
+    for (int i = 0; i < seg; ++i) {
+      uint32_t a = first + j * (seg + 1) + i, c = a + seg + 1;
+      m.addQuad(a, a + 1, c + 1, c);
+    }
+  // the top: a capital, or a rough broken face
+  uint32_t ctr = m.addVertex({0, baseH + (s.broken ? snap - breakTilt * 0.5f : shaftH), 0}, {0, 1, 0}, {0.5f, 0.5f});
+  for (int i = 0; i <= seg; ++i) {
+    float a = kTwoPi * i / seg, y = baseH + topAt(a), r = rAt(a, y / s.height);
+    m.addVertex({r * std::cos(a), y, -r * std::sin(a)}, {0, 1, 0}, {0.5f + 0.5f * std::cos(a), 0.5f - 0.5f * std::sin(a)});
+  }
+  for (int i = 0; i < seg; ++i) m.addTriangle(ctr, ctr + 1 + i, ctr + 2 + i);
+  // base (a plinth and a torus-like moulding) and capital (moulding and a square abacus)
+  Mesh plinth = shapes::roundedBox({shaftR * 2.6f, baseH * 0.55f, shaftR * 2.6f}, shaftR * 0.05f, 2);
+  plinth.transform(Mat4::translation({0, baseH * 0.275f, 0}));
+  m.append(plinth);
+  Mesh moulding = shapes::lathe({{shaftR * 1.22f, baseH * 0.55f}, {shaftR * 1.25f, baseH * 0.7f}, {shaftR * 1.12f, baseH * 0.9f}, {shaftR * 1.0f, baseH}}, seg);
+  m.append(moulding);
+  if (!s.broken) {
+    float y0 = baseH + shaftH;
+    m.append(shapes::lathe({{shaftR * 0.88f, y0}, {shaftR * 1.12f, y0 + capH * 0.25f}, {shaftR * 1.3f, y0 + capH * 0.45f}}, seg));
+    Mesh abacus = shapes::roundedBox({shaftR * 2.7f, capH * 0.55f, shaftR * 2.7f}, shaftR * 0.04f, 2);
+    abacus.transform(Mat4::translation({0, y0 + capH * 0.725f, 0}));
+    m.append(abacus);
+  }
+  m.computeNormals();
+  return m;
+}
+
+LogMeshes makeLog(float length, float radius, uint32_t seed) {
+  LogMeshes o;
+  Rng rng(seed);
+  noise::Fractal f;
+  f.octaves = 3;
+  f.seed = seed;
+  std::vector<Vec3> path;
+  std::vector<float> radii;
+  const int seg = 16;
+  for (int i = 0; i <= seg; ++i) {
+    float t = static_cast<float>(i) / seg;
+    path.push_back({length * (t - 0.5f), radius + radius * 0.25f * std::sin(t * kPi), radius * 0.3f * std::sin(t * 3.1f + seed)});
+    radii.push_back(radius * (1 - 0.15f * t) * (0.9f + 0.2f * noise::fbm(Vec3(t * 4, 0, 0), f)));
+  }
+  o.bark = shapes::tube(path, radii, 14, false);
+  // knobbly bark
+  o.bark.displace([&](Vec3 p, Vec3) { return radius * 0.06f * noise::fbm(p * (6 / std::max(radius, 0.01f)), f); });
+  o.bark.computeNormals();
+  for (int e : {0, seg}) {
+    Vec3 dir = normalize(e == 0 ? path[0] - path[1] : path[seg] - path[seg - 1]);
+    Mesh d = shapes::cylinder(radii[e] * 0.98f, 0.01f, 14, true);
+    // the cylinder stands on Y: turn it to face along the log
+    Mat4 xf = Mat4::trs(path[e], Quat::fromTo({0, 1, 0}, dir), Vec3(1));
+    o.ends.append(d, xf);
+  }
+  return o;
+}
+
+Mesh makeWing(float span) {
+  Mesh m;
+  // a rounded triangle-ish card: wide at the outer edge, narrow at the hinge
+  card(m, {0, 0, 0}, {span, 0, 0}, {0, 0, 1}, {0, 1, 0}, span * 1.3f);
+  // and its back face, so it shows from below
+  card(m, {0, 0, 0}, {span, 0, 0}, {0, 0, -1}, {0, -1, 0}, span * 1.3f);
+  return m;
+}
+
+Mesh makeMote(float radius) { return shapes::icosphere(radius, 1); }
 
 }  // namespace loop

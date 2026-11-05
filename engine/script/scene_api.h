@@ -68,6 +68,26 @@ struct Stage {
     bool visible = true;
   };
   std::vector<Person> people;
+  // A model of several parts (a tree's bark and leaves, a flower, a log, a
+  // whole meadow of grass): one handle moves or hides them all.
+  struct Group {
+    std::vector<int> parts;  // placed indices
+    Vec3 position{0};
+    bool visible = true;
+  };
+  std::vector<Group> groups;
+  // Small creatures the engine moves itself each step (no script needed):
+  // butterflies (a body and two flapping wings) and fireflies (glowing motes).
+  struct Critter {
+    char kind = 'b';            // 'b' butterfly, 'f' firefly
+    std::vector<int> parts;     // placed: body, left wing, right wing (butterfly) or the mote
+    Vec3 home{0}, pos{0}, vel{0}, target{0};
+    float radius = 2, height = 1, phase = 0, speed = 1, size = 1, wait = 0;
+    uint32_t seed = 1;
+    bool visible = true;
+  };
+  std::vector<Critter> critters;
+  void updateCritters(float dt);
   struct SoundRef {
     int mixerId;
     Vec3 at{0};

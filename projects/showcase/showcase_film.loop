@@ -1,0 +1,33 @@
+# Film: a still life by a window. Before: the natural look. After: the twelve
+# film looks in turn, each with its own grade, glow, grain and bars.
+use "showcase_common"
+title "Film"
+mode "game"
+room_shell(size: vec(10, 4, 10), floor: "floorboards", walls: "plaster", lumens: 2500)
+box size: vec(2, 0.08, 1), at: vec(0, 0.8, -2), material: "walnut"
+for each lx in [-0.9, 0.9]
+  for each lz in [-2.4, -1.6]
+    box size: vec(0.06, 0.8, 0.06), at: vec(lx, 0.4, lz), material: "walnut"
+cylinder 0.12, 0.35, at: vec(-0.4, 1.02, -2), material: "green glass"
+sphere 0.09, at: vec(0.2, 0.93, -2.1), material: material(color: rgb(0.8, 0.15, 0.1), roughness: 0.3)
+sphere 0.08, at: vec(0.4, 0.92, -1.9), material: material(color: rgb(0.9, 0.7, 0.1), roughness: 0.35)
+sphere 0.07, at: vec(0.05, 0.91, -1.8), material: "brass"
+flower "poppy", at: vec(-0.4, 1.0, -2), size: 1.2
+light at: vec(-0.6, 1.4, -1.6), lumens: 300, kelvin: 2200, radius: 0.05
+panel_light at: vec(-4.8, 2, -2), facing: vec(1, 0, 0), size: vec(1.5, 1.5, 0), lumens: 4000, kelvin: 6000
+let cycling = yes
+let k = 0
+let names = ["blockbuster", "noir", "golden", "bleach", "seventies", "neon", "dream", "documentary", "horror", "arctic", "western"]
+to show(on)
+  cycling = on
+  if not on
+    look "natural"
+every 3 s
+  if cycling
+    let n = names[k % names.length]
+    look n, bars: 2.39 if k % 2 == 0 else 0
+    line "", "Look: " + n, seconds: 2.5
+    k += 1
+before_after(vec(3, 0, 3), show, what: "the twelve film looks")
+enter_room(depth: 10)
+door_back(depth: 10)
