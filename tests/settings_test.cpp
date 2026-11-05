@@ -166,3 +166,15 @@ TEST(settings_audio_categories) {
   Settings::get().set(Settings::kEditor, "audio.master", Json(0.0));
   CHECK(loudness(audio::Category::kEffects) < full * 1e-6);
 }
+
+// The live picture has no film grain unless asked for (it fizzed on the phone,
+// 2026-11-05), while a scene's own grain stays in its look for stills.
+TEST(settings_live_film_grain_is_off_by_default) {
+  Fresh f;
+  CHECK(!config().render.filmGrain);
+  Vm vm;
+  Stage st;
+  CHECK(run(vm, st, "look \"noir\", grain: 0.05\nsetting \"render.filmGrain\", yes\n"));
+  CHECK(std::fabs(st.scene.look.grain - 0.05f) < 1e-6f);
+  CHECK(config().render.filmGrain);
+}

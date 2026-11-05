@@ -72,6 +72,7 @@ Settings::Settings() {
   F("render.calm", r.calm, 0.5, 30, "seconds of steady frames before the resolution climbs");
   I("render.msaa", r.msaa, 1, 4, "multisampling of the scene pass: 1 off, 4 on");
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
+  B("render.filmGrain", r.filmGrain, "film grain in the live picture (off: no fizz; stills keep a scene's grain)");
   B("render.sunShadows", r.sunShadows, "the sun casts shadows");
   I("render.sunMapPhone", r.sunMapPhone, 256, 4096, "sun shadow map size on Phone");
   I("render.sunMapHigh", r.sunMapHigh, 512, 8192, "sun shadow map size on High");

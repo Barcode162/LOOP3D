@@ -702,7 +702,8 @@ fn grain(p : vec2f, t : f32) -> f32 {
     t = max(vec3f(0.0), t + vec3f(n * post.fx.z * (0.4 + 2.4 * g * (1.0 - g))));
   }
   var outc = toSrgb(clamp(t, vec3f(0.0), vec3f(1.0)));
-  outc += vec3f(grain(i.uv * vec2f(W, H) + 17.0, post.fx2.y) / 255.0);
+  // a still, invisible dither against banding (never re-rolled: nothing fizzes)
+  outc += vec3f(grain(i.uv * vec2f(W, H) + 17.0, 0.0) / 255.0);
   return vec4f(outc * post.screen.z, 1.0);
 }
 

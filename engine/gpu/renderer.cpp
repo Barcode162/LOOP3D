@@ -482,7 +482,9 @@ class GpuRenderer final : public Renderer {
     p.wb = {wb, look.distortion};
     p.lift = {look.lift, look.grainSize}, p.gamma = {look.gamma, look.bloomRadius / 0.02f}, p.gain = {look.gain, C.render.fxaa ? 1.0f : 0.0f};
     p.shadowTint = {look.shadowTint, 0}, p.highlightTint = {look.highlightTint, 0};
-    p.fx = {look.bloom, look.vignette, look.grain, look.letterbox};
+    // film grain only when asked for live: re-rolled every frame on a small phone
+    // canvas it reads as fizz, not film (stills always keep it)
+    p.fx = {look.bloom, look.vignette, C.render.filmGrain ? look.grain : 0.0f, look.letterbox};
     p.fx2 = {look.blackLevel, time, look.halation, look.chromaticAberration};
     p.screen = {static_cast<float>(outW_), static_cast<float>(outH_), fade, static_cast<float>(C.render.view)};
     queue_.WriteBuffer(postUbo_, 0, &p, sizeof p);

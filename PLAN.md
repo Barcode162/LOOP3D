@@ -3,7 +3,8 @@
 The order of work, top first. A step is done when it works on the user's phone.
 
 ## Next
-1. **A clean picture:** no live film grain, nothing that fizzes from frame to frame.
+1. **A clean picture:** no live film grain, nothing that fizzes from frame to frame. *(Built 2026-11-05; the
+   phone check is next.)*
 2. **See what the phone draws:** pictures of the live renderer taken here (software graphics in the test
    browser, used only for checking), and a work budget per quality level that a scene must fit.
 3. **Measured on the phone:** the user runs the benchmark once (`?bench=scene`): the baseline.

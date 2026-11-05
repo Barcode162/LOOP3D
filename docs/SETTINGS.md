@@ -75,6 +75,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 |---|---|---|---|---|---|---|
 | MSAA | `render.msaa` | 4 | 1 / 4 | live · script | `setting "render.msaa", 4` | Multisampling of the scene pass. Changes live (the pipelines are rebuilt). |
 | Edge smoothing (FXAA) | `render.fxaa` | false |  | live · script | `setting "render.fxaa", false` | Cheap smoothing of hard edges in the film pass; most useful with MSAA off. |
+| Film grain while playing | `render.filmGrain` | false |  | live · script | `setting "render.filmGrain", false` | Off: the live picture never fizzes. Stills and film frames always keep a scene's grain. |
 | Temporal anti-aliasing | `render.taa` | false |  | not built yet |  | Comes with temporal upscaling. |
 
 ### Sun shadows
@@ -647,4 +648,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-10 project.json · 130 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you
+10 project.json · 131 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you

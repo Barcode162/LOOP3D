@@ -27,6 +27,7 @@ struct Config {
     float calm = 3;                          // seconds steady before climbing
     int msaa = 4;
     bool fxaa = false;
+    bool filmGrain = false;  // live film grain (stills always keep a scene's grain)
     bool sunShadows = true;
     int sunMapPhone = 1024, sunMapHigh = 2048;
     float shadowDistance = 0;  // m half-width; 0 = the quality's own (25 / 40)

@@ -73,6 +73,7 @@ window.LE = window.LE || {};
       { title: 'Anti-aliasing', items: [
         en('render.msaa', 'MSAA', 4, opts([1, 'Off'], [4, '4x']), E({ help: 'Multisampling of the scene pass. Changes live (the pipelines are rebuilt).' })),
         tog('render.fxaa', 'Edge smoothing (FXAA)', false, E({ help: 'Cheap smoothing of hard edges in the film pass; most useful with MSAA off.' })),
+        tog('render.filmGrain', 'Film grain while playing', false, E({ help: 'Off: the live picture never fizzes. Stills and film frames always keep a scene\'s grain.' })),
         tog('render.taa', 'Temporal anti-aliasing', false, NB('Comes with temporal upscaling.')),
       ] },
       { title: 'Sun shadows', items: [
