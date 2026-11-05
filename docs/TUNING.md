@@ -28,7 +28,7 @@ The player has three live levels, picked from the menu or with `?quality=0|1|2`.
 | Sun shadow area | 25 m | 40 m | (traced) | how far around the camera sun shadows reach | wider area = blurrier shadow at the same map size | shadow map size |
 | Sun shadow softness | 12 taps | 12 taps | (traced) | soft, filtered edges | 12 texture reads per pixel | — |
 | Lamp shadows (ray-traced) | none | 2 lamps, 1 ray each | every lamp | real shadows from lamps, the brightest near the camera first; panels (windows, softboxes) never cast them live | **the most expensive live setting**: one ray per lamp per pixel costs about as much as all the other lighting (measured); 4 rays for soft edges cost 4 times that | `?lamps=N&rays=N`, resolution |
-| Depth pre-pass | off | on | — | depth first, then light only the nearest surface | one extra geometry pass | pays only when lighting is dear (lamp shadow rays); phone GPUs skip hidden pixels themselves |
+| Depth pre-pass | off | off (`?prepass=1`) | — | depth first, then light only the nearest surface | one extra geometry pass | measured no faster; needs both passes to give exactly the same depth, which Apple GPUs don't promise |
 | Lamps lit per pixel | up to 256 | up to 256 | 1 random lamp per bounce | every lamp lights every pixel it reaches | small per lamp, but adds up past ~30 | clustered lights (planned) |
 | Bounces | 1 (plus sky) | 1 (plus sky) | 5 | light bouncing off walls (Ultra is a path tracer) | Ultra: a full ray path per pixel per frame | denoiser, resolution |
 | Denoiser | — | — | 4 passes (à-trous) | turns Ultra's noise into a clean picture | 4 blur passes | history length |
@@ -42,7 +42,7 @@ The player has three live levels, picked from the menu or with `?quality=0|1|2`.
 
 | Control | Now | What it does | Why |
 |---|---|---|---|
-| **Automatic resolution** | checks once a second against a steady 60 (or every frame the screen asks for, if fewer): below 88%, a step down (two if below 60%); calm 3 s, a step up, never straight back to a size that was too slow; that limit lifts a step after 20 calm seconds (not on Ultra, which restarts its picture on every change). Steps: 100, 87, 75, 65, 56, 50, 42, 35% | keeps the frame rate up by drawing fewer pixels | the GPU is the bottleneck in every scene we've measured (CPU is under 1.5 ms a frame) |
+| **Automatic resolution** | judged about once a second **of real time**: when frames are missing (below 88% of a steady 60, or of the screen's rate if lower) *and* the GPU's time per frame explains it, it jumps straight to the size that should fit; no finished frame for 2 s, the smallest size at once; calm 3 s and the next size should fit, a step up, never straight back to a size that was too slow (that limit lifts after 20 calm seconds, not on Ultra). Steps: 100, 87, 75, 65, 56, 50, 42, 35% | keeps the frame rate up by drawing fewer pixels | it reads real time and the GPU's own "done" times, because an overloaded GPU makes the browser stop asking for frames: counting skipped frames, or adding up frame times, then never sees the problem |
 | **Free resolution changes** | the scene is drawn into the top-left part of full-size targets; the post passes read that part and stretch it to the screen | a change costs nothing: no new textures, no canvas resize | before, every change re-made the canvas and every target (hundreds of MB), and the old ones lingered until garbage collection |
 | **Frame gate** | at most 2 frames waiting on the GPU | a slow GPU drops a frame instead of falling seconds behind | keeps delay low |
 | **Watchdog** | no "done" from the GPU for 2 s → stop waiting, and ignore those frames' signals if they turn up | stops a permanent freeze | before, late signals were still counted, so the gate let more and more frames pile up on the GPU |
@@ -124,7 +124,8 @@ The results also record the build, the GPU's name, the browser, the screen and t
 |---|---|
 | `?quality=0\|1\|2` | Phone, High, Ultra |
 | `?msaa=1\|4` | anti-aliasing off or 4× |
-| `?skip=N` | skip passes (add up): 1 sun shadow, 2 scene, 4 exposure, 8 bloom, 16 film, 32 shadow pass, 64 scene pass, 128 depth, 256 draw off-screen, 512 no lamp shadows, 1024 no depth pre-pass |
+| `?skip=N` | skip passes (add up): 1 sun shadow, 2 scene, 4 exposure, 8 bloom, 16 film, 32 shadow pass, 64 scene pass, 128 depth, 256 draw off-screen, 512 no lamp shadows |
+| `?prepass=1` | the depth pre-pass on High |
 | `?res=0.2…1` | hold the resolution (no automatic changes), to compare costs fairly |
 | `?lamps=N&rays=N` | lamp shadows: how many lamps cast them, rays per big lamp (soft edges need 4) |
 | `?view=1\|2\|3\|4` | debug views: raw light, exposure, bloom, ray work (blue little, red 200+ steps per pixel) |
@@ -178,7 +179,7 @@ Ranked by how much they help smoothness. **Done** means it's in the engine now.
 | Ray trees built only when used (High's lamp shadows, Ultra) | **Done** | Phone loads scenes faster and does no ray work per frame |
 | Tree walk: test both children first, nearer first, read only needed fields, stacks made once | **Done** | same shadows, less work; helps Ultra most |
 | **Clustered lights** (a compute pass sorts lamps into screen tiles; each pixel loops only its tile's lamps) | Next | scenes with 30+ lamps (markets, the Undercity) cost little more than scenes with 3 |
-| Depth pre-pass (shade each pixel once, not once per overlapping thing) | **Done** (High) | hidden surfaces cost no shadow rays |
+| Depth pre-pass (shade each pixel once, not once per overlapping thing) | Built, off (`?prepass=1`) | measured no gain yet; needs `@invariant` positions before it's safe on Apple GPUs |
 | MSAA samples discarded after the resolve | **Done** | the 4 samples per pixel were being written to memory every frame (costly on phones) |
 | Cached sun shadows (redraw only what moved) | Later | the shadow pass nearly disappears in still scenes |
 
@@ -205,7 +206,9 @@ Ranked by how much they help smoothness. **Done** means it's in the engine now.
 
 ## 8. What went wrong on 4 November, and why
 
-The afternoon's "fix lag and freezes" made things worse, and the tests didn't show it:
+**The root cause (found by building each of the day's versions and running them at phone size):** the morning's lamp-shadow change (`7346c7f`) put ray tracing into every pixel of every quality, Phone too (3 lamps x 4 rays), making each frame about ten times heavier. That alone is "slow", not "broken". What made it never come back was the automatic resolution: it looked for frames the browser asked for but we had to skip, and kept time by adding up frame times capped at 0.1 s. An overloaded GPU makes the browser stop asking for frames, so nothing was ever "skipped", and at one frame every 10 seconds its one-second clock took over a minute to tick once. So the control built to rescue a slow GPU never fired, on any quality, in any scene. It now keeps real time and reads the GPU's own times (and Phone no longer traces rays at all).
+
+The other problems that day, all fixed:
 
 1. **The tests were blind.** Headless Chromium loses the WebGPU device as soon as a canvas is configured, so the GPU never said a frame was done. Every frame came from the watchdog, and the slow numbers were blamed on the software GPU. Now: test on a virtual display (`xvfb-run -a node tools/web_check.js …`).
 2. **Ultra's buffers were made on every quality** at every resize (about 80 bytes a pixel), and at laptop sizes on Ultra they passed WebGPU's 128 MB default limit: every frame was invalid, a black screen.
