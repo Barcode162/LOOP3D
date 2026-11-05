@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-05** · "I have perms": Emscripten now installs here (the web player builds in 27 s); a cloud setup,
+  **J Production (Loop3D)**, does it at every session start. Starting workflows from Claude is still refused by
+  GitHub (the app's own permission), so publishing stays on the `gh-pages` route.
 - **2026-11-05** · Published `4096756` to https://barcode162.github.io/LOOP3D/ (GitHub's own build, pictured here
   first): no live grain; the bar at its hidden link `#bar` (draws at Phone quality; High is too heavy for the
   software GPU: the next steps). GitHub refuses workflow starts from Claude, so the build went on `gh-pages` directly.

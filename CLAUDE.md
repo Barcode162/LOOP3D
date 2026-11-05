@@ -15,7 +15,8 @@ what to look at on the phone. Never make them learn a file, a tool or a command.
    deleting their things, a change of direction): one question, your recommendation first.
 3. **Quick checks always run before a push:** `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build
    build && ./build/loop_tests` (seconds). A bug you fix gets a test. Slow browser checks only when they cover
-   what changed.
+   what changed. The web player: `source /opt/emsdk/emsdk_env.sh && ./tools/build_site.sh` (about 30 s; the
+   cloud setup **J Production (Loop3D)** installs Emscripten 6.0.13 there and builds the engine at each start).
 4. **Commit small, push `main`.** GitHub's **Check** tests and builds every push. The public player changes only
    when it's published: the **Publish the player** workflow (by hand), or, where Claude can't start workflows,
    the `site` artifact of a green Check put on `gh-pages` as one new commit. Then open the live page to check it.
