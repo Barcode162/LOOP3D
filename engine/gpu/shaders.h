@@ -299,7 +299,8 @@ fn lampVisibility(p : vec3f, L : Light, pix : vec2f) -> f32 {
   let dist = length(toL);
   if (dist <= r) { return 1.0; }
   let dir = toL / dist;
-  if (r < 0.04) {
+  let rays = max(u32(frame.fixedExposure.y), 1u);
+  if (r < 0.04 || rays == 1u) {
     return select(0.0, 1.0, traceRay(p, dir, 1e-4, dist - r, true).tri == 0xffffffffu);
   }
   // interleaved gradient noise: a stable, even pattern from pixel to pixel
@@ -308,16 +309,22 @@ fn lampVisibility(p : vec3f, L : Light, pix : vec2f) -> f32 {
   let t = normalize(cross(select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), a), dir));
   let b = cross(dir, t);
   var seen = 0.0;
-  for (var k = 0; k < 4; k++) {
-    let ang = (f32(k) + ign) * 1.5707963;
-    let rad = r * sqrt((f32(k) + 0.5) / 4.0);
+  let share = 1.0 / f32(rays);
+  for (var k = 0u; k < rays; k++) {
+    let ang = (f32(k) + ign) * 6.2831853 * share;
+    let rad = r * sqrt((f32(k) + 0.5) * share);
     let q = L.pos.xyz + (t * cos(ang) + b * sin(ang)) * rad;
     let d = q - p;
     let len = length(d);
-    if (traceRay(p, d / len, 1e-4, len - 0.01, true).tri == 0xffffffffu) { seen += 0.25; }
+    if (traceRay(p, d / len, 1e-4, len - 0.01, true).tri == 0xffffffffu) { seen += share; }
   }
   return seen;
 }
+
+// Lamp shadows are compiled out when a quality casts none: a shader keeps
+// GPU registers for its heaviest path even when that path never runs, so the
+// ray code alone would slow every pixel.
+override kLampShadows : bool = true;
 
 fn shade(i : VsOut, front : bool) -> Shaded {
   let m = materials[i.mat];
@@ -415,7 +422,10 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
     // a real shadow: can this point see the lamp? (rays through the scene)
-    if (shadowed < u32(frame.params.y) && dot(I, vec3f(0.3333)) * preExposure() > 2e-4) {
+    // panels (windows, softboxes) are left unshadowed: their real shadows are
+    // so soft they barely show, and one ray to their middle would cost the
+    // most of any lamp (long rays across a whole room) for a wrong, hard edge
+    if (kLampShadows && L.dir.w < 1.5 && shadowed < u32(frame.params.y) && dot(I, vec3f(0.3333)) * preExposure() > 2e-4) {
       shadowed += 1u;
       I *= lampVisibility(i.world + ng * 0.004, L, i.clip.xy);
       if (dot(I, I) == 0.0) { continue; }
@@ -465,6 +475,10 @@ fn shade(i : VsOut, front : bool) -> Shaded {
 
 @fragment fn fsOpaque(i : VsOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
   let s = shade(i, front);
+  if (frame.fixedExposure.z > 3.5) {  // ?view=4: ray work, blue (little) to red (200+ steps)
+    let k = clamp(f32(rayWork) / 200.0, 0.0, 1.0);
+    return vec4f(k, 1.0 - abs(k * 2.0 - 1.0), 1.0 - k, 1.0) * select(1.0, 0.15, rayWork == 0u);
+  }
   return vec4f(exposed(s.color), 1.0);
 }
 @fragment fn fsGlass(i : VsOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
@@ -485,6 +499,16 @@ struct ShadowOut {
   o.uv = v.uv;
   o.mat = inst.material.x;
   return o;
+}
+// The depth pre-pass: only where surfaces are (leaves cut to shape), so the
+// expensive lighting runs once per pixel, not once per surface behind it.
+@fragment fn fsDepth(i : VsOut) {
+  let m = materials[i.mat];
+  if (m.extra.z > 0.5) {
+    let y = 1.0 - i.uv.y;
+    let x = (i.uv.x - 0.5) * 2.0;
+    if (abs(x) > sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95) { discard; }
+  }
 }
 @fragment fn fsShadow(i : ShadowOut) {
   let m = materials[i.mat];
@@ -536,6 +560,13 @@ struct Post {
 @group(0) @binding(2) var bloomTex : texture_2d<f32>;
 @group(0) @binding(3) var linearSampler : sampler;
 @group(0) @binding(4) var<storage, read> exposureBuf : array<f32>;
+// where this pass's two pictures are: the frame is drawn into the top-left
+// part of full-size targets (automatic resolution), so uv * scale reaches it,
+// clamped to its edge texels (nothing from outside it, nothing wrapped round)
+struct PassU { a : vec4f, b : vec4f };  // per picture: xy uv scale, zw largest uv
+@group(0) @binding(5) var<uniform> pu : PassU;
+fn inA(uv : vec2f) -> vec2f { return clamp(uv, 0.5 / vec2f(textureDimensions(hdr)), pu.a.zw); }
+fn inB(uv : vec2f) -> vec2f { return clamp(uv, 0.5 / vec2f(textureDimensions(bloomTex)), pu.b.zw); }
 
 struct Out {
   @builtin(position) clip : vec4f,
@@ -594,25 +625,27 @@ fn grain(p : vec2f, t : f32) -> f32 {
     let barH = (H - W / post.fx.w) * 0.5 / H;
     if (barH > 0.0 && (i.uv.y < barH || i.uv.y > 1.0 - barH)) { return vec4f(0.0, 0.0, 0.0, 1.0); }
   }
+  let huv = i.uv * pu.a.xy;  // in the picture
+  let buv = inB(i.uv * pu.b.xy);  // in the bloom
   if (post.screen.w > 0.5) {  // debug views
-    let raw = textureSampleLevel(hdr, linearSampler, i.uv, 0.0).rgb;
-    if (post.screen.w < 1.5) { return vec4f(clamp(raw, vec3f(0.0), vec3f(1.0)), 1.0); }
+    let raw = textureSampleLevel(hdr, linearSampler, inA(huv), 0.0).rgb;
+    if (post.screen.w < 1.5 || post.screen.w > 3.5) { return vec4f(clamp(raw, vec3f(0.0), vec3f(1.0)), 1.0); }
     if (post.screen.w < 2.5) { return vec4f(exposureBuf[0] * 1000.0, exposureBuf[1] * 1000.0, 0.0, 1.0); }
-    let b = textureSampleLevel(bloomTex, linearSampler, i.uv, 0.0).rgb;
+    let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb;
     return vec4f(clamp(b, vec3f(0.0), vec3f(1.0)), 1.0);
   }
   let cuv = i.uv - 0.5;
   let r2 = dot(cuv, cuv) * 2.0;
   // lens fringes
-  let ca = post.fx2.w / W;
-  var c = vec3f(textureSampleLevel(hdr, linearSampler, i.uv + cuv * ca, 0.0).r,
-                textureSampleLevel(hdr, linearSampler, i.uv, 0.0).g,
-                textureSampleLevel(hdr, linearSampler, i.uv - cuv * ca, 0.0).b);
+  let ca = cuv * (post.fx2.w / W) * pu.a.xy;
+  var c = vec3f(textureSampleLevel(hdr, linearSampler, inA(huv + ca), 0.0).r,
+                textureSampleLevel(hdr, linearSampler, inA(huv), 0.0).g,
+                textureSampleLevel(hdr, linearSampler, inA(huv - ca), 0.0).b);
   // the picture was stored at exposureBuf[1]; the eyes now want exposureBuf[0]
   let ratio = select(1.0, exposureBuf[0] / max(exposureBuf[1], 1e-12), post.exposure.z > 0.5);
   let exposure = ratio * exp2(post.exposure.y);
   c *= exposure;
-  let b = textureSampleLevel(bloomTex, linearSampler, i.uv, 0.0).rgb * exposure;
+  let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb * exposure;
   c = c + (b - min(c, vec3f(8.0))) * post.fx.x;
   c += b * vec3f(1.0, 0.25, 0.05) * post.fx2.z * 0.5;
   c *= post.wb.rgb;
@@ -654,8 +687,9 @@ fn grain(p : vec2f, t : f32) -> f32 {
   let o = array<vec2f, 13>(vec2f(0, 0), vec2f(-1, -1), vec2f(1, -1), vec2f(-1, 1), vec2f(1, 1), vec2f(-2, -2), vec2f(0, -2), vec2f(2, -2),
                             vec2f(-2, 0), vec2f(2, 0), vec2f(-2, 2), vec2f(0, 2), vec2f(2, 2));
   let w = array<f32, 13>(0.125, 0.125, 0.125, 0.125, 0.125, 0.03125, 0.0625, 0.03125, 0.0625, 0.0625, 0.03125, 0.0625, 0.03125);
+  let suv = i.uv * pu.a.xy;
   for (var k = 0; k < 13; k++) {
-    var s = textureSampleLevel(hdr, linearSampler, i.uv + o[k] * px, 0.0).rgb;
+    var s = textureSampleLevel(hdr, linearSampler, inA(suv + o[k] * px), 0.0).rgb;
     let bad = (bitcast<vec3u>(s) & vec3u(0x7fffffffu)) >= vec3u(0x7f800000u);
     s = select(s, vec3f(0.0), bad);
     let l = lum(s);
@@ -673,7 +707,7 @@ fn grain(p : vec2f, t : f32) -> f32 {
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
       let w = select(select(0.0625, 0.125, x == 0 || y == 0), 0.25, x == 0 && y == 0);
-      c += textureSampleLevel(hdr, linearSampler, i.uv + vec2f(f32(x), f32(y)) * px * 1.5, 0.0).rgb * w;
+      c += textureSampleLevel(hdr, linearSampler, inA(i.uv * pu.a.xy + vec2f(f32(x), f32(y)) * px * 1.5), 0.0).rgb * w;
     }
   }
   return vec4f(c, 1.0);
@@ -705,6 +739,9 @@ struct RInst {
 @group(2) @binding(3) var<storage, read> rTlas : array<RNode>;
 
 struct RayHit { t : f32, tri : u32, inst : u32, u : f32, v : f32 };
+// how much work this pixel's rays took (boxes and triangles tested), for the
+// ?view=4 heat map
+var<private> rayWork : u32 = 0u;
 
 fn rayBox(lo : vec3f, hi : vec3f, o : vec3f, inv : vec3f, tmax : f32) -> f32 {
   let t0 = (lo - o) * inv;
@@ -728,66 +765,106 @@ fn leafCut(uv : vec2f) -> bool {
   return abs(x) > sin(3.14159265 * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95;
 }
 
+// a leaf card's texture position at a hit, read straight from the buffer
+fn triUvAt(q : u32, u : f32, v : f32) -> vec2f {
+  let uv0 = vec2f(rTris[q].n0.w, rTris[q].n1.w);
+  let uv1 = vec2f(rTris[q].n2.w, rTris[q].e1.w);
+  let uv2 = vec2f(rTris[q].e2.w, rTris[q].v0.w);
+  return uv0 * (1.0 - u - v) + uv1 * u + uv2 * v;
+}
+
 // The nearest hit along o + d t, t in (tmin, tmax). `shadow`: stop at the
 // first blocker, and let glowing things and glass through (the light comes
 // from them, or passes them).
+// Both trees are walked the same way: a node's two children are tested
+// before either is visited, only the ones the ray meets are visited, the
+// nearer first (the other waits on a small stack), and only the parts of
+// each record that are needed are read.
 fn traceRay(o : vec3f, d : vec3f, tmin : f32, tmax : f32, shadow : bool) -> RayHit {
   var h = RayHit(tmax, 0xffffffffu, 0xffffffffu, 0.0, 0.0);
   if (arrayLength(&rTlas) == 0u || arrayLength(&rInst) == 0u) { return h; }
   let inv = 1.0 / select(d, vec3f(1e-20), abs(d) < vec3f(1e-20));
+  if (rayBox(rTlas[0].lo.xyz, rTlas[0].hi.xyz, o, inv, h.t) >= 1e29) { return h; }
+  // the stacks, made once per ray (WGSL fills every new array with zeros:
+  // made inside the loop, that would happen for every shape the ray meets)
   var top : array<u32, 32>;
-  var tsp = 1;
-  top[0] = 0u;
-  while (tsp > 0) {
-    tsp -= 1;
-    let n = rTlas[top[tsp]];
-    if (rayBox(n.lo.xyz, n.hi.xyz, o, inv, h.t) >= 1e29) { continue; }
-    let first = bitcast<u32>(n.lo.w);
-    let count = bitcast<u32>(n.hi.w);
+  var st : array<u32, 48>;
+  var tsp = 0;
+  var node = 0u;
+  loop {
+    rayWork += 1u;
+    let first = bitcast<u32>(rTlas[node].lo.w);
+    let count = bitcast<u32>(rTlas[node].hi.w);
     if (count == 0u) {
-      if (tsp < 30) { top[tsp] = first; top[tsp + 1] = first + 1u; tsp += 2; }
-      continue;
-    }
-    for (var k = first; k < first + count; k++) {
-      let ins = rInst[k];
-      if (shadow && (ins.info.z & 3u) != 0u) { continue; }
-      // the ray in the shape's own space (not renormalised: t stays the same)
-      let lo = (ins.inv * vec4f(o, 1.0)).xyz;
-      let ld = (ins.inv * vec4f(d, 0.0)).xyz;
-      let linv = 1.0 / select(ld, vec3f(1e-20), abs(ld) < vec3f(1e-20));
-      var st : array<u32, 48>;
-      var sp = 1;
-      st[0] = ins.info.x;
-      while (sp > 0) {
-        sp -= 1;
-        let b = rBlas[st[sp]];
-        if (rayBox(b.lo.xyz, b.hi.xyz, lo, linv, h.t) >= 1e29) { continue; }
-        let bf = bitcast<u32>(b.lo.w);
-        let bc = bitcast<u32>(b.hi.w);
-        if (bc == 0u) {
-          if (sp < 46) { st[sp] = bf; st[sp + 1] = bf + 1u; sp += 2; }
-          continue;
-        }
-        for (var q = bf; q < bf + bc; q++) {
-          let tr = rTris[q];
-          let p = cross(ld, tr.e2.xyz);
-          let det = dot(tr.e1.xyz, p);
-          if (abs(det) < 1e-14) { continue; }
-          let id = 1.0 / det;
-          let sv = lo - tr.v0.xyz;
-          let u = dot(sv, p) * id;
-          if (u < 0.0 || u > 1.0) { continue; }
-          let qv = cross(sv, tr.e1.xyz);
-          let v = dot(ld, qv) * id;
-          if (v < 0.0 || u + v > 1.0) { continue; }
-          let t = dot(tr.e2.xyz, qv) * id;
-          if (t <= tmin || t >= h.t) { continue; }
-          if ((ins.info.z & 4u) != 0u && leafCut(triUv(tr, u, v))) { continue; }
-          h = RayHit(t, q, k, u, v);
-          if (shadow) { return h; }
+      let ta = rayBox(rTlas[first].lo.xyz, rTlas[first].hi.xyz, o, inv, h.t);
+      let tb = rayBox(rTlas[first + 1u].lo.xyz, rTlas[first + 1u].hi.xyz, o, inv, h.t);
+      if (ta < 1e29 && tb < 1e29) {
+        let aFirst = ta <= tb;
+        node = select(first + 1u, first, aFirst);
+        if (tsp < 32) { top[tsp] = select(first, first + 1u, aFirst); tsp += 1; }
+        continue;
+      }
+      if (ta < 1e29) { node = first; continue; }
+      if (tb < 1e29) { node = first + 1u; continue; }
+    } else {
+      for (var k = first; k < first + count; k++) {
+        let info = rInst[k].info;
+        if (shadow && (info.z & 3u) != 0u) { continue; }
+        // the ray in the shape's own space (not renormalised: t stays the same)
+        let m = rInst[k].inv;
+        let lo = (m * vec4f(o, 1.0)).xyz;
+        let ld = (m * vec4f(d, 0.0)).xyz;
+        let linv = 1.0 / select(ld, vec3f(1e-20), abs(ld) < vec3f(1e-20));
+        let leafy = (info.z & 4u) != 0u;
+        var bn = info.x;
+        if (rayBox(rBlas[bn].lo.xyz, rBlas[bn].hi.xyz, lo, linv, h.t) >= 1e29) { continue; }
+        var sp = 0;
+        loop {
+          rayWork += 1u;
+          let bf = bitcast<u32>(rBlas[bn].lo.w);
+          let bc = bitcast<u32>(rBlas[bn].hi.w);
+          if (bc == 0u) {
+            let ta = rayBox(rBlas[bf].lo.xyz, rBlas[bf].hi.xyz, lo, linv, h.t);
+            let tb = rayBox(rBlas[bf + 1u].lo.xyz, rBlas[bf + 1u].hi.xyz, lo, linv, h.t);
+            if (ta < 1e29 && tb < 1e29) {
+              let aFirst = ta <= tb;
+              bn = select(bf + 1u, bf, aFirst);
+              if (sp < 48) { st[sp] = select(bf, bf + 1u, aFirst); sp += 1; }
+              continue;
+            }
+            if (ta < 1e29) { bn = bf; continue; }
+            if (tb < 1e29) { bn = bf + 1u; continue; }
+          } else {
+            for (var q = bf; q < bf + bc; q++) {
+              rayWork += 1u;
+              let e1 = rTris[q].e1.xyz;
+              let e2 = rTris[q].e2.xyz;
+              let p = cross(ld, e2);
+              let det = dot(e1, p);
+              if (abs(det) < 1e-14) { continue; }
+              let id = 1.0 / det;
+              let sv = lo - rTris[q].v0.xyz;
+              let u = dot(sv, p) * id;
+              if (u < 0.0 || u > 1.0) { continue; }
+              let qv = cross(sv, e1);
+              let v = dot(ld, qv) * id;
+              if (v < 0.0 || u + v > 1.0) { continue; }
+              let t = dot(e2, qv) * id;
+              if (t <= tmin || t >= h.t) { continue; }
+              if (leafy && leafCut(triUvAt(q, u, v))) { continue; }
+              h = RayHit(t, q, k, u, v);
+              if (shadow) { return h; }
+            }
+          }
+          if (sp == 0) { break; }
+          sp -= 1;
+          bn = st[sp];
         }
       }
     }
+    if (tsp == 0) { break; }
+    tsp -= 1;
+    node = top[tsp];
   }
   return h;
 }

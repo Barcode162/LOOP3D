@@ -1,16 +1,23 @@
-// Opens the player in headless Chromium (WebGPU on SwiftShader), lets it run,
-// and saves what the canvas shows (copied inside the page, since headless
-// screenshots don't see WebGPU canvases). Prints the page's problems.
-//   node tools/web_check.js <url> <out.png> [seconds] [width] [height]
+// Opens the player in Chromium (WebGPU on SwiftShader), lets it run, and saves
+// what the canvas shows (copied inside the page). Prints the page's problems.
+//   xvfb-run -a node tools/web_check.js <url> <out.png> [seconds] [width] [height]
+//
+// Run it on a (virtual) display, as above. Headless Chromium loses the WebGPU
+// device the moment a canvas is configured ("A valid external Instance
+// reference no longer exists"): the GPU never says a frame is done, so every
+// number measured that way (fps, GPU ms, hitches) is the watchdog's, not the
+// engine's. SwiftShader also runs the whole pixel shader once per MSAA sample,
+// so add &msaa=1 to judge shader costs the way a real GPU pays them.
 const { chromium } = require('playwright');
 const fs = require('fs');
 (async () => {
   const [url, out, wait = '6', w = '640', h = '360'] = process.argv.slice(2);
   const exe = fs.readdirSync('/opt/pw-browsers').filter((d) => d.startsWith('chromium-'))[0];
+  if (!process.env.DISPLAY) console.log('warning: no display, so headless: WebGPU canvases lose their device there (run under xvfb-run -a)');
   const browser = await chromium.launch({
     headless: !process.env.DISPLAY,
     executablePath: `/opt/pw-browsers/${exe}/chrome-linux64/chrome`,
-    args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--use-webgpu-adapter=swiftshader'],
+    args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-webgpu-adapter=swiftshader', '--disable-vulkan-surface'],
   });
   const page = await browser.newPage({ viewport: { width: +w, height: +h } });
   const errors = [];

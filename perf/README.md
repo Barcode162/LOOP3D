@@ -8,4 +8,4 @@ Every benchmark run of the Loop3D player, kept as data.
 
 Add runs with `tools/perf_add.py result.json`. It rebuilds the two tables, which feed the Smoothness Tracker. What each number means is in [`docs/TUNING.md`](../docs/TUNING.md), section 5.
 
-Runs on "SwiftShader (software, test machine)" come from the headless browser on Claude's build machine. They check that recording works; their numbers don't describe a real GPU.
+Runs on "SwiftShader (software, test machine)" come from Claude's build machine. They check that recording works; their numbers don't describe a real GPU. The two runs from 4 November were made headless, where WebGPU canvases lose their device: their frames came from the watchdog, so their numbers mean nothing at all (see docs/TUNING.md, section 8).
