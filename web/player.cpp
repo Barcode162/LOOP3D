@@ -297,6 +297,7 @@ void startScript(const std::string& src) {
   g.stage->autoplay = g.autoplay;
   installStandardLibrary(*g.vm);
   installSceneApi(*g.vm, *g.stage);
+  g.stage->folder = "/scene";  // the page puts the scene's models in /scene/models
   g.vm->onSay = [](const std::string& s) { EM_ASM({ if (window.loopSay) window.loopSay(UTF8ToString($0)); }, s.c_str()); };
   g.problems.clear();
   g.vm->load(src, "scene.loop");

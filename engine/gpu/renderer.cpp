@@ -95,6 +95,8 @@ struct LightU {
 };
 struct MaterialU {
   Vec4 base, props, emission, pattern, colorB, extra;
+  Vec4 tex;   // picture layers: colour, roughness/metal, normal, glow (-1 none)
+  Vec4 tex2;  // alpha cutoff, -, -, -
 };
 struct InstanceU {
   Mat4 model;
@@ -156,6 +158,7 @@ class GpuRenderer final : public Renderer {
       maxBinding_ = lim.maxStorageBufferBindingSize;
       maxBufferSize_ = lim.maxBufferSize;
       maxTexture_ = lim.maxTextureDimension2D;
+      maxLayers_ = lim.maxTextureArrayLayers;
     }
     wgpu::SurfaceCapabilities caps;
     surface_.GetCapabilities(adapter_, &caps);
@@ -180,6 +183,12 @@ class GpuRenderer final : public Renderer {
     cs.magFilter = cs.minFilter = wgpu::FilterMode::Linear;
     cs.compare = wgpu::CompareFunction::LessEqual;
     shadowSampler_ = device_.CreateSampler(&cs);
+    wgpu::SamplerDescriptor rs;
+    rs.magFilter = rs.minFilter = wgpu::FilterMode::Linear;
+    rs.mipmapFilter = wgpu::MipmapFilterMode::Linear;
+    rs.addressModeU = rs.addressModeV = rs.addressModeW = wgpu::AddressMode::Repeat;
+    rs.maxAnisotropy = 4;
+    repeat_ = device_.CreateSampler(&rs);
     g_samples = config().render.msaa > 1 ? 4 : 1;
     for (auto& u : passUbo_) u = buffer(sizeof(PassU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     buildPipelines();
@@ -251,6 +260,7 @@ class GpuRenderer final : public Renderer {
       bindGroupsDirty_ = true;
     }
     lightsDirty_ = true;
+    if (lastScene_ && texSize_ != std::clamp(config().render.textureSize, 16, 2048)) uploadModelTextures(*lastScene_);
     ultraFrame_ = 0;  // Ultra starts its picture again with the new settings
     if (lastScene_ && needRays() && raysBuiltFor_ != static_cast<int>(quality_)) {
       buildRayMeshes(*lastScene_);
@@ -263,6 +273,7 @@ class GpuRenderer final : public Renderer {
   int framesInFlight() const override { return gs_->inFlight; }
 
   void sync(const Scene& scene, bool geometryChanged, bool skyChanged) override {
+    if (scene.textures.size() != texUploaded_ || texSize_ != std::clamp(config().render.textureSize, 16, 2048)) uploadModelTextures(scene);
     if (geometryChanged || meshes_.size() != scene.meshes.size()) {
       for (size_t i = meshes_.size(); i < scene.meshes.size(); ++i) meshes_.push_back(upload(scene.meshes[i]));
     }
@@ -278,6 +289,9 @@ class GpuRenderer final : public Renderer {
       if (m.pattern.kind == Pattern::Kind::kImage) u.pattern.x = 0;
       u.colorB = {m.pattern.colorB, m.pattern.roughnessVariation};
       u.extra = {m.subsurface, m.translucency + m.subsurface * 0.4f, m.leafShape ? 1.0f : 0.0f, m.ior};
+      auto layer = [&](int t) { return t >= 0 && t < static_cast<int>(texLayer_.size()) ? static_cast<float>(texLayer_[t]) : -1.0f; };
+      u.tex = {layer(m.baseTexture), layer(m.metalRoughTexture), layer(m.normalTexture), layer(m.emissiveTexture)};
+      u.tex2 = {m.alphaCutoff, m.roughnessMin, 0, 0};
     }
     ensureStorage(materialsBuf_, materialsCap_, sizeof(MaterialU), mats.size());
     queue_.WriteBuffer(materialsBuf_, 0, mats.data(), mats.size() * sizeof(MaterialU));
@@ -941,7 +955,9 @@ class GpuRenderer final : public Renderer {
       st2.binding = 4;
       denoiseLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C, true), st2, ssbo(5, C)});
     }
-    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F)});
+    wgpu::BindGroupLayoutEntry arr = tex(4, F);
+    arr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
+    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F)});
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
     std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl;
@@ -1105,6 +1121,79 @@ class GpuRenderer final : public Renderer {
     td.usage = wgpu::TextureUsage::RenderAttachment;
     shadowDummyTex_ = device_.CreateTexture(&td);
     shadowDummy_ = shadowDummyTex_.CreateView();
+    bindGroupsDirty_ = true;
+  }
+
+  // Every model picture onto its own layer of one texture stack, resized to
+  // render.textureSize square (a square holds any picture: models read it by
+  // 0..1 coordinates), with each smaller copy averaged from the one above.
+  void uploadModelTextures(const Scene& scene) {
+    int S = std::clamp(config().render.textureSize, 16, 2048);
+    S = std::min<int>(S, static_cast<int>(maxTexture_));
+    uint32_t n = static_cast<uint32_t>(std::min<size_t>(scene.textures.size(), maxLayers_));
+    if (scene.textures.size() > n) reportGpuError("more model pictures than this GPU can hold; the rest show plain colours");
+    texLayer_.assign(scene.textures.size(), -1);
+    int levels = 1;
+    while ((S >> levels) >= 1 && levels < 12) ++levels;
+    wgpu::TextureDescriptor td;
+    td.size = {static_cast<uint32_t>(S), static_cast<uint32_t>(S), std::max(n, 1u)};
+    td.format = wgpu::TextureFormat::RGBA8Unorm;
+    td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+    td.mipLevelCount = static_cast<uint32_t>(levels);
+    if (modelTex_) modelTex_.Destroy();
+    modelTex_ = device_.CreateTexture(&td);
+    std::vector<uint8_t> level(static_cast<size_t>(S) * S * 4), next;
+    for (uint32_t layer = 0; layer < n; ++layer) {
+      const Texture& t = scene.textures[layer];
+      texLayer_[layer] = static_cast<int>(layer);
+      for (int y = 0; y < S; ++y)
+        for (int x = 0; x < S; ++x) {
+          uint8_t* d = &level[(static_cast<size_t>(y) * S + x) * 4];
+          if (t.empty()) { d[0] = d[1] = d[2] = d[3] = 255; continue; }
+          // the average of the source pixels under this one (box filter)
+          int x0 = x * t.width / S, x1 = std::max(x0 + 1, (x + 1) * t.width / S);
+          int y0 = y * t.height / S, y1 = std::max(y0 + 1, (y + 1) * t.height / S);
+          uint32_t acc[4] = {0, 0, 0, 0}, cnt = 0;
+          for (int sy = y0; sy < y1; ++sy)
+            for (int sx = x0; sx < x1; ++sx) {
+              const uint8_t* s = &t.rgba[(static_cast<size_t>(sy) * t.width + sx) * 4];
+              for (int c = 0; c < 4; ++c) acc[c] += s[c];
+              ++cnt;
+            }
+          for (int c = 0; c < 4; ++c) d[c] = static_cast<uint8_t>(acc[c] / cnt);
+        }
+      int w = S;
+      std::vector<uint8_t>* cur = &level;
+      std::vector<uint8_t> work = level;
+      for (int l = 0; l < levels; ++l) {
+        wgpu::TexelCopyTextureInfo dst;
+        dst.texture = modelTex_;
+        dst.mipLevel = static_cast<uint32_t>(l);
+        dst.origin = {0, 0, layer};
+        wgpu::TexelCopyBufferLayout lay;
+        lay.bytesPerRow = static_cast<uint32_t>(w * 4);
+        lay.rowsPerImage = static_cast<uint32_t>(w);
+        wgpu::Extent3D ext{static_cast<uint32_t>(w), static_cast<uint32_t>(w), 1};
+        queue_.WriteTexture(&dst, cur->data(), static_cast<size_t>(w) * w * 4, &lay, &ext);
+        if (w == 1) break;
+        int h = w / 2;
+        next.assign(static_cast<size_t>(h) * h * 4, 0);
+        for (int y = 0; y < h; ++y)
+          for (int x = 0; x < h; ++x)
+            for (int c = 0; c < 4; ++c) {
+              auto at = [&](int xx, int yy) { return static_cast<int>((*cur)[(static_cast<size_t>(yy) * w + xx) * 4 + c]); };
+              next[(static_cast<size_t>(y) * h + x) * 4 + c] = static_cast<uint8_t>((at(2 * x, 2 * y) + at(2 * x + 1, 2 * y) + at(2 * x, 2 * y + 1) + at(2 * x + 1, 2 * y + 1) + 2) / 4);
+            }
+        work.swap(next);
+        cur = &work;
+        w = h;
+      }
+    }
+    wgpu::TextureViewDescriptor vd;
+    vd.dimension = wgpu::TextureViewDimension::e2DArray;
+    modelView_ = modelTex_.CreateView(&vd);
+    texUploaded_ = scene.textures.size();
+    texSize_ = std::clamp(config().render.textureSize, 16, 2048);
     bindGroupsDirty_ = true;
   }
 
@@ -1300,7 +1389,8 @@ class GpuRenderer final : public Renderer {
   void makeBindGroups() {
     if (!hdrView_) return;
     sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(4, exposureBuf_)});
-    sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_)});
+    if (!modelView_) uploadModelTextures(Scene());
+    sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_)});
     // each pass reads one texture and writes another; the unused second slot
     // gets a texture that isn't the one being written
     for (int i = 0; i < kBloomLevels - 1; ++i)
@@ -1345,7 +1435,15 @@ class GpuRenderer final : public Renderer {
 
   wgpu::Buffer frameUbo_, postUbo_, expUbo_, lightsBuf_, materialsBuf_, instancesBuf_, exposureBuf_;
   size_t materialsCap_ = 0, instancesCap_ = 0;
-  wgpu::Sampler linear_, shadowSampler_;
+  wgpu::Sampler linear_, shadowSampler_, repeat_;
+  // model pictures: one stack of square layers (render.textureSize), each
+  // scene picture resized onto its layer, with smaller copies for distance
+  wgpu::Texture modelTex_;
+  wgpu::TextureView modelView_;
+  std::vector<int> texLayer_;  // scene texture -> layer (-1: no room)
+  size_t texUploaded_ = 0;
+  int texSize_ = 0;
+  uint32_t maxLayers_ = 256;
   wgpu::Texture shadowTex_, shadowDummyTex_, skyTex_, msaaTex_, depthTex_, hdrTex_, bloomTex_[kBloomLevels];
   wgpu::Buffer passUbo_[2 * kBloomLevels];
   bool passUniformsDirty_ = true;
@@ -1600,6 +1698,7 @@ void Renderer::create(const char* canvas, std::function<void(std::unique_ptr<Ren
     if (a.GetLimits(&have)) {
       want.maxStorageBufferBindingSize = std::min<uint64_t>(have.maxStorageBufferBindingSize, 1ull << 30);
       want.maxBufferSize = std::min<uint64_t>(have.maxBufferSize, 1ull << 30);
+      want.maxTextureArrayLayers = have.maxTextureArrayLayers;  // room for every model picture
       dd.requiredLimits = &want;
     }
     dd.SetUncapturedErrorCallback([](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView m) { reportGpuError(str(m)); });

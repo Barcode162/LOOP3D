@@ -95,6 +95,7 @@ window.LE = window.LE || {};
       ] },
       { title: 'Lighting', items: [
         num('render.maxLights', 'Most lamps drawn', 256, E({ min: 1, max: 256, step: 1, help: 'The brightest near the camera are kept.' })),
+        en('render.textureSize', 'Model picture size', 256, opts(64, 128, 256, 512, 1024), E({ help: 'Pixels square for each model picture on the GPU. Sharper costs memory: 256 is about 0.35 MB a picture, 512 four times that.' })),
         sl('render.skyLight', 'Light from the sky', 1, 0, 4, 0.05, E({ unit: 'x' })),
         sl('render.occlusion', 'Shading in creases and undersides', 1, 0, 2, 0.05, E({ unit: 'x' })),
         tog('render.clustered', 'Clustered lights', false, NB('Lamps sorted into screen tiles, so 30+ lamps cost little more than 3.')),

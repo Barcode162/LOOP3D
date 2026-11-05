@@ -48,6 +48,12 @@ struct Material {
   float opacity = 1;          // < 0.5 cut away (in pattern/image alpha)
   bool leafShape = false;     // cut the mesh's UV square to a leaf outline
   Pattern pattern;
+  // Pictures from a model (Scene::textures, -1 none), read at the mesh's UVs:
+  // colour (sRGB, alpha too) times baseColor, roughness (G) and metal (B)
+  // times theirs, a normal map (tangent space), glow times emission.
+  int baseTexture = -1, metalRoughTexture = -1, normalTexture = -1, emissiveTexture = -1;
+  float alphaCutoff = 0;      // > 0: cut away where the colour picture's alpha is below this
+  float roughnessMin = 0;     // never smoother than this (a model's real value; its pictures may say less)
 };
 
 struct Light {
@@ -138,6 +144,7 @@ struct Scene {
   std::vector<MeshInstance> instances;
   std::vector<Light> lights;
   std::vector<Image> images;
+  std::vector<Texture> textures;  // model pictures (8-bit), see Material::baseTexture
   Sky sky;
   Fog fog;
   Camera camera;

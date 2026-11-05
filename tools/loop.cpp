@@ -102,6 +102,7 @@ bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
   src = expandUses(src, directoryOf(path), seen);
   installStandardLibrary(vm);
   installSceneApi(vm, stage);
+  stage.folder = directoryOf(path);
   vm.onSay = [](const std::string& s) { std::printf("%s\n", s.c_str()); };
   bool ok = vm.load(src, path);
   printProblems(vm.problems());

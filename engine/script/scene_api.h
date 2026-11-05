@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "engine/anim/anim.h"
+#include "engine/core/json.h"
 #include "engine/audio/audio.h"
 #include "engine/geometry/terrain.h"
 #include "engine/physics/physics.h"
@@ -55,6 +56,7 @@ struct Stage {
     Quat quat;
     Vec3 lastVelocity{0};
     bool collide = false;
+    std::vector<int> moreInstances;  // a model's other parts, moved with it
   };
   // People: a skeleton, its animator and the shapes that make the body.
   struct Person {
@@ -99,6 +101,14 @@ struct Stage {
   std::string groundSurface = "stone";
   bool collidersDirty = false;
   std::map<std::string, int> meshCache;  // shapes already made (shared between copies)
+  // Models already read (file → its parts as mesh and material), so 276
+  // bottles cost one read and share their meshes.
+  std::map<std::string, std::vector<std::pair<int, int>>> modelCache;
+  std::map<uint64_t, int> textureByContent;
+  std::map<std::string, Json> materialTables;  // models' materials.json, by path
+  // Invisible things to bump into (blocker): a box mesh and where it stands.
+  std::vector<std::pair<int, Mat4>> blockers;  // the same picture in two models is kept once
+  std::string folder;  // where the scene's own files are (models): set by the host, "" = here
   // Moves the living world on: physics, people, sounds. Call each frame
   // with the script's update.
   void update(float dt);

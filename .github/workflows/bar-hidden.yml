@@ -1,0 +1,61 @@
+# Puts LOOP3D's player, with the bar, on a hidden link beside the live bar:
+#   https://joshuavelasco.com/bar/loop3d/?scene=bar
+# Runs only when started by hand (Actions → "Bar on the hidden link" → Run),
+# so nothing goes up until the owner decides. It never deletes anything on
+# the server: the live bar, its PHP and its labs stay exactly as they are.
+#
+# Needs three secrets in this repo (Settings → Secrets and variables →
+# Actions), the same values as in Barcode162/3D: IONOS_SFTP_HOST,
+# IONOS_SFTP_USER, IONOS_SFTP_PASSWORD.
+name: Bar on the hidden link
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  IONOS_SFTP_HOST: ${{ secrets.IONOS_SFTP_HOST }}
+  IONOS_SFTP_USER: ${{ secrets.IONOS_SFTP_USER }}
+  TARGET: home/bar/loop3d
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 6.0.13
+      - name: Engine tests
+        timeout-minutes: 20
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j
+          ./build/loop_tests
+          ./build/loop check projects/bar3d/bar.loop
+      - name: The site
+        timeout-minutes: 20
+        run: |
+          sudo apt-get install -y ninja-build lftp >/dev/null
+          ./tools/build_site.sh
+      - name: Upload (adds and replaces files, never deletes)
+        timeout-minutes: 20
+        if: env.IONOS_SFTP_HOST != ''
+        env:
+          LFTP_PASSWORD: ${{ secrets.IONOS_SFTP_PASSWORD }}
+        run: |
+          cd site
+          lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" <<EOF
+          set cmd:fail-exit yes
+          set sftp:auto-confirm yes
+          set net:max-retries 3
+          set net:timeout 30
+          mkdir -p -f $TARGET
+          mirror -R --verbose --no-perms --parallel=4 . $TARGET
+          cd $TARGET
+          mput index.html editor.html player.js player.wasm
+          bye
+          EOF
+      - name: No secrets yet
+        if: env.IONOS_SFTP_HOST == ''
+        run: |
+          echo "The IONOS secrets aren't set in this repo yet: built and checked, nothing uploaded."
+          exit 1

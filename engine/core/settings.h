@@ -35,6 +35,7 @@ struct Config {
     int lamps = -1, rays = -1;
     bool lampShadows = true;
     int maxLights = 256;
+    int textureSize = 256;  // model pictures on the GPU, each this many pixels square
     float skyLight = 1, occlusion = 1;
     bool passScene = true, passExposure = true, passBloom = true, passFilm = true, passShadow = true, passDraw = true;
     bool prepass = false;

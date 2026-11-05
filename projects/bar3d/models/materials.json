@@ -1,0 +1,1251 @@
+{
+ "arcade.glb": {
+  "Arcade ceiling": {
+   "fix": 7.368
+  },
+  "Arcade wainscot": {
+   "fix": 3.217
+  },
+  "Arcade wall": {
+   "fix": 2.333
+  }
+ },
+ "arcade_bench.glb": {
+  "Arcade wainscot": {
+   "fix": 3.217
+  },
+  "Bench vinyl": {
+   "rough": 0.4
+  }
+ },
+ "arcade_cabinet.glb": {
+  "Button pink": {
+   "rough": 0.45
+  },
+  "Button yellow": {
+   "rough": 0.45
+  },
+  "Cabinet T-molding": {
+   "rough": 0.45
+  },
+  "Cabinet black": {
+   "fix": 1.228,
+   "rough": 0.5
+  },
+  "Cabinet side art": {
+   "rough": 0.55
+  },
+  "Control panel": {
+   "rough": 0.5
+  },
+  "Joystick ball": {
+   "rough": 0.4
+  }
+ },
+ "arcade_sign_bar.glb": {
+  "Arcade wainscot": {
+   "fix": 3.217
+  }
+ },
+ "armchair.glb": {
+  "Chair velvet": {
+   "rough": 0.95
+  },
+  "Chair wood": {
+   "fix": 9.359
+  }
+ },
+ "back_bar_tall.glb": {
+  "Back bar wood": {
+   "fix": 5.368,
+   "rough": 0.45
+  },
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Espresso red": {
+   "rough": 0.5
+  },
+  "Garnish": {
+   "rough": 0.5
+  },
+  "Ladder wood": {
+   "fix": 5.631,
+   "rough": 0.45
+  },
+  "Marble top": {
+   "fix": 1.125,
+   "rough": 0.28
+  },
+  "Pages": {
+   "fix": 0.935,
+   "rough": 0.85
+  },
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  },
+  "Prop wood": {
+   "fix": 5.873,
+   "rough": 0.45
+  },
+  "Register keys": {
+   "rough": 0.38
+  },
+  "Stainless": {
+   "rough": 0.45
+  },
+  "White ceramic": {
+   "fix": 0.963,
+   "rough": 0.3
+  }
+ },
+ "bar_counter_l.glb": {
+  "Arm rest leather": {
+   "fix": 12.017,
+   "rough": 0.55
+  },
+  "Bar mat rubber": {
+   "rough": 0.85
+  },
+  "Bar top mahogany": {
+   "fix": 6.79,
+   "rough": 0.28
+  },
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Cap": {
+   "rough": 0.5
+  },
+  "Cap foil": {
+   "rough": 0.45
+  },
+  "Copper": {
+   "rough": 0.38
+  },
+  "Counter mahogany": {
+   "fix": 3.795,
+   "rough": 0.4
+  },
+  "Dark steel": {
+   "rough": 0.45
+  },
+  "Garnish": {
+   "rough": 0.5
+  },
+  "Plinth": {
+   "fix": 1.094
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  },
+  "Prop wood": {
+   "fix": 5.873,
+   "rough": 0.45
+  },
+  "Stainless": {
+   "rough": 0.45
+  },
+  "Straw 0": {
+   "fix": 1.111,
+   "rough": 0.5
+  },
+  "Straw 1": {
+   "rough": 0.5
+  },
+  "Straw 2": {
+   "fix": 0.842,
+   "rough": 0.5
+  },
+  "Straw 3": {
+   "fix": 3.0,
+   "rough": 0.5
+  },
+  "Tap handle 0": {
+   "rough": 0.5
+  },
+  "Tap handle 1": {
+   "rough": 0.5
+  },
+  "Tap handle 2": {
+   "rough": 0.5
+  },
+  "Tap handle 3": {
+   "rough": 0.5
+  },
+  "Tap handle 4": {
+   "rough": 0.5
+  },
+  "Tap handle 5": {
+   "rough": 0.5
+  },
+  "Tap handle 6": {
+   "rough": 0.5
+  },
+  "Tap handle 7": {
+   "rough": 0.5
+  },
+  "White ceramic": {
+   "fix": 0.963,
+   "rough": 0.3
+  }
+ },
+ "bar_stool.glb": {
+  "Stool brass": {
+   "rough": 0.4
+  },
+  "Stool wood": {
+   "fix": 4.591
+  }
+ },
+ "bay_table.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "beer_crate.glb": {
+  "Cap": {
+   "rough": 0.5
+  },
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "big_mirror.glb": {
+  "Frame brass": {
+   "rough": 0.4
+  },
+  "Frame steel": {
+   "rough": 0.45
+  }
+ },
+ "board_darts.glb": {
+  "Dart shaft": {
+   "rough": 0.5
+  },
+  "Dart tip": {
+   "rough": 0.3
+  },
+  "Tungsten": {
+   "rough": 0.4
+  }
+ },
+ "bookshelf.glb": {
+  "Pages": {
+   "fix": 0.935,
+   "rough": 0.85
+  },
+  "Shelf wood": {
+   "fix": 10.246,
+   "rough": 0.45
+  }
+ },
+ "bottle_champagne_1.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_champagne_1_tilt17_0.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_champagne_2.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_cognac_1.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_cognac_2.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_magnum_1.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_slim_2.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_slim_3.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_square_1.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_square_2.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_stubby_1.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_tequila_1.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_tequila_2.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_whiskey_1.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_whiskey_2.glb": {
+  "Cap": {
+   "rough": 0.5
+  }
+ },
+ "bottle_whiskey_3.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_wine_1.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_wine_1_tilt90_0.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_wine_2.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_wine_2_tilt90_0.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_wine_3.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "bottle_wine_3_tilt90_0.glb": {
+  "Cap foil": {
+   "rough": 0.45
+  }
+ },
+ "candlestick.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "caution_tape.glb": {
+  "Caution tape": {
+   "rough": 0.7
+  }
+ },
+ "chalk_a_frame.glb": {
+  "A-frame chalk": {
+   "fix": 2.397,
+   "rough": 0.95
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Prop wood": {
+   "fix": 5.873,
+   "rough": 0.45
+  },
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "chalkboard.glb": {
+  "Frame wood": {
+   "fix": 3.019,
+   "rough": 0.45
+  }
+ },
+ "chess_bishop_b.glb": {
+  "Ebony": {
+   "rough": 0.35
+  }
+ },
+ "chess_bishop_w.glb": {
+  "Ivory": {
+   "fix": 0.832,
+   "rough": 0.38
+  }
+ },
+ "chess_king_b.glb": {
+  "Ebony": {
+   "rough": 0.35
+  }
+ },
+ "chess_king_w.glb": {
+  "Ivory": {
+   "fix": 0.832,
+   "rough": 0.38
+  }
+ },
+ "chess_knight_b.glb": {
+  "Ebony": {
+   "rough": 0.35
+  }
+ },
+ "chess_knight_w.glb": {
+  "Ivory": {
+   "fix": 0.832,
+   "rough": 0.38
+  }
+ },
+ "chess_pawn_b.glb": {
+  "Ebony": {
+   "rough": 0.35
+  }
+ },
+ "chess_pawn_w.glb": {
+  "Ivory": {
+   "fix": 0.832,
+   "rough": 0.38
+  }
+ },
+ "chess_queen_b.glb": {
+  "Ebony": {
+   "rough": 0.35
+  }
+ },
+ "chess_queen_w.glb": {
+  "Ivory": {
+   "fix": 0.832,
+   "rough": 0.38
+  }
+ },
+ "chess_rook_b.glb": {
+  "Ebony": {
+   "rough": 0.35
+  }
+ },
+ "chess_rook_w.glb": {
+  "Ivory": {
+   "fix": 0.832,
+   "rough": 0.38
+  }
+ },
+ "chesterfield_sofa.glb": {
+  "Sofa feet": {
+   "fix": 2.908
+  },
+  "Sofa leather": {
+   "fix": 14.681,
+   "rough": 0.55
+  }
+ },
+ "coat_rack.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Coat 0": {
+   "fix": 4.906
+  },
+  "Coat 2": {
+   "fix": 5.427
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "coffee_table.glb": {
+  "Chess board": {
+   "rough": 0.5
+  },
+  "Mantel wood": {
+   "fix": 4.642,
+   "rough": 0.45
+  }
+ },
+ "cone_1.glb": {
+  "Black rubber": {
+   "rough": 0.85
+  },
+  "Cone orange": {
+   "rough": 0.5
+  },
+  "Reflective white": {
+   "fix": 0.947,
+   "rough": 0.5
+  }
+ },
+ "cone_2.glb": {
+  "Black rubber": {
+   "rough": 0.85
+  },
+  "Cone orange": {
+   "rough": 0.5
+  },
+  "Reflective white": {
+   "fix": 0.947,
+   "rough": 0.5
+  }
+ },
+ "cone_3.glb": {
+  "Black rubber": {
+   "rough": 0.85
+  },
+  "Cone orange": {
+   "rough": 0.5
+  },
+  "Reflective white": {
+   "fix": 0.947,
+   "rough": 0.5
+  }
+ },
+ "corner_speaker.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Grill cloth": {
+   "rough": 0.95
+  }
+ },
+ "credit_coin.glb": {
+  "Gold": {
+   "rough": 0.3
+  },
+  "Gold emblem": {
+   "rough": 0.3
+  },
+  "Pink enamel": {
+   "rough": 0.35
+  }
+ },
+ "dart_holder.glb": {
+  "Dart shaft": {
+   "rough": 0.5
+  },
+  "Dart tip": {
+   "rough": 0.3
+  },
+  "Holder wood": {
+   "fix": 3.696
+  },
+  "Tungsten": {
+   "rough": 0.4
+  }
+ },
+ "dart_spotlights.glb": {
+  "Track black": {
+   "fix": 1.25,
+   "rough": 0.5
+  }
+ },
+ "dartboard.glb": {
+  "Cabinet wood": {
+   "fix": 3.572,
+   "rough": 0.45
+  },
+  "Wire": {
+   "rough": 0.4
+  }
+ },
+ "drop_cloth.glb": {
+  "Drop cloth": {
+   "rough": 0.95
+  }
+ },
+ "easel_sign.glb": {
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "fire_extinguisher.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Extinguisher red": {
+   "rough": 0.5
+  }
+ },
+ "fire_tools.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "fireplace.glb": {
+  "Firebox brick": {
+   "fix": 7.072,
+   "rough": 0.9
+  },
+  "Log bark": {
+   "fix": 4.329
+  },
+  "Mantel wood": {
+   "fix": 4.642,
+   "rough": 0.45
+  },
+  "Surround marble": {
+   "fix": 5.783,
+   "rough": 0.28
+  }
+ },
+ "floor_lamp.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Shade fabric": {
+   "rough": 0.95
+  }
+ },
+ "gallery_photo_1.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Photos": {
+   "rough": 0.6
+  }
+ },
+ "gallery_photo_2.glb": {
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "gallery_photo_3.glb": {
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "gallery_photo_4.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Photos": {
+   "rough": 0.6
+  }
+ },
+ "gallery_photo_5.glb": {
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "gallery_photo_6.glb": {
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "gallery_photo_7.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Photos": {
+   "rough": 0.6
+  }
+ },
+ "hall.glb": {
+  "Arch brick": {
+   "rough": 0.9
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Brick": {
+   "fix": 2.33,
+   "rough": 0.9
+  },
+  "Ceiling": {
+   "fix": 10.086
+  },
+  "Concrete": {
+   "fix": 4.434,
+   "rough": 0.9
+  },
+  "Dark brick": {
+   "fix": 2.094,
+   "rough": 0.9
+  },
+  "Door wood": {
+   "fix": 12.66,
+   "rough": 0.45
+  },
+  "Green plaster": {
+   "fix": 3.107,
+   "rough": 0.85
+  },
+  "Parquet": {
+   "rough": 0.62
+  },
+  "Pillow fabric": {
+   "rough": 0.95
+  },
+  "Rubber mat": {
+   "fix": 8.0,
+   "rough": 0.85
+  },
+  "Seat velvet": {
+   "rough": 0.95
+  },
+  "Soffit wood": {
+   "fix": 7.393,
+   "rough": 0.55
+  },
+  "Sprinkler pipe": {
+   "rough": 0.5
+  },
+  "Stage boards": {
+   "fix": 6.593
+  },
+  "Wainscot oak": {
+   "fix": 3.402,
+   "rough": 0.5
+  }
+ },
+ "hanging_plant_1.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "hanging_plant_2.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "jukebox.glb": {
+  "Chrome": {
+   "rough": 0.12
+  },
+  "Grille cloth": {
+   "rough": 0.95
+  },
+  "Ivory buttons": {
+   "fix": 0.935,
+   "rough": 0.38
+  },
+  "Jukebox walnut": {
+   "fix": 2.256,
+   "rough": 0.38
+  },
+  "Title cards": {
+   "rough": 0.7
+  },
+  "Vinyl": {
+   "fix": 2.957,
+   "rough": 0.4
+  }
+ },
+ "keg.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "license_plate_1.glb": {
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "license_plate_2.glb": {
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "license_plate_3.glb": {
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "license_plate_4.glb": {
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "log_basket.glb": {
+  "Log bark": {
+   "fix": 4.329
+  }
+ },
+ "mantel_clock.glb": {
+  "Clock brass": {
+   "rough": 0.4
+  },
+  "Clock hands": {
+   "rough": 0.5
+  },
+  "Clock wood": {
+   "fix": 5.678
+  }
+ },
+ "mantel_photo_a.glb": {
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "mantel_photo_b.glb": {
+  "Photos": {
+   "rough": 0.6
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "mirror_button.glb": {
+  "Button cap": {
+   "rough": 0.45
+  },
+  "Button ring": {
+   "rough": 0.45
+  }
+ },
+ "neon_cocktails.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "neon_game_on.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "neon_play.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "oche.glb": {
+  "Oche brass": {
+   "rough": 0.4
+  },
+  "Throw mat": {
+   "fix": 1.932
+  }
+ },
+ "paint_bucket_1.glb": {
+  "Paint 0": {
+   "rough": 0.6
+  },
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "paint_bucket_2.glb": {
+  "Paint 1": {
+   "rough": 0.6
+  },
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "paint_bucket_3.glb": {
+  "Paint 2": {
+   "rough": 0.6
+  },
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "pendant_lamp.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Cloth cord": {
+   "rough": 0.95
+  },
+  "Shade steel": {
+   "rough": 0.45
+  }
+ },
+ "piano.glb": {
+  "Action wood": {
+   "fix": 3.918,
+   "rough": 0.45
+  },
+  "Bench leather": {
+   "fix": 14.174,
+   "rough": 0.55
+  },
+  "Black keys": {
+   "fix": 1.651,
+   "rough": 0.38
+  },
+  "Bridge maple": {
+   "fix": 18.954,
+   "rough": 0.45
+  },
+  "Copper string": {
+   "rough": 0.38
+  },
+  "Hammer felt": {
+   "fix": 0.845
+  },
+  "Piano brass": {
+   "rough": 0.4
+  },
+  "Piano lacquer": {
+   "fix": 2.47,
+   "rough": 0.16
+  },
+  "Piano name": {
+   "rough": 0.5
+  },
+  "Satin black": {
+   "fix": 1.241,
+   "rough": 0.45
+  },
+  "Sheet music": {
+   "rough": 0.85
+  },
+  "Soundboard spruce": {
+   "fix": 10.691,
+   "rough": 0.5
+  },
+  "Steel string": {
+   "rough": 0.45
+  },
+  "White keys": {
+   "fix": 0.889,
+   "rough": 0.38
+  }
+ },
+ "plastic_sheet.glb": {
+  "Plastic sheet": {
+   "rough": 0.45
+  }
+ },
+ "record_1.glb": {
+  "Vinyl": {
+   "fix": 2.957,
+   "rough": 0.4
+  }
+ },
+ "record_2.glb": {
+  "Vinyl": {
+   "fix": 2.957,
+   "rough": 0.4
+  }
+ },
+ "record_3.glb": {
+  "Vinyl": {
+   "fix": 2.957,
+   "rough": 0.4
+  }
+ },
+ "rhythm.glb": {
+  "Beanbag fabric": {
+   "fix": 3.126,
+   "rough": 0.95
+  },
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Cabinet art": {
+   "rough": 0.55
+  },
+  "Cabinet black": {
+   "fix": 1.228,
+   "rough": 0.5
+  },
+  "Key 0": {
+   "rough": 0.4
+  },
+  "Key 1": {
+   "rough": 0.4
+  },
+  "Key 2": {
+   "rough": 0.4
+  },
+  "Key 3": {
+   "rough": 0.4
+  },
+  "Prop dark wood": {
+   "fix": 3.875
+  }
+ },
+ "round_table.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Table top": {
+   "fix": 1.207,
+   "rough": 0.42
+  }
+ },
+ "rug.glb": {
+  "Rug": {
+   "fix": 1.379
+  }
+ },
+ "sawhorse_1.glb": {
+  "Barricade stripes": {
+   "rough": 0.5
+  },
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "sawhorse_2.glb": {
+  "Barricade stripes": {
+   "rough": 0.5
+  },
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "side_table.glb": {
+  "Mantel wood": {
+   "fix": 4.642,
+   "rough": 0.45
+  }
+ },
+ "sim_rig.glb": {
+  "Accent red": {
+   "rough": 0.5
+  },
+  "Button 0": {
+   "rough": 0.45
+  },
+  "Button 1": {
+   "rough": 0.45
+  },
+  "Button 2": {
+   "rough": 0.45
+  },
+  "Button 3": {
+   "rough": 0.45
+  },
+  "Carbon": {
+   "rough": 0.4
+  },
+  "Monitor bezel": {
+   "fix": 1.333,
+   "rough": 0.5
+  },
+  "Pedal steel": {
+   "rough": 0.45
+  },
+  "Profile aluminum": {
+   "rough": 0.45
+  },
+  "Rig black": {
+   "fix": 1.25,
+   "rough": 0.5
+  },
+  "Seat fabric": {
+   "fix": 11.306,
+   "rough": 0.95
+  }
+ },
+ "smoke_detector.glb": {
+  "White ceramic": {
+   "fix": 0.963,
+   "rough": 0.3
+  }
+ },
+ "stage.glb": {
+  "Stage black": {
+   "fix": 1.241,
+   "rough": 0.5
+  }
+ },
+ "stage_amp.glb": {
+  "Amp cream": {
+   "rough": 0.5
+  },
+  "Amp grille": {
+   "fix": 1.04
+  },
+  "Amp jewel": {
+   "rough": 0.5
+  },
+  "Amp tolex": {
+   "fix": 26.468
+  },
+  "Stage black": {
+   "fix": 1.241,
+   "rough": 0.5
+  }
+ },
+ "stage_guitar.glb": {
+  "Amp cream": {
+   "rough": 0.5
+  },
+  "Guitar back": {
+   "fix": 2.215
+  },
+  "Guitar string": {
+   "rough": 0.3
+  },
+  "Stage black": {
+   "fix": 1.241,
+   "rough": 0.5
+  }
+ },
+ "stage_lights.glb": {
+  "Stage black": {
+   "fix": 1.241,
+   "rough": 0.5
+  }
+ },
+ "stage_mic.glb": {
+  "Stage black": {
+   "fix": 1.241,
+   "rough": 0.5
+  }
+ },
+ "stage_stool.glb": {
+  "Amp tolex": {
+   "fix": 26.468
+  }
+ },
+ "step_ladder.glb": {
+  "Aluminum": {
+   "rough": 0.45
+  },
+  "Black rubber": {
+   "rough": 0.85
+  },
+  "Painted steel": {
+   "rough": 0.6
+  }
+ },
+ "string_lights.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Cord": {
+   "rough": 0.9
+  }
+ },
+ "table_stool.glb": {
+  "Black steel": {
+   "rough": 0.45
+  },
+  "Brass": {
+   "rough": 0.4
+  },
+  "Leather piping": {
+   "rough": 0.55
+  },
+  "Tan leather": {
+   "rough": 0.55
+  }
+ },
+ "tin_sign_1.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  }
+ },
+ "tin_sign_2.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  }
+ },
+ "tin_sign_3.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  }
+ },
+ "tin_sign_4.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  }
+ },
+ "toolbox.glb": {
+  "Black rubber": {
+   "rough": 0.85
+  },
+  "Toolbox red": {
+   "rough": 0.5
+  }
+ },
+ "trash_can.glb": {
+  "Stainless": {
+   "rough": 0.45
+  }
+ },
+ "umbrella_stand.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  },
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "wall_clock.glb": {
+  "Brass": {
+   "rough": 0.4
+  },
+  "Wall clock": {
+   "rough": 0.75
+  }
+ },
+ "wall_sconce.glb": {
+  "Brass": {
+   "rough": 0.4
+  }
+ },
+ "wall_switch.glb": {
+  "White ceramic": {
+   "fix": 0.963,
+   "rough": 0.3
+  }
+ },
+ "wall_tv.glb": {
+  "Black plastic": {
+   "fix": 1.25
+  }
+ },
+ "work_light.glb": {
+  "Tool yellow": {
+   "rough": 0.5
+  }
+ }
+}

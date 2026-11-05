@@ -21,6 +21,17 @@ struct Image {
   Vec4 sample(float u, float v) const;
 };
 
+// An 8-bit RGBA picture as stored (sRGB or plain numbers, the user decides),
+// for model textures: a quarter of an Image's memory.
+struct Texture {
+  int width = 0, height = 0;
+  std::vector<uint8_t> rgba;  // row 0 at the top
+  bool empty() const { return rgba.empty(); }
+  // Bilinear sample with wrap (u, v in 0..1, v down). `srgb`: the colour
+  // channels are sRGB-encoded and come back linear; alpha is always plain.
+  Vec4 sample(float u, float v, bool srgb) const;
+};
+
 // sRGB transfer.
 float linearToSrgb(float v);
 float srgbToLinear(float v);

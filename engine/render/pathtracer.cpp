@@ -128,7 +128,9 @@ void PathTracer::Impl::build(const Scene& s) {
   lights.clear();
   hasCutouts = hasGlass = false;
   for (const Material& M : s.materials) {
-    if (M.opacity < 1 || M.leafShape) hasCutouts = true;
+    // glowing things never block a lamp's light (a bulb's glass around its own
+    // light, a neon tube): shadow rays look at each hit, like for cutouts
+    if (M.opacity < 1 || M.leafShape || M.alphaCutoff > 0 || luminance(M.emission) > 0) hasCutouts = true;
     if (M.transmission > 0) hasGlass = true;
   }
   geom.build(s);
@@ -242,9 +244,11 @@ bool PathTracer::Impl::surfaceAlphaCut(int inst, uint32_t prim, float u, float v
   int mat = geom.materialOf(inst);
   if (mat < 0) return false;
   const Material& m = scene->materials[mat];
-  if (m.opacity >= 1 && !m.leafShape) return false;
+  bool texCut = m.alphaCutoff > 0 && m.baseTexture >= 0 && m.baseTexture < static_cast<int>(scene->textures.size());
+  if (m.opacity >= 1 && !m.leafShape && !texCut) return false;
   TriInfo td = geom.triangle(inst, prim);
   Vec2 uv = td.uv[0] * (1 - u - v) + td.uv[1] * u + td.uv[2] * v;
+  if (texCut && scene->textures[m.baseTexture].sample(uv.x, uv.y, false).w < m.alphaCutoff) return true;
   if (m.leafShape) {
     // a pointed leaf: widest a third of the way up, a tip at the top
     float y = 1 - uv.y, x = (uv.x - 0.5f) * 2;
@@ -281,6 +285,10 @@ Vec3 PathTracer::Impl::transmittance(Vec3 p, Vec3 d, float dist) {
     int mat = geom.materialOf(h.inst);
     if (mat >= 0) {
       const Material& m = scene->materials[mat];
+      if (luminance(m.emission) > 0) {  // glowing things never block light (as live)
+        t = h.t + 1e-4f;
+        continue;
+      }
       if (m.transmission > 0) {
         // shadows through glass: its tint, minus what the surface reflects
         // (no refraction: true caustics come from `caustics` paths)
@@ -514,7 +522,7 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     bool front = dot(ray.d, ng) < 0;
     if (!front) ng = -ng, ns = -ns;
     if (dot(ns, ng) < 0) ns = ng;
-    Surface sf = shadeSurface(M, S.images, p, ns, uv);
+    Surface sf = shadeSurface(M, S.images, p, ns, uv, &S.textures);
     Vec3 n = sf.normal;
     Vec3 wo = -ray.d;
     if (dot(n, wo) <= 1e-4f) n = normalize(n + ng * (1e-4f - dot(n, wo) + 0.01f));

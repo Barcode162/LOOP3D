@@ -106,6 +106,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Most lamps drawn | `render.maxLights` | 256 | 1 … 256 | live · script | `setting "render.maxLights", 256` | The brightest near the camera are kept. |
+| Model picture size | `render.textureSize` | 256 | 64 / 128 / 256 / 512 / 1024 | live · script | `setting "render.textureSize", 256` | Pixels square for each model picture on the GPU. Sharper costs memory: 256 is about 0.35 MB a picture, 512 four times that. |
 | Light from the sky | `render.skyLight` | 1 | 0 … 4 x | live · script | `setting "render.skyLight", 1` | strength of the light from the sky (bounced daylight) |
 | Shading in creases and undersides | `render.occlusion` | 1 | 0 … 2 x | live · script | `setting "render.occlusion", 1` | how much creases and undersides darken |
 | Clustered lights | `render.clustered` | false |  | not built yet |  | Lamps sorted into screen tiles, so 30+ lamps cost little more than 3. |
@@ -648,4 +649,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-10 project.json · 131 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you
+10 project.json · 132 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you

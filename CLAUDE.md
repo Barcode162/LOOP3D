@@ -44,6 +44,10 @@ what to look at on the phone. Never make them learn a file, a tool or a command.
 `engine/` (core, geometry, render, gpu, script, physics, anim, audio) · `web/` (the player, the editor) ·
 `tools/loop.cpp` (the `loop` command: check, run, play, render, words, settings) · `projects/` · `tests/` ·
 `docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING) · `perf/` (benchmark runs from the phone).
+The public player: https://barcode162.github.io/LOOP3D/ (the editor: `editor.html`), published from `gh-pages`.
+Pictures of the live renderer: download the `site` artifact of GitHub's **Check**, serve it, and run
+`xvfb-run -a node tools/web_check.js <url> out.png` (never headless: WebGPU loses its device there).
+A new skill, when one is needed, is made with the `legends` skill (`.claude/skills/legends/`).
 
 ## The old repos
 `Barcode162/3D` keeps the live bar (joshuavelasco.com/bar) running until Bar3D is rebuilt here as a project;
