@@ -128,7 +128,9 @@ void PathTracer::Impl::build(const Scene& s) {
   lights.clear();
   hasCutouts = hasGlass = false;
   for (const Material& M : s.materials) {
-    if (M.opacity < 1 || M.leafShape || M.alphaCutoff > 0) hasCutouts = true;
+    // glowing things never block a lamp's light (a bulb's glass around its own
+    // light, a neon tube): shadow rays look at each hit, like for cutouts
+    if (M.opacity < 1 || M.leafShape || M.alphaCutoff > 0 || luminance(M.emission) > 0) hasCutouts = true;
     if (M.transmission > 0) hasGlass = true;
   }
   geom.build(s);
@@ -283,6 +285,10 @@ Vec3 PathTracer::Impl::transmittance(Vec3 p, Vec3 d, float dist) {
     int mat = geom.materialOf(h.inst);
     if (mat >= 0) {
       const Material& m = scene->materials[mat];
+      if (luminance(m.emission) > 0) {  // glowing things never block light (as live)
+        t = h.t + 1e-4f;
+        continue;
+      }
       if (m.transmission > 0) {
         // shadows through glass: its tint, minus what the surface reflects
         // (no refraction: true caustics come from `caustics` paths)

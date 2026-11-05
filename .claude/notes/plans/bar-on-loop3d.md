@@ -4,6 +4,26 @@
 from the same links it is and we can forget the old engine and just keep the good
 stuff."
 
+## Status: PAUSED (2026-11-05, the user: "pause the full transfer since I need to work on the engine more")
+Stages 1–4 are done and pushed; stage 5 is ready but waits for the IONOS secrets
+and for this work to reach `main` (GitHub only runs a hand-started workflow that
+exists on the default branch). Pick up from "Next time" below.
+
+### Next time
+1. **Open issue (cinema only):** a dark oval patch on the hall's floor in
+   `loop render` stills of the bar (the live player looks right). Ruled out:
+   the floor's mirror-like roughness (fixed by materials.json), lamps trapped in
+   their own glowing bulbs (fixed: glowing things no longer block light in the
+   path tracer), lamp visibility (dark and lit spots get about the same direct
+   light: 6.0 vs 6.8 lux). Next suspects: fog volume bounds, a large unseen
+   surface above the floor, emission or normals on the floor mesh. Tools used:
+   scratchpad programs that pick the hit under a pixel and sum each lamp's
+   light at a point (rebuild them from the plan if needed).
+2. High quality lost the software GPU in the headless check; judge it on the phone.
+3. Music (needs sample playback), normal maps, then the games (stage 6).
+4. Stage 5: the user adds IONOS_SFTP_HOST/USER/PASSWORD to LOOP3D's GitHub
+   secrets; the work merges to `main`; run "Bar on the hidden link".
+
 **Goal:** joshuavelasco.com/bar opens the bar drawn and run by LOOP3D. The old
 engine (3D's `looped/`, `bar/`) is retired. The good stuff from 3D comes over:
 the models, the bar's layout, its lights and their life, the music, the games,

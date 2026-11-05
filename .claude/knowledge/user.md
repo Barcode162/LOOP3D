@@ -20,7 +20,7 @@ Use they/them.
 - **Works differently now (2026-11-05):** the 3D-era workflow (Claude runs no
   tests, everything ships at once, the five books) is retired. Build and test
   normally here.
-- **The goal now (2026-11-05):** run the bar on LOOP3D and keep hosting it at the
+- **The goal (2026-11-05, paused the same day to work on the engine):** run the bar on LOOP3D and keep hosting it at the
   same links (joshuavelasco.com/bar); forget the old engine, keep the good stuff.
   Plan: `.claude/notes/plans/bar-on-loop3d.md`.
 - **Wants to learn:** on 10-27 they paused building for "strict learning mode": one
