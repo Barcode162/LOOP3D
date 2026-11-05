@@ -53,6 +53,7 @@ struct Material {
   // times theirs, a normal map (tangent space), glow times emission.
   int baseTexture = -1, metalRoughTexture = -1, normalTexture = -1, emissiveTexture = -1;
   float alphaCutoff = 0;      // > 0: cut away where the colour picture's alpha is below this
+  float roughnessMin = 0;     // never smoother than this (a model's real value; its pictures may say less)
 };
 
 struct Light {

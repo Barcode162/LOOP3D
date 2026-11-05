@@ -33,9 +33,14 @@ change `engine/render/*` and the WGSL together.
 Only in Chromium on SwiftShader under `xvfb-run` (`tools/web_check.js`). Use
 `&msaa=1` to judge shader cost. Numbers rank costs; real devices give real fps.
 
-## Models
-Drawn with their colour factors only: `Scene::textures` isn't uploaded yet
-(the bar plan's stage 2: a texture array or atlas, sampled in `kSceneWgsl`).
+## Models (2026-11-05)
+`uploadModelTextures`: every `Scene::textures` picture resized (box filter) onto
+one layer of an RGBA8 2D-array texture `render.textureSize` square, mips on the CPU,
+bound at group 1 binding 4 with a repeat sampler (binding 5). `MaterialU.tex`
+holds layers (colour, rough/metal, normal, glow), `tex2` alpha cutoff and least
+roughness; `kSceneWgsl` reads colour (sRGB decode in the shader), roughness ×G,
+metal ×B. Re-uploaded when the count or the setting changes. Ultra and the ray
+shaders ignore pictures. The device asks for the adapter's maxTextureArrayLayers.
 
 ## Gaps (NB in the editor; TUNING §7)
 Temporal upscaling (TAAU, the biggest planned win), TAA, cascaded and cached sun

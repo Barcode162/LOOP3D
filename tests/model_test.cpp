@@ -139,3 +139,16 @@ TEST(model_word_places_every_part_and_makes_glass) {
   CHECK(!vm2.load("model \"nope.glb\"\n", "missing.loop"));
   CHECK(!vm2.problems().empty() && vm2.problems()[0].what.find("no model called") != std::string::npos);
 }
+
+TEST(blocker_stops_walking_and_is_never_drawn) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  CHECK(vm.load("blocker size: vec(4, 2.6, 0.2), at: vec(0, 1.3, -2)\n", "walls.loop"));
+  CHECK(st.scene.instances.empty());  // nothing to draw
+  st.update(1.0f / 60);
+  Vec3 c{0, 0.8f, 0};
+  for (int i = 0; i < 500; ++i) st.world.moveCharacter(c, Vec3(0, 0, -0.01f), 0.25f, 0.3f, 0.3f);
+  CHECK(c.z > -2.0f && c.z < -1.5f);  // stopped by the invisible wall
+}

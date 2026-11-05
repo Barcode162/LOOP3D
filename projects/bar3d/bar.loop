@@ -1,0 +1,972 @@
+# The bar from Bar3D (joshuavelasco.com/bar), brought over from the original
+# repo's world files by tools/import_bar.py: don't edit by hand, run it again.
+title "The Bar"
+mode "game"
+
+# where you come in
+camera at: vec(0.4, 1.65, 5.2), look_at: vec(0.4, 1.65, 4.2), lens: 24 mm, exposure: -1.2
+# indoors: no sky, the air a little hazy
+sky "color", nits: 0
+fog density: 0.004, color: vec(0.9, 0.85, 0.8)
+look "natural"
+
+# 507 things
+model "hall.glb", at: vec(0, 0, 0)
+model "bar_counter_l.glb", at: vec(0, 0, 0)
+model "pint_glass.glb", at: vec(-5.6623, 1.08, -4.4295)
+model "pint_glass.glb", at: vec(-3.6931, 1.08, -4.2077)
+model "pint_glass.glb", at: vec(-1.7239, 1.08, -4.2914)
+model "pint_glass.glb", at: vec(-0.0008, 1.08, -4.6196)
+model "rocks_glass.glb", at: vec(-4.8682, 1.08, -4.3532)
+model "rocks_glass.glb", at: vec(-2.6125, 1.08, -4.266)
+model "bar_stool.glb", at: vec(-7.0405, 0, -4.0435), turn: -16.319 deg
+model "bar_stool.glb", at: vec(-5.9501, 0, -3.773), turn: -11.546 deg
+model "bar_stool.glb", at: vec(-4.8597, 0, -3.5964), turn: -6.853 deg
+model "bar_stool.glb", at: vec(-3.7692, 0, -3.51), turn: -2.206 deg
+model "bar_stool.glb", at: vec(-2.6788, 0, -3.5121), turn: 2.427 deg
+model "bar_stool.glb", at: vec(-1.5884, 0, -3.6027), turn: 7.075 deg
+model "bar_stool.glb", at: vec(-0.498, 0, -3.7837), turn: 11.771 deg
+model "bar_stool.glb", at: vec(0.5924, 0, -4.0588), turn: 16.549 deg
+model "pendant_lamp.glb", at: vec(-6.6, 3.04, -4.6)
+model "pendant_lamp.glb", at: vec(-4.3, 3.04, -4.6)
+model "pendant_lamp.glb", at: vec(-2, 3.04, -4.6)
+model "pendant_lamp.glb", at: vec(0.2, 3.04, -4.6)
+model "back_bar_tall.glb", at: vec(0, 0, 0)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.62, 1.13, -7.38), scale: vec(0.974, 0.974, 0.974)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.45, 1.13, -7.38), scale: vec(1.006, 1.006, 1.006)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.28, 1.13, -7.38), scale: vec(1.029, 1.029, 1.029)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.11, 1.13, -7.38), scale: vec(0.991, 0.991, 0.991)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.94, 1.13, -7.38), scale: vec(1.003, 1.003, 1.003)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.535, 1.215, -7.38), scale: vec(0.992, 0.992, 0.992)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.365, 1.215, -7.38), scale: vec(1.014, 1.014, 1.014)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.195, 1.215, -7.38), scale: vec(1.011, 1.011, 1.011)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.025, 1.215, -7.38), scale: vec(1.006, 1.006, 1.006)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.855, 1.215, -7.38), scale: vec(1.029, 1.029, 1.029)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.62, 1.3, -7.38), scale: vec(1.012, 1.012, 1.012)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.45, 1.3, -7.38), scale: vec(0.991, 0.991, 0.991)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.28, 1.3, -7.38), scale: vec(0.993, 0.993, 0.993)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.11, 1.3, -7.38), scale: vec(1.008, 1.008, 1.008)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.94, 1.3, -7.38), scale: vec(1.012, 1.012, 1.012)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.535, 1.385, -7.38), scale: vec(0.983, 0.983, 0.983)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.365, 1.385, -7.38), scale: vec(1.019, 1.019, 1.019)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.195, 1.385, -7.38), scale: vec(0.997, 0.997, 0.997)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.025, 1.385, -7.38), scale: vec(1.016, 1.016, 1.016)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-7.855, 1.385, -7.38), scale: vec(0.975, 0.975, 0.975)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.62, 1.47, -7.38), scale: vec(0.989, 0.989, 0.989)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.45, 1.47, -7.38), scale: vec(0.971, 0.971, 0.971)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.28, 1.47, -7.38), scale: vec(0.995, 0.995, 0.995)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.11, 1.47, -7.38), scale: vec(0.985, 0.985, 0.985)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-7.94, 1.47, -7.38), scale: vec(0.991, 0.991, 0.991)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.535, 1.555, -7.38), scale: vec(0.983, 0.983, 0.983)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.365, 1.555, -7.38), scale: vec(1.021, 1.021, 1.021)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.195, 1.555, -7.38), scale: vec(1.008, 1.008, 1.008)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.025, 1.555, -7.38), scale: vec(0.991, 0.991, 0.991)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.855, 1.555, -7.38)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.62, 1.64, -7.38), scale: vec(0.981, 0.981, 0.981)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.45, 1.64, -7.38), scale: vec(1.027, 1.027, 1.027)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.28, 1.64, -7.38), scale: vec(1.024, 1.024, 1.024)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.11, 1.64, -7.38), scale: vec(1.004, 1.004, 1.004)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-7.94, 1.64, -7.38), scale: vec(0.979, 0.979, 0.979)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.535, 1.725, -7.38), scale: vec(1.027, 1.027, 1.027)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.365, 1.725, -7.38), scale: vec(0.983, 0.983, 0.983)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.195, 1.725, -7.38), scale: vec(0.973, 0.973, 0.973)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.025, 1.725, -7.38), scale: vec(0.995, 0.995, 0.995)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.855, 1.725, -7.38), scale: vec(0.993, 0.993, 0.993)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.62, 1.81, -7.38), scale: vec(1.021, 1.021, 1.021)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.45, 1.81, -7.38), scale: vec(0.979, 0.979, 0.979)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.28, 1.81, -7.38), scale: vec(0.974, 0.974, 0.974)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.11, 1.81, -7.38), scale: vec(0.996, 0.996, 0.996)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.94, 1.81, -7.38), scale: vec(0.972, 0.972, 0.972)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.535, 1.895, -7.38), scale: vec(1.01, 1.01, 1.01)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.365, 1.895, -7.38), scale: vec(0.999, 0.999, 0.999)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.195, 1.895, -7.38), scale: vec(1.022, 1.022, 1.022)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.025, 1.895, -7.38), scale: vec(1.026, 1.026, 1.026)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.855, 1.895, -7.38), scale: vec(0.984, 0.984, 0.984)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.62, 1.98, -7.38), scale: vec(1.017, 1.017, 1.017)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.45, 1.98, -7.38)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.28, 1.98, -7.38), scale: vec(1.027, 1.027, 1.027)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.11, 1.98, -7.38), scale: vec(0.975, 0.975, 0.975)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.94, 1.98, -7.38), scale: vec(0.997, 0.997, 0.997)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.535, 2.065, -7.38), scale: vec(1.029, 1.029, 1.029)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.365, 2.065, -7.38), scale: vec(0.973, 0.973, 0.973)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.195, 2.065, -7.38), scale: vec(0.988, 0.988, 0.988)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.025, 2.065, -7.38), scale: vec(0.989, 0.989, 0.989)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.855, 2.065, -7.38), scale: vec(0.992, 0.992, 0.992)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.62, 2.15, -7.38), scale: vec(1.03, 1.03, 1.03)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.45, 2.15, -7.38), scale: vec(0.981, 0.981, 0.981)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.28, 2.15, -7.38), scale: vec(1.019, 1.019, 1.019)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.11, 2.15, -7.38), scale: vec(0.986, 0.986, 0.986)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.94, 2.15, -7.38), scale: vec(1.022, 1.022, 1.022)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.535, 2.235, -7.38), scale: vec(0.979, 0.979, 0.979)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.365, 2.235, -7.38), scale: vec(0.976, 0.976, 0.976)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.195, 2.235, -7.38), scale: vec(1.029, 1.029, 1.029)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.025, 2.235, -7.38), scale: vec(0.971, 0.971, 0.971)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.855, 2.235, -7.38), scale: vec(1.009, 1.009, 1.009)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.62, 2.32, -7.38), scale: vec(0.982, 0.982, 0.982)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.45, 2.32, -7.38), scale: vec(1.005, 1.005, 1.005)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.28, 2.32, -7.38), scale: vec(0.989, 0.989, 0.989)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.11, 2.32, -7.38), scale: vec(1.007, 1.007, 1.007)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.94, 2.32, -7.38), scale: vec(1.011, 1.011, 1.011)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.535, 2.405, -7.38), scale: vec(1.015, 1.015, 1.015)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.365, 2.405, -7.38), scale: vec(0.977, 0.977, 0.977)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-8.195, 2.405, -7.38), scale: vec(1.02, 1.02, 1.02)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.025, 2.405, -7.38), scale: vec(0.984, 0.984, 0.984)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.855, 2.405, -7.38), scale: vec(1.006, 1.006, 1.006)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.62, 2.49, -7.38), scale: vec(1.019, 1.019, 1.019)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.45, 2.49, -7.38), scale: vec(1.016, 1.016, 1.016)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.28, 2.49, -7.38), scale: vec(1.002, 1.002, 1.002)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.11, 2.49, -7.38)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-7.94, 2.49, -7.38), scale: vec(0.979, 0.979, 0.979)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.535, 2.575, -7.38), scale: vec(1.023, 1.023, 1.023)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.365, 2.575, -7.38), scale: vec(1.006, 1.006, 1.006)
+model "bottle_wine_1_tilt90_0.glb", at: vec(-8.195, 2.575, -7.38), scale: vec(1.016, 1.016, 1.016)
+model "bottle_wine_2_tilt90_0.glb", at: vec(-8.025, 2.575, -7.38), scale: vec(1.028, 1.028, 1.028)
+model "bottle_wine_3_tilt90_0.glb", at: vec(-7.855, 2.575, -7.38), scale: vec(1.012, 1.012, 1.012)
+model "bottle_slim_3.glb", at: vec(-7.4175, 1.3375, -7.2389), turn: -9.69 deg, scale: vec(0.988, 0.988, 0.988)
+model "bottle_cognac_2.glb", at: vec(-7.277, 1.3375, -7.2406), turn: -19.78 deg, scale: vec(0.98, 0.98, 0.98)
+model "bottle_liqueur_2.glb", at: vec(-7.1535, 1.3375, -7.2593), turn: -10.22 deg, scale: vec(1.021, 1.021, 1.021)
+model "bottle_whiskey_3.glb", at: vec(-7.0282, 1.3375, -7.2334), turn: -11.39 deg, scale: vec(0.98, 0.98, 0.98)
+model "bottle_cognac_2.glb", at: vec(-6.8613, 1.3375, -7.2225), turn: 24.09 deg, scale: vec(0.995, 0.995, 0.995)
+model "bottle_whiskey_2.glb", at: vec(-6.7382, 1.3375, -7.2102), turn: -9 deg, scale: vec(1.02, 1.02, 1.02)
+model "bottle_slim_2.glb", at: vec(-6.5853, 1.3375, -7.2204), turn: -12.59 deg, scale: vec(0.975, 0.975, 0.975)
+model "bottle_whiskey_2.glb", at: vec(-6.417, 1.3375, -7.2262), turn: -3.29 deg, scale: vec(1.004, 1.004, 1.004)
+model "bottle_slim_3.glb", at: vec(-7.4175, 1.6975, -7.263), turn: 21.86 deg, scale: vec(0.972, 0.972, 0.972)
+model "bottle_slim_1.glb", at: vec(-7.2595, 1.6975, -7.2547), turn: -9.75 deg, scale: vec(1.007, 1.007, 1.007)
+model "bottle_slim_3.glb", at: vec(-7.118, 1.6975, -7.26), turn: 0.13 deg, scale: vec(0.972, 0.972, 0.972)
+model "bottle_cognac_1.glb", at: vec(-6.9731, 1.6975, -7.2176), turn: -14.56 deg, scale: vec(1.005, 1.005, 1.005)
+model "bottle_liqueur_1.glb", at: vec(-6.8477, 1.6975, -7.2378), turn: -23.85 deg, scale: vec(0.976, 0.976, 0.976)
+model "bottle_liqueur_2.glb", at: vec(-6.7057, 1.6975, -7.2596), turn: 17.42 deg, scale: vec(0.972, 0.972, 0.972)
+model "bottle_square_2.glb", at: vec(-6.5575, 1.6975, -7.2377), turn: -12.12 deg, scale: vec(1.013, 1.013, 1.013)
+model "bottle_slim_1.glb", at: vec(-6.4351, 1.6975, -7.2585), turn: 4.25 deg, scale: vec(0.989, 0.989, 0.989)
+model "bottle_slim_1.glb", at: vec(-7.4175, 2.0575, -7.2106), turn: 12.69 deg, scale: vec(0.971, 0.971, 0.971)
+model "bottle_whiskey_1.glb", at: vec(-7.256, 2.0575, -7.2594), turn: 8.64 deg, scale: vec(1.002, 1.002, 1.002)
+model "bottle_whiskey_2.glb", at: vec(-7.0983, 2.0575, -7.2158), turn: -2.96 deg, scale: vec(0.977, 0.977, 0.977)
+model "bottle_square_2.glb", at: vec(-6.9532, 2.0575, -7.2335), turn: 13.18 deg, scale: vec(0.993, 0.993, 0.993)
+model "bottle_whiskey_3.glb", at: vec(-6.8008, 2.0575, -7.2476), turn: -0.32 deg, scale: vec(0.974, 0.974, 0.974)
+model "bottle_square_2.glb", at: vec(-6.6768, 2.0575, -7.2093), turn: 8.26 deg, scale: vec(0.984, 0.984, 0.984)
+model "bottle_wine_1.glb", at: vec(-6.5456, 2.0575, -7.2602), turn: -11.21 deg, scale: vec(1.007, 1.007, 1.007)
+model "bottle_liqueur_1.glb", at: vec(-7.4175, 2.4175, -7.214), turn: 4.83 deg, scale: vec(1.029, 1.029, 1.029)
+model "bottle_square_1.glb", at: vec(-7.2662, 2.4175, -7.218), turn: -5.86 deg, scale: vec(1.014, 1.014, 1.014)
+model "bottle_liqueur_3.glb", at: vec(-7.104, 2.4175, -7.2359), turn: 4.31 deg, scale: vec(1.023, 1.023, 1.023)
+model "bottle_wine_2.glb", at: vec(-6.9547, 2.4175, -7.2527), turn: -12.12 deg, scale: vec(1.003, 1.003, 1.003)
+model "bottle_champagne_2.glb", at: vec(-6.8155, 2.4175, -7.2336), turn: 18.42 deg, scale: vec(1.01, 1.01, 1.01)
+model "bottle_champagne_1.glb", at: vec(-6.6777, 2.4175, -7.2287), turn: 0.05 deg, scale: vec(0.985, 0.985, 0.985)
+model "bottle_cognac_1.glb", at: vec(-6.5364, 2.4175, -7.2156), turn: 8.05 deg, scale: vec(0.977, 0.977, 0.977)
+model "bottle_stubby_1.glb", at: vec(-6.205, 1.3375, -7.2609), turn: 9.47 deg, scale: vec(1.002, 1.002, 1.002)
+model "bottle_tequila_2.glb", at: vec(-6.0715, 1.3375, -7.2182), turn: 4.92 deg, scale: vec(1.005, 1.005, 1.005)
+model "bottle_wine_2.glb", at: vec(-5.9102, 1.3375, -7.2486), turn: 13.97 deg, scale: vec(1.01, 1.01, 1.01)
+model "bottle_champagne_2.glb", at: vec(-5.7768, 1.3375, -7.2403), turn: 4.09 deg, scale: vec(0.988, 0.988, 0.988)
+model "bottle_whiskey_2.glb", at: vec(-5.6085, 1.3375, -7.2202), turn: -2.72 deg, scale: vec(0.978, 0.978, 0.978)
+model "bottle_slim_2.glb", at: vec(-5.4478, 1.3375, -7.2335), turn: -20.03 deg, scale: vec(0.995, 0.995, 0.995)
+model "bottle_slim_2.glb", at: vec(-5.303, 1.3375, -7.2174), turn: -4.06 deg, scale: vec(0.987, 0.987, 0.987)
+model "bottle_slim_3.glb", at: vec(-6.205, 1.6975, -7.2054), turn: 17.49 deg, scale: vec(0.978, 0.978, 0.978)
+model "bottle_stubby_2.glb", at: vec(-6.0457, 1.6975, -7.2637), turn: -5.37 deg, scale: vec(1.027, 1.027, 1.027)
+model "bottle_slim_2.glb", at: vec(-5.9125, 1.6975, -7.2372), turn: 14.93 deg, scale: vec(1.003, 1.003, 1.003)
+model "bottle_slim_1.glb", at: vec(-5.7472, 1.6975, -7.2594), turn: 10.06 deg, scale: vec(0.999, 0.999, 0.999)
+model "bottle_champagne_2.glb", at: vec(-5.5839, 1.6975, -7.261), turn: 10.21 deg, scale: vec(1.012, 1.012, 1.012)
+model "bottle_slim_2.glb", at: vec(-5.4222, 1.6975, -7.2135), turn: 8.79 deg, scale: vec(1.015, 1.015, 1.015)
+model "bottle_slim_3.glb", at: vec(-5.2838, 1.6975, -7.2161), turn: -0.81 deg, scale: vec(0.974, 0.974, 0.974)
+model "bottle_square_1.glb", at: vec(-6.205, 2.0575, -7.2517), turn: 3.94 deg, scale: vec(0.993, 0.993, 0.993)
+model "bottle_slim_3.glb", at: vec(-6.0366, 2.0575, -7.2338), turn: -13.95 deg, scale: vec(1.012, 1.012, 1.012)
+model "bottle_square_1.glb", at: vec(-5.8806, 2.0575, -7.2389), turn: -6.62 deg, scale: vec(1.011, 1.011, 1.011)
+model "bottle_stubby_2.glb", at: vec(-5.7159, 2.0575, -7.2391), turn: 10.55 deg, scale: vec(1.027, 1.027, 1.027)
+model "bottle_liqueur_1.glb", at: vec(-5.5909, 2.0575, -7.2601), turn: 26.13 deg, scale: vec(0.986, 0.986, 0.986)
+model "bottle_liqueur_3.glb", at: vec(-5.4541, 2.0575, -7.2585), turn: -9.45 deg, scale: vec(0.99, 0.99, 0.99)
+model "bottle_liqueur_2.glb", at: vec(-5.3063, 2.0575, -7.2543), turn: -13.72 deg, scale: vec(0.985, 0.985, 0.985)
+model "bottle_wine_1.glb", at: vec(-6.205, 2.4175, -7.2121), turn: 18.11 deg, scale: vec(1.008, 1.008, 1.008)
+model "bottle_slim_1.glb", at: vec(-6.0611, 2.4175, -7.2219), turn: -3.21 deg, scale: vec(1.027, 1.027, 1.027)
+model "bottle_liqueur_1.glb", at: vec(-5.9342, 2.4175, -7.257), turn: -0.12 deg
+model "bottle_stubby_1.glb", at: vec(-5.7938, 2.4175, -7.2569), turn: -1.77 deg, scale: vec(1.015, 1.015, 1.015)
+model "bottle_cognac_2.glb", at: vec(-5.639, 2.4175, -7.2299), turn: 1.14 deg, scale: vec(1.014, 1.014, 1.014)
+model "bottle_tequila_1.glb", at: vec(-5.4983, 2.4175, -7.2303), turn: 9.26 deg, scale: vec(0.997, 0.997, 0.997)
+model "bottle_liqueur_1.glb", at: vec(-5.3322, 2.4175, -7.2312), turn: 17.68 deg, scale: vec(0.978, 0.978, 0.978)
+model "bottle_liqueur_1.glb", at: vec(-6.205, 2.7775, -7.2144), turn: 1.25 deg, scale: vec(1.002, 1.002, 1.002)
+model "bottle_champagne_2.glb", at: vec(-6.0696, 2.7775, -7.2083), turn: 6.13 deg, scale: vec(1.012, 1.012, 1.012)
+model "bottle_wine_1.glb", at: vec(-5.9076, 2.7775, -7.235), turn: 19.26 deg, scale: vec(0.976, 0.976, 0.976)
+model "bottle_whiskey_3.glb", at: vec(-5.7609, 2.7775, -7.2477), turn: -17.4 deg, scale: vec(0.985, 0.985, 0.985)
+model "bottle_stubby_1.glb", at: vec(-5.6146, 2.7775, -7.2155), turn: 2.41 deg
+model "bottle_tequila_2.glb", at: vec(-5.4884, 2.7775, -7.2631), turn: 12.47 deg, scale: vec(1.026, 1.026, 1.026)
+model "bottle_wine_1.glb", at: vec(-5.3431, 2.7775, -7.2442), turn: 13.51 deg, scale: vec(1.026, 1.026, 1.026)
+model "bottle_stubby_1.glb", at: vec(-4.9925, 1.3375, -7.2152), turn: -14.94 deg, scale: vec(1.01, 1.01, 1.01)
+model "bottle_cognac_2.glb", at: vec(-4.8311, 1.3375, -7.2302), turn: -4 deg, scale: vec(0.979, 0.979, 0.979)
+model "bottle_tequila_1.glb", at: vec(-4.6629, 1.3375, -7.2312), turn: 10.23 deg, scale: vec(0.979, 0.979, 0.979)
+model "bottle_square_2.glb", at: vec(-4.499, 1.3375, -7.2051), turn: -6.73 deg, scale: vec(1.028, 1.028, 1.028)
+model "bottle_champagne_2.glb", at: vec(-4.349, 1.3375, -7.2429), turn: 23.48 deg, scale: vec(1.022, 1.022, 1.022)
+model "bottle_square_1.glb", at: vec(-4.2237, 1.3375, -7.226), turn: 5.83 deg, scale: vec(0.999, 0.999, 0.999)
+model "bottle_liqueur_3.glb", at: vec(-4.0952, 1.3375, -7.2364), turn: 6.05 deg, scale: vec(1.013, 1.013, 1.013)
+model "bottle_tequila_1.glb", at: vec(-4.9925, 1.6975, -7.2425), turn: 7.37 deg, scale: vec(0.999, 0.999, 0.999)
+model "bottle_stubby_2.glb", at: vec(-4.8706, 1.6975, -7.2093), turn: -3.69 deg, scale: vec(1.016, 1.016, 1.016)
+model "bottle_whiskey_1.glb", at: vec(-4.718, 1.6975, -7.2631), turn: 0.85 deg, scale: vec(1.009, 1.009, 1.009)
+model "bottle_square_2.glb", at: vec(-4.58, 1.6975, -7.2364), turn: 0.68 deg, scale: vec(0.975, 0.975, 0.975)
+model "bottle_wine_3.glb", at: vec(-4.453, 1.6975, -7.2178), turn: 8.63 deg, scale: vec(1.023, 1.023, 1.023)
+model "bottle_slim_2.glb", at: vec(-4.296, 1.6975, -7.2239), turn: -3.51 deg, scale: vec(1.005, 1.005, 1.005)
+model "bottle_tequila_2.glb", at: vec(-4.1611, 1.6975, -7.2134), turn: -5.91 deg, scale: vec(0.985, 0.985, 0.985)
+model "bottle_cognac_2.glb", at: vec(-4.0097, 1.6975, -7.2111), turn: -12.33 deg, scale: vec(1.027, 1.027, 1.027)
+model "bottle_liqueur_1.glb", at: vec(-4.9925, 2.0575, -7.2585), turn: 2.11 deg, scale: vec(0.998, 0.998, 0.998)
+model "bottle_square_1.glb", at: vec(-4.8392, 2.0575, -7.2368), turn: 6.6 deg, scale: vec(1.008, 1.008, 1.008)
+model "bottle_liqueur_2.glb", at: vec(-4.6918, 2.0575, -7.2296), turn: 2.88 deg, scale: vec(1.007, 1.007, 1.007)
+model "bottle_whiskey_2.glb", at: vec(-4.5466, 2.0575, -7.2597), turn: 7.77 deg, scale: vec(1.029, 1.029, 1.029)
+model "bottle_liqueur_2.glb", at: vec(-4.3887, 2.0575, -7.2562), turn: 5.99 deg, scale: vec(1.021, 1.021, 1.021)
+model "bottle_liqueur_1.glb", at: vec(-4.2213, 2.0575, -7.2076), turn: -24.85 deg, scale: vec(0.988, 0.988, 0.988)
+model "bottle_liqueur_2.glb", at: vec(-4.0791, 2.0575, -7.246), turn: -7.3 deg, scale: vec(1.027, 1.027, 1.027)
+model "bottle_whiskey_1.glb", at: vec(-4.9925, 2.4175, -7.2207), turn: 11.7 deg, scale: vec(0.983, 0.983, 0.983)
+model "bottle_whiskey_2.glb", at: vec(-4.8405, 2.4175, -7.2623), turn: -17.05 deg, scale: vec(1.019, 1.019, 1.019)
+model "bottle_slim_3.glb", at: vec(-4.7046, 2.4175, -7.2401), turn: 15.97 deg, scale: vec(0.976, 0.976, 0.976)
+model "bottle_champagne_2.glb", at: vec(-4.5846, 2.4175, -7.2592), turn: -6.84 deg, scale: vec(0.989, 0.989, 0.989)
+model "bottle_liqueur_2.glb", at: vec(-4.4405, 2.4175, -7.2158), turn: -7.48 deg, scale: vec(0.97, 0.97, 0.97)
+model "bottle_whiskey_3.glb", at: vec(-4.3149, 2.4175, -7.2561), turn: -23.05 deg, scale: vec(0.971, 0.971, 0.971)
+model "bottle_champagne_1.glb", at: vec(-4.1595, 2.4175, -7.2227), turn: 15.2 deg, scale: vec(0.983, 0.983, 0.983)
+model "bottle_whiskey_1.glb", at: vec(-4.0177, 2.4175, -7.2498), turn: 3.21 deg, scale: vec(1.006, 1.006, 1.006)
+model "bottle_cognac_1.glb", at: vec(-3.74, 1.606, -7.23), turn: 0.78 deg, scale: vec(0.983, 0.983, 0.983)
+model "bottle_whiskey_1.glb", at: vec(-3.5194, 1.606, -7.23), turn: -2.3 deg, scale: vec(1.006, 1.006, 1.006)
+model "bottle_cognac_2.glb", at: vec(-3.2988, 1.606, -7.23), turn: 2.33 deg
+model "bottle_square_2.glb", at: vec(-3.0781, 1.606, -7.23), turn: -9.65 deg, scale: vec(1.028, 1.028, 1.028)
+model "bottle_whiskey_1.glb", at: vec(-2.8575, 1.606, -7.23), turn: 7.31 deg, scale: vec(1.021, 1.021, 1.021)
+model "bottle_magnum_1.glb", at: vec(-3.74, 2.256, -7.23), turn: 3.26 deg, scale: vec(0.995, 0.995, 0.995)
+model "bottle_magnum_1.glb", at: vec(-3.5194, 2.256, -7.23), turn: 6.73 deg, scale: vec(1.024, 1.024, 1.024)
+model "bottle_cognac_2.glb", at: vec(-3.2988, 2.256, -7.23), turn: -9.93 deg, scale: vec(1.017, 1.017, 1.017)
+model "bottle_square_1.glb", at: vec(-3.0781, 2.256, -7.23), turn: -8.34 deg, scale: vec(0.984, 0.984, 0.984)
+model "bottle_whiskey_2.glb", at: vec(-2.8575, 2.256, -7.23), turn: -6.82 deg, scale: vec(1.029, 1.029, 1.029)
+model "bottle_wine_3.glb", at: vec(-2.5675, 1.3375, -7.2465), turn: -2.5 deg, scale: vec(0.995, 0.995, 0.995)
+model "bottle_liqueur_1.glb", at: vec(-2.4464, 1.3375, -7.2228), turn: 1.33 deg, scale: vec(1.02, 1.02, 1.02)
+model "bottle_slim_3.glb", at: vec(-2.3159, 1.3375, -7.2166), turn: 1.47 deg, scale: vec(1.024, 1.024, 1.024)
+model "bottle_cognac_1.glb", at: vec(-2.1525, 1.3375, -7.2556), turn: 2.69 deg, scale: vec(1.022, 1.022, 1.022)
+model "bottle_slim_3.glb", at: vec(-2.0206, 1.3375, -7.2389), turn: 2.36 deg, scale: vec(1.025, 1.025, 1.025)
+model "bottle_whiskey_3.glb", at: vec(-1.8594, 1.3375, -7.224), turn: 11.33 deg, scale: vec(1.023, 1.023, 1.023)
+model "bottle_square_1.glb", at: vec(-1.6959, 1.3375, -7.2279), turn: 11.31 deg, scale: vec(1.01, 1.01, 1.01)
+model "bottle_liqueur_2.glb", at: vec(-2.5675, 1.6975, -7.2339), turn: 3.86 deg, scale: vec(1.026, 1.026, 1.026)
+model "bottle_whiskey_2.glb", at: vec(-2.4002, 1.6975, -7.2506), turn: -19.16 deg, scale: vec(1.018, 1.018, 1.018)
+model "bottle_slim_2.glb", at: vec(-2.2441, 1.6975, -7.2098), turn: -7.51 deg, scale: vec(1.028, 1.028, 1.028)
+model "bottle_wine_3.glb", at: vec(-2.1176, 1.6975, -7.2607), turn: -11.64 deg, scale: vec(0.983, 0.983, 0.983)
+model "bottle_champagne_1.glb", at: vec(-1.9691, 1.6975, -7.2508), turn: 15.21 deg, scale: vec(1.015, 1.015, 1.015)
+model "bottle_square_1.glb", at: vec(-1.8071, 1.6975, -7.241), turn: 18.86 deg, scale: vec(1.007, 1.007, 1.007)
+model "bottle_tequila_1.glb", at: vec(-1.6812, 1.6975, -7.2243), turn: 15.41 deg, scale: vec(1.003, 1.003, 1.003)
+model "bottle_tequila_2.glb", at: vec(-2.5675, 2.0575, -7.2291), turn: 5.45 deg, scale: vec(0.973, 0.973, 0.973)
+model "bottle_liqueur_3.glb", at: vec(-2.4201, 2.0575, -7.264), turn: -27.7 deg, scale: vec(1.027, 1.027, 1.027)
+model "bottle_liqueur_3.glb", at: vec(-2.2649, 2.0575, -7.235), turn: -3.41 deg, scale: vec(1.005, 1.005, 1.005)
+model "bottle_slim_1.glb", at: vec(-2.1207, 2.0575, -7.2588), turn: 0.04 deg, scale: vec(0.972, 0.972, 0.972)
+model "bottle_cognac_1.glb", at: vec(-1.9979, 2.0575, -7.2484), turn: -7.98 deg, scale: vec(1.012, 1.012, 1.012)
+model "bottle_champagne_2.glb", at: vec(-1.868, 2.0575, -7.2097), turn: -23.64 deg, scale: vec(1.029, 1.029, 1.029)
+model "bottle_liqueur_1.glb", at: vec(-1.7308, 2.0575, -7.2462), turn: -8.48 deg, scale: vec(1.005, 1.005, 1.005)
+model "bottle_cognac_2.glb", at: vec(-1.6029, 2.0575, -7.2208), turn: 3.07 deg, scale: vec(0.986, 0.986, 0.986)
+model "bottle_whiskey_1.glb", at: vec(-2.5675, 2.4175, -7.2363), turn: -12.75 deg, scale: vec(1.019, 1.019, 1.019)
+model "bottle_whiskey_1.glb", at: vec(-2.4094, 2.4175, -7.2061), turn: 13.21 deg, scale: vec(1.018, 1.018, 1.018)
+model "bottle_whiskey_3.glb", at: vec(-2.2865, 2.4175, -7.226), turn: 4.46 deg, scale: vec(1.025, 1.025, 1.025)
+model "bottle_champagne_1.glb", at: vec(-2.1403, 2.4175, -7.2554), turn: -24.48 deg, scale: vec(0.999, 0.999, 0.999)
+model "bottle_whiskey_1.glb", at: vec(-1.9742, 2.4175, -7.2165), turn: -17.34 deg, scale: vec(1.007, 1.007, 1.007)
+model "bottle_wine_1.glb", at: vec(-1.8377, 2.4175, -7.231), turn: 12.77 deg, scale: vec(1.03, 1.03, 1.03)
+model "bottle_cognac_1.glb", at: vec(-1.6865, 2.4175, -7.2317), turn: 4.43 deg, scale: vec(1.03, 1.03, 1.03)
+model "bottle_square_1.glb", at: vec(-1.355, 1.3375, -7.2438), turn: -23.6 deg, scale: vec(1.019, 1.019, 1.019)
+model "bottle_wine_1.glb", at: vec(-1.215, 1.3375, -7.2608), turn: -0.09 deg, scale: vec(1.03, 1.03, 1.03)
+model "bottle_liqueur_1.glb", at: vec(-1.0533, 1.3375, -7.2367), turn: 3.93 deg, scale: vec(1.014, 1.014, 1.014)
+model "bottle_cognac_1.glb", at: vec(-0.8862, 1.3375, -7.2321), turn: 4.67 deg, scale: vec(1.004, 1.004, 1.004)
+model "bottle_wine_1.glb", at: vec(-0.7347, 1.3375, -7.2609), turn: -6.39 deg, scale: vec(1.02, 1.02, 1.02)
+model "bottle_stubby_1.glb", at: vec(-0.5874, 1.3375, -7.2539), turn: -8.91 deg, scale: vec(0.997, 0.997, 0.997)
+model "bottle_liqueur_2.glb", at: vec(-0.4389, 1.3375, -7.2534), turn: -19.49 deg, scale: vec(1.023, 1.023, 1.023)
+model "bottle_whiskey_3.glb", at: vec(-1.355, 2.4175, -7.2441), turn: -12.48 deg, scale: vec(0.989, 0.989, 0.989)
+model "bottle_slim_1.glb", at: vec(-1.2092, 2.4175, -7.2626), turn: -19.37 deg, scale: vec(1.01, 1.01, 1.01)
+model "bottle_wine_3.glb", at: vec(-1.0528, 2.4175, -7.2453), turn: -7.37 deg, scale: vec(1.022, 1.022, 1.022)
+model "bottle_cognac_2.glb", at: vec(-0.9231, 2.4175, -7.2395), turn: -1.77 deg, scale: vec(0.982, 0.982, 0.982)
+model "bottle_stubby_1.glb", at: vec(-0.7686, 2.4175, -7.2633), turn: -13.7 deg, scale: vec(1.015, 1.015, 1.015)
+model "bottle_square_2.glb", at: vec(-0.6262, 2.4175, -7.2248), turn: 13.2 deg, scale: vec(0.996, 0.996, 0.996)
+model "bottle_slim_3.glb", at: vec(-0.4849, 2.4175, -7.2179), turn: 3.6 deg, scale: vec(0.98, 0.98, 0.98)
+model "bottle_tequila_1.glb", at: vec(-1.355, 2.7775, -7.215), turn: 14.91 deg, scale: vec(1.001, 1.001, 1.001)
+model "bottle_liqueur_1.glb", at: vec(-1.1991, 2.7775, -7.2384), turn: -5.7 deg, scale: vec(0.994, 0.994, 0.994)
+model "bottle_champagne_2.glb", at: vec(-1.051, 2.7775, -7.2148), turn: 2.69 deg, scale: vec(1.018, 1.018, 1.018)
+model "bottle_whiskey_2.glb", at: vec(-0.9204, 2.7775, -7.2649), turn: 18.97 deg, scale: vec(0.975, 0.975, 0.975)
+model "bottle_square_2.glb", at: vec(-0.7512, 2.7775, -7.2598), turn: -20.39 deg, scale: vec(0.988, 0.988, 0.988)
+model "bottle_tequila_2.glb", at: vec(-0.6152, 2.7775, -7.2085), turn: 2.35 deg, scale: vec(0.998, 0.998, 0.998)
+model "bottle_whiskey_2.glb", at: vec(-0.4842, 2.7775, -7.2295), turn: 24.76 deg, scale: vec(0.973, 0.973, 0.973)
+model "bottle_stubby_2.glb", at: vec(-0.3532, 2.7775, -7.2264), turn: -3.24 deg, scale: vec(1.009, 1.009, 1.009)
+model "bottle_whiskey_3.glb", at: vec(-0.1425, 1.3375, -7.2418), turn: -6.92 deg, scale: vec(0.975, 0.975, 0.975)
+model "bottle_slim_3.glb", at: vec(-0.0081, 1.3375, -7.2419), turn: 23.35 deg, scale: vec(0.99, 0.99, 0.99)
+model "bottle_cognac_1.glb", at: vec(0.1337, 1.3375, -7.2212), turn: 2.32 deg, scale: vec(1.007, 1.007, 1.007)
+model "bottle_slim_2.glb", at: vec(0.3027, 1.3375, -7.2243), turn: -23.3 deg, scale: vec(1.001, 1.001, 1.001)
+model "bottle_square_1.glb", at: vec(0.4682, 1.3375, -7.226), turn: -11.45 deg, scale: vec(1.006, 1.006, 1.006)
+model "bottle_liqueur_1.glb", at: vec(0.6245, 1.3375, -7.2428), turn: 1.3 deg, scale: vec(1.006, 1.006, 1.006)
+model "bottle_slim_2.glb", at: vec(0.7533, 1.3375, -7.2323), turn: 22.2 deg, scale: vec(0.971, 0.971, 0.971)
+model "bottle_whiskey_2.glb", at: vec(-0.1425, 1.6975, -7.2618), turn: 16.02 deg, scale: vec(0.972, 0.972, 0.972)
+model "bottle_liqueur_3.glb", at: vec(-0.0066, 1.6975, -7.216), turn: 5.39 deg, scale: vec(0.98, 0.98, 0.98)
+model "bottle_whiskey_1.glb", at: vec(0.1576, 1.6975, -7.2252), turn: -5.62 deg, scale: vec(1.002, 1.002, 1.002)
+model "bottle_champagne_1.glb", at: vec(0.2817, 1.6975, -7.21), turn: 11.16 deg, scale: vec(1.006, 1.006, 1.006)
+model "bottle_champagne_2.glb", at: vec(0.4158, 1.6975, -7.2098), turn: -26.81 deg, scale: vec(1.011, 1.011, 1.011)
+model "bottle_tequila_2.glb", at: vec(0.5369, 1.6975, -7.246), turn: 2.93 deg, scale: vec(1.026, 1.026, 1.026)
+model "bottle_whiskey_1.glb", at: vec(0.6682, 1.6975, -7.209), turn: 6.85 deg, scale: vec(1.017, 1.017, 1.017)
+model "bottle_whiskey_2.glb", at: vec(-0.1425, 2.0575, -7.2552), turn: 3.3 deg, scale: vec(0.991, 0.991, 0.991)
+model "bottle_champagne_2.glb", at: vec(0.0262, 2.0575, -7.2273), turn: -0.2 deg, scale: vec(0.983, 0.983, 0.983)
+model "bottle_wine_3.glb", at: vec(0.1473, 2.0575, -7.2212), turn: -15.77 deg, scale: vec(0.993, 0.993, 0.993)
+model "bottle_slim_2.glb", at: vec(0.2695, 2.0575, -7.2168), turn: -1.54 deg, scale: vec(1.019, 1.019, 1.019)
+model "bottle_whiskey_1.glb", at: vec(0.3965, 2.0575, -7.229), turn: -4.82 deg, scale: vec(0.972, 0.972, 0.972)
+model "bottle_liqueur_2.glb", at: vec(0.5513, 2.0575, -7.2339), turn: -4.13 deg, scale: vec(0.983, 0.983, 0.983)
+model "bottle_cognac_1.glb", at: vec(0.689, 2.0575, -7.2216), turn: 13.72 deg, scale: vec(0.991, 0.991, 0.991)
+model "bottle_liqueur_2.glb", at: vec(-0.1425, 2.4175, -7.2469), turn: 21.93 deg, scale: vec(1.005, 1.005, 1.005)
+model "bottle_cognac_2.glb", at: vec(-0.0157, 2.4175, -7.2383), turn: 7 deg, scale: vec(1.01, 1.01, 1.01)
+model "bottle_whiskey_1.glb", at: vec(0.1157, 2.4175, -7.212), turn: 6.1 deg, scale: vec(0.995, 0.995, 0.995)
+model "bottle_slim_3.glb", at: vec(0.263, 2.4175, -7.2331), turn: 25.91 deg, scale: vec(0.974, 0.974, 0.974)
+model "bottle_whiskey_1.glb", at: vec(0.4211, 2.4175, -7.2129), turn: 6.19 deg, scale: vec(1.014, 1.014, 1.014)
+model "bottle_wine_2.glb", at: vec(0.5663, 2.4175, -7.2641), turn: 5.52 deg, scale: vec(1.014, 1.014, 1.014)
+model "bottle_champagne_1.glb", at: vec(0.721, 2.4175, -7.2122), turn: -1.96 deg, scale: vec(0.982, 0.982, 0.982)
+model "bottle_champagne_1_tilt17_0.glb", at: vec(-0.55, 1.03, -7.125), scale: vec(1.009, 1.009, 1.009)
+model "round_table.glb", at: vec(-3, 0, -0.6)
+model "candle.glb", at: vec(-3, 0.785, -0.6)
+model "rocks_glass.glb", at: vec(-2.78, 0.785, -0.48)
+model "table_stool.glb", at: vec(-3.78, 0, -0.6), turn: -90 deg
+model "table_stool.glb", at: vec(-2.22, 0, -0.6), turn: 90 deg
+model "round_table.glb", at: vec(-0.2, 0, -1.4), turn: 40.107 deg
+model "candle.glb", at: vec(-0.2, 0.785, -1.4)
+model "table_stool.glb", at: vec(-0.6849, 0, -2.011), turn: -141.566 deg
+model "table_stool.glb", at: vec(0.2849, 0, -0.789), turn: 38.434 deg
+model "round_table.glb", at: vec(2.4, 0, -0.4), turn: 80.214 deg
+model "candle.glb", at: vec(2.4, 0.785, -0.4)
+model "rocks_glass.glb", at: vec(2.62, 0.785, -0.28)
+model "table_stool.glb", at: vec(2.5772, 0, -1.1596), turn: 166.868 deg
+model "table_stool.glb", at: vec(2.2228, 0, 0.3596), turn: -13.132 deg
+model "round_table.glb", at: vec(-1.6, 0, 2), turn: 120.321 deg
+model "candle.glb", at: vec(-1.6, 0.785, 2)
+model "table_stool.glb", at: vec(-0.8948, 0, 1.6666), turn: 115.301 deg
+model "table_stool.glb", at: vec(-2.3052, 0, 2.3334), turn: -64.699 deg
+model "round_table.glb", at: vec(1.4, 0, 2.4), turn: 160.428 deg
+model "candle.glb", at: vec(1.4, 0.785, 2.4)
+model "rocks_glass.glb", at: vec(1.62, 0.785, 2.52)
+model "table_stool.glb", at: vec(2.0995, 0, 2.7452), turn: 63.735 deg
+model "table_stool.glb", at: vec(0.7005, 0, 2.0548), turn: -116.265 deg
+model "round_table.glb", at: vec(4.2, 0, 1.6), turn: -159.465 deg
+model "candle.glb", at: vec(4.2, 0.785, 1.6)
+model "table_stool.glb", at: vec(4.3644, 0, 2.3625), turn: 12.169 deg
+model "table_stool.glb", at: vec(4.0356, 0, 0.8375), turn: -167.831 deg
+model "string_lights.glb", at: vec(0, 0, 0)
+model "neon_cocktails.glb", at: vec(-6.3, 0, -3.465)
+model "neon_game_on.glb", at: vec(9, 0, -2), turn: -90 deg
+model "neon_play.glb", at: vec(-3.8, 0, 7), turn: 180 deg
+model "neon_note.glb", at: vec(-7.2, 0, 7), turn: 180 deg
+model "gallery_photo_1.glb", at: vec(-5, 2.3, 7), turn: 180 deg
+model "gallery_photo_2.glb", at: vec(-4.4, 2.55, 7), turn: 180 deg
+model "gallery_photo_3.glb", at: vec(-4.45, 2.05, 7), turn: 180 deg
+model "gallery_photo_4.glb", at: vec(-3.25, 2.5, 7), turn: 180 deg
+model "gallery_photo_5.glb", at: vec(-2.65, 2.15, 7), turn: 180 deg
+model "gallery_photo_6.glb", at: vec(-2.6, 2.75, 7), turn: 180 deg
+model "gallery_photo_7.glb", at: vec(-4.95, 1.6, 7), turn: 180 deg
+model "tin_sign_1.glb", at: vec(4.85, 2.9, -7.4)
+model "tin_sign_2.glb", at: vec(5.55, 2.55, -7.4)
+model "tin_sign_3.glb", at: vec(5, 2.2, -7.4)
+model "tin_sign_4.glb", at: vec(5.6, 3.3, -7.4)
+model "license_plate_1.glb", at: vec(4.9, 1.55, -7.4)
+model "license_plate_2.glb", at: vec(5.3, 1.55, -7.4)
+model "license_plate_3.glb", at: vec(4.9, 1.79, -7.4)
+model "license_plate_4.glb", at: vec(5.3, 1.79, -7.4)
+model "record_1.glb", at: vec(5.75, 1.9, -7.4)
+model "record_2.glb", at: vec(4.75, 3.45, -7.4)
+model "record_3.glb", at: vec(5.9, 2.95, -7.4)
+model "wall_clock.glb", at: vec(-2.6, 3.42, -3.465)
+model "wall_tv.glb", at: vec(0.9, 3.05, -3.465)
+model "chalk_a_frame.glb", at: vec(1.95, 0, 5.75), turn: 28.648 deg
+model "floor_plant_1.glb", at: vec(-1.85, 0, 6.7)
+model "floor_plant_2.glb", at: vec(5.35, 0, 6.65)
+model "floor_plant_3.glb", at: vec(-5.15, 0.15, 6.65)
+model "floor_plant_4.glb", at: vec(8.55, 0, 6.6)
+model "hanging_plant_1.glb", at: vec(-1.2, 2.9, 7.55)
+model "hanging_plant_2.glb", at: vec(0.8, 2.9, 7.55)
+model "corner_speaker.glb", at: vec(-8.7, 3.35, -3.3), turn: 135 deg
+model "corner_speaker.glb", at: vec(8.7, 3.35, 6.7), turn: -135 deg
+model "corner_speaker.glb", at: vec(-8.7, 3.35, 6.7), turn: 135 deg
+model "corner_speaker.glb", at: vec(8.7, 3.35, -4), turn: -45 deg
+model "wall_sconce.glb", at: vec(-1, 0, 7), turn: 180 deg
+model "wall_sconce.glb", at: vec(-5.45, 0, 7), turn: 180 deg
+model "wall_sconce.glb", at: vec(-9, 0, -4.6), turn: 90 deg
+model "wall_sconce.glb", at: vec(-9, 0, 3.15), turn: 90 deg
+model "fire_extinguisher.glb", at: vec(2.75, 0, -7.4)
+model "fire_extinguisher.glb", at: vec(-5.6, 0, 7), turn: 180 deg
+model "smoke_detector.glb", at: vec(-4, 4, 0)
+model "smoke_detector.glb", at: vec(3, 4, 3)
+model "smoke_detector.glb", at: vec(-6, 4, 5)
+model "smoke_detector.glb", at: vec(4, 4, -2)
+model "smoke_detector.glb", at: vec(-1, 4, 5.5)
+model "wall_switch.glb", at: vec(2.2, 1.25, 7), turn: 180 deg
+model "wall_switch.glb", at: vec(4.35, 0.35, 7), turn: 180 deg
+model "wall_switch.glb", at: vec(9, 1.25, 0.7), turn: -90 deg
+model "wall_switch.glb", at: vec(-5.6, 0.35, 7), turn: 180 deg
+model "wall_switch.glb", at: vec(1.1, 0.35, -7.4)
+model "coat_rack.glb", at: vec(3.925, 1.75, 7), turn: 180 deg
+model "umbrella_stand.glb", at: vec(4.6, 0, 6.7)
+model "trash_can.glb", at: vec(1.95, 0, 6.7)
+model "beer_crate.glb", at: vec(4.95, 0, -7.1)
+model "beer_crate.glb", at: vec(5.4, 0, -7.08), turn: 2.865 deg
+model "beer_crate.glb", at: vec(5.15, 0.28, -7.1), turn: -5.73 deg
+model "beer_crate.glb", at: vec(5.65, 0, -6.65), turn: 17.189 deg
+model "keg.glb", at: vec(5.75, 0, -7.1)
+model "bay_table.glb", at: vec(-0.2, 0, 7.25)
+model "fireplace.glb", at: vec(-8.55, 0, 0.8), turn: 90 deg
+model "painting.glb", at: vec(-8.535, 1.975, 0.8), turn: 90 deg
+model "mantel_clock.glb", at: vec(-8.43, 1.23, 0.8), turn: 90 deg
+model "candlestick.glb", at: vec(-8.43, 1.23, 0.25), turn: 90 deg
+model "candlestick.glb", at: vec(-8.43, 1.23, 1.35), turn: 90 deg
+model "mantel_photo_b.glb", at: vec(-8.49, 1.23, 0.45), turn: 78.541 deg
+model "mantel_photo_a.glb", at: vec(-8.49, 1.23, 1.12), turn: 107.189 deg
+model "mantel_books.glb", at: vec(-8.42, 1.23, 1.52), turn: 90 deg
+model "vase.glb", at: vec(-8.42, 1.23, 0.07), turn: 90 deg
+model "fire_tools.glb", at: vec(-8.2, 0, 1.84), turn: 90 deg
+model "log_basket.glb", at: vec(-8.2, 0, -0.29), turn: 90 deg
+model "rug.glb", at: vec(-7.12, 0, 0.8)
+model "coffee_table.glb", at: vec(-6.95, 0, 0.8)
+model "drink_rocks_whiskey_ice.glb", at: vec(-6.75, 0.45, 1.22)
+model "drink_snifter_whiskey.glb", at: vec(-7.15, 0.45, 0.38)
+model "bottle_square_1.glb", at: vec(-6.93, 0.45, 1.28)
+model "drink_wine_red_wine.glb", at: vec(-5.9, 0.565, 2.7)
+model "drink_coupe_pink.glb", at: vec(-0.05, 0.565, 7.15)
+model "drink_wine_white_wine.glb", at: vec(-0.35, 0.565, 7.35)
+model "drink_coupe_pink.glb", at: vec(-6.6587, 1.08, -4.6834)
+model "drink_pint_beer.glb", at: vec(-6.0704, 1.08, -4.5354)
+model "drink_wine_red_wine.glb", at: vec(-4.9766, 1.08, -4.3373)
+model "drink_martini_blue.glb", at: vec(-4.2728, 1.08, -4.261)
+model "drink_highball_cola_ice.glb", at: vec(-2.808, 1.08, -4.2277)
+model "drink_rocks_whiskey_ice.glb", at: vec(-1.9508, 1.08, -4.2863)
+model "drink_pint_beer.glb", at: vec(-0.95, 1.08, -4.4288)
+model "drink_coupe_orange.glb", at: vec(-0.3561, 1.08, -4.5522)
+model "chesterfield_sofa.glb", at: vec(-5.75, 0, 0.8), turn: -90 deg
+model "armchair.glb", at: vec(-7.25, 0, -0.5), turn: -51.566 deg
+model "armchair.glb", at: vec(-7.25, 0, 2.1), turn: -128.434 deg
+model "bookshelf.glb", at: vec(-9, 0, 2.625), turn: 90 deg
+model "floor_lamp.glb", at: vec(-6.3, 0, 2.75)
+model "side_table.glb", at: vec(-5.85, 0, 2.65)
+model "fire_flames.glb", at: vec(-8.71, 0.12, 0.8)
+model "chess_rook_w.glb", at: vec(-7.1425, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-7.1425, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-7.1425, 0.4705, 0.6625)
+model "chess_rook_b.glb", at: vec(-7.1425, 0.4705, 0.6075)
+model "chess_knight_w.glb", at: vec(-7.0875, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-7.0875, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-7.0875, 0.4705, 0.6625)
+model "chess_knight_b.glb", at: vec(-7.0875, 0.4705, 0.6075)
+model "chess_bishop_w.glb", at: vec(-7.0325, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-7.0325, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-7.0325, 0.4705, 0.6625)
+model "chess_bishop_b.glb", at: vec(-7.0325, 0.4705, 0.6075)
+model "chess_queen_w.glb", at: vec(-6.9775, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-6.9775, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-6.9775, 0.4705, 0.6625)
+model "chess_queen_b.glb", at: vec(-6.9775, 0.4705, 0.6075)
+model "chess_king_w.glb", at: vec(-6.9225, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-6.9225, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-6.9225, 0.4705, 0.6625)
+model "chess_king_b.glb", at: vec(-6.9225, 0.4705, 0.6075)
+model "chess_bishop_w.glb", at: vec(-6.8675, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-6.8675, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-6.8675, 0.4705, 0.6625)
+model "chess_bishop_b.glb", at: vec(-6.8675, 0.4705, 0.6075)
+model "chess_knight_w.glb", at: vec(-6.8125, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-6.8125, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-6.8125, 0.4705, 0.6625)
+model "chess_knight_b.glb", at: vec(-6.8125, 0.4705, 0.6075)
+model "chess_rook_w.glb", at: vec(-6.7575, 0.4705, 0.9925)
+model "chess_pawn_w.glb", at: vec(-6.7575, 0.4705, 0.9375)
+model "chess_pawn_b.glb", at: vec(-6.7575, 0.4705, 0.6625)
+model "chess_rook_b.glb", at: vec(-6.7575, 0.4705, 0.6075)
+model "chess_queen_w.glb", at: vec(-6.95, -0.1295, 0.8)
+model "chess_queen_b.glb", at: vec(-6.95, -0.1295, 0.8)
+model "chess_queen_w.glb", at: vec(-6.95, -0.1295, 0.8)
+model "chess_queen_b.glb", at: vec(-6.95, -0.1295, 0.8)
+model "piano.glb", at: vec(-8, 0.3, 5.6), turn: 104.897 deg
+model "stage.glb", at: vec(0, 0, 0)
+model "dartboard.glb", at: vec(6, 1.73, 7), turn: 180 deg
+model "chalkboard.glb", at: vec(7.7, 1.6, 7), turn: 180 deg
+model "round_table.glb", at: vec(4.65, 0, 5)
+model "pint_glass.glb", at: vec(4.8, 0.785, 5.1)
+model "sim_rig.glb", at: vec(7.75, 0, -3), turn: -90 deg
+model "sim_rig.glb", at: vec(7.75, 0, -1), turn: -90 deg
+model "rhythm.glb", at: vec(7.5, 0, -5.9), turn: -45 deg
+model "jukebox.glb", at: vec(-3.8, 0, 6.55), turn: 180 deg
+model "big_mirror.glb", at: vec(0, 0, 0)
+model "mirror_button.glb", at: vec(8.988, 1.39, 0.89)
+model "mirror_button.glb", at: vec(8.988, 1.3, 0.89)
+model "mirror_button.glb", at: vec(8.988, 1.21, 0.89)
+model "arcade.glb", at: vec(0, 0, 0)
+model "stage_mic.glb", at: vec(-6.25, 0.3, 6.3)
+model "stage_guitar.glb", at: vec(-5.72, 0.3, 6.62)
+model "stage_amp.glb", at: vec(-6.95, 0.3, 6.78), turn: 180 deg
+model "stage_lights.glb", at: vec(-6.3, 4, 5.4)
+model "stage_stool.glb", at: vec(-6.8, 0.3, 6.35)
+model "board_darts.glb", at: vec(6, 1.73, 6.96), turn: 180 deg
+model "dart_surround.glb", at: vec(6, 1.73, 7), turn: 180 deg
+model "dart_holder.glb", at: vec(6.72, 1.35, 7), turn: 180 deg
+model "oche.glb", at: vec(6, 0, 4.59), turn: 180 deg
+model "dart_spotlights.glb", at: vec(6, 4, 5.56), turn: 180 deg
+model "neon_darts.glb", at: vec(6, 0, 7), turn: 180 deg
+model "caution_tape.glb", at: vec(-9, 0, -2.5), turn: 90 deg
+model "plastic_sheet.glb", at: vec(-9.35, 0, -2.5), turn: 90 deg
+model "sawhorse_1.glb", at: vec(-8.4, 0, -2.15), turn: 90 deg
+model "sawhorse_2.glb", at: vec(-8.25, 0, -2.8), turn: 90 deg
+model "cone_1.glb", at: vec(-8.55, 0, -1.35), turn: 90 deg
+model "cone_2.glb", at: vec(-8.5, 0, -3.7), turn: 90 deg
+model "cone_3.glb", at: vec(-8.05, 0, -3.65), turn: 90 deg
+model "easel_sign.glb", at: vec(-8.45, 0, -0.95), turn: 90 deg
+model "work_light.glb", at: vec(-10.65, 0, -3.172), turn: 90 deg
+model "step_ladder.glb", at: vec(-11.1, 0, -1.9), turn: 90 deg
+model "paint_bucket_1.glb", at: vec(-10.5, 0, -2.74), turn: 90 deg
+model "paint_bucket_2.glb", at: vec(-10.95, 0, -3.46), turn: 90 deg
+model "paint_bucket_3.glb", at: vec(-9.9, 0, -3.1), turn: 90 deg
+model "drop_cloth.glb", at: vec(-10.35, 0, -2.38), turn: 90 deg
+model "lumber.glb", at: vec(-10.05, 0, -1.88), turn: 90 deg
+model "drywall.glb", at: vec(-12.15, 0, -2.962), turn: 90 deg
+model "toolbox.glb", at: vec(-9.9, 0, -3.34), turn: 90 deg
+model "arcade_neon_bolt.glb", at: vec(0.46, 0, -10.1), turn: 90 deg
+model "arcade_neon_ring.glb", at: vec(0.46, 0, -13.2), turn: 90 deg
+model "arcade_neon_triangle.glb", at: vec(8.34, 0, -10.2), turn: -90 deg
+model "arcade_neon_zigzag.glb", at: vec(8.34, 0, -13.3), turn: -90 deg
+model "arcade_neon_wave.glb", at: vec(4.4, 0, -15.64)
+model "arcade_sign_bar.glb", at: vec(3.7, 0, -7.4)
+model "arcade_sign_inside.glb", at: vec(3.7, 0, -7.83), turn: 180 deg
+model "arcade_bench.glb", at: vec(0.75, 0, -11.7), turn: 90 deg
+model "arcade_cabinet.glb", at: vec(4.4, 0, -15.2)
+model "credit_coin.glb", at: vec(0, -20, 0)
+
+# ---- the bar's life: every lamp breathes, buzzes or waves on its own
+# (the original's light rig), the light switch dims the bar
+let lamps = []
+let seeds = 0
+to lamp(l, rule, dims)
+  seeds += 1
+  lamps.push({light: l, base: l.lumens, rule: rule, dims: dims, seed: seeds * 7.31})
+  return l
+
+to breathe(t, seed, amount: 6%, period: 8 s, speed: 0.5)
+  return 1 + amount * noise(t * speed * 4 / period, seed, 0)
+to buzz(t, seed, amount: 12%, period: 2 s, speed: 1)
+  return 1 + amount * flicker(t, speed * 4 / period, seed)
+
+to shine(l, t)
+  if l.rule == "breathe"
+    return breathe(t, l.seed)
+  if l.rule == "strings"
+    return breathe(t, l.seed, amount: 4%, period: 9 s, speed: 0.4)
+  if l.rule == "neon"
+    return buzz(t, l.seed, speed: 0.8)
+  if l.rule == "wave"
+    return 1 + 18% * wave(t, 5 s)
+  if l.rule == "sign"
+    return buzz(t, l.seed, amount: 60%, period: 1.2 s)
+  if l.rule == "fire"
+    return buzz(t, l.seed, amount: 40%, period: 0.5 s)
+  if l.rule == "jukebox"
+    return 1 + 20% * wave(t, 3 s)
+  return 1
+
+# 103 lamps (lumens and kelvin as in the bar)
+lamp(light(vec(-6.6, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-1
+lamp(light(vec(-4.3, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-2
+lamp(light(vec(-2, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-3
+lamp(light(vec(0.2, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-4
+lamp(light(vec(-6.281, 1.985, -7.054), lumens: 144, kelvin: 2700, radius: 0.3), "breathe", no)  # light-bulb-5
+lamp(light(vec(-1.544, 1.985, -7.056), lumens: 144, kelvin: 2700, radius: 0.3), "breathe", no)  # light-bulb-6
+lamp(light(vec(-4.511, 2.005, -7.123), lumens: 162, kelvin: 2700, radius: 0.03), "breathe", no)  # light-bulb-7
+lamp(light(vec(-8.0116, 3.424, -2.887), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
+lamp(light(vec(-6.8372, 3.3247, -2.0623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
+lamp(light(vec(-5.6628, 3.2253, -1.2377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
+lamp(light(vec(-4.4884, 3.126, -0.413), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
+lamp(light(vec(-3.3117, 3.075, 0.4117), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
+lamp(light(vec(-2.1372, 3.075, 1.2372), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
+lamp(light(vec(-0.9628, 3.075, 2.0628), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
+lamp(light(vec(0.2117, 3.075, 2.8883), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
+lamp(light(vec(1.3884, 3.126, 3.713), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
+lamp(light(vec(2.5628, 3.2253, 4.5377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
+lamp(light(vec(3.7372, 3.3247, 5.3623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
+lamp(light(vec(4.9116, 3.424, 6.187), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
+lamp(light(vec(-8.0116, 3.424, 6.187), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
+lamp(light(vec(-6.8372, 3.3247, 5.3623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
+lamp(light(vec(-5.6628, 3.2253, 4.5377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
+lamp(light(vec(-4.4884, 3.126, 3.713), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
+lamp(light(vec(-3.3117, 3.075, 2.8883), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
+lamp(light(vec(-2.1372, 3.075, 2.0628), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
+lamp(light(vec(-0.9628, 3.075, 1.2372), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
+lamp(light(vec(0.2117, 3.075, 0.4117), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
+lamp(light(vec(1.3884, 3.126, -0.413), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
+lamp(light(vec(2.5628, 3.2253, -1.2377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
+lamp(light(vec(3.7372, 3.3247, -2.0623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
+lamp(light(vec(4.9116, 3.424, -2.887), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
+lamp(light(vec(-3.4744, 3.4242, -2.9122), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
+lamp(light(vec(-2.4248, 3.3247, -2.1374), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
+lamp(light(vec(-1.3752, 3.2253, -1.3626), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
+lamp(light(vec(-0.3256, 3.1258, -0.5878), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
+lamp(light(vec(0.7242, 3.075, 0.1872), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
+lamp(light(vec(1.7747, 3.075, 0.9624), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
+lamp(light(vec(2.8253, 3.075, 1.7376), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
+lamp(light(vec(3.8758, 3.075, 2.5128), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
+lamp(light(vec(4.9256, 3.1258, 3.2878), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
+lamp(light(vec(5.9752, 3.2253, 4.0626), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
+lamp(light(vec(7.0248, 3.3247, 4.8374), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
+lamp(light(vec(8.0744, 3.4242, 5.6122), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
+lamp(light(vec(-7.8838, 3.4259, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
+lamp(light(vec(-6.4499, 3.3253, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
+lamp(light(vec(-5.0161, 3.2247, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
+lamp(light(vec(-3.5822, 3.1241, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
+lamp(light(vec(-2.1499, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
+lamp(light(vec(-0.7166, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
+lamp(light(vec(0.7166, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
+lamp(light(vec(2.1499, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
+lamp(light(vec(3.5822, 3.1241, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
+lamp(light(vec(5.0161, 3.2247, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
+lamp(light(vec(6.4499, 3.3253, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
+lamp(light(vec(7.8838, 3.4259, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
+lamp(light(vec(8.85, 3.76, 2.3625), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
+lamp(light(vec(8.85, 3.76, 3.1875), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
+lamp(light(vec(8.85, 3.76, 4.0125), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
+lamp(light(vec(8.85, 3.76, 4.8375), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
+lamp(light(vec(-6.366, 3.316, 4.644), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no)  # stage-spot-1
+lamp(light(vec(-6.392, 3.323, 5.414), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no)  # stage-spot-2
+lamp(light(vec(-6.354, 3.308, 6.185), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no)  # stage-spot-3
+lamp(light(vec(5.672, 3.718, 5.647), lumens: 150, kelvin: 3000, radius: 0.04), "breathe", no)  # dart-spot-1
+lamp(light(vec(6.328, 3.718, 5.647), lumens: 150, kelvin: 3000, radius: 0.04), "breathe", no)  # dart-spot-2
+lamp(light(vec(-0.2, 1.8, 7.6), lumens: 108, color: vec(0.55, 0.6, 0.9), radius: 0.3), "neon", no)  # light-neon-1
+lamp(light(vec(8.6491, 1.0489, -1.4502), lumens: 81, color: vec(0.5, 0.6, 1), radius: 0.03), "neon", no)  # light-neon-3
+lamp(light(vec(8.6629, 1.1111, -0.5878), lumens: 81, color: vec(0.5, 0.6, 1), radius: 0.03), "neon", no)  # light-neon-3
+lamp(light(vec(6.653, 1.887, -5.648), lumens: 216, color: vec(0.85, 0.4, 1), radius: 0.3), "neon", no)  # light-neon-4
+lamp(light(vec(7.0757, 3, -5.4757), lumens: 144, color: vec(1, 0.3, 0.7), radius: 0.09), "neon", no)  # light-neon-5
+lamp(panel_light(at: vec(-6.34, 3.49, -3.385), facing: vec(0, 0, 1), size: vec(2.21, 0.28, 0), lumens: 180, color: vec(1, 0.18, 0.55)), "neon", no)  # light-neon-cocktails
+lamp(panel_light(at: vec(8.92, 3.4, -2.05), facing: vec(-1, 0, 0), size: vec(2.03, 0.33, 0), lumens: 170, color: vec(0.3, 1, 0.35)), "neon", no)  # light-neon-game-on
+lamp(panel_light(at: vec(-3.76, 3.08, 6.92), facing: vec(0, 0, -1), size: vec(0.91, 0.27, 0), lumens: 110, color: vec(1, 0.55, 0.15)), "neon", no)  # light-neon-play
+lamp(panel_light(at: vec(-7.15, 2.9, 6.92), facing: vec(0, 0, -1), size: vec(0.48, 0.73, 0), lumens: 100, color: vec(1, 0.18, 0.55)), "neon", no)  # light-neon-note
+lamp(panel_light(at: vec(6.04, 2.43, 6.92), facing: vec(0, 0, -1), size: vec(1.15, 0.27, 0), lumens: 120, color: vec(1, 0.15, 0.08)), "neon", no)  # light-neon-darts
+lamp(panel_light(at: vec(0.51, 3.26, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-w
+lamp(panel_light(at: vec(8.29, 3.26, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-e
+lamp(panel_light(at: vec(4.4, 3.26, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-n
+lamp(panel_light(at: vec(4.4, 3.26, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-s
+lamp(panel_light(at: vec(0.51, 1, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-w
+lamp(panel_light(at: vec(8.29, 1, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-e
+lamp(panel_light(at: vec(4.4, 1, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-n
+lamp(panel_light(at: vec(4.4, 1, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-s
+lamp(panel_light(at: vec(0.51, 0.08, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-w
+lamp(panel_light(at: vec(8.29, 0.08, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-e
+lamp(panel_light(at: vec(4.4, 0.08, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-n
+lamp(panel_light(at: vec(4.4, 0.08, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-s
+lamp(panel_light(at: vec(3.7, 2.8, -7.92), facing: vec(0, 0, 1), size: vec(1.8, 0.1, 0), lumens: 70, color: vec(1, 0.85, 0.1)), "neon", no)  # light-arcade-door
+lamp(panel_light(at: vec(0.54, 2, -10.1), facing: vec(1, 0, 0), size: vec(0.99, 1.14, 0), lumens: 140, color: vec(1, 0.85, 0.1)), "neon", no)  # light-arcade-neon-bolt
+lamp(panel_light(at: vec(0.54, 2.05, -13.2), facing: vec(1, 0, 0), size: vec(1.14, 1.14, 0), lumens: 140, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-neon-ring
+lamp(panel_light(at: vec(8.26, 2.21, -10.2), facing: vec(-1, 0, 0), size: vec(1.13, 0.96, 0), lumens: 140, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-neon-triangle
+lamp(panel_light(at: vec(8.26, 2, -13.3), facing: vec(-1, 0, 0), size: vec(1.95, 0.44, 0), lumens: 150, color: vec(0.45, 1, 0.2)), "neon", no)  # light-arcade-neon-zigzag
+lamp(panel_light(at: vec(4.4, 2.65, -15.56), facing: vec(0, 0, 1), size: vec(7.21, 0.4, 0), lumens: 300, color: vec(1, 0.12, 0.62)), "wave", no)  # light-arcade-neon-wave
+lamp(panel_light(at: vec(3.7, 3.13, -7.32), facing: vec(0, 0, 1), size: vec(1.6, 0.4, 0), lumens: 130, color: vec(1, 0.2, 0.65)), "sign", no)  # light-sign
+lamp(panel_light(at: vec(3.7, 2.95, -7.91), facing: vec(0, 0, -1), size: vec(1.4, 0.35, 0), lumens: 110, color: vec(1, 0.2, 0.65)), "neon", no)  # light-arcade-sign-inside
+lamp(panel_light(at: vec(-1, 2.09, 6.76), facing: vec(0, 0, -1), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-1
+lamp(panel_light(at: vec(-5.45, 2.09, 6.76), facing: vec(0, 0, -1), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-2
+lamp(panel_light(at: vec(-8.76, 2.09, -4.6), facing: vec(1, 0, 0), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-3
+lamp(panel_light(at: vec(-8.76, 2.09, 3.15), facing: vec(1, 0, 0), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-4
+lamp(panel_light(at: vec(4.4, 1.35, -14.7), facing: vec(0, 0, 1), size: vec(0.5, 0.4, 0), lumens: 110, color: vec(0.8, 0.85, 1)), "neon", no)  # light-arcade-cabinet-screen
+lamp(light(vec(-8.57, 0.161, 0.8), lumens: 324, kelvin: 1700, radius: 0.03), "fire", no)  # light-fire
+lamp(light(vec(-6.3, 1.5, 2.75), lumens: 198, kelvin: 2400, radius: 0.04), "breathe", no)  # light-bulb-8
+lamp(panel_light(at: vec(-3.8, 0.875, 6.279), facing: vec(0, -0.001, -1), size: vec(1.29, 0.82, 0), lumens: 162, color: vec(1, 0.45, 0.25)), "jukebox", no)  # light-jukebox
+lamp(light(vec(-10.8, 1.8, -3.1), lumens: 288, kelvin: 3800, radius: 0.12), "neon", no)  # light-neon-6
+
+let dim = 1
+let dimTarget = 1
+every 1 / 30 s
+  dim = approach(dim, dimTarget, 2.5, 1 / 30)
+  let t = time()
+  for each l in lamps
+    let k = shine(l, t)
+    if l.dims
+      k = k * dim
+    l.light.lumens = l.base * k
+
+# the light switch by the door: lights down over the bar, and up again
+when "use"
+  if near(vec(2.25, 1.2, 6.95), within: 1.5 m)
+    dimTarget = 25% if dimTarget == 1 else 1
+
+
+# the room's sound
+room size: 0.5
+sound "fire", at: vec(-8.57, 0.161, 0.8), volume: 0.6
+
+# 293 walls, furniture and raised floors to bump into (invisible)
+blocker size: vec(3.5, 2.6, 2), at: vec(8.25, 1.3, -7.4)
+blocker size: vec(3, 2.6, 2.5), at: vec(8.5, 1.3, -7.15)
+blocker size: vec(2.5, 2.6, 3), at: vec(8.75, 1.3, -6.9)
+blocker size: vec(2, 2.6, 3.5), at: vec(9, 1.3, -6.65)
+blocker size: vec(1.5, 2.6, 4), at: vec(9.25, 1.3, -6.4)
+blocker size: vec(13.9, 2.6, 0.3), at: vec(-4.05, 1.3, -7.55)
+blocker size: vec(6.5, 2.6, 0.3), at: vec(7.75, 1.3, -7.55)
+blocker size: vec(11.4, 2.6, 1.7), at: vec(-5.3, 1.3, -8.55)
+blocker size: vec(2, 2.6, 18.4), at: vec(-10, 1.3, -0.2)
+blocker size: vec(2, 2.6, 18.4), at: vec(10, 1.3, -0.2)
+blocker size: vec(8.8, 2.6, 2), at: vec(-6.6, 1.3, 8)
+blocker size: vec(9.2, 2.6, 2), at: vec(6.4, 1.3, 8)
+blocker size: vec(6, 2.6, 2.6), at: vec(-0.2, 1.3, 8.7)
+blocker size: vec(1.45, 2.6, 2), at: vec(-9.275, 1.3, 0.8)
+blocker size: vec(0.7183, 2.6, 0.8719), at: vec(-7.2625, 1.3, -4.9379)
+blocker size: vec(0.6956, 2.6, 0.8613), at: vec(-6.7752, 1.3, -4.7865)
+blocker size: vec(0.6717, 2.6, 0.8494), at: vec(-6.2822, 1.3, -4.6548)
+blocker size: vec(0.6468, 2.6, 0.8361), at: vec(-5.7844, 1.3, -4.5429)
+blocker size: vec(0.6208, 2.6, 0.8215), at: vec(-5.2824, 1.3, -4.4512)
+blocker size: vec(0.5938, 2.6, 0.8056), at: vec(-4.7772, 1.3, -4.3797)
+blocker size: vec(0.5659, 2.6, 0.7883), at: vec(-4.2695, 1.3, -4.3285)
+blocker size: vec(0.5371, 2.6, 0.7698), at: vec(-3.7602, 1.3, -4.2978)
+blocker size: vec(0.5074, 2.6, 0.75), at: vec(-3.25, 1.3, -4.2876)
+blocker size: vec(0.5371, 2.6, 0.7698), at: vec(-2.7398, 1.3, -4.2978)
+blocker size: vec(0.5659, 2.6, 0.7883), at: vec(-2.2305, 1.3, -4.3285)
+blocker size: vec(0.5938, 2.6, 0.8056), at: vec(-1.7228, 1.3, -4.3797)
+blocker size: vec(0.6208, 2.6, 0.8215), at: vec(-1.2176, 1.3, -4.4512)
+blocker size: vec(0.6468, 2.6, 0.8361), at: vec(-0.7156, 1.3, -4.5429)
+blocker size: vec(0.6717, 2.6, 0.8494), at: vec(-0.2178, 1.3, -4.6548)
+blocker size: vec(0.6956, 2.6, 0.8613), at: vec(0.2752, 1.3, -4.7865)
+blocker size: vec(0.7183, 2.6, 0.8719), at: vec(0.7625, 1.3, -4.9379)
+blocker size: vec(0.7165, 2.6, 0.8045), at: vec(1.1601, 1.3, -5.1289)
+blocker size: vec(0.8176, 2.6, 0.5521), at: vec(1.3751, 1.3, -5.4272)
+blocker size: vec(0.75, 2.6, 0.5963), at: vec(1.4307, 1.3, -5.9092)
+blocker size: vec(0.75, 2.6, 0.5963), at: vec(1.4307, 1.3, -6.5055)
+blocker size: vec(0.75, 2.6, 0.5963), at: vec(1.4307, 1.3, -7.1018)
+blocker size: vec(9.85, 2.6, 1.6), at: vec(-3.975, 1.3, -7.6)
+blocker size: vec(0.6, 2.6, 0.35), at: vec(0.4, 1.3, -6.625)
+blocker size: vec(0.6, 2.6, 0.6), at: vec(1.95, 1.3, 5.75)
+blocker size: vec(0.6, 2.6, 0.6), at: vec(-1.85, 1.3, 6.7)
+blocker size: vec(0.6, 2.6, 0.6), at: vec(5.35, 1.3, 6.65)
+blocker size: vec(0.6, 2.6, 0.6), at: vec(4.6, 1.3, 6.7)
+blocker size: vec(0.6, 2.6, 0.6), at: vec(8.55, 1.3, 6.6)
+blocker size: vec(0.95, 2.6, 2.3), at: vec(-8.525, 1.3, 0.8)
+blocker size: vec(0.7, 2.6, 2.4), at: vec(-5.6, 1.3, 0.8)
+blocker size: vec(0.4, 2.6, 1), at: vec(-7.05, 1.3, 0.8)
+blocker size: vec(0.9, 2.6, 0.9), at: vec(-7.25, 1.3, -0.5)
+blocker size: vec(0.9, 2.6, 0.9), at: vec(-7.25, 1.3, 2.1)
+blocker size: vec(0.36, 2.6, 1.45), at: vec(-8.82, 1.3, 2.625)
+blocker size: vec(0.4, 2.6, 0.4), at: vec(-6.3, 1.3, 2.75)
+blocker size: vec(0.52, 2.6, 0.52), at: vec(-5.85, 1.3, 2.65)
+blocker size: vec(2.5, 2.6, 2.3), at: vec(-7, 1.3, 5.4)
+blocker size: vec(0.5, 2.6, 0.8), at: vec(-8.5992, 1.3, 5.7594)
+blocker size: vec(0.5, 2.6, 0.5), at: vec(-6.25, 1.3, 6.3)
+blocker size: vec(0.5, 2.6, 0.6), at: vec(-5.72, 1.3, 6.62)
+blocker size: vec(0.64, 2.6, 0.4), at: vec(-6.95, 1.3, 6.78)
+blocker size: vec(0.44, 2.6, 0.44), at: vec(-6.8, 1.3, 6.35)
+blocker size: vec(2.15, 2.6, 3.05), at: vec(-8.925, 1.3, -1.925)
+blocker size: vec(12, 2.6, 2), at: vec(4.4, 1.3, -16.7)
+blocker size: vec(2, 2.6, 8), at: vec(-0.6, 1.3, -11.7)
+blocker size: vec(2, 2.6, 8.3), at: vec(9.4, 1.3, -11.55)
+blocker size: vec(3.6, 0.3, 3.2), at: vec(-7.2, 0.15, 5.4)  # a raised floor: step up onto it
+blocker size: vec(3.95, 0.15, 3.55), at: vec(-7.025, 0.075, 5.225)  # a raised floor: step up onto it
+blocker size: vec(20, 0.1, 18), at: vec(0, -0.05, 0), turn: 0 deg
+blocker size: vec(20, 0.1, 18), at: vec(0, 4.05, 0), turn: 0 deg
+blocker size: vec(20, 4, 0.3), at: vec(0, 2, -7.55), turn: 0 deg
+blocker size: vec(0.3, 4, 16), at: vec(9.15, 2, 0), turn: 0 deg
+blocker size: vec(0.3, 4, 16), at: vec(-9.15, 2, 0), turn: 0 deg
+blocker size: vec(7.8, 4, 0.3), at: vec(-6.1, 2, 7.15), turn: 0 deg
+blocker size: vec(8.2, 4, 0.3), at: vec(5.9, 2, 7.15), turn: 0 deg
+blocker size: vec(4.4, 4, 0.2), at: vec(-0.2, 2, 8.1), turn: 0 deg
+blocker size: vec(4, 0.48, 0.58), at: vec(-0.2, 0.24, 7.68), turn: 0 deg
+blocker size: vec(0.45, 4, 2), at: vec(-8.775, 2, 0.8), turn: 0 deg
+blocker size: vec(3.6, 0.3, 3.2), at: vec(-7.2, 0.15, 5.4), turn: 0 deg
+blocker size: vec(3.95, 0.15, 3.55), at: vec(-7.025, 0.075, 5.225), turn: 0 deg
+blocker size: vec(0.9, 0.54, 2.4), at: vec(-5.75, 0.27, 0.8), turn: 0 deg
+blocker size: vec(0.2, 0.66, 2.4), at: vec(-5.4, 0.45, 0.8), turn: 0 deg
+blocker size: vec(0.76, 0.04, 1.2), at: vec(-6.95, 0.43, 0.8), turn: 0 deg
+blocker size: vec(0.8, 0.6, 0.8), at: vec(-7.25, 0.3, -0.5), turn: 0 deg
+blocker size: vec(0.8, 0.6, 0.8), at: vec(-7.25, 0.3, 2.1), turn: 0 deg
+blocker size: vec(0.48, 0.03, 0.48), at: vec(-5.85, 0.55, 2.65), turn: 0 deg
+blocker size: vec(0.6, 0.48, 0.26), at: vec(-6.95, 0.54, 6.78), turn: 0 deg
+blocker size: vec(0.08, 3.64, 4.56), at: vec(8.96, 1.88, 3.6), turn: 0 deg
+blocker size: vec(0.3, 1, 2.2), at: vec(-8.3, 0.5, -2.6), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.76), at: vec(-7.2451, 1.05, -4.9901), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.09), at: vec(-7.3556, 1.11, -4.658), turn: 0 deg
+blocker size: vec(0.5473, 1, 0.54), at: vec(-7.2388, 0.5, -5.0091), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-6.7599, 1.05, -4.8393), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-6.857, 1.11, -4.5031), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-6.7544, 0.5, -4.8586), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-6.2691, 1.05, -4.7082), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-6.3526, 1.11, -4.3683), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-6.2643, 0.5, -4.7276), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-5.7734, 1.05, -4.5968), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-5.8432, 1.11, -4.2539), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-5.7694, 0.5, -4.6164), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.76), at: vec(-5.2736, 1.05, -4.5055), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.09), at: vec(-5.3296, 1.11, -4.16), turn: 0 deg
+blocker size: vec(0.5473, 1, 0.54), at: vec(-5.2704, 0.5, -4.5252), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-4.7706, 1.05, -4.4343), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-4.8126, 1.11, -4.0868), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-4.7682, 0.5, -4.4541), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-4.2651, 1.05, -4.3834), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-4.2932, 1.11, -4.0345), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-4.2635, 0.5, -4.4033), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-3.758, 1.05, -4.3528), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-3.772, 1.11, -4.003), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-3.7572, 0.5, -4.3727), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.76), at: vec(-3.25, 1.05, -4.3426), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.09), at: vec(-3.25, 1.11, -3.9926), turn: 0 deg
+blocker size: vec(0.5473, 1, 0.54), at: vec(-3.25, 0.5, -4.3625), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-2.742, 1.05, -4.3528), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-2.728, 1.11, -4.003), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-2.7428, 0.5, -4.3727), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-2.2349, 1.05, -4.3834), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-2.2068, 1.11, -4.0345), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-2.2365, 0.5, -4.4033), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-1.7294, 1.05, -4.4343), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-1.6873, 1.11, -4.0868), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-1.7318, 0.5, -4.4541), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-1.2264, 1.05, -4.5055), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-1.1704, 1.11, -4.16), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-1.2296, 0.5, -4.5252), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-0.7266, 1.05, -4.5968), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-0.6568, 1.11, -4.2539), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-0.7306, 0.5, -4.6164), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(-0.2309, 1.05, -4.7082), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(-0.1474, 1.11, -4.3683), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(-0.2357, 0.5, -4.7276), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.76), at: vec(0.2599, 1.05, -4.8393), turn: 0 deg
+blocker size: vec(0.5474, 0.06, 0.09), at: vec(0.357, 1.11, -4.5031), turn: 0 deg
+blocker size: vec(0.5474, 1, 0.54), at: vec(0.2544, 0.5, -4.8586), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.76), at: vec(0.7451, 1.05, -4.9901), turn: 0 deg
+blocker size: vec(0.5473, 0.06, 0.09), at: vec(0.8556, 1.11, -4.658), turn: 0 deg
+blocker size: vec(0.5473, 1, 0.54), at: vec(0.7388, 0.5, -5.0091), turn: 0 deg
+blocker size: vec(0.378, 0.06, 0.76), at: vec(1.1275, 1.05, -5.1732), turn: 0 deg
+blocker size: vec(0.378, 0.06, 0.09), at: vec(1.3347, 1.11, -4.8911), turn: 0 deg
+blocker size: vec(0.378, 1, 0.54), at: vec(1.1156, 0.5, -5.1893), turn: 0 deg
+blocker size: vec(0.378, 0.06, 0.76), at: vec(1.3228, 1.05, -5.4441), turn: 0 deg
+blocker size: vec(0.378, 0.06, 0.09), at: vec(1.6559, 1.11, -5.3365), turn: 0 deg
+blocker size: vec(0.378, 1, 0.54), at: vec(1.3038, 0.5, -5.4502), turn: 0 deg
+blocker size: vec(0.6363, 0.06, 0.76), at: vec(1.3757, 1.05, -5.9092), turn: 0 deg
+blocker size: vec(0.6363, 0.06, 0.09), at: vec(1.7257, 1.11, -5.9092), turn: 0 deg
+blocker size: vec(0.6363, 1, 0.54), at: vec(1.3557, 0.5, -5.9092), turn: 0 deg
+blocker size: vec(0.6363, 0.06, 0.76), at: vec(1.3757, 1.05, -6.5055), turn: 0 deg
+blocker size: vec(0.6363, 0.06, 0.09), at: vec(1.7257, 1.11, -6.5055), turn: 0 deg
+blocker size: vec(0.6363, 1, 0.54), at: vec(1.3557, 0.5, -6.5055), turn: 0 deg
+blocker size: vec(0.6363, 0.06, 0.76), at: vec(1.3757, 1.05, -7.1018), turn: 0 deg
+blocker size: vec(0.6363, 0.06, 0.09), at: vec(1.7257, 1.11, -7.1018), turn: 0 deg
+blocker size: vec(0.6363, 1, 0.54), at: vec(1.3557, 0.5, -7.1018), turn: 0 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-7.0405, 0.725, -4.0435), turn: -16.319 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-7.1009, 0.795, -3.8371), turn: -16.319 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-7.0405, 0.345, -4.0435), turn: -16.319 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-5.9501, 0.725, -3.773), turn: -11.546 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-5.9931, 0.795, -3.5623), turn: -11.546 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-5.9501, 0.345, -3.773), turn: -11.546 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-4.8597, 0.725, -3.5964), turn: -6.853 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-4.8853, 0.795, -3.3829), turn: -6.853 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-4.8597, 0.345, -3.5964), turn: -6.853 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-3.7692, 0.725, -3.51), turn: -2.206 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-3.7775, 0.795, -3.2952), turn: -2.206 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-3.7692, 0.345, -3.51), turn: -2.206 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-2.6788, 0.725, -3.5121), turn: 2.427 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-2.6697, 0.795, -3.2973), turn: 2.427 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-2.6788, 0.345, -3.5121), turn: 2.427 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-1.5884, 0.725, -3.6027), turn: 7.075 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-1.5619, 0.795, -3.3894), turn: 7.075 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-1.5884, 0.345, -3.6027), turn: 7.075 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(-0.498, 0.725, -3.7837), turn: 11.771 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(-0.4541, 0.795, -3.5732), turn: 11.771 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(-0.498, 0.345, -3.7837), turn: 11.771 deg
+blocker size: vec(0.5, 0.07, 0.5), at: vec(0.5924, 0.725, -4.0588), turn: 16.549 deg
+blocker size: vec(0.34, 0.07, 0.06), at: vec(0.6537, 0.795, -3.8527), turn: 16.549 deg
+blocker size: vec(0.4, 0.69, 0.4), at: vec(0.5924, 0.345, -4.0588), turn: 16.549 deg
+blocker size: vec(9.76, 0.99, 0.6), at: vec(-3.95, 0.495, -7.11), turn: 0 deg
+blocker size: vec(9.7, 0.035, 0.3), at: vec(-3.95, 1.32, -7.24), turn: 0 deg
+blocker size: vec(9.7, 0.035, 0.3), at: vec(-3.95, 1.68, -7.24), turn: 0 deg
+blocker size: vec(9.7, 0.035, 0.3), at: vec(-3.95, 2.04, -7.24), turn: 0 deg
+blocker size: vec(9.7, 0.035, 0.3), at: vec(-3.95, 2.4, -7.24), turn: 0 deg
+blocker size: vec(9.7, 0.035, 0.3), at: vec(-3.95, 2.76, -7.24), turn: 0 deg
+blocker size: vec(9.7, 2.1, 0.26), at: vec(-3.95, 2.05, -7.27), turn: 0 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(-3, 0.7625, -0.6), turn: 0 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(-3, 0.37, -0.6), turn: 0 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(-3, 0.025, -0.6), turn: 0 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(-3.78, 0.5, -0.6), turn: -90 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(-3.78, 0.23, -0.6), turn: -90 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(-2.22, 0.5, -0.6), turn: 90 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(-2.22, 0.23, -0.6), turn: 90 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(-0.2, 0.7625, -1.4), turn: 40.107 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(-0.2, 0.37, -1.4), turn: 40.107 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(-0.2, 0.025, -1.4), turn: 40.107 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(-0.6849, 0.5, -2.011), turn: -141.566 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(-0.6849, 0.23, -2.011), turn: -141.566 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(0.2849, 0.5, -0.789), turn: 38.434 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(0.2849, 0.23, -0.789), turn: 38.434 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(2.4, 0.7625, -0.4), turn: 80.214 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(2.4, 0.37, -0.4), turn: 80.214 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(2.4, 0.025, -0.4), turn: 80.214 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(2.5772, 0.5, -1.1596), turn: 166.868 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(2.5772, 0.23, -1.1596), turn: 166.868 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(2.2228, 0.5, 0.3596), turn: -13.132 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(2.2228, 0.23, 0.3596), turn: -13.132 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(-1.6, 0.7625, 2), turn: 120.321 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(-1.6, 0.37, 2), turn: 120.321 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(-1.6, 0.025, 2), turn: 120.321 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(-0.8948, 0.5, 1.6666), turn: 115.301 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(-0.8948, 0.23, 1.6666), turn: 115.301 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(-2.3052, 0.5, 2.3334), turn: -64.699 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(-2.3052, 0.23, 2.3334), turn: -64.699 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(1.4, 0.7625, 2.4), turn: 160.428 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(1.4, 0.37, 2.4), turn: 160.428 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(1.4, 0.025, 2.4), turn: 160.428 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(2.0995, 0.5, 2.7452), turn: 63.735 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(2.0995, 0.23, 2.7452), turn: 63.735 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(0.7005, 0.5, 2.0548), turn: -116.265 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(0.7005, 0.23, 2.0548), turn: -116.265 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(4.2, 0.7625, 1.6), turn: -159.465 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(4.2, 0.37, 1.6), turn: -159.465 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(4.2, 0.025, 1.6), turn: -159.465 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(4.3644, 0.5, 2.3625), turn: 12.169 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(4.3644, 0.23, 2.3625), turn: 12.169 deg
+blocker size: vec(0.36, 0.08, 0.36), at: vec(4.0356, 0.5, 0.8375), turn: -167.831 deg
+blocker size: vec(0.26, 0.44, 0.26), at: vec(4.0356, 0.23, 0.8375), turn: -167.831 deg
+blocker size: vec(1.46, 1, 0.09), at: vec(-8.505, 0.5, 0.8), turn: 90 deg
+blocker size: vec(1.68, 0.05, 0.26), at: vec(-8.42, 1.205, 0.8), turn: 90 deg
+blocker size: vec(1.68, 0.04, 0.5), at: vec(-8.3, 0.02, 0.8), turn: 90 deg
+blocker size: vec(0.97, 0.75, 0.03), at: vec(-8.535, 2.35, 0.8), turn: 90 deg
+blocker size: vec(0.34, 0.16, 0.13), at: vec(-8.43, 1.31, 0.8), turn: 90 deg
+blocker size: vec(0.1, 0.22, 0.1), at: vec(-8.43, 1.34, 0.25), turn: 90 deg
+blocker size: vec(0.1, 0.22, 0.1), at: vec(-8.43, 1.34, 1.35), turn: 90 deg
+blocker size: vec(0.18, 0.14, 0.02), at: vec(-8.4802, 1.3, 0.452), turn: 78.541 deg
+blocker size: vec(0.14, 0.18, 0.02), at: vec(-8.4804, 1.32, 1.117), turn: 107.189 deg
+blocker size: vec(0.22, 0.09, 0.16), at: vec(-8.42, 1.275, 1.52), turn: 90 deg
+blocker size: vec(0.18, 0.27, 0.18), at: vec(-8.42, 1.365, 0.07), turn: 90 deg
+blocker size: vec(0.22, 0.84, 0.22), at: vec(-8.2, 0.42, 1.84), turn: 90 deg
+blocker size: vec(0.48, 0.3, 0.48), at: vec(-8.2, 0.15, -0.29), turn: 90 deg
+blocker size: vec(0.76, 0.04, 1.2), at: vec(-6.95, 0.43, 0.8), turn: 0 deg
+blocker size: vec(1.96, 0.44, 0.84), at: vec(-5.78, 0.22, 0.8), turn: -90 deg
+blocker size: vec(1.96, 0.46, 0.24), at: vec(-5.42, 0.55, 0.8), turn: -90 deg
+blocker size: vec(0.66, 0.48, 0.64), at: vec(-7.25, 0.24, -0.5), turn: -51.566 deg
+blocker size: vec(0.6, 0.6, 0.1), at: vec(-7.0307, 0.75, -0.6741), turn: -51.566 deg
+blocker size: vec(0.66, 0.48, 0.64), at: vec(-7.25, 0.24, 2.1), turn: -128.434 deg
+blocker size: vec(0.6, 0.6, 0.1), at: vec(-7.0307, 0.75, 2.2741), turn: -128.434 deg
+blocker size: vec(1.4, 2.3, 0.34), at: vec(-8.83, 1.15, 2.625), turn: 90 deg
+blocker size: vec(0.32, 1.6, 0.32), at: vec(-6.3, 0.8, 2.75), turn: 0 deg
+blocker size: vec(0.48, 0.56, 0.48), at: vec(-5.85, 0.28, 2.65), turn: 0 deg
+blocker size: vec(1.6, 0.36, 2.2), at: vec(-6.9853, 1.1, 5.3301), turn: 104.897 deg
+blocker size: vec(0.76, 0.08, 0.36), at: vec(-8.5992, 0.8, 5.7594), turn: 104.897 deg
+blocker size: vec(0.34, 0.05, 0.34), at: vec(-6.8, 1.04, 6.35), turn: 104.897 deg
+blocker size: vec(1.32, 0.64, 0.08), at: vec(6, 1.73, 6.96), turn: 180 deg
+blocker size: vec(1, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 0.045, 0.9), at: vec(4.65, 0.7625, 5), turn: 0 deg
+blocker size: vec(0.1, 0.74, 0.1), at: vec(4.65, 0.37, 5), turn: 0 deg
+blocker size: vec(0.5, 0.05, 0.5), at: vec(4.65, 0.025, 5), turn: 0 deg
+blocker size: vec(1.85, 2.6, 1), at: vec(0.325, 1.3, 0)
+blocker size: vec(0.35, 2.6, 1.96), at: vec(1.075, 1.3, 0)
+blocker size: vec(0.7, 0.7, 0.6), at: vec(7.45, 0.35, -3), turn: -90 deg
+blocker size: vec(0.24, 0.84, 0.64), at: vec(8.2, 0.42, -3), turn: -90 deg
+blocker size: vec(0.12, 0.48, 1.9), at: vec(8.9, 1.08, -3), turn: -90 deg
+blocker size: vec(1.85, 2.6, 1), at: vec(0.325, 1.3, 0)
+blocker size: vec(0.35, 2.6, 1.96), at: vec(1.075, 1.3, 0)
+blocker size: vec(0.7, 0.7, 0.6), at: vec(7.45, 0.35, -1), turn: -90 deg
+blocker size: vec(0.24, 0.84, 0.64), at: vec(8.2, 0.42, -1), turn: -90 deg
+blocker size: vec(0.12, 0.48, 1.9), at: vec(8.9, 1.08, -1), turn: -90 deg
+blocker size: vec(1.25, 2.6, 1), at: vec(-2.175, 1.3, -1)
+blocker size: vec(1.24, 2.6, 1.24), at: vec(-0.3536, 1.3, 0.3536)
+blocker size: vec(0.76, 2.6, 0.76), at: vec(-1.2233, 1.3, -0.8273)
+blocker size: vec(0.76, 2.6, 0.76), at: vec(0.8273, 1.3, 1.2233)
+blocker size: vec(0.8, 2.6, 0.8), at: vec(-0.1414, 1.3, 1.7678)
+blocker size: vec(0.56, 2.6, 0.56), at: vec(-1.6263, 1.3, -0.0707)
+blocker size: vec(4.8426, 4, 0.3), at: vec(7.6061, 2, -6.0061), turn: -45 deg
+blocker size: vec(0.9, 2.2, 0.9), at: vec(7.1818, 1.1, -5.5818), turn: -45 deg
+blocker size: vec(0.56, 1.16, 0.46), at: vec(6.2767, 0.58, -6.7273), turn: -45 deg
+blocker size: vec(0.56, 1.16, 0.46), at: vec(8.3273, 0.58, -4.6767), turn: -45 deg
+blocker size: vec(0.5, 0.03, 0.5), at: vec(5.8737, 1.05, -5.9707), turn: -45 deg
+blocker size: vec(1, 2.6, 0.7), at: vec(0, 1.3, 0)
+blocker size: vec(0.9, 1.46, 0.54), at: vec(-3.8, 0.73, 6.565), turn: 180 deg
+blocker size: vec(4, 2.6, 1.5), at: vec(8, 1.3, -7.65)
+blocker size: vec(0.6, 2.6, 2.1), at: vec(0.75, 1.3, -11.7)
+blocker size: vec(8.4, 0.1, 8.4), at: vec(4.4, -0.05, -11.7), turn: 0 deg
+blocker size: vec(8.4, 0.1, 8.4), at: vec(4.4, 3.45, -11.7), turn: 0 deg
+blocker size: vec(8.24, 3.4, 0.12), at: vec(4.4, 1.7, -15.76), turn: 0 deg
+blocker size: vec(0.12, 3.4, 8), at: vec(0.34, 1.7, -11.7), turn: 0 deg
+blocker size: vec(0.12, 3.4, 8), at: vec(8.46, 1.7, -11.7), turn: 0 deg
+blocker size: vec(0.5, 0.46, 2), at: vec(0.75, 0.23, -11.7), turn: 0 deg
+blocker size: vec(0.84, 2.6, 1), at: vec(0, 1.3, 0)
+blocker size: vec(0.74, 1.86, 0.88), at: vec(4.4, 0.93, -15.2), turn: 0 deg

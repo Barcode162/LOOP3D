@@ -7,6 +7,7 @@ window.LOOP_WORDS = {
 "asin": "asin",
 "ask": "ask(question, [options]): buttons appear; `when \"choice\"` gets the number picked (0 = the first)",
 "atan": "atan",
+"blocker": "blocker(size: vec(w, h, d), at, turn): an invisible box you can't walk through (walls of a room made of one model)",
 "box": "box(size: vec(w, h, d), at, turn, material, round)",
 "camera": "camera(at, look_at, lens: 35 mm, f_stop: 2.8, focus, shutter, iso, exposure, auto_exposure, sensor: \"s35\", blades)",
 "capsule": "capsule(radius, height, at, material)",

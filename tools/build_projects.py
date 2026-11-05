@@ -47,6 +47,22 @@ for manifest in manifests:
         if has_still:
             shutil.copy(stills / f"{name}.png", out / f"{name}.png")
         scenes.append({"name": name, "title": m.group(1) if m else name, "still": has_still})
+    # models (.glb) the scenes place, flat in scenes/models/ (names unique across projects)
+    models_dir = folder / build.get("modelsDir", "models")
+    if models_dir.is_dir():
+        (out / "models").mkdir(exist_ok=True)
+        for glb in sorted(models_dir.glob("*.glb")):
+            dst = out / "models" / glb.name
+            if dst.exists() and dst.read_bytes() != glb.read_bytes():
+                sys.exit(f"model '{glb.name}' differs between projects (names must be unique)")
+            shutil.copy(glb, dst)
+        # the models' real material values, merged across projects
+        table = models_dir / "materials.json"
+        if table.exists():
+            merged = out / "models" / "materials.json"
+            have = json.loads(merged.read_text()) if merged.exists() else {}
+            have.update(json.loads(table.read_text()))
+            merged.write_text(json.dumps(have))
     projects.append({
         "name": p["name"], "title": p.get("title", p["name"]),
         "description": p.get("description", ""), "start": p.get("start", scenes[0]["name"] if scenes else ""),

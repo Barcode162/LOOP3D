@@ -150,7 +150,8 @@ Every setting has a sensible default; give only what matters.
   - `model "stool.glb", at: vec(…), turn: 30 deg` finds the file next to the scene or in its `models/` folder; read once, however many times it's placed
   - its colours, pictures (JPEG or PNG), metal, roughness and glow come with it; clear see-through parts become real glass
   - also takes `scale`, `name`, `material` (over every part), `glow:` (nits per unit of the model's glow, 8 by default) and `collide: yes` to bump into it
-  - for now its pictures show in `loop render`; the live player draws its colours without pictures (next step)
+  - its pictures show in both the live player and `loop render` (the live player keeps each picture at `render.textureSize`, 256 pixels square by default)
+- **Invisible walls:** `blocker size: vec(w, h, d), at: vec(…), turn: …` is a box you bump into that is never drawn (the walls of a room made as one model, furniture's footprint).
 - **Land:**
   - `terrain(size, height, ridges, seed, erosion, rain, detail, feature, material)`: mountains and valleys carved by simulated rain (`detail` is scaled by the setting `world.terrainRes`)
   - `forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves)` (trees per area follow `world.foliageDensity`)

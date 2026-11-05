@@ -82,6 +82,7 @@ Settings::Settings() {
   I("render.rays", r.rays, -1, 16, "shadow rays per lamp (-1 = 1); soft edges need about 4");
   B("render.lampShadows", r.lampShadows, "lamps cast shadows at all");
   I("render.maxLights", r.maxLights, 1, 256, "most lamps a scene draws (the brightest are kept)");
+  I("render.textureSize", r.textureSize, 16, 2048, "size of model pictures on the GPU (pixels square): sharper costs memory (256: about 0.35 MB each)");
   F("render.skyLight", r.skyLight, 0, 4, "strength of the light from the sky (bounced daylight)");
   F("render.occlusion", r.occlusion, 0, 2, "how much creases and undersides darken");
   B("render.passScene", r.passScene, "debug: the scene's lighting");

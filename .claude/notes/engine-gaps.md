@@ -11,7 +11,7 @@ Remove a row when it is built; add rows as they are found.
 ## Content pipeline
 | Gap | Priority | Notes |
 |---|---|---|
-| **3D:** Model import, the rest: pictures in the live renderer, normal maps, emissive pictures, skins and clips, separate-file and base64 buffers | P0 | **.glb meshes, materials, JPEG/PNG pictures, glass: built 2026-11-05** (`engine/geometry/gltf.*`, `engine/core/jpeg.*`, word `model`); cinema renders only |
+| **3D:** Model import, the rest: normal maps, emissive pictures, skins and clips, separate-file and base64 buffers | P0 | **.glb meshes, materials, JPEG/PNG pictures, glass: built 2026-11-05** (`engine/geometry/gltf.*`, `engine/core/jpeg.*`, word `model`); cinema renders only |
 | Image textures in the language (a picture on a box) | P2 | models carry pictures now (`Scene::textures`); a word for a loose picture file is still missing |
 | Asset/resource system (load once, refer by name, hot reload) | P1 | |
 | Scene serialization (editor object edits saved back to `.loop`) | P1 | editor edits scripts only |

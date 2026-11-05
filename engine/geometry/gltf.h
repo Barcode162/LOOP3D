@@ -23,6 +23,7 @@ struct GltfMaterial {
   enum class Alpha { kOpaque, kMask, kBlend } alpha = Alpha::kOpaque;
   float alphaCutoff = 0.5f;
   bool doubleSided = false;
+  float roughnessMin = 0;          // not glTF's: a correction the scene may give
 };
 
 struct GltfModel {

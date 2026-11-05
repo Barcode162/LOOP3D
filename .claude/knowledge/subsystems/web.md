@@ -9,6 +9,11 @@
 - `web/index.html` (393) + `web/loop_ui.js` (175): page UI, scene picker (from
   `scenes/index.json`), lines and choices (`window.loopUi`), `use` expansion, audio,
   benchmark (`?bench=scene|story`), stats line, trailer compare.
+- Models: `LoopUI.loadModels` finds `model "x.glb"` in the script, fetches
+  `scenes/models/x.glb` (and `materials.json`) into Emscripten's FS at
+  `/scene/models/`; the player sets `Stage::folder = "/scene"`. Linked with
+  `-sFORCE_FILESYSTEM=1` and `FS` exported. `build_projects.py` copies each
+  project's `models/`.
 - Exports listed in `CMakeLists.txt` (`EXPORTED_FUNCTIONS`); keep in sync.
 
 ## Editor (`web/editor/`, plain JS, global `LE`)

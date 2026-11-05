@@ -1,0 +1,11 @@
+{
+  "order": 1,
+  "name": "bar3d",
+  "title": "Bar3D",
+  "description": "The bar from joshuavelasco.com/bar, on LOOP3D.",
+  "start": "bar",
+  "scenes": [
+    "bar"
+  ],
+  "stills": "stills"
+}

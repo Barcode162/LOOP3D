@@ -149,6 +149,7 @@ Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p
       s.metallic = saturate(s.metallic * c.z);
     }
   }
+  s.roughness = std::max(s.roughness, m.roughnessMin);
   if (m.pattern.kind == Pattern::Kind::kNone) return s;
   float mix, h;
   Vec3 tint;

@@ -149,6 +149,7 @@
     showNote(LoopUI.loadingText(M, titleOf(name)), true);
     const own = fromEditor && fromEditor.scene === name ? fromEditor.text : await fetchScene(name);
     const text = (await LoopUI.assemble(own, fetchScene)).text;
+    await LoopUI.loadModels(M, text);
     // let the loading screen reach the screen first: building a world takes a moment
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);

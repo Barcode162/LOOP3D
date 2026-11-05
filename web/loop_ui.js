@@ -161,6 +161,29 @@ window.LoopUI = (() => {
     return { text: head + own.join('\n'), offset: head ? head.split('\n').length - 1 : 0 };
   }
 
+  // Models (`model "x.glb"`) are files the engine reads: fetch each one the
+  // script names from scenes/models/ into the engine's own folder /scene/models
+  // before the script runs (each file once per page).
+  async function loadModels(M, text, onProgress) {
+    if (!M || !M.FS) return;
+    const names = new Set();
+    for (const m of text.matchAll(/\bmodel\s*\(?\s*(?:file:\s*)?"([^"]+\.glb)"/g)) names.add(m[1]);
+    try { M.FS.mkdirTree('/scene/models'); } catch (e) {}
+    if (names.size) names.add('materials.json');  // the models' real values, if the site has them
+    let done = 0;
+    await Promise.all([...names].map(async (name) => {
+      const path = '/scene/models/' + name;
+      try { M.FS.stat(path); done++; return; } catch (e) {}
+      try {
+        const r = await fetch('scenes/models/' + encodeURIComponent(name));
+        if (!r.ok) return;  // the script then says which model is missing
+        M.FS.writeFile(path, new Uint8Array(await r.arrayBuffer()));
+      } catch (e) {}
+      done++;
+      if (onProgress) onProgress(done, names.size);
+    }));
+  }
+
   // What the editor hands to the player: the scene it has open, edits and all
   // (kept in this browser), so "Play" plays exactly what's in the editor.
   const HANDOFF = 'loop3d.play';
@@ -171,5 +194,5 @@ window.LoopUI = (() => {
     try { return JSON.parse(localStorage.getItem(HANDOFF) || 'null'); } catch (e) { return null; }
   }
 
-  return { setting, showLine, showAsk, loadingText, fader, keyMap, useKey, gamepad, applyPage, pauseWhenHidden, assemble, handTo, handed };
+  return { setting, showLine, showAsk, loadingText, fader, keyMap, useKey, gamepad, applyPage, pauseWhenHidden, assemble, loadModels, handTo, handed };
 })();

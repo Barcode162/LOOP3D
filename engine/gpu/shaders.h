@@ -33,6 +33,8 @@ struct Material {
   pattern : vec4f,   // kind, scale, bump (mm), contrast
   colorB : vec4f,    // rgb, roughness variation
   extra : vec4f,     // subsurface, translucency, leaf, ior
+  tex : vec4f,       // model picture layers: colour, rough/metal, normal, glow (-1 none)
+  tex2 : vec4f,      // alpha cutoff, least roughness
 };
 struct Instance {
   model : mat4x4f,
@@ -200,6 +202,12 @@ inline const char* kSceneWgsl = R"(
 @group(1) @binding(1) var shadowSampler : sampler_comparison;
 @group(1) @binding(2) var skyTex : texture_2d<f32>;
 @group(1) @binding(3) var skySampler : sampler;
+@group(1) @binding(4) var modelTex : texture_2d_array<f32>;
+@group(1) @binding(5) var modelSampler : sampler;
+
+fn srgbToLinear(c : vec3f) -> vec3f {
+  return select(pow((c + 0.055) / 1.055, vec3f(2.4)), c / 12.92, c <= vec3f(0.04045));
+}
 
 struct VsIn {
   @location(0) pos : vec3f,
@@ -334,6 +342,19 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   let v = normalize(frame.camPos.xyz - i.world);
   var base = m.base.rgb;
   var rough = m.base.w;
+  var metalScale = 1.0;
+  // a model's own pictures: colour (sRGB) with its alpha, roughness (G) and metal (B)
+  if (m.tex.x >= 0.0) {
+    let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.x));
+    base *= srgbToLinear(c.rgb);
+    if (m.tex2.x > 0.0 && c.a < m.tex2.x) { discard; }
+  }
+  if (m.tex.y >= 0.0) {
+    let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.y));
+    rough = clamp(rough * c.g, 0.02, 1.0);
+    metalScale = c.b;
+  }
+  rough = max(rough, m.tex2.y);
   // leaves: cut to a leaf outline from the card's coordinates
   if (m.extra.z > 0.5) {
     let y = 1.0 - i.uv.y;
@@ -380,7 +401,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       }
     }
   }
-  let metal = m.props.x;
+  let metal = m.props.x * metalScale;
   let glass = m.props.y;
   let alpha = max(rough * rough, 0.002);
   let nv = max(dot(n, v), 1e-4);
