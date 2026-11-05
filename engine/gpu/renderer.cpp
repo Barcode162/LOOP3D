@@ -58,6 +58,8 @@ struct GpuState {
   uint32_t gate = 0;          // bumps when the watchdog gives up on old frames
   double lastDone = 0, lastProgress = 0;
   float gpuMs = 0, lastGpuMs = 0;
+  double gpuSum = 0;  // GPU ms of the frames finished since the resolution was last judged
+  int gpuCount = 0;
 };
 
 // The first few WebGPU errors go to the page (a black screen should say why).
@@ -181,6 +183,7 @@ class GpuRenderer final : public Renderer {
     g_samples = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('msaa') || 4); });
     testLamps_ = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('lamps'); return v === null ? -1 : +v; });
     testRays_ = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('rays'); return v === null ? -1 : +v; });
+    prepass_ = EM_ASM_INT({ return new URLSearchParams(location.search).get('prepass') === '1' ? 1 : 0; }) != 0;
     for (auto& u : passUbo_) u = buffer(sizeof(PassU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     buildPipelines();
     makeShadowMap();
@@ -206,6 +209,8 @@ class GpuRenderer final : public Renderer {
     // seconds): a first frame too heavy for the GPU can then never run so long
     // that the browser takes the GPU away. Ultra starts lower still.
     step_ = q == Quality::kUltra ? 3 : 1, ceilStep_ = 0, calmSeconds_ = 0, sinceScale_ = 0, longCalm_ = 0;
+    judgedAt_ = 0, perfSkipped_ = perfDrawn_ = 0;
+    fresh_ = true;
     renderScale_ = q == Quality::kUltra ? 0.65f : 0.87f;
     lightsDirty_ = true;
     // pixels per screen point: past ~1.5 the eye barely sees more, but the GPU
@@ -296,6 +301,7 @@ class GpuRenderer final : public Renderer {
     lastPlaces_.clear();
     raysBuiltFor_ = -1;
     ultraFrame_ = 0;
+    fresh_ = true;
   }
 
   // Rays through the scene are only needed for lamp shadows (High) and Ultra:
@@ -365,8 +371,19 @@ class GpuRenderer final : public Renderer {
     // at most two frames waiting on the GPU: a slow GPU drops frames instead
     // of falling further and further behind
     if (gs_->lost) return false;
-    adaptResolution(dt);
     double now = emscripten_get_now();
+    if (fresh_) {
+      // the first frame after a new scene or quality: the main thread has just
+      // been busy building, so older frames' "done" signals arrive late and
+      // would read as a slow GPU. Forget them and measure from here.
+      fresh_ = false;
+      ++gs_->gate;
+      gs_->inFlight = 0;
+      gs_->lastProgress = now;
+      gs_->gpuSum = 0, gs_->gpuCount = 0;
+      judgedAt_ = now, perfSkipped_ = perfDrawn_ = 0;
+    }
+    adaptResolution(now);
     if (gs_->inFlight >= 2) {
       ++perfSkipped_;
       // a GPU that hasn't said "done" for 2 seconds lost the signal: stop
@@ -539,10 +556,10 @@ class GpuRenderer final : public Renderer {
       pass.SetBindGroup(2, rayGroup_);
       if (!(g_skipPasses & 2)) {
         int rays = shadowLamps_ > 0 && !(g_skipPasses & 512) ? 1 : 0;
-        // the depth pre-pass pays when lighting a pixel is dear (lamp shadow
-        // rays): hidden surfaces then cost no rays. Phone's lighting is cheap,
-        // and phone GPUs already skip hidden pixels themselves. 1024: off (testing)
-        if (rays && !(g_skipPasses & 1024)) {
+        // the depth pre-pass (?prepass=1, off by default): hidden surfaces cost
+        // no shadow rays, but it needs both passes to land on exactly the same
+        // depth, which Apple GPUs don't promise, and it measured no faster
+        if (rays && prepass_) {
           pass.SetPipeline(depthPipe_);
           drawBatches(pass, false, false);
           pass.SetPipeline(opaqueAfterDepthPipe_[rays]);
@@ -598,6 +615,7 @@ class GpuRenderer final : public Renderer {
                                  gs->lastDone = gs->lastProgress = done;
                                  gs->lastGpuMs = static_cast<float>(ms);
                                  gs->gpuMs += (gs->lastGpuMs - gs->gpuMs) * 0.1f;
+                                 gs->gpuSum += ms, ++gs->gpuCount;
                                });
     if (captureTex) {
       // the page copies and reads it with the browser's own WebGPU calls
@@ -613,37 +631,69 @@ class GpuRenderer final : public Renderer {
   float lastGpuMs() const override { return gs_->lastGpuMs; }
   float renderScale() const override { return renderScale_; }
 
-  // Automatic resolution, checked once a second. Too slow (fewer than 88% of
-  // the frames we aim for reached the screen; the aim is every frame the
-  // screen asks for, up to 60 a second): draw fewer pixels, a step, or two
-  // when far behind. Calm for 3 seconds: a step back up, but not to a size
-  // that was too slow a moment ago; after 20 calm seconds that limit lifts a
-  // step, in case the scene got lighter. A change costs nothing: the targets
-  // stay, only the part of them drawn changes.
-  void adaptResolution(float dt) {
+  // Automatic resolution, judged about once a second of real time.
+  //
+  // It must not depend on frames arriving: when the GPU is overloaded the
+  // browser stops asking for frames at all, so "frames we had to skip" never
+  // shows up and a clock that adds up frame times barely moves. (That was the
+  // bug that froze every quality: the one control meant to rescue a slow GPU
+  // waited for a signal that can't come while it's needed.) So it keeps real
+  // time and also reads how long the GPU actually took per frame.
+  //
+  // Too slow (the GPU needs more than ~18 ms a frame, or fewer than 88% of
+  // the frames we aim for, up to 60 a second, reached the screen): jump down
+  // to the size that should fit, at once. Calm for 3 s, and the next size up
+  // should still fit: a step up, but not straight back to a size that was too
+  // slow; after 20 calm seconds that limit lifts a step. A change costs
+  // nothing: the targets stay, only the part of them drawn changes.
+  void adaptResolution(double now) {
     static constexpr float kSteps[] = {1.0f, 0.87f, 0.75f, 0.65f, 0.56f, 0.5f, 0.42f, 0.35f};
     if (g_fixedScale > 0) {
       renderScale_ = std::clamp(g_fixedScale, 0.2f, 1.0f);
       return;
     }
-    perfClock_ += dt;
-    sinceScale_ += dt;
-    if (perfClock_ < 1.0f) return;
-    int asked = perfSkipped_ + perfDrawn_;
-    float fps = perfDrawn_ / perfClock_;
-    float aim = std::min(asked / perfClock_, 60.0f);
-    perfSkipped_ = perfDrawn_ = 0;
-    perfClock_ = 0;
+    if (judgedAt_ == 0) judgedAt_ = now;
+    double secs = (now - judgedAt_) / 1000.0;
     int lowest = quality_ == Quality::kUltra ? 7 : 5;
-    if (fps < aim * 0.88f) {
-      if (step_ < lowest && sinceScale_ > 1.2f) {
+    // a GPU that hasn't finished a single frame for 2 s: smallest size now
+    bool stuck = gs_->gpuCount == 0 && gs_->inFlight > 0 && now - gs_->lastProgress > 2000;
+    if (secs < 1.0 && !stuck) return;
+    int asked = perfSkipped_ + perfDrawn_;
+    float fps = static_cast<float>(perfDrawn_ / std::max(secs, 1e-3));
+    // the screen's own rate, from the calmest moments (the browser asks for
+    // fewer frames when the GPU is swamped, so this second's ask can't be the aim)
+    displayHz_ = std::max(displayHz_, std::min(240.0f, static_cast<float>(asked / std::max(secs, 1e-3))));
+    float aim = std::min(displayHz_, 60.0f);
+    float gpu = gs_->gpuCount ? static_cast<float>(gs_->gpuSum / gs_->gpuCount) : (gs_->inFlight > 0 ? static_cast<float>(now - gs_->lastProgress) : 0.0f);
+    // the GPU is what holds frames back when its time per frame fills most of
+    // the gap between frames (not a busy script, not a phone saving power)
+    float interval = static_cast<float>(secs * 1000 / std::max(perfDrawn_, 1));
+    bool gpuBound = gs_->gpuCount ? gpu >= interval * 0.75f : gs_->inFlight > 0;
+    perfSkipped_ = perfDrawn_ = 0;
+    gs_->gpuSum = 0, gs_->gpuCount = 0;
+    judgedAt_ = now;
+    sinceScale_ += static_cast<float>(secs);
+    const float budget = 1000.0f / 60;
+    auto stepFor = [&](float scale) {  // the first step at or below this scale
+      int k = 0;
+      while (k < lowest && kSteps[k] > scale + 1e-3f) ++k;
+      return k;
+    };
+    bool slowGpu = gpu > budget * 1.1f;
+    if (stuck || (gpuBound && fps < aim * 0.88f)) {
+      if (step_ < lowest && (sinceScale_ > 1.2f || stuck || gpu > budget * 2)) {
+        // cost goes with the number of pixels, the square of the scale
+        float fit = slowGpu ? kSteps[step_] * std::sqrt(budget * 0.85f / gpu) : kSteps[step_] * 0.9f;
+        int to = stuck ? lowest : std::max(step_ + 1, stepFor(fit));
         ceilStep_ = std::max(ceilStep_, step_ + 1);  // this size was too much: don't come straight back
-        step_ = std::min(lowest, step_ + (fps < aim * 0.6f ? 2 : 1));
+        step_ = std::min(lowest, to);
         calmSeconds_ = longCalm_ = 0, sinceScale_ = 0;
       }
     } else if (fps >= aim * 0.97f) {
       ++calmSeconds_, ++longCalm_;
-      if (calmSeconds_ >= 3 && step_ > ceilStep_) --step_, calmSeconds_ = 0, sinceScale_ = 0;
+      float up = step_ > 0 ? kSteps[step_ - 1] / kSteps[step_] : 1.0f;
+      bool fits = gpu * up * up < budget;
+      if (calmSeconds_ >= 3 && step_ > ceilStep_ && fits) --step_, calmSeconds_ = 0, sinceScale_ = 0;
       // Ultra restarts its picture on every change: it doesn't go looking for more
       if (longCalm_ >= 20 && ceilStep_ > 0 && quality_ != Quality::kUltra) --ceilStep_, longCalm_ = 0;
     } else {
@@ -1234,6 +1284,7 @@ class GpuRenderer final : public Renderer {
   wgpu::Queue queue_;
   wgpu::TextureFormat format_;
   int shadowRays_ = 1, shadowLamps_ = 2, testLamps_ = -1, testRays_ = -1;
+  bool prepass_ = false;
   uint32_t width_ = 0, height_ = 0;   // the part drawn this frame
   uint32_t outW_ = 0, outH_ = 0;      // the canvas, and every full-size target
   uint64_t maxBinding_ = 128ull << 20, maxBufferSize_ = 256ull << 20;
@@ -1447,7 +1498,10 @@ class GpuRenderer final : public Renderer {
   int raysBuiltFor_ = -1;  // the quality the top ray tree was built for
   std::vector<Mat4> lastPlaces_;
   // automatic resolution: fewer pixels when the GPU falls behind
-  float renderScale_ = 1, perfClock_ = 0, sinceScale_ = 0;
+  float renderScale_ = 1, sinceScale_ = 0;
+  double judgedAt_ = 0;
+  float displayHz_ = 60;
+  bool fresh_ = true;  // next frame starts a new measurement
   int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, longCalm_ = 0, step_ = 0, ceilStep_ = 0;
   uint64_t presented_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
