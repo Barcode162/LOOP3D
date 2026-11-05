@@ -1,0 +1,170 @@
+{
+ "projects": [
+  {
+   "name": "samples",
+   "title": "Samples",
+   "description": "Small scenes that show what the engine does: a candlelit cabin, a living courtyard, and a two-scene story.",
+   "start": "courtyard",
+   "scenes": [
+    {
+     "name": "courtyard",
+     "title": "The Courtyard",
+     "still": true
+    },
+    {
+     "name": "cabin",
+     "title": "The Cabin",
+     "still": true
+    },
+    {
+     "name": "the_gate",
+     "title": "The Gate",
+     "still": false
+    },
+    {
+     "name": "the_woods",
+     "title": "The Woods",
+     "still": false
+    }
+   ],
+   "library": [],
+   "order": 0,
+   "settings": {},
+   "build": {}
+  },
+  {
+   "name": "echoes_of_ardane",
+   "title": "Echoes of Ardane",
+   "description": "A 24-scene story made with Loop3D. A project like any other: the engine does not need it.",
+   "start": "ardane_01_home",
+   "scenes": [
+    {
+     "name": "ardane_01_home",
+     "title": "1 \u00b7 The Room Above the Laundry",
+     "still": true
+    },
+    {
+     "name": "ardane_02_market",
+     "title": "2 \u00b7 The Varen Arcade",
+     "still": true
+    },
+    {
+     "name": "ardane_03_alley",
+     "title": "3 \u00b7 Thirteenth Alley",
+     "still": true
+    },
+    {
+     "name": "ardane_04_velasse",
+     "title": "4 \u00b7 Velasse, the Drowned City",
+     "still": true
+    },
+    {
+     "name": "ardane_05_canals",
+     "title": "5 \u00b7 The Low Water",
+     "still": true
+    },
+    {
+     "name": "ardane_06_sluice",
+     "title": "6 \u00b7 The Great Sluice",
+     "still": true
+    },
+    {
+     "name": "ardane_07_qadesh",
+     "title": "7 \u00b7 Qadesh, the Red City",
+     "still": true
+    },
+    {
+     "name": "ardane_08_palace",
+     "title": "8 \u00b7 The Palace of the Sunborn",
+     "still": true
+    },
+    {
+     "name": "ardane_09_cisterns",
+     "title": "9 \u00b7 The Cistern Brotherhood",
+     "still": true
+    },
+    {
+     "name": "ardane_10_well",
+     "title": "10 \u00b7 The Deep Well",
+     "still": true
+    },
+    {
+     "name": "ardane_11_aelor",
+     "title": "11 \u00b7 Falling Through Cloud",
+     "still": true
+    },
+    {
+     "name": "ardane_12_garden",
+     "title": "12 \u00b7 The Garden Party",
+     "still": true
+    },
+    {
+     "name": "ardane_13_roots",
+     "title": "13 \u00b7 The Root Warrens",
+     "still": true
+    },
+    {
+     "name": "ardane_14_nexus",
+     "title": "14 \u00b7 Neon Rain",
+     "still": true
+    },
+    {
+     "name": "ardane_15_undercity",
+     "title": "15 \u00b7 Static",
+     "still": true
+    },
+    {
+     "name": "ardane_16_core",
+     "title": "16 \u00b7 The Archive Core",
+     "still": true
+    },
+    {
+     "name": "ardane_17_return",
+     "title": "17 \u00b7 A Stranger at Home",
+     "still": true
+    },
+    {
+     "name": "ardane_18_hollow",
+     "title": "18 \u00b7 The Hollow",
+     "still": true
+    },
+    {
+     "name": "ardane_19_scar",
+     "title": "19 \u00b7 The Scar",
+     "still": true
+    },
+    {
+     "name": "ardane_20_convergence",
+     "title": "20 \u00b7 The Convergence",
+     "still": true
+    },
+    {
+     "name": "ardane_21_battle",
+     "title": "21 \u00b7 The Last Battle",
+     "still": true
+    },
+    {
+     "name": "ardane_22_mind",
+     "title": "22 \u00b7 Inside Veyl",
+     "still": true
+    },
+    {
+     "name": "ardane_23_after",
+     "title": "23 \u00b7 Morning",
+     "still": true
+    },
+    {
+     "name": "ardane_24_epilogue",
+     "title": "24 \u00b7 The Room Above the Laundry",
+     "still": true
+    }
+   ],
+   "library": [
+    "ardane_common"
+   ],
+   "order": 10,
+   "settings": {},
+   "build": {}
+  }
+ ]
+}
