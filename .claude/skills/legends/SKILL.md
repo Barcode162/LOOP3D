@@ -79,7 +79,9 @@ Mine: practitioner blogs, postmortems, issue trackers, conference talks, code of
 reference implementations, and the history of *this* repo (`git log`, docs).
 
 ### 5. Ground it in Loop3D
-A Legend that does not know this codebase is a textbook. Add:
+A Legend that does not know this codebase is a textbook. Start from
+`.claude/knowledge/` (the subsystem note for the domain, `where-is.md`,
+`recipes.md`, `history.md`) and link to it instead of repeating it. Add:
 - **Where it lives**: the files, entry points, data structures (`engine/...`).
 - **House rules**: the repo's conventions (from scratch C++20, no outside
   libraries, plain words in Looped Script, settings registered once in
