@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
-# Builds the web player and puts the site together in site/:
-#   index.html, player.js, player.wasm, scenes/<name>.loop (+ <name>.png trailer stills)
-# Needs Emscripten (emcmake). Trailer stills come from `loop render` (out/<name>.png).
+# Builds the web player and editor and puts the site together in site/:
+#   index.html (player), editor.html + editor/ (the editor), player.js, player.wasm,
+#   scenes/<name>.loop (+ <name>.png trailer stills) and scenes/index.json from projects/*/
+# Needs Emscripten (emcmake). Trailer stills come from `loop render`.
+# PLAYER_PREBUILT=<dir> skips the build and uses that folder's player.js/.wasm.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
-cmake --build build-web -j4
-rm -rf site && mkdir -p site/scenes
-cp web/index.html build-web/player.js build-web/player.wasm site/
+rm -rf site && mkdir -p site
+if [ -n "${PLAYER_PREBUILT:-}" ]; then
+  cp "$PLAYER_PREBUILT/player.js" "$PLAYER_PREBUILT/player.wasm" site/
+else
+  emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+  cmake --build build-web -j4
+  cp build-web/player.js build-web/player.wasm site/
+fi
+cp web/index.html site/
+cp web/editor/editor.html site/editor.html
+mkdir -p site/editor && cp web/editor/*.js web/editor/*.css site/editor/
 # stamp the build (benchmarks record which build they ran) and the tracker's link
-sed -i "s|__BUILD__|$(git rev-parse --short HEAD 2>/dev/null || echo dev) $(date -u +%F)|" site/index.html
+stamp="$(git rev-parse --short HEAD 2>/dev/null || echo dev) $(date -u +%F)"
+sed -i "s|__BUILD__|$stamp|" site/index.html site/editor.html
 [ -f web/tracker_url.txt ] && sed -i "s|__TRACKER__|$(tr -d '\n' < web/tracker_url.txt)|" site/index.html
-cp examples/*.loop examples/story/*.loop site/scenes/
-# whole stories: every scene and its trailer still
-for d in stories/*/; do
-  cp "$d"*.loop site/scenes/ 2>/dev/null || true
-  [ -d "$d/stills" ] && cp "$d"stills/*.png site/scenes/ 2>/dev/null || true
-done
-for f in examples/*.loop examples/story/*.loop; do
-  n=$(basename "$f" .loop)
-  [ -f "examples/stills/$n.png" ] && cp "examples/stills/$n.png" "site/scenes/$n.png"
-done
+# every project's scenes, flat, plus scenes/index.json
+python3 tools/build_projects.py site
 echo "site/ is ready ($(du -sh site | cut -f1))"

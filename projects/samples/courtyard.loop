@@ -1,6 +1,6 @@
 # A stone courtyard at golden hour: someone strolls between the fountain and
 # the bench, crates tumble when knocked, the fire crackles, birds call.
-#   live:   the player (game or movie)      still: loop render examples/courtyard.loop
+#   live:   the player (game or movie)      still: loop render projects/samples/courtyard.loop
 title "The Courtyard"
 mode "movie"
 

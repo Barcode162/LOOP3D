@@ -1,0 +1,61 @@
+# 5. The Low Water — PLAYED. Morning, bright.
+use "ardane_common"
+title "5 · The Low Water"
+mode "game"
+
+velasse_city(count: 30, spread: 50, pattern: 8)
+# the raft village: a ring of lashed rafts under the palaces
+let rafts = [vec(0, 0, 0), vec(3.2, 0, -0.5), vec(6.4, 0, 0.3), vec(-3.2, 0, 0.4), vec(0.5, 0, -3.4), vec(3.8, 0, -3.8), vec(-2.8, 0, -3.6), vec(1.8, 0, -7)]
+for each r in rafts
+  raft(r, size: vec(3, 0.3, 3))
+# shacks, lamps lit for Seren, washing lines
+seed(11)
+for each r in rafts
+  if chance(60%)
+    box size: vec(1.6, 1.6, 1.4), at: r + vec(random(-0.5, 0.5), 0.8, random(-0.5, 0.5)), material: material(like: "old wood", color: rgb(0.5, 0.4, 0.3))
+  lantern r + vec(1.2, 0.3, 1.2), lumens: 60
+# the palace of House Veyra above, its garden hanging over the water
+box size: vec(14, 4, 10), at: vec(0, 12, -14), material: material(like: "marble", pattern_scale: 1)
+box size: vec(14, 0.6, 10), at: vec(0, 14.3, -14), material: "grass"
+for x from -6 to 6 by 3
+  tree "bush", at: vec(x, 14.6, -12), height: 2
+let guard = someone(vec(3, 14.6, -9.5), shirt: cloth(0.5, 0.05, 0.08))
+
+# Old Ezio at his workbench
+let ezio = someone(vec(6.6, 0.1, 0.8), height: 1.6, shirt: cloth(0.3, 0.35, 0.4), skin: skin_deep, facing: 200 deg)
+box size: vec(1.4, 0.8, 0.6), at: vec(6.4, 0.45, -0.2), material: "old wood"
+let nia = someone(vec(0.8, 0.1, -0.6), height: 1.62, shirt: cloth(0.55, 0.18, 0.15), skin: skin_deep)
+let kids = [someone(vec(-3, 0.1, 0), height: 1.1), someone(vec(-2.4, 0.1, -3.5), height: 1.2)]
+every 2.5 s
+  let k = kids.pick()
+  k.walk_to = rafts.pick() + vec(random(-1, 1), 0.1, random(-1, 1))
+  k.speed = 2.2
+
+sound "stream", volume: 0.5
+sound "birds", volume: 0.4
+room 0.1
+sky "physical", haze: 4
+sun elevation: 35 deg, toward: 150 deg, lux: 90000
+look "golden", warmth: 0.1, bars: 2.39
+camera at: vec(-1, 1.7, 2.5), look_at: vec(5, 1.2, -1), lens: 28 mm
+render file: "ardane_05_canals.png", quality: "good", width: 1280, at: 4 s
+
+task
+  wait 1 s
+  say "Nia", "This is the Low Water. Everyone who matters lives down here. Everyone who thinks they matter lives up there."
+  nia.walk_to = vec(5.2, 0.1, 0.4)
+  go_and_use(ezio.position, "Nia leads you to her grandfather's raft. Talk to him.")
+  ezio.look_at = player() + vec(0, 1.5, 0)
+  say "Ezio", "...Ardane."
+  say "Ezio", "My grandmother's grandmother told of an Ardane. Seren. A ferrywoman."
+  say "Ezio", "When the great flood came for us, she opened the Great Sluice and sent the water up into the nobles' gardens instead."
+  say "Ezio", "They hanged her from it. Nobody up there remembers her name."
+  say "Ezio", "Down here, we still light a lamp."
+  say "Milo", "I don't understand how I'm here."
+  say "Ezio", "Nobody understands how they're anywhere, boy."
+  say "Ezio", "You live here too, you know. Everyone on the rafts knows Milo of the Ferries. Quiet lad. Good with knots."
+  say "", "Milo looks at the red thread on his wrist."
+  say "Nia", "...Grandpa. Look south."
+  say "", "Over the sea, the sky is turning black."
+  say "Ezio", "Storm tide. Tonight. And the Veyra will lock the gates to save their roses."
+  next_scene "ardane_06_sluice", delay: 2 s

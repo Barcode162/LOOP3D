@@ -1,0 +1,77 @@
+# 6. The Great Sluice — WATCHED. Night, storm.
+use "ardane_common"
+title "6 · The Great Sluice"
+mode "movie"
+
+velasse_city(count: 30, spread: 50, pattern: 5)
+# the sluice tower and its iron wheel
+let iron = material("iron")
+box size: vec(6, 14, 5), at: vec(0, 6.5, -6), material: material(like: "stone", color: rgb(0.4, 0.38, 0.35))
+box size: vec(10, 6, 1.2), at: vec(0, 2.5, -2.8), material: iron
+let wheel = ring(1.6, 0.12, at: vec(0, 15, -4.2), material: iron)
+wheel.rotation = vec(0, 90 deg, 0)
+let platform = box(size: vec(4, 0.3, 3), at: vec(0, 13.6, -4), material: "old wood")
+let compass_glow = material(color: rgb(0, 0, 0), glow: rgb(0.2, 0.9, 0.7) * 3000)
+let compass = sphere(0.12, at: vec(0, 15, -4.2), material: compass_glow, collide: no)
+compass.visible = no
+let compass_light = light(vec(0, 15, -3.9), lumens: 0, color: rgb(0.2, 0.9, 0.7), radius: 0.1)
+lantern vec(-1.6, 14.2, -3), lumens: 150
+lantern vec(1.6, 14.2, -3), lumens: 150
+
+let milo = hero(vec(0, 13.75, -2.9), facing: 0 deg)
+let nia = someone(vec(-1.2, 13.75, -2.6), height: 1.62, shirt: cloth(0.55, 0.18, 0.15), skin: skin_deep)
+let guards = [someone(vec(1.6, 13.75, -2.4), shirt: cloth(0.5, 0.05, 0.08)), someone(vec(1.9, 13.75, -3.2), shirt: cloth(0.5, 0.05, 0.08))]
+
+# the storm: lightning, thunder, rain, rising water
+let lightning = light(vec(20, 40, 20), lumens: 0, kelvin: 9000, radius: 2)
+every 2.7 s
+  if chance(55%)
+    lightning.lumens = 30000000
+    sound "thud", "stone", at: vec(30, 30, 30), strength: 1
+    wait 0.08 s
+    lightning.lumens = 0
+    wait 0.1 s
+    lightning.lumens = 12000000
+    wait 0.06 s
+    lightning.lumens = 0
+sound "rain", volume: 1
+sound "wind", volume: 0.8
+sound "stream", volume: 0.8
+room 0.05
+sky "physical", haze: 10, brightness: 0.002
+sun elevation: 10 deg, toward: 200 deg, lux: 50
+fog 0.04, glow: 0.4, color: rgb(0.6, 0.65, 0.7)
+look "blockbuster", contrast: 1.25, saturation: 0.8, grain: 0.04
+
+camera at: vec(6, 15, 4), look_at: vec(0, 14.5, -4), lens: 28 mm
+shot "the storm", 10 s, from: {at: vec(14, 6, 16), look_at: vec(0, 10, -4), lens: 24 mm, f_stop: 4}, to: {at: vec(9, 10, 10), look_at: vec(0, 13, -4), lens: 28 mm}, shake: 0.5, fade_in: 1.5 s
+shot "the guards", 10 s, from: {at: vec(-6, 16.5, 4), look_at: vec(0.5, 14.4, -3), lens: 28 mm, f_stop: 4}, to: {at: vec(-5, 16, 2.5), look_at: vec(0.8, 14.4, -3), lens: 32 mm}, shake: 0.6
+shot "the wheel", 12 s, from: {at: vec(5.0, 16.4, 1.0), look_at: vec(0, 14.6, -3.6), lens: 28 mm, f_stop: 4}, to: {at: vec(3.8, 15.9, 0.0), look_at: vec(0, 14.8, -3.8), lens: 32 mm, f_stop: 4}, shake: 0.4
+orbit "the compass", 12 s, around: vec(0, 14.2, -3.5), radius: 4, height: 1.8, from: 60 deg, to: 140 deg, lens: 32 mm, fade_out: 2 s
+render file: "ardane_06_sluice.png", quality: "good", width: 1280, at: 27 s
+
+task
+  wait 2 s
+  say "", "Below, the poor quarter is filling with black water. The Veyra have locked the gates."
+  nia.look_at = guards[0].position + vec(0, 1.5, 0)
+  guards[0].walk_to = vec(0.6, 13.75, -2.6)
+  say "Nia", "I've got them. Go! Turn it!"
+  say "Guard", "By order of the Doge, step away from the wheel!"
+  milo.look_at = vec(0, 15, -4.2)
+  let c = choose("The iron wheel.", ["Open it now", "Wait for the alarm bells"])
+  remember "waited", c == 1
+  if c == 1
+    say "", "He waits for the bells. They ring. Three rafts go under before he turns the wheel."
+  say "Milo", "She did it. So can I."
+  every 1 / 30 s
+    wheel.rotation = vec(0, 90 deg, time() * 0.8)
+  sound "impact", "metal", at: vec(0, 15, -4)
+  say "", "The wheel turns. The sea roars up into the nobles' gardens. The rafts rise, safe."
+  compass.visible = yes
+  compass_light.lumens = 400
+  say "", "In the wheel's hub: a compass, green as sea-glass. The Tide Compass."
+  remember "relics", 2
+  say "", "He hears whispering. Names. Hundreds of names. Everyone the water ever took."
+  say "Nia", "...Milo? Your hand's shaking."
+  say "Milo", "They're saying their names."
+  next_scene "ardane_07_qadesh", delay: 2 s

@@ -1,0 +1,94 @@
+# 20. The Convergence — WATCHED. Calder Row, where every world arrives at once.
+use "ardane_common"
+title "20 · The Convergence"
+mode "movie"
+
+calder_row()
+# Velasse: green water flooding the far end, towers standing in it
+box size: vec(10, 0.5, 30), at: vec(0, 0.1, -40), material: "water", collide: no
+let stained = material(like: "plaster", color: rgb(0.78, 0.62, 0.45))
+for each p in [vec(-3, 0, -46), vec(3.5, 0, -52), vec(0, 0, -60)]
+  box size: vec(4, 24, 4), at: p + vec(0, 12, 0), material: stained
+# Qadesh: sand pouring down out of the sky in slow columns
+let sandfall = []
+for each p in [vec(-2, 0, -22), vec(2.5, 0, -28), vec(-0.5, 0, -32)]
+  sandfall.push(box(size: vec(0.5, 40, 0.5), at: p + vec(0, 20, 0), material: material(like: "sand", glow: rgb(1, 0.6, 0.3) * 4), collide: no))
+  cone 2.2, 0.8, at: p + vec(0, 0.4, 0), material: "sand"
+# Aelor: islands hanging over the rooftops
+sky_island vec(-10, 24, -16), radius: 8, depth: 9, trees: 5, pattern: 201
+sky_island vec(14, 30, -30), radius: 10, depth: 12, trees: 6, pattern: 202
+# Nexus: neon flickering across the brick
+neon_sign vec(5.95, 6, 2), vec(0.05, 0.5, 2.6), rgb(1, 0.1, 0.7), facing: 90 deg
+neon_sign vec(-5.95, 7, -8), vec(0.05, 1.8, 0.4), rgb(0.1, 0.9, 1.0), facing: 90 deg
+hologram vec(5.9, 8, -22), vec(0.05, 3, 4), rgb(0.3, 0.8, 1.0), facing: 90 deg
+# the tear in the sky
+let tear = ring(9, 0.4, at: vec(0, 34, -24), rotation: vec(0, 90 deg, 0), material: material(color: rgb(0, 0, 0), glow: rgb(1, 0.7, 0.35) * 2500), collide: no)
+light vec(0, 30, -24), lumens: 200000, color: rgb(1, 0.75, 0.45), radius: 3
+
+# the people of Calder Row, out in their pyjamas
+let street = []
+seed(20)
+repeat 16 times
+  let p = someone(vec(random(-4, 4), 0, random(-6, 10)), shirt: cloth(random(0.5, 0.9), random(0.5, 0.9), random(0.5, 0.9)), trousers: cloth(random(0.3, 0.6), random(0.3, 0.6), random(0.4, 0.7)))
+  p.look_at = vec(0, 30, -24)
+  street.push(p)
+let fam = {rosa: someone(calder_laundry + vec(0.6, 0, 0.4), height: 1.65, shirt: cloth(0.45, 0.42, 0.38), skin: skin_warm), bea: someone(calder_laundry + vec(0.8, 0, -0.2), height: 1.15, shirt: cloth(0.85, 0.55, 0.2), skin: skin_warm)}
+let milo = hero(vec(0, 0, -6), facing: 180 deg)
+let nia = nia_at(vec(-1.2, 0, -5.4), facing: 180 deg)
+let oren = oren_at(vec(1.3, 0, -5.2), facing: 180 deg)
+let sela = sela_at(vec(0.4, 0, -4.4), facing: 180 deg)
+for each p in [milo, nia, oren, sela, fam.rosa, fam.bea]
+  p.look_at = vec(0, 30, -24)
+let veyl = veyl_at(vec(0, 30, -24), facing: 0 deg)
+relic_orbit(milo, recall("relics", 5))
+
+sound "wind", volume: 0.8
+sound "stream", at: vec(0, 0, -36), volume: 0.8
+sound "drones", volume: 0.3
+sound "chains", volume: 0.4
+sound "crowd", volume: 0.25
+let hum = sound("hum", at: vec(0, 30, -24), volume: 1)
+room 0.4, echo: 0.3
+sky "physical", haze: 6, stars: 0.6
+sun elevation: -6 deg, toward: 270 deg, lux: 2
+fog 0.012, glow: 0.7, color: rgb(1, 0.85, 0.7)
+look "blockbuster", contrast: 1.2, bloom: 0.35, grain: 0.03, bars: 2.39
+
+camera at: vec(0, 1.6, 10), look_at: vec(0, 8, -24), lens: 24 mm
+shot "pyjamas", 11 s, from: {at: vec(-3, 1.3, 9), look_at: vec(0, 3, -10), lens: 28 mm}, to: {at: vec(-2, 1.0, 6), look_at: vec(0, 14, -24), lens: 24 mm}, ease: "in_out", fade_in: 1.5 s
+shot "every world at once", 14 s, from: {at: vec(0, 3, 16), look_at: vec(0, 12, -30), lens: 18 mm}, to: {at: vec(0, 12, 20), look_at: vec(0, 14, -30), lens: 16 mm}, ease: "in_out"
+shot "the descent", 17 s, from: {at: vec(1.5, 0.8, -3), look_at: vec(0, 20, -20), lens: 28 mm}, to: {at: vec(1.6, 1.1, -3.5), look_at: vec(0, 2, -14), lens: 35 mm}
+shot "I was you", 12 s, from: {at: vec(0.9, 1.7, -8), look_at: vec(0, 2.0, -12), lens: 65 mm, f_stop: 2}, to: {at: vec(0.7, 1.75, -8.6), look_at: vec(0, 2.0, -12), lens: 75 mm, f_stop: 2}
+shot "not yours to give", 12 s, from: {at: vec(-0.6, 1.4, -10), look_at: vec(0, 1.4, -6), lens: 65 mm, f_stop: 2}, to: {at: vec(-0.5, 1.4, -9.2), look_at: vec(0, 1.4, -6), lens: 85 mm, f_stop: 1.8}, fade_out: 2 s
+render file: "ardane_20_convergence.png", quality: "good", width: 1280, at: 18 s
+
+task
+  every 1 / 30 s
+    tear.rotation = vec(time() * 0.1, 90 deg, 0)
+  wait 2 s
+  say "", "Calder Row. Night, and then every time of day at once."
+  say "", "Velasse's towers stand in the flooded end of the street. Sand pours down out of the sky. Islands hang over the chimneys."
+  say "", "People come out in their pyjamas and stare up. Nobody screams. It's too beautiful to scream at."
+  say "Bea", "Mum. Mum, there's a garden in the sky."
+  wait 3 s
+  # Veyl comes down out of the tear
+  let start = time()
+  every 1 / 30 s
+    let u = clamp((time() - start) / 12, 0, 1)
+    veyl.lift = lerp(30, 0, ease(u, "in_out"))
+    veyl.position = vec(0, veyl.lift, lerp(-24, -12, ease(u, "smooth")))
+  sound "whoosh", at: vec(0, 20, -20)
+  say "", "And out of the light, slowly, a man comes down. Crowned with the sigil of every great house in every world."
+  say "", "Tall. Beautiful. Tired."
+  wait 4 s
+  for each p in [milo, nia, oren, sela]
+    p.look_at = vec(0, 2, -12)
+  veyl.look_at = milo.position + vec(0, 1.4, 0)
+  say "Veyl", "I know you."
+  say "Veyl", "I was you. Same alley. Same hunger. Same mother working herself to bones."
+  say "Veyl", "Give me the relics, boy, and I will let your family keep their room."
+  pause 2 s
+  milo.walk_to = vec(0, 0, -7)
+  say "Milo", "It's not your room to give."
+  hum.volume = 2
+  next_scene "ardane_21_battle", delay: 3 s

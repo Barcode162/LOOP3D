@@ -1,0 +1,144 @@
+# 22. Inside Veyl — WATCHED. A palace of mirrors and gold doors; at its heart, a cold room.
+use "ardane_common"
+title "22 · Inside Veyl"
+mode "movie"
+
+let gilt = material(like: "gold", roughness: 0.25)
+let mirror = material(like: "silver", roughness: 0.02)
+# ---- the endless hall (it runs along -z)
+ground 200, material: material(like: "marble", color: rgb(0.12, 0.1, 0.08), roughness: 0.1)
+box size: vec(0.4, 7, 64), at: vec(-4.4, 3.5, -30), material: gilt
+box size: vec(0.4, 7, 64), at: vec(4.4, 3.5, -30), material: gilt
+box size: vec(9.2, 0.3, 64), at: vec(0, 7.1, -30), material: gilt
+let crowned = []
+for z from -4 to -52 by -8
+  for each side in [-1, 1]
+    # a mirror in a gold frame, and in it (behind the glass) Veyl, crowned
+    box size: vec(0.04, 3.2, 1.8), at: vec(side * 3.3, 2.2, z), material: material(like: "glass", color: rgb(1.0, 0.92, 0.75), roughness: 0.02), collide: no
+    box size: vec(0.1, 3.5, 0.12), at: vec(side * 3.28, 2.2, z - 0.95), material: gilt
+    box size: vec(0.1, 3.5, 0.12), at: vec(side * 3.28, 2.2, z + 0.95), material: gilt
+    box size: vec(0.1, 0.15, 2.0), at: vec(side * 3.28, 3.9, z), material: gilt
+    box size: vec(1.0, 7, 4.2), at: vec(side * 3.8, 3.5, z - 4), material: gilt
+    crowned.push(veyl_at(vec(side * 3.85, 0, z), facing: 270 deg if side > 0 else 90 deg))
+  # a gold door ahead, then another, each opening on another throne room
+  light vec(0, 6.2, z - 4), lumens: 2500, kelvin: 2300, radius: 0.3
+# the last door, at the very end
+let last_door = box(size: vec(1.4, 2.6, 0.12), at: vec(0, 1.3, -58), material: gilt)
+box size: vec(3.7, 7, 0.4), at: vec(-2.55, 3.5, -58.2), material: gilt
+box size: vec(3.7, 7, 0.4), at: vec(2.55, 3.5, -58.2), material: gilt
+box size: vec(1.4, 4.4, 0.4), at: vec(0, 4.8, -58.2), material: gilt
+
+# ---- the cold room behind it: a straw bed, a cold hearth, a small window, snow
+let cold = material(like: "plaster", color: rgb(0.55, 0.56, 0.6))
+box size: vec(5, 0.1, 4), at: vec(0, 0.0, -60.6), material: "floorboards"
+box size: vec(5, 3, 0.2), at: vec(0, 1.5, -62.6), material: cold
+box size: vec(0.2, 3, 4), at: vec(-2.5, 1.5, -60.6), material: cold
+box size: vec(0.2, 3, 4), at: vec(2.5, 1.5, -60.6), material: cold
+box size: vec(5, 0.2, 4), at: vec(0, 3.05, -60.6), material: "old wood"
+# the window, high and small, grey light through it
+box size: vec(0.9, 0.7, 0.05), at: vec(1.3, 2.0, -62.5), material: "glass", collide: no
+let winter = panel_light(at: vec(1.3, 2.0, -62.4), facing: vec(-0.3, -0.4, 1), size: vec(0.9, 0.7), lumens: 1600, kelvin: 9000)
+box size: vec(1.0, 0.25, 1.9), at: vec(-1.6, 0.13, -61.4), material: material(like: "grass", color: rgb(0.6, 0.52, 0.3))
+box size: vec(1.2, 0.9, 0.5), at: vec(0.2, 0.45, -62.35), material: "stone"
+box size: vec(0.7, 0.5, 0.3), at: vec(0.2, 0.3, -62.15), material: material(color: rgb(0.02, 0.02, 0.02))
+# snow, falling past the window outside
+let flakes = []
+seed(22)
+repeat 60 times
+  flakes.push(sphere(0.012, at: vec(1.3 + random(-0.6, 0.6), random(0, 3), -62.9 - random(0, 0.6)), material: "snow", collide: no))
+let snowing = yes
+
+let young_veyl = someone(vec(-1.4, 0, -61.0), height: 1.35, shirt: cloth(0.3, 0.27, 0.22), trousers: cloth(0.25, 0.22, 0.2), skin: skin_light, facing: 0 deg)
+young_veyl.sitting = yes
+young_veyl.look_at = vec(-1.2, 0.5, -60.4)
+let bread_a = box(size: vec(0.12, 0.09, 0.14), at: vec(-1.25, 0.58, -60.55), round: 0.03, material: material(like: "clay", color: rgb(0.62, 0.42, 0.22), roughness: 0.9), collide: no)
+let bread_b = box(size: vec(0.12, 0.09, 0.14), at: vec(-1.25, 0.58, -60.42), round: 0.03, material: material(like: "clay", color: rgb(0.62, 0.42, 0.22), roughness: 0.9), collide: no)
+let milo = hero(vec(0, 0, -3), facing: 180 deg)
+milo.speed = 1.1
+
+sound "wind", volume: 0.15
+room 0.9, echo: 0.7
+sky "none"
+look "golden", contrast: 1.1, bloom: 0.3, grain: 0.03, bars: 2.39
+camera at: vec(0, 1.6, 0), look_at: vec(0, 1.6, -58), lens: 32 mm
+shot "the hall", 37 s, from: {at: vec(0.3, 1.55, 0), look_at: vec(0, 1.5, -10), lens: 28 mm}, to: {at: vec(0.3, 1.55, -48), look_at: vec(0, 1.5, -58), lens: 32 mm}, ease: "linear", fade_in: 2 s
+shot "the last door", 12 s, from: {at: vec(0.4, 1.4, -52), look_at: vec(0, 1.3, -58), lens: 40 mm, f_stop: 2}, to: {at: vec(0.2, 1.4, -55.5), look_at: vec(0, 1.3, -58), lens: 50 mm, f_stop: 2}, ease: "in_out", look: "arctic"
+shot "the cold room", 50 s, from: {at: vec(1.6, 1.4, -59.3), look_at: vec(-1.3, 0.7, -61.0), lens: 35 mm, f_stop: 2.8}, to: {at: vec(1.3, 1.3, -59.6), look_at: vec(-1.3, 0.7, -61.0), lens: 40 mm, f_stop: 2.8}, look: "arctic"
+shot "eye to eye", 62 s, from: {at: vec(-0.3, 0.75, -60.3), look_at: vec(-1.4, 0.75, -61.0), lens: 75 mm, f_stop: 1.8}, to: {at: vec(-0.35, 0.75, -60.35), look_at: vec(-1.4, 0.75, -61.0), lens: 85 mm, f_stop: 1.8}, look: "arctic"
+shot "the bread", 37 s, from: {at: vec(-0.9, 0.95, -60.1), look_at: vec(-1.2, 0.55, -60.6), lens: 65 mm, f_stop: 1.8}, to: {at: vec(-0.8, 0.9, -60.0), look_at: vec(-1.0, 0.55, -60.5), lens: 65 mm, f_stop: 1.8}, look: "arctic"
+shot "the snow stops", 25 s, from: {at: vec(-2.15, 1.2, -59.2), look_at: vec(-0.5, 0.9, -61.4), lens: 28 mm, f_stop: 2.8}, to: {at: vec(-2.1, 1.15, -59.5), look_at: vec(-0.4, 0.95, -61.4), lens: 30 mm, f_stop: 2.8}, fade_out: 4 s, look: "golden"
+render file: "ardane_22_mind.png", quality: "good", width: 1280, at: 212 s
+
+task
+  every 1 / 30 s
+    if snowing
+      for each f in flakes
+        let y = f.position.y - 0.012
+        f.position = vec(f.position.x + 0.002 * sin(time() + f.position.z * 40), y + 3 if y < 0 else y, f.position.z)
+  wait 2 s
+  milo.walk_to = vec(0, 0, -56)
+  say "", "Inside Veyl. A palace with no end."
+  say "", "Every mirror shows the same man, crowned. Every gold door opens on another throne room."
+  say "", "Milo's footsteps echo. Nobody else's do."
+  wait 6 s
+  say "", "He keeps walking. He has done this before, in the Hollow. He knows what it costs to stop."
+  wait 10 s
+  say "", "The last door."
+  last_door.position = vec(-0.6, 1.3, -57.6)
+  last_door.turn = 70 deg
+  sound "click", "metal", at: vec(0, 1.3, -58)
+  wait 1 s
+  milo.walk_to = vec(-0.5, 0, -60.5)
+  say "", "Behind it, a single cold room. A straw bed. A cold hearth. Snow at the window."
+  say "", "A boy of ten sits on the bed with a loaf of bread in his lap, waiting for someone who isn't coming."
+  wait 2 s
+  milo.look_at = young_veyl.position + vec(0, 0.7, 0)
+  milo.sitting = yes
+  say "", "Milo kneels, so their eyes are level. He takes his time."
+  pause 2 s
+  say "Milo", "I know this room."
+  pause 1 s
+  say "Milo", "Mine has a laundry under it. Yours has snow."
+  pause 5 s
+  say "Milo", "You went out for bread. And when you came back, she was gone. And you've been holding it ever since. A thousand years of holding bread for someone who isn't coming."
+  young_veyl.look_at = milo.position + vec(0, 0.9, 0)
+  say "Young Veyl", "If I put it down, it means she's really gone."
+  pause 1 s
+  say "Milo", "I know."
+  pause 2 s
+  say "Milo", "I thought if I got strong enough, nothing could be taken from me. You thought that too. That's why you took everything first."
+  say "Milo", "But I went where you went. I had it all. A city that clapped forever. And I forgot my sister's name. I forgot my own."
+  say "Milo", "It wasn't the power that was wrong. It was that I stopped walking."
+  pause 2 s
+  milo.look_at = milo.position + vec(0.2, 0.6, 0.3)
+  say "", "He looks at the red thread on his wrist."
+  milo.look_at = young_veyl.position + vec(0, 0.7, 0)
+  say "Milo", "My grandmother says you don't carry the people you lose. You let them carry you. The ones before us walk ahead, and they leave the light on."
+  say "Milo", "So here's what I learned. It's not much. I'm not very good at speeches."
+  pause 1 s
+  say "Milo", "You keep your head up. Even when it's heavy. Especially when it's heavy."
+  say "Milo", "You keep growing. Even when it hurts, even when no one claps."
+  say "Milo", "You don't betray yourself. Not for gold. Not for safety. Not even to stop hurting."
+  say "Milo", "You honor the ones who fell. You say their names. Out loud."
+  say "Milo", "And you love it. All of it. What was. What is. What's coming. You love it so much you can let it go."
+  pause 2 s
+  say "", "He holds out his open hand, under the bread."
+  say "Milo", "You can put it down now. She'd want you to eat."
+  pause 3 s
+  say "", "The boy looks at the bread. His hands shake. He breaks it in half."
+  sound "click", "cloth", at: bread_a.position
+  let start = time()
+  every 1 / 30 s
+    let u = clamp((time() - start) / 2.5, 0, 1)
+    bread_b.position = lerp(vec(-1.25, 0.58, -60.42), vec(-0.75, 0.62, -60.45), ease(u, "smooth"))
+  say "", "He gives half to Milo. They eat together in the cold room."
+  pause 3 s
+  snowing = no
+  winter.kelvin = 5200
+  winter.lumens = 2600
+  say "", "Outside the window, for the first time in a thousand years, the snow stops."
+  pause 3 s
+  say "Young Veyl", "(barely a whisper) What was her name? I forgot."
+  pause 2 s
+  say "Milo", "Then we'll find it. That's what the Ardanes do."
+  next_scene "ardane_23_after", delay: 4 s

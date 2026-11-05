@@ -1,0 +1,81 @@
+# 18. The Hollow — WATCHED. Outside time. Noon that never ends.
+use "ardane_common"
+title "18 · The Hollow"
+mode "movie"
+
+hollow_city(radius: 60, count: 80)
+# the square: a dais and a gold throne
+cylinder 6, 0.6, at: vec(0, 0.3, 0), material: hollow_white
+box size: vec(1.4, 0.5, 1.2), at: vec(0, 0.85, 0), material: hollow_gold
+box size: vec(1.4, 2.4, 0.2), at: vec(0, 1.8, -0.5), material: hollow_gold
+for each x in [-0.65, 0.65]
+  box size: vec(0.15, 0.9, 1.1), at: vec(x, 1.4, 0), material: hollow_gold
+# banners on every tower, all the same face
+for i from 0 to 7
+  let a = i * tau / 8
+  box size: vec(2.4, 6, 0.05), at: vec(cos(a) * 13, 5, sin(a) * 13), turn: -a + 90 deg, material: material(like: "velvet", color: rgb(0.9, 0.75, 0.3)), collide: no
+
+let milo = hero(vec(0, 0.6, 0.6), facing: 0 deg)
+let crowd = []
+seed(18)
+for ring_i from 0 to 2
+  let n = 10 + ring_i * 4
+  for i from 0 to n - 1
+    let a = i * tau / n + ring_i * 0.2
+    let d = 8 + ring_i * 2.2
+    let p = someone(vec(cos(a) * d, 0, sin(a) * d), shirt: cloth(0.95, 0.92, 0.85), trousers: cloth(0.95, 0.92, 0.85), facing: 0 deg)
+    p.look_at = vec(0, 1.5, 0)
+    crowd.push(p)
+# Rosa rested, a Varen kneeling: wishes come true here
+let rosa = someone(vec(-2.5, 0.6, 2), height: 1.65, shirt: cloth(0.9, 0.85, 0.75), skin: skin_warm)
+rosa.look_at = vec(0, 1.5, 0)
+let varen = someone(vec(2.2, 0.6, 2.4), height: 1.82, shirt: cloth(0.5, 0.1, 0.12), skin: skin_light)
+varen.sitting = yes
+varen.look_at = vec(0, 1.5, 0)
+let crown = ring(0.11, 0.025, at: vec(0, 2.25, 0.6), material: hollow_gold, collide: no)
+let applause = sound("applause", volume: 1)
+sound "strings", volume: 0.25
+
+room 0.3, echo: 0.6
+sky "color", color: rgb(1, 0.97, 0.9), nits: 4000
+sun elevation: 89 deg, toward: 0 deg, lux: 90000, kelvin: 5800
+look "dream", contrast: 0.9, saturation: 0.8, bloom: 0.5, bars: 2.39
+camera at: vec(0, 3, 12), look_at: vec(0, 1.5, 0), lens: 35 mm
+orbit "the king", 20 s, around: vec(0, 0.6, 0), radius: 10, height: 2.5, from: 90 deg, to: 180 deg, lens: 35 mm, fade_in: 2 s
+orbit "the king, again", 20 s, around: vec(0, 0.6, 0), radius: 10, height: 2.5, from: 90 deg, to: 180 deg, lens: 35 mm
+orbit "and again", 20 s, around: vec(0, 0.6, 0), radius: 10, height: 2.5, from: 90 deg, to: 180 deg, lens: 35 mm
+shot "nothing", 17 s, from: {at: vec(0, 70, 30), look_at: vec(0, 0, 0), lens: 50 mm}, to: {at: vec(0, 92, 36), look_at: vec(0, 0, 0), lens: 85 mm}, ease: "in_out", fade_out: 3 s
+render file: "ardane_18_hollow.png", quality: "good", width: 1280, at: 66 s
+
+task
+  milo.sitting = yes
+  wait 2 s
+  say "", "The ring of light is wrong this time. Too bright. It opens onto noon."
+  say "", "A perfect city. Every face smiling. Every hand clapping. For him."
+  say "Rosa", "Sit, my love. You've done enough. I'm rested now. Everything's paid."
+  say "Varen", "My lord Ardane."
+  say "Milo", "Nia, look. Look, they — "
+  say "", "Nia isn't there. He doesn't remember when she left."
+  # the applause goes on; the crowd thins each time round
+  every 4 s
+    if crowd.length > 0
+      repeat 4 times
+        if crowd.length > 0
+          let c = crowd.pop()
+          c.visible = no
+  wait 6 s
+  say "Milo", "My sister, she'd... B— "
+  pause 3 s
+  say "Milo", "Her name was..."
+  pause 4 s
+  say "", "The sun doesn't move. The shadows don't move. The clapping doesn't stop."
+  say "Milo", "...My name is..."
+  pause 5 s
+  rosa.visible = no
+  varen.visible = no
+  say "", "Things came, and succeeded, and never ended."
+  every 1 / 10 s
+    applause.volume = max(0, applause.volume - 0.02)
+  pause 6 s
+  say "", "A tiny figure on a gold throne, in an empty white square, staring at nothing."
+  next_scene "ardane_19_scar", delay: 3 s

@@ -1,0 +1,57 @@
+# 3. Thirteenth Alley — WATCHED. Night, heavy rain, neon.
+use "ardane_common"
+title "3 · Thirteenth Alley"
+mode "movie"
+
+let wet = material(like: "concrete", color: rgb(0.25, 0.25, 0.27), roughness: 0.25)
+alley(material("brick"), wet, length: 22, width: 3.4, height: 10)
+ground 60, material: wet
+# pipes, bins, a fire escape
+for z from -2 to -16 by -3.5
+  cylinder 0.05, 9, at: vec(-1.85, 4.5, z), material: "iron"
+  barrel vec(1.3, 0, z + 1)
+for y from 3 to 9 by 3
+  box size: vec(1.0, 0.06, 2.4), at: vec(1.25, y, -7), material: "iron", collide: no
+neon_sign vec(-1.7, 4.2, -4), vec(0.05, 0.7, 0.7), rgb(0.15, 1.0, 0.3), facing: 90 deg
+neon_sign vec(1.7, 5.5, -11), vec(0.05, 0.5, 1.6), rgb(1.0, 0.2, 0.5), facing: 90 deg
+street_lamp vec(-2.3, 0, 4), temp: 1900, lumens: 3000
+
+let milo = hero(vec(0, 0, 8), facing: 180 deg)
+milo.speed = 4.5
+let guards = [someone(vec(-0.5, 0, 16), shirt: cloth(0.05, 0.06, 0.1)), someone(vec(0.8, 0, 17), shirt: cloth(0.05, 0.06, 0.1))]
+
+sound "rain", volume: 1
+sound "night", volume: 0.3
+room 0.5, echo: 0.35
+sky "physical", stars: 0.0, haze: 10
+sun elevation: -10 deg, lux: 0.1
+fog 0.05, glow: 0.6, from: vec(-2, 0, -20), to: vec(2, 10, 6)
+look "blockbuster", contrast: 1.2, grain: 0.03
+
+camera at: vec(0, 1.5, -12), look_at: vec(0, 1.2, 4), lens: 24 mm, f_stop: 2
+shot "the chase", 6 s, from: {at: vec(0.6, 1.3, -14), look_at: vec(0, 1.1, 6), lens: 24 mm}, to: {at: vec(0.4, 1.3, -11), look_at: vec(0, 1.1, -2), lens: 28 mm}, shake: 0.5, fade_in: 1 s
+shot "against the wall", 6 s, from: {at: vec(0.9, 1.45, -6.2), look_at: vec(-0.8, 1.35, -8.3), lens: 50 mm, f_stop: 1.8}, to: {at: vec(0.7, 1.45, -6.6), look_at: vec(-0.8, 1.35, -8.3), lens: 65 mm, f_stop: 1.8}, shake: 0.3
+shot "the ring", 8 s, from: {at: vec(0.4, 1.4, -6), look_at: vec(0, 1.5, -12.5), lens: 35 mm, f_stop: 2.8}, to: {at: vec(0.1, 1.45, -9.5), look_at: vec(0, 1.5, -12.5), lens: 28 mm}, ease: "in"
+orbit "the swirl", 5 s, around: vec(0, 1.3, -10.5), radius: 1.6, height: 1.5, from: 0 deg, to: 540 deg, lens: 20 mm, shake: 0.6, ease: "in", fade_out: 1.5 s
+render file: "ardane_03_alley.png", quality: "good", width: 1280, at: 16 s
+
+task
+  milo.walk_to = vec(-0.8, 0, -8.5)
+  guards[0].walk_to = vec(-0.5, 0, 6)
+  guards[1].walk_to = vec(0.8, 0, 6.5)
+  wait 2.5 s
+  say "Guard", "He went down Thirteenth! Spread out!"
+  wait 1.5 s
+  milo.look_at = vec(0, 1.5, 6)
+  say "Milo", "...one... two... three..."
+  wait 1 s
+  # behind him, the brick opens
+  portal(vec(0, 1.5, -12.6), size: 1.3)
+  sound "whoosh", at: vec(0, 1.5, -12)
+  milo.look_at = vec(0, 1.5, -12.6)
+  say "", "A ring of light opens in the brick. The rain stops falling around it."
+  milo.speed = 0.8
+  milo.walk_to = vec(0, 0, -11.3)
+  wait 3 s
+  say "", "His sight turns. Sound turns. Everything turns."
+  next_scene "ardane_04_velasse", delay: 2.5 s

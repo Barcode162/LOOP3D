@@ -12,12 +12,16 @@ This guide is for whoever turns a written story into Loop3D: usually an AI worki
   - `mode "movie"` (it plays its shots by itself) or `mode "game"` (the player walks; the left thumb walks and the right thumb looks)
 
 ```
-stories/harthwake/
-  01 the village.loop
-  02 the woods.loop
-  03 the river.loop
+projects/harthwake/
+  project.json        # name, title, start scene, the scene list
+  01_village.loop
+  02_woods.loop
+  03_river.loop
+  stills/             # trailer stills (optional)
   ...
 ```
+
+A story is a project: a folder in `projects/` with a `project.json`. The engine doesn't depend on any project; `tools/build_site.sh` puts every project's scenes on the site and in the editor. Scene names must be unique across projects (`use` and `go_to` find scenes by name).
 
 ## Building one scene, in this order
 
@@ -93,7 +97,7 @@ stories/harthwake/
 - `move_player(at: vec(…), look_at: vec(…))` carries the player somewhere new: waking up somewhere else, a door into another place.
 - People can be hidden (`.visible = no`) and stood above or below the ground (`lift: 0.6` or `.lift = 0.6` for a dais, a tower top or the air).
 - Scenes can share their pieces: `use "common"` at the top of a scene brings in `common.loop` from the same folder (once), with its materials, people and helper functions.
-  - [`stories/echoes_of_ardane/ardane_common.loop`](../stories/echoes_of_ardane/ardane_common.loop) is a full example. Its `go_and_use(place, hint)` waits for the player to walk somewhere and press Use, and its `choose(question, options)` asks and returns the answer.
+  - [`projects/echoes_of_ardane/ardane_common.loop`](../projects/echoes_of_ardane/ardane_common.loop) is a full example. Its `go_and_use(place, hint)` waits for the player to walk somewhere and press Use, and its `choose(question, options)` asks and returns the answer.
 
 ## Rules that keep it believable
 

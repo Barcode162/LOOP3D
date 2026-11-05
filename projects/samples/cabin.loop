@@ -1,5 +1,5 @@
 # A cabin at night: a fire, a candle, moonlight through the window.
-# Render it:  loop render examples/cabin.loop --quality draft
+# Render it:  loop render projects/samples/cabin.loop --quality draft
 title "The Cabin"
 mode "movie"
 

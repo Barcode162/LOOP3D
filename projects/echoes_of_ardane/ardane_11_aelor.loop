@@ -1,0 +1,78 @@
+# 11. Falling Through Cloud — WATCHED. The sky between islands, golden dusk.
+use "ardane_common"
+title "11 · Falling Through Cloud"
+mode "movie"
+
+# the island they land on, and others hanging in the gold all around
+let home_isle = sky_island(vec(0, 0, 0), radius: 9, depth: 12, trees: 7, pattern: 11)
+sky_island vec(-26, 9, -30), radius: 12, depth: 16, trees: 10, pattern: 12
+sky_island vec(30, -6, -22), radius: 7, depth: 10, trees: 4, pattern: 13
+sky_island vec(8, 18, -60), radius: 16, depth: 20, trees: 14, pattern: 14
+sky_island vec(-40, -14, 10), radius: 6, depth: 8, trees: 3, pattern: 15
+tether vec(-6, -2, -4), vec(-20, 6, -24)
+tether vec(6, -3, -4), vec(26, -7, -18)
+# a glasshouse on the far island, its glow across the air
+glasshouse vec(-26, 9, -30), size: vec(7, 4, 4), lumens: 9000
+# the vines that catch them: long green ropes hanging from the rim
+let vines = []
+for i from 0 to 4
+  vines.push(root(vec(-2 + i, 0, -8.6), vec(-2.5 + i * 1.3, -9, -12), sag: 0.6, thick: 0.05))
+
+let milo = hero(vec(0.5, 0, -6.5), facing: 0 deg)
+let nia = someone(vec(-1.2, 0, -6.2), height: 1.62, shirt: cloth(0.15, 0.45, 0.42), skin: skin_deep, facing: 20 deg)
+let oren = someone(vec(2.0, 0, -6.8), height: 1.92, shirt: cloth(0.85, 0.7, 0.3), trousers: linen, skin: skin_deep, facing: -20 deg)
+for each p in [milo, nia, oren]
+  p.visible = no
+# three falling shapes (they become the people when they land)
+let fallers = []
+for i from 0 to 2
+  fallers.push(capsule(0.22, 1.2, at: vec(-1 + i * 1.4, 30 + i * 2, -10), material: [jacket_navy, cloth(0.15, 0.45, 0.42), cloth(0.85, 0.7, 0.3)][i], collide: no))
+
+sound "wind", volume: 1
+sound "birds", volume: 0.4
+room 1, echo: 0
+sky "physical", haze: 3
+sun elevation: 4 deg, toward: 250 deg, lux: 30000
+fog 0.012, top: -8, glow: 0.85, color: rgb(1, 0.92, 0.8)
+look "golden", warmth: 0.3, bloom: 0.25, bars: 2.39
+
+camera at: vec(6, 2, 4), look_at: vec(0, 1, -6), lens: 28 mm
+shot "falling past the water", 7 s, from: {at: vec(4, 32, -2), look_at: vec(0, 28, -10), lens: 20 mm}, to: {at: vec(4, 10, -2), look_at: vec(0, 4, -10), lens: 24 mm}, ease: "in", shake: 0.6, fade_in: 1 s
+shot "caught", 6 s, from: {at: vec(5, -1, -14), look_at: vec(0, -3, -10), lens: 35 mm}, to: {at: vec(5, 1, -12), look_at: vec(0, 0, -8), lens: 35 mm}, ease: "out"
+shot "on the grass", 8 s, from: {at: vec(-1, 0.6, -2), look_at: vec(0.5, 0.4, -6.5), lens: 28 mm, f_stop: 2.8}, to: {at: vec(0.5, 1.6, -1), look_at: vec(0, 1, -7), lens: 32 mm, f_stop: 2.8}
+shot "there isn't any ground", 18 s, from: {at: vec(0, 1.4, -7.4), look_at: vec(0, -6, -30), lens: 24 mm}, to: {at: vec(0, 4, -4), look_at: vec(-20, 0, -40), lens: 18 mm}, ease: "in_out", fade_out: 2 s
+render file: "ardane_11_aelor.png", quality: "good", width: 1280, at: 3 s
+
+task
+  # they fall, then slow as the vines take them
+  every 1 / 30 s
+    let t = time()
+    for i from 0 to 2
+      let f = fallers[i]
+      if t < 7
+        f.position = vec(-1 + i * 1.4, 30 + i * 2 - t * t * 0.55, -10)
+        f.rotation = vec(t * (0.6 + i * 0.3), t * (1.1 - i * 0.2), 0)
+      elif t < 13
+        let u = (t - 7) / 6
+        f.position = lerp(vec(-1 + i * 1.4, 3 + i * 2 - 27, -10), vec(-1.2 + i * 1.6, 0.3, -6.5), ease(u, "smooth"))
+        f.rotation = vec(0, 0, 0)
+  wait 1.5 s
+  say "", "The portal drops them out of a clear sky."
+  wait 5 s
+  say "", "Vines, green and alive, reach up out of the cloud and catch them."
+  wait 4 s
+  for each f in fallers
+    f.visible = no
+  for each p in [milo, nia, oren]
+    p.visible = yes
+  oren.sitting = yes
+  sound "thud", "grass", at: vec(0, 0, -6.5), strength: 0.6
+  say "Oren", "Everywhere you go, boy, the ground is worse."
+  nia.walk_to = vec(-0.6, 0, -8.2)
+  wait 2 s
+  nia.look_at = vec(0, -10, -30)
+  say "Nia", "There isn't any ground."
+  milo.walk_to = vec(0.4, 0, -8.3)
+  milo.look_at = vec(-20, 0, -40)
+  say "", "Islands. Hundreds of them, hanging in gold air, their waterfalls pouring into nothing."
+  next_scene "ardane_12_garden", delay: 4 s

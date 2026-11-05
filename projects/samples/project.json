@@ -1,0 +1,14 @@
+{
+  "order": 0,
+  "name": "samples",
+  "title": "Samples",
+  "description": "Small scenes that show what the engine does: a candlelit cabin, a living courtyard, and a two-scene story.",
+  "start": "courtyard",
+  "scenes": [
+    "courtyard",
+    "cabin",
+    "the_gate",
+    "the_woods"
+  ],
+  "stills": "stills"
+}

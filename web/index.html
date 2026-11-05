@@ -58,10 +58,8 @@
   <button id="useBtn" title="Use / talk (E)">Use</button>
   <select id="scene" title="Scene">
     <option value="courtyard">Courtyard</option>
-    <option value="cabin">Cabin</option>
-    <option value="the_gate">The Gate (story)</option>
-    <option value="ardane_01_home">Echoes of Ardane (the demo)</option>
   </select>
+  <a class="chip" href="editor.html" title="Open the Loop3D editor" style="text-decoration:none">Editor</a>
   <select id="benchSel" title="Measure how smoothly it runs">
     <option value="">Benchmark…</option>
     <option value="scene">This scene</option>
@@ -276,6 +274,17 @@
     q.onchange = () => { M._loop_set_quality(+q.value); q.blur(); };
     M._loop_set_quality(+q.value);
     const sc = document.getElementById('scene');
+    // the scene picker lists every project's scenes (scenes/index.json, made by tools/build_projects.py)
+    try {
+      const idx = await (await fetch('scenes/index.json')).json();
+      sc.innerHTML = '';
+      for (const p of idx.projects) {
+        const g = document.createElement('optgroup'); g.label = p.title;
+        for (const s of p.scenes) { const o = document.createElement('option'); o.value = s.name; o.textContent = s.title; g.appendChild(o); }
+        sc.appendChild(g);
+      }
+    } catch (e) { /* keep the built-in entry */ }
+    if (![...sc.options].some((o) => o.value === sceneName)) { const o = document.createElement('option'); o.value = o.textContent = sceneName; sc.appendChild(o); }
     sc.value = sceneName;
     sc.onchange = () => { sc.blur(); location.hash = sc.value; window.loopGoTo(sc.value); };
     document.getElementById('benchSel').onchange = (e) => {

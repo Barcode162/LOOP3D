@@ -1,0 +1,103 @@
+# 23. Morning — WATCHED. Calder Row at dawn. The worlds are separating.
+use "ardane_common"
+title "23 · Morning"
+mode "movie"
+
+calder_row(wet: yes)
+# three portals along the street, closing softly one by one
+let p_oren = portal(vec(-3, 1.5, -16), facing: 90 deg, size: 1.2, color: rgb(1.0, 0.75, 0.35), brightness: 0.3)
+let p_sela = portal(vec(3, 1.5, -20), facing: 90 deg, size: 1.2, color: rgb(0.4, 1.0, 0.4), brightness: 0.3)
+let p_nia = portal(vec(0, 1.5, -26), facing: 0 deg, size: 1.3, color: rgb(0.2, 0.9, 0.7), brightness: 0.3)
+# the sigils on the walls, fading
+let sigils = []
+for each z in [-4, -12, -24]
+  for each side in [-1, 1]
+    sigils.push(box(size: vec(0.05, 1.4, 1.4), at: vec(side * 5.96, 5, z), material: material(color: rgb(0, 0, 0), glow: rgb(1, 0.7, 0.3) * 200), collide: no))
+# the ledge in the alley where Pip's lens goes
+let ledge = calder_alley + vec(2.5, 1.1, -1.6)
+box size: vec(0.6, 0.12, 0.3), at: ledge, material: "brick"
+let lens = sphere(0.05, at: vec(0, 1.0, -9), material: material(like: "glass", color: rgb(0.05, 0.05, 0.06)), collide: no)
+
+let milo = hero(vec(0, 0, -10), facing: 180 deg)
+let nia = nia_at(vec(-0.9, 0, -11), facing: 0 deg)
+let oren = oren_at(vec(-2.2, 0, -13), facing: 30 deg)
+let sela = sela_at(vec(1.8, 0, -14), facing: -30 deg)
+let boy = someone(vec(0, 0, -30), height: 1.35, shirt: cloth(0.3, 0.27, 0.22), skin: skin_light, facing: 180 deg)
+let bread = box(size: vec(0.12, 0.09, 0.14), at: vec(0.2, 0.8, -30), round: 0.03, material: material(like: "clay", color: rgb(0.62, 0.42, 0.22)), collide: no)
+
+sound "birds", volume: 0.7
+sound "stream", at: vec(0, 0, -40), volume: 0.2
+room 0.3, echo: 0.2
+sky "physical", haze: 4
+sun elevation: 3 deg, toward: 180 deg, lux: 8000, kelvin: 3800
+fog 0.01, glow: 0.8, color: rgb(1, 0.8, 0.75)
+look "golden", warmth: 0.25, bloom: 0.3, bars: 2.39
+
+camera at: vec(0, 1.6, 0), look_at: vec(0, 1.4, -20), lens: 32 mm
+shot "dawn on Calder Row", 16 s, from: {at: vec(0, 6, 8), look_at: vec(0, 2, -20), lens: 28 mm}, to: {at: vec(0, 2, 2), look_at: vec(0, 1.4, -24), lens: 32 mm}, ease: "in_out", fade_in: 2 s
+shot "a boy with half a loaf", 14 s, from: {at: vec(1, 1.2, -22), look_at: vec(0, 1, -32), lens: 50 mm, f_stop: 2.8}, to: {at: vec(1, 1.2, -24), look_at: vec(0, 1, -40), lens: 50 mm, f_stop: 2.8}
+shot "Oren", 16 s, from: {at: vec(-0.6, 1.7, -11.5), look_at: vec(-2.2, 1.7, -13.6), lens: 50 mm, f_stop: 2}, to: {at: vec(-0.8, 1.7, -12), look_at: vec(-2.4, 1.6, -15), lens: 50 mm, f_stop: 2}
+shot "Sela", 16 s, from: {at: vec(0.6, 1.6, -12), look_at: vec(2.6, 1.5, -18.5), lens: 50 mm, f_stop: 2}, to: {at: vec(0.9, 1.6, -13), look_at: vec(3, 1.5, -20), lens: 50 mm, f_stop: 2}
+shot "Nia", 25 s, from: {at: vec(3.0, 1.5, -23.4), look_at: vec(0.1, 1.45, -24.0), lens: 40 mm, f_stop: 2}, to: {at: vec(2.4, 1.5, -23.7), look_at: vec(0.1, 1.45, -24.0), lens: 50 mm, f_stop: 2}
+shot "the ledge", 16 s, from: {at: calder_alley + vec(1.4, 1.3, -0.2), look_at: ledge + vec(0, 0.1, 0), lens: 50 mm, f_stop: 1.8}, to: {at: calder_alley + vec(1.8, 1.25, -0.6), look_at: ledge + vec(0, 0.1, 0), lens: 65 mm, f_stop: 1.8}, fade_out: 3 s
+render file: "ardane_23_after.png", quality: "good", width: 1280, at: 72 s
+
+task
+  every 1 / 30 s
+    bread.position = boy.position + vec(0.22, 0.8, 0)
+  wait 2 s
+  say "", "Dawn. The towers are fading out of the street like breath off glass. The sand has stopped falling."
+  say "", "Down at the end of Calder Row, a boy with half a loaf walks away into the morning, looking for a name."
+  boy.walk_to = vec(0, 0, -60)
+  boy.speed = 0.9
+  every 1 / 10 s
+    for each s in sigils
+      s.scale = s.scale * 0.985
+  say "", "On every wall, the great houses' sigils fade."
+  wait 4 s
+  # Oren
+  oren.look_at = vec(0, 1.5, -10)
+  milo.walk_to = vec(-1.4, 0, -12.5)
+  wait 2 s
+  say "", "Oren's arm is in a sling."
+  say "Oren", "You guarded the right thing."
+  say "", "He touches his heart, the way the Brotherhood does. Then he walks into the gold light and is gone."
+  oren.walk_to = vec(-3, 0, -16)
+  wait 3 s
+  oren.visible = no
+  # Sela
+  milo.walk_to = vec(1.6, 0, -16.5)
+  sela.look_at = vec(1.6, 1.5, -16.5)
+  wait 2 s
+  say "Sela", "Write to me. In whatever century."
+  say "Milo", "I don't know how the post works between worlds."
+  say "Sela", "Then invent it."
+  sela.walk_to = vec(3, 0, -20)
+  wait 3 s
+  sela.visible = no
+  # Nia, last
+  milo.walk_to = vec(0.2, 0, -23.4)
+  nia.walk_to = vec(0, 0, -24.6)
+  wait 4 s
+  nia.look_at = milo.position + vec(0, 1.4, 0)
+  milo.look_at = nia.position + vec(0, 1.45, 0)
+  say "", "Nia, last. She puts her hand on his face."
+  say "Nia", "Look people in the eye, Milo."
+  pause 2 s
+  say "", "He does."
+  pause 2 s
+  nia.walk_to = vec(0, 0, -26)
+  wait 2 s
+  nia.visible = no
+  say "", "Her portal closes like an eye. His hand is still raised."
+  wait 2 s
+  # Pip's lens
+  milo.walk_to = calder_alley + vec(2.4, 0, -1.1)
+  wait 5 s
+  lens.position = ledge + vec(0, 0.1, 0)
+  sound "click", "glass", at: ledge
+  say "", "In Thirteenth Alley, he sets a small dark lens on a brick ledge."
+  say "Milo", "Pip."
+  pause 1 s
+  say "Milo", "Your name was Pip."
+  next_scene "ardane_24_epilogue", delay: 3 s

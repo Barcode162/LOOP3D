@@ -1,0 +1,437 @@
+# Echoes of Ardane — the pieces every scene shares.
+# A scene starts with:  use "ardane_common"
+
+# ---- the cast's look
+let jacket_navy = material(like: "wool", color: rgb(0.13, 0.17, 0.32), roughness: 0.9)
+let worn_denim = material(like: "fabric", color: rgb(0.22, 0.25, 0.32))
+let skin_warm = material(like: "skin", color: rgb(0.72, 0.52, 0.40))
+let skin_deep = material(like: "skin", color: rgb(0.45, 0.30, 0.22))
+let skin_light = material(like: "skin", color: rgb(0.85, 0.68, 0.58))
+
+to cloth(r, g, b)
+  return material(like: "fabric", color: rgb(r, g, b), roughness: 0.85)
+
+# Milo: small, in his father's navy jacket
+to hero(at, facing: 0 deg)
+  return person(at: at, lift: at.y, height: 1.58, facing: facing, skin: skin_warm, shirt: jacket_navy, trousers: worn_denim)
+
+to someone(at, height: 1.7, shirt: nothing, trousers: nothing, skin: nothing, facing: 0 deg)
+  let s = shirt if shirt else cloth(random(0.2, 0.7), random(0.2, 0.6), random(0.2, 0.6))
+  let t = trousers if trousers else cloth(0.15, 0.15, 0.18)
+  let k = skin if skin else [skin_warm, skin_deep, skin_light].pick()
+  return person(at: at, lift: at.y, height: height, facing: facing, skin: k, shirt: s, trousers: t)
+
+# ---- talking: a line on screen, then the time it takes to read
+to say(who, text)
+  wait line(who, text)
+to pause(seconds)
+  wait seconds
+
+# ---- the player's part in PLAYED scenes
+let used_at = -1
+when "use"
+  used_at = time()
+# walk to a place (shows a hint), then press Use there
+to go_and_use(place, hint, within: 2.2)
+  let asked = time()
+  line "", hint, seconds: 4
+  while not (near(place, within) and used_at > asked)
+    if used_at > asked and not near(place, within)
+      used_at = -1
+    wait 0.15 s
+# walk somewhere
+to go_to_place(place, hint, within: 2.5)
+  line "", hint, seconds: 4
+  while not near(place, within)
+    wait 0.2 s
+
+# ---- choices: ask, then wait for the answer (0 = the first option)
+let answer = -1
+when "choice"
+  answer = event
+to choose(question, options)
+  answer = -1
+  ask question, options
+  while answer < 0
+    wait 0.1 s
+  return answer
+
+# ---- the portal: a turning ring of light in the brick
+to portal(at, facing: 0 deg, size: 1.3, color: rgb(0.75, 0.6, 1.0), brightness: 1)
+  let glow = material(color: rgb(0.05, 0.05, 0.08), glow: color * 6000 * brightness)
+  let core = material(color: rgb(0.02, 0.02, 0.03), glow: color * 1500 * brightness)
+  let rings = []
+  for i from 0 to 2
+    let r = ring(size * (1 - i * 0.18), 0.03 + i * 0.01, at: at, material: glow, collide: no)
+    rings.push(r)
+  let disc = cylinder(size * 0.8, 0.02, at: at, material: core, collide: no)
+  disc.rotation = vec(facing, 90 deg, 0)
+  let l = light(at, lumens: 4000 * brightness, color: color, radius: 0.3)
+  sound "hum", at: at, volume: 0.7
+  every 1 / 30 s
+    for i from 0 to 2
+      let r = rings[i]
+      r.rotation = vec(facing + time() * (0.6 + i * 0.5), 90 deg + 0.3 * sin(time() * (1 + i)), time() * (1.3 - i * 0.4))
+    l.lumens = 4000 * brightness * (1 + 0.25 * flicker(time(), 3, 7))
+  return {rings: rings, light: l, disc: disc}
+
+# a smaller faint portal (the one that stays)
+to faint_portal(at, facing: 0 deg)
+  let glow = material(color: rgb(0.02, 0.02, 0.03), glow: rgb(0.7, 0.6, 1.0) * 1200)
+  let r = ring(0.9, 0.03, at: at, material: glow, collide: no)
+  r.rotation = vec(facing, 90 deg, 0)
+  light at, lumens: 150, color: rgb(0.7, 0.6, 1.0), radius: 0.2
+  every 1 / 20 s
+    r.rotation = vec(facing + time() * 0.2, 90 deg, 0)
+
+# ---- lamps and lights
+to street_lamp(at, temp: 2100, lumens: 1800, height: 4.5)
+  cylinder 0.06, height, at: at + vec(0, height / 2, 0), material: "iron"
+  sphere 0.12, at: at + vec(0, height, 0), material: material(color: rgb(0, 0, 0), glow: kelvin(temp) * 9000), collide: no
+  return light(at + vec(0, height - 0.05, 0), lumens: lumens, kelvin: temp, radius: 0.12)
+
+to lantern(at, temp: 1900, lumens: 120)
+  box size: vec(0.16, 0.24, 0.16), at: at, material: material(like: "glass", color: rgb(1, 0.9, 0.7)), collide: no
+  sphere 0.03, at: at, material: material(color: rgb(0, 0, 0), glow: kelvin(temp) * 12000), collide: no
+  let l = light(at, lumens: lumens, kelvin: temp, radius: 0.04)
+  every 1 / 30 s
+    l.lumens = lumens * (1 + 0.15 * flicker(time(), 6, at.x * 13 + at.z))
+  return l
+
+to candle(at)
+  cylinder 0.03, 0.2, at: at + vec(0, 0.1, 0), material: "wax"
+  sphere 0.01, at: at + vec(0, 0.215, 0), scale: vec(1, 2.2, 1), material: "flame", collide: no
+  let l = light(at + vec(0, 0.225, 0), lumens: 13, kelvin: 1850, radius: 0.008)
+  every 1 / 30 s
+    l.lumens = 13 * (1 + 0.15 * flicker(time(), 9, at.x * 7))
+  return l
+
+to neon_sign(at, size, color, facing: 0 deg)
+  let m = material(color: rgb(0.02, 0.02, 0.02), glow: color * 2500)
+  let b = box(size: size, at: at, turn: facing, material: m, collide: no)
+  let l = light(at, lumens: 600, color: color, radius: 0.3)
+  every 1 / 15 s
+    l.lumens = 600 * (1 + 0.1 * flicker(time(), 18, at.x))
+  return b
+
+# ---- the relics: lights that circle Milo once he has them
+let relic_colors = [rgb(0.9, 0.2, 0.2), rgb(0.2, 0.9, 0.7), rgb(1.0, 0.75, 0.3), rgb(0.4, 1.0, 0.3), rgb(0.3, 0.8, 1.0)]
+# `who` is a person, or nothing for the player (in PLAYED scenes)
+to where_is(who)
+  if who
+    return who.position
+  return player()
+to relic_orbit(who, count, radius: 0.8, height: 1.2)
+  let orbs = []
+  if count < 1
+    return orbs
+  for i from 0 to count - 1
+    let m = material(color: rgb(0, 0, 0), glow: relic_colors[i] * 4000)
+    orbs.push({ball: sphere(0.06, at: where_is(who), material: m, collide: no), glow: light(where_is(who), lumens: 150, color: relic_colors[i], radius: 0.06)})
+  every 1 / 30 s
+    let c = where_is(who)
+    for i from 0 to orbs.length - 1
+      let a = time() * 1.4 + i * tau / orbs.length
+      let p = c + vec(cos(a) * radius, height + 0.15 * sin(time() * 2 + i), sin(a) * radius)
+      orbs[i].ball.position = p
+      orbs[i].glow.position = p
+  return orbs
+
+# ---- places
+# Thirteenth Alley, in any world: two long walls and a floor
+to alley(wall, floor, length: 18, width: 3.2, height: 9)
+  box size: vec(0.5, height, length), at: vec(-width / 2 - 0.25, height / 2, -length / 2 + 2), material: wall
+  box size: vec(0.5, height, length), at: vec(width / 2 + 0.25, height / 2, -length / 2 + 2), material: wall
+  box size: vec(width, 0.1, length), at: vec(0, -0.05, -length / 2 + 2), material: floor
+  box size: vec(width + 1, height, 0.5), at: vec(0, height / 2, -length + 2), material: wall
+
+to crate(at, turn: 0 deg)
+  return box(size: vec(0.55, 0.55, 0.55), at: at + vec(0, 0.275, 0), turn: turn, material: "pine", round: 0.01)
+
+to barrel(at)
+  return cylinder(0.3, 0.9, at: at + vec(0, 0.45, 0), material: "old wood")
+
+to scatter_rocks(center, count, spread, pattern: 1)
+  seed(pattern)
+  repeat count times
+    rock random(0.3, 1.4), at: center + vec(random(-spread, spread), 0, random(-spread, spread)), seed: random_int(1, 50), material: "stone", turn: random(0, tau)
+
+# the next scene, after a moment of black
+to next_scene(name, delay: 1 s)
+  wait delay
+  go_to name
+
+# ---- Velasse: towers standing in green water
+to velasse_city(center: vec(0, 0, 0), count: 26, spread: 40, pattern: 3)
+  let seawall = material(like: "stone", color: rgb(0.52, 0.46, 0.38))
+  let stained = material(like: "plaster", color: rgb(0.78, 0.62, 0.45), pattern: "noise", pattern_color: rgb(0.45, 0.4, 0.33), pattern_scale: 1.5)
+  box size: vec(400, 0.4, 400), at: center + vec(0, -0.6, 0), material: "water", collide: no
+  box size: vec(400, 0.2, 400), at: center + vec(0, -3, 0), material: material(color: rgb(0.03, 0.07, 0.06), roughness: 1), collide: no
+  seed(pattern)
+  repeat count times
+    let x = random(-spread, spread)
+    let z = random(-spread, spread)
+    if abs(x) > 4.5
+      let h = random(8, 22)
+      let w = random(3, 6)
+      box size: vec(w, h, random(3, 6)), at: center + vec(x, h / 2 - 0.5, z), material: [stained, seawall].pick()
+      box size: vec(w + 0.4, 0.5, 0.5), at: center + vec(x, h * 0.6, z + 1.6), material: "old wood", collide: no
+
+to raft(at, size: vec(3, 0.3, 2), turn: 0 deg)
+  let r = box(size: size, at: at + vec(0, -0.3, 0), turn: turn, material: material(like: "old wood", color: rgb(0.42, 0.33, 0.24)))
+  every 1 / 20 s
+    r.position = vec(r.position.x, at.y - 0.3 + 0.03 * sin(time() * 1.3 + at.x), r.position.z)
+  return r
+
+to rope_bridge(start, finish)
+  let mid = (start + finish) * 0.5
+  let d = finish - start
+  box size: vec(1.2, 0.08, d.length), at: mid, turn: atan(d.x, d.z), material: "old wood"
+
+# ---- Qadesh: red sandstone in white sun
+let sandstone = material(like: "sand", color: rgb(0.78, 0.48, 0.30), pattern: "noise", pattern_color: rgb(0.62, 0.36, 0.22), pattern_scale: 1.2, bump: 1 mm)
+let linen = material(like: "fabric", color: rgb(0.88, 0.84, 0.74))
+to qadesh_houses(center, count: 30, spread: 40, pattern: 2)
+  seed(pattern)
+  repeat count times
+    let x = random(-spread, spread)
+    let z = random(-spread, spread)
+    if abs(x) > 5 or abs(z) > 8
+      let h = random(3, 9)
+      let w = random(3, 7)
+      box size: vec(w, h, random(3, 7)), at: center + vec(x, h / 2, z), material: sandstone
+      if chance(40%)
+        box size: vec(w * 0.6, 0.05, 2), at: center + vec(x, h * 0.7, z + 2.2), tilt: 15 deg, material: linen, collide: no
+to palm(at)
+  cylinder 0.15, 6, at: at + vec(0, 3, 0), material: "bark"
+  for i from 0 to 6
+    box size: vec(0.4, 0.04, 2.4), at: at + vec(cos(i * 0.9) * 1.1, 6, sin(i * 0.9) * 1.1), turn: -i * 0.9 + 90 deg, tilt: 20 deg, material: "leaves", collide: no
+
+# ---- home: the room above the laundry (scenes 1, 17, 24)
+let plaster = material(like: "plaster", color: rgb(0.70, 0.64, 0.55))
+to home_room(daylight: 2500, daylight_temp: 7000)
+  ground 12, material: "floorboards"
+  box size: vec(6, 3, 0.2), at: vec(0, 1.5, -2.6), material: plaster
+  box size: vec(0.2, 3, 5.4), at: vec(-3, 1.5, 0), material: plaster
+  box size: vec(6, 0.2, 5.4), at: vec(0, 3.05, 0), material: "old wood"
+  # the near wall, with the door to the stairs
+  box size: vec(3.6, 3, 0.2), at: vec(1.2, 1.5, 2.6), material: plaster
+  box size: vec(1.4, 3, 0.2), at: vec(-2.3, 1.5, 2.6), material: plaster
+  box size: vec(1.0, 0.8, 0.2), at: vec(-1.1, 2.6, 2.6), material: plaster
+  # the right wall, with the window
+  box size: vec(0.2, 3, 2.2), at: vec(3, 1.5, -1.6), material: plaster
+  box size: vec(0.2, 3, 2.0), at: vec(3, 1.5, 1.7), material: plaster
+  box size: vec(0.2, 1.0, 1.2), at: vec(3, 0.5, 0.1), material: plaster
+  box size: vec(0.2, 0.9, 1.2), at: vec(3, 2.55, 0.1), material: plaster
+  box size: vec(0.03, 1.1, 1.2), at: vec(3, 1.55, 0.1), material: "glass", collide: no
+  panel_light at: vec(3.3, 1.6, 0.1), facing: vec(-1, -0.2, 0), size: vec(1.2, 1.1), lumens: daylight, kelvin: daylight_temp
+  # Nana's bed under the window, the oil lamp beside it
+  box size: vec(1.0, 0.45, 2.0), at: vec(2.3, 0.22, 0.6), material: "old wood"
+  box size: vec(0.95, 0.12, 1.9), at: vec(2.3, 0.5, 0.6), material: material(like: "wool", color: rgb(0.55, 0.12, 0.1), pattern: "checker", pattern_color: rgb(0.35, 0.28, 0.2), pattern_scale: 4)
+  box size: vec(0.5, 0.6, 0.5), at: vec(2.3, 0.3, -0.75), material: "walnut"
+  lantern vec(2.3, 0.72, -0.75), lumens: 90
+  # the table
+  box size: vec(1.2, 0.05, 0.8), at: vec(-1.6, 0.74, -1.4), material: "walnut"
+  for each c in [vec(-2.1, 0.36, -1.7), vec(-1.1, 0.36, -1.7), vec(-2.1, 0.36, -1.1), vec(-1.1, 0.36, -1.1)]
+    box size: vec(0.05, 0.72, 0.05), at: c, material: "walnut"
+  sound "hum", at: vec(0, -1, 0), volume: 0.35      # the laundry machines below
+
+to the_family()
+  let nana = someone(vec(2.3, 0, 1.1), height: 1.5, shirt: cloth(0.4, 0.35, 0.45), skin: skin_warm, facing: 270 deg)
+  nana.sitting = yes
+  let rosa = someone(vec(-1.6, 0, -0.75), height: 1.65, shirt: cloth(0.45, 0.42, 0.38), skin: skin_warm, facing: 180 deg)
+  rosa.sitting = yes
+  let bea = someone(vec(0.1, 0, -0.1), height: 1.15, shirt: cloth(0.85, 0.55, 0.2), skin: skin_warm, facing: 160 deg)
+  return {nana: nana, rosa: rosa, bea: bea}
+
+# ---- Aelor: green islands hanging in gold air
+let island_rock = material(like: "stone", color: rgb(0.42, 0.36, 0.30), bump: 4 mm)
+let lawn = material(like: "grass", color: rgb(0.30, 0.48, 0.18))
+let living_root = material(color: rgb(0.05, 0.12, 0.05), glow: rgb(0.25, 1.0, 0.35) * 12, roughness: 0.6)
+let dead_root = material(like: "bark", color: rgb(0.18, 0.16, 0.14))
+# an island: a lawn on top of an upside-down cone of rock, roots and a waterfall below
+to sky_island(at, radius: 8, depth: 10, trees: 6, falls: yes, pattern: 4)
+  cylinder radius, 0.6, at: at + vec(0, -0.3, 0), material: lawn
+  cone radius * 0.98, depth, at: at + vec(0, -0.6 - depth / 2, 0), rotation: vec(0, 180 deg, 0), material: island_rock
+  seed(pattern)
+  repeat trees times
+    let a = random(0, tau)
+    let d = random(0.2, 0.75) * radius
+    tree kind: ["birch", "oak", "bush"].pick(), at: at + vec(cos(a) * d, 0, sin(a) * d), height: random(3, 7)
+  if falls
+    let a = random(0, tau)
+    let edge = at + vec(cos(a) * radius * 0.97, -0.2, sin(a) * radius * 0.97)
+    box size: vec(1.2, depth * 1.6, 0.25), at: edge + vec(0, -depth * 0.8, 0), turn: -a + 90 deg, material: material(like: "water", color: rgb(0.85, 0.92, 1.0), roughness: 0.3), collide: no
+    sound "stream", at: edge, volume: 0.5
+  return at
+
+# iron tethers between islands
+to tether(start, finish)
+  let d = finish - start
+  let mid = (start + finish) * 0.5
+  cylinder 0.05, d.length, at: mid, rotation: vec(atan(d.x, d.z), 90 deg - asin(d.y / d.length), 0), material: "iron", collide: no
+
+to glasshouse(at, size: vec(6, 4, 4), lumens: 5000)
+  let frame = material(like: "iron", color: rgb(0.9, 0.9, 0.88), roughness: 0.4)
+  let pane = material(like: "frosted glass", color: rgb(0.95, 1, 0.97), glow: kelvin(2800) * 18)
+  box size: vec(size.x, size.y, size.z), at: at + vec(0, size.y / 2, 0), material: pane, collide: no
+  for x from -size.x / 2 to size.x / 2 by 1
+    box size: vec(0.05, size.y, 0.05), at: at + vec(x, size.y / 2, size.z / 2), material: frame, collide: no
+    box size: vec(0.05, size.y, 0.05), at: at + vec(x, size.y / 2, -size.z / 2), material: frame, collide: no
+  cylinder size.z / 2, size.x, at: at + vec(0, size.y, 0), rotation: vec(0, 0, 90 deg), material: pane, collide: no
+  for i from 0 to 4
+    tree kind: "bush", at: at + vec(-size.x / 2 + 0.8 + i * (size.x - 1.6) / 4, 0, 0), height: 1.4
+  return light(at + vec(0, size.y * 0.7, 0), lumens: lumens, kelvin: 3000, radius: 0.5)
+
+to paper_lantern(at, color: rgb(1, 0.7, 0.4))
+  sphere 0.2, at: at, scale: vec(1, 1.2, 1), material: material(color: rgb(0.1, 0.08, 0.06), glow: color * 400), collide: no
+  return light(at, lumens: 90, color: color, radius: 0.18)
+
+# a root: a long bent line of glowing segments
+to root(start, finish, sag: 1.5, alive: yes, thick: 0.18)
+  let parts = []
+  for i from 0 to 7
+    let u0 = i / 8
+    let u1 = (i + 1) / 8
+    let p0 = start + (finish - start) * u0 - vec(0, sag * 4 * u0 * (1 - u0), 0)
+    let p1 = start + (finish - start) * u1 - vec(0, sag * 4 * u1 * (1 - u1), 0)
+    let d = p1 - p0
+    parts.push(cylinder(thick * (1 - u0 * 0.5), d.length + 0.05, at: (p0 + p1) * 0.5, rotation: vec(atan(d.x, d.z), 90 deg - asin(d.y / d.length), 0), material: living_root if alive else dead_root, collide: no))
+  return parts
+
+# ---- Nexus 9: rain, neon, drones
+to drone(at)
+  let body = sphere(0.18, at: at, scale: vec(1.6, 0.6, 1.6), material: "chrome", collide: no)
+  let eye = sphere(0.04, at: at + vec(0, -0.1, 0), material: material(color: rgb(0, 0, 0), glow: rgb(1, 0.05, 0.03) * 5000), collide: no)
+  let l = light(at + vec(0, -0.12, 0), lumens: 80, color: rgb(1, 0.1, 0.05), radius: 0.04)
+  let start = at
+  let k = at.x * 1.7 + at.z
+  every 1 / 30 s
+    let p = start + vec(sin(time() * 0.5 + k) * 2, 0.4 * sin(time() * 1.3 + k), cos(time() * 0.4 + k) * 2)
+    body.position = p
+    eye.position = p + vec(0, -0.1, 0)
+    l.position = p + vec(0, -0.12, 0)
+    let ph = time() * 2 + k
+    l.lumens = 80 if ph - floor(ph) < 0.5 else 5
+  return body
+
+# Pip: a little rolling robot with one cracked lens
+to pip(at, facing: 0 deg)
+  let shell = material(like: "plastic", color: rgb(0.85, 0.82, 0.74))
+  let body = sphere(0.22, at: at + vec(0, 0.22, 0), material: shell, collide: no)
+  let head = sphere(0.14, at: at + vec(0, 0.52, 0), material: shell, collide: no)
+  let lens_m = material(color: rgb(0, 0, 0), glow: rgb(0.3, 0.85, 1.0) * 3000)
+  let lens = sphere(0.05, at: at + vec(sin(facing) * 0.12, 0.54, cos(facing) * 0.12), material: lens_m, collide: no)
+  let l = light(lens.position, lumens: 25, color: rgb(0.3, 0.85, 1.0), radius: 0.03)
+  return {body: body, head: head, lens: lens, light: l}
+to pip_move(p, at, facing: 0 deg)
+  p.body.position = at + vec(0, 0.22, 0)
+  p.head.position = at + vec(0, 0.52, 0)
+  p.lens.position = at + vec(sin(facing) * 0.12, 0.54, cos(facing) * 0.12)
+  p.light.position = p.lens.position
+to pip_dark(p)
+  p.lens.material = material(like: "glass", color: rgb(0.05, 0.05, 0.06))
+  p.light.lumens = 0
+
+# streaks of rain hanging in the air (they fall, unless time is stopped)
+let rain_frozen = no
+to rain_streaks(center, count: 160, spread: 6, height: 8, thick: 0.006, brightness: 30)
+  let drops = []
+  let wet_glow = material(like: "water", color: rgb(0.8, 0.9, 1.0), glow: rgb(0.6, 0.8, 1.0) * brightness)
+  seed(31)
+  repeat count times
+    drops.push(box(size: vec(thick, 0.22, thick), at: center + vec(random(-spread, spread), random(0, height), random(-spread, spread)), material: wet_glow, collide: no))
+  every 1 / 30 s
+    if not rain_frozen
+      for each d in drops
+        let y = d.position.y - 0.45
+        d.position = vec(d.position.x, y + height if y < center.y else y, d.position.z)
+  return drops
+
+# a big flat hologram that flickers
+to hologram(at, size, color, facing: 0 deg, brightness: 900)
+  let m = material(color: rgb(0, 0, 0), glow: color * brightness)
+  let b = box(size: size, at: at, turn: facing, material: m, collide: no)
+  let l = light(at + vec(sin(facing) * 1, 0, cos(facing) * 1), lumens: 3000, color: color, radius: 0.6)
+  every 1 / 12 s
+    b.visible = chance(96%)
+  return b
+
+# ---- the Hollow: gold and white, too clean
+let hollow_gold = material(like: "gold", roughness: 0.15)
+let hollow_white = material(like: "marble", color: rgb(0.97, 0.95, 0.9))
+to hollow_city(radius: 40, count: 60)
+  ground 200, material: hollow_white
+  seed(77)
+  repeat count times
+    let a = random(0, tau)
+    let d = random(14, radius)
+    let h = random(6, 30)
+    box size: vec(3, h, 3), at: vec(cos(a) * d, h / 2, sin(a) * d), turn: -a, material: [hollow_white, hollow_white, hollow_gold].pick()
+    sphere 1.6, at: vec(cos(a) * d, h + 1, sin(a) * d), material: hollow_gold
+
+# ---- Calder Row: the little brick street, the laundry, the mouth of Thirteenth Alley
+let calder_laundry = vec(-4.6, 0, 0)    # the laundry's door; home is the window above
+let calder_alley = vec(4.6, 0, -10)     # the mouth of Thirteenth Alley
+to calder_row(lit_windows: 10, wet: yes)
+  let road = material(like: "concrete", color: rgb(0.12, 0.12, 0.13), roughness: 0.3 if wet else 0.8)
+  ground 200, material: road
+  box size: vec(2, 0.15, 60), at: vec(-5, 0.075, -10), material: "concrete"
+  box size: vec(2, 0.15, 60), at: vec(5, 0.075, -10), material: "concrete"
+  # terraces, both sides, with the alley's gap on the right
+  seed(240)
+  for z from 14 to -34 by -6
+    let h = random(8, 11)
+    box size: vec(6, h, 6), at: vec(-9, h / 2, z), material: "brick"
+    if abs(z + 10) > 2
+      box size: vec(6, h, 6), at: vec(9, h / 2, z), material: "brick"
+    for each side in [-1, 1]
+      for y from 3 to h - 2 by 3
+        if chance(35%)
+          box size: vec(0.05, 1.2, 0.9), at: vec(side * 5.98, y, z + random(-1.5, 1.5)), material: material(color: rgb(0, 0, 0), glow: kelvin(2400) * 60)
+        else
+          box size: vec(0.05, 1.2, 0.9), at: vec(side * 5.98, y, z + random(-1.5, 1.5)), material: "glass"
+  # the alley itself, going in between the terraces
+  box size: vec(14, 0.1, 3.4), at: calder_alley + vec(7, -0.04, 0), material: "concrete"
+  box size: vec(14, 9, 0.5), at: calder_alley + vec(8.4, 4.5, 1.95), material: "brick"
+  box size: vec(14, 9, 0.5), at: calder_alley + vec(8.4, 4.5, -1.95), material: "brick"
+  # the laundry: a lit front, a sign, and home's window above
+  box size: vec(0.06, 2.2, 3), at: calder_laundry + vec(-1.4, 1.3, 0), material: material(like: "glass", color: rgb(0.9, 0.95, 1)), collide: no
+  light calder_laundry + vec(-2.2, 1.6, 0), lumens: 2500, kelvin: 4500, radius: 0.5
+  neon_sign calder_laundry + vec(-1.35, 2.8, 0), vec(0.05, 0.35, 2.2), rgb(0.3, 0.6, 1.0), facing: 90 deg
+  let home_window = box(size: vec(0.06, 1.1, 1.2), at: calder_laundry + vec(-1.38, 4.6, 0), material: material(color: rgb(0, 0, 0), glow: kelvin(2000) * 120), collide: no)
+  light calder_laundry + vec(-1.0, 4.6, 0), lumens: 300, kelvin: 2000, radius: 0.4
+  street_lamp vec(-4.3, 0, 6), temp: 2000, lumens: 2200
+  street_lamp vec(4.3, 0, -4), temp: 2000, lumens: 2200
+  street_lamp vec(-4.3, 0, -18), temp: 2000, lumens: 2200
+  return home_window
+
+# the friends, as they are by Act Seven
+to nia_at(at, facing: 0 deg)
+  return someone(at, height: 1.62, shirt: cloth(0.15, 0.45, 0.42), skin: skin_deep, facing: facing)
+to oren_at(at, facing: 0 deg)
+  return someone(at, height: 1.92, shirt: cloth(0.85, 0.7, 0.3), trousers: linen, skin: skin_deep, facing: facing)
+to sela_at(at, facing: 0 deg)
+  return someone(at, height: 1.68, shirt: cloth(0.55, 0.62, 0.4), skin: skin_light, facing: facing)
+# Veyl: tall, beautiful, tired; black and gold, a crown of every house
+let veyl_black = material(like: "velvet", color: rgb(0.03, 0.025, 0.02))
+to veyl_at(at, facing: 0 deg)
+  let v = person(at: at, lift: at.y, height: 2.05, facing: facing, skin: skin_light, shirt: veyl_black, trousers: veyl_black)
+  let crown = ring(0.13, 0.03, at: at + vec(0, 2.05, 0), material: material(like: "gold", roughness: 0.2), collide: no)
+  let glow = light(at + vec(0, 2.2, 0), lumens: 1500, color: rgb(1, 0.75, 0.35), radius: 0.1)
+  every 1 / 30 s
+    crown.position = v.position + vec(0, 2.04, 0)
+    glow.position = v.position + vec(0, 2.3, 0)
+  return v
+
+# eyes that glow faintly (Milo, once the Mercy Shard is in him)
+to glowing_eyes(who, color: rgb(0.4, 0.85, 1.0), height: 1.47, strength: 600)
+  let m = material(color: rgb(0, 0, 0), glow: color * strength)
+  let eyes = [sphere(0.012, at: who.position, material: m, collide: no), sphere(0.012, at: who.position, material: m, collide: no)]
+  every 1 / 30 s
+    let f = who.facing
+    let fwd = vec(sin(f), 0, cos(f))
+    let side = vec(cos(f), 0, -sin(f))
+    for i from 0 to 1
+      eyes[i].position = who.position + vec(0, height, 0) + fwd * 0.085 + side * (0.032 * (i * 2 - 1))
+  return eyes
