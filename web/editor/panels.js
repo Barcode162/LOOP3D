@@ -68,7 +68,7 @@ window.LE = window.LE || {};
     show() { this.refresh(); },
     refresh(quiet) {
       const info = E.M && E.sceneInfo();
-      if (!info) return;
+      if (!info || !info.things) return;  // no scene yet (the engine answers {})
       const sig = JSON.stringify([info.things.length, info.lights.length, info.people.length, info.title]);
       this.info = info;
       LE.emitSceneInfo && LE.emitSceneInfo(info);
@@ -219,7 +219,9 @@ window.LE = window.LE || {};
   // ============================================================ Script
   const KW = new Set(['after', 'and', 'break', 'by', 'continue', 'each', 'elif', 'else', 'emit', 'every', 'fn', 'for', 'forever', 'from', 'if', 'in', 'is', 'let', 'not', 'or', 'otherwise', 'repeat', 'return', 'task', 'times', 'to', 'wait', 'when', 'while', 'use']);
   const CONST = new Set(['true', 'false', 'yes', 'no', 'nothing', 'nil', 'pi', 'tau', 'infinity']);
-  const WORLD = new Set(('title mode material box sphere cylinder cone capsule ring ground rock tree terrain forest height_at light panel_light sun sky fog camera look shot orbit solid push gravity person sound room line ask go_to remember recall forget_story player near move_player render film say print vec rgb hex kelvin grey materials ease approach random random_int chance seed noise wave flicker time text number type range keys list').split(' '));
+  // the language's words come from the engine (web/editor/words.js, made by `loop words js`)
+  const WORDS = window.LOOP_WORDS || {};
+  const WORLD = new Set(Object.keys(WORDS));
   const UNITS = 'm|cm|mm|km|s|ms|sec|min|minutes|h|hour|hours|deg|degrees|rad|K|lumens|lm|lux|nits|kg|g|Hz|kmh|mph|%';
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   function highlight(src, errLines) {
@@ -258,9 +260,14 @@ window.LE = window.LE || {};
       this.ta = h('textarea', { spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', 'aria-label': 'Looped Script' });
       this.area = h('div', { class: 'area' }, this.pre, this.ta);
       this.probBox = h('div', { class: 'problems' });
-      root.append(h('div', { class: 'code' }, this.gutter, this.area), this.probBox);
+      this.mini = h('canvas', { class: 'minimap', title: 'Click to jump' });
+      this.mini.onclick = (e) => { const r = this.mini.getBoundingClientRect(); const lines = this.ta.value.split('\n').length; this.gotoLine(Math.max(1, Math.round(((e.clientY - r.top) / r.height) * lines))); };
+      this.hint = h('div', { class: 'hint' });
+      root.append(h('div', { class: 'code' }, this.gutter, this.area, this.mini), this.hint, this.probBox);
+      this.ta.addEventListener('keyup', () => this.suggest());
+      this.ta.addEventListener('click', () => this.suggest());
       this.ta.addEventListener('input', () => { this.dirty = true; this.paint(); this.autosave(); });
-      this.area.addEventListener('scroll', () => { this.gutter.scrollTop = this.area.scrollTop; });
+      this.area.addEventListener('scroll', () => { this.gutter.scrollTop = this.area.scrollTop; this.drawMini(); });
       this.ta.addEventListener('keydown', (e) => this.keys(e));
       E.on('sceneText', (name, text) => {
         const kept = LE.store.get('save.auto') && LE.safe.get('loop3d.script.' + name);
@@ -306,15 +313,63 @@ window.LE = window.LE || {};
       this.ta.style.height = Math.max(this.area.clientHeight, this.ta.scrollHeight) + 'px';
       this.ta.style.width = '0px';
       this.ta.style.width = Math.max(this.area.clientWidth, this.pre.scrollWidth) + 'px';
+      this.drawMini();
       LE.status && LE.status();
+    },
+    drawMini() {
+      const c = this.mini, on = LE.store.get('code.minimap');
+      c.style.display = on ? 'block' : 'none';
+      if (!on || !c.clientHeight) return;
+      const dpr = devicePixelRatio || 1, W = c.clientWidth * dpr, H = c.clientHeight * dpr;
+      c.width = W; c.height = H;
+      const x = c.getContext('2d'), lines = this.ta.value.split('\n'), lh = Math.min(3 * dpr, H / Math.max(lines.length, 1));
+      const cs = getComputedStyle(document.body);
+      lines.forEach((l, i) => {
+        const ind = l.match(/^\s*/)[0].length, t = l.trim();
+        if (!t) return;
+        x.fillStyle = this.errLines.has(i + 1) ? '#ef5d5d' : t.startsWith('#') ? '#6f7a8a88' : cs.getPropertyValue('--dim') || '#8b94a3';
+        x.fillRect(4 * dpr + ind * dpr, i * lh, Math.min(W - 8 * dpr, t.length * dpr), Math.max(1, lh - dpr * 0.5));
+      });
+      // the part that's on screen
+      const lhPx = parseFloat(getComputedStyle(this.ta).lineHeight) || 19;
+      const top = this.area.scrollTop / lhPx, vis = this.area.clientHeight / lhPx;
+      x.fillStyle = '#4c9dff22'; x.fillRect(0, top * lh, W, vis * lh);
     },
     autosave() {
       clearTimeout(this.saveT);
       if (!LE.store.get('save.auto') || !this.name) return;
       this.saveT = setTimeout(() => { LE.safe.set('loop3d.script.' + this.name, this.ta.value); LE.saved = new Date(); LE.status && LE.status(); }, LE.store.get('save.every') * 1000);
     },
+    // the word being typed: suggestions; the word under the caret: its help
+    suggest() {
+      const ta = this.ta, at = ta.selectionStart;
+      const before = ta.value.slice(0, at), m = before.match(/[A-Za-z_][A-Za-z0-9_]*$/);
+      const after = ta.value.slice(at).match(/^[A-Za-z0-9_]*/)[0];
+      const word = (m ? m[0] : '') + after;
+      this.cands = [];
+      this.hint.innerHTML = '';
+      if (LE.store.get('code.autocomplete') && m && m[0].length >= 2 && !after) {
+        const pre = m[0];
+        this.cands = [...Object.keys(WORDS), ...KW].filter((w) => w.startsWith(pre) && w !== pre).slice(0, 8);
+      }
+      if (this.cands.length) {
+        this.hint.append(h('span', { class: 'dim' }, 'Tab: '));
+        this.cands.forEach((w, i) => this.hint.append(h('button', { class: 'cand' + (i === 0 ? ' on' : ''), title: WORDS[w] || w, onmousedown: (ev) => { ev.preventDefault(); this.accept(w); } }, w)));
+      } else if (WORDS[word] && WORDS[word] !== word) this.hint.append(h('span', { class: 'mono' }, WORDS[word]));
+      this.hint.style.display = this.hint.childElementCount ? 'flex' : 'none';
+    },
+    accept(w) {
+      const ta = this.ta, at = ta.selectionStart;
+      const m = ta.value.slice(0, at).match(/[A-Za-z_][A-Za-z0-9_]*$/);
+      ta.setRangeText(w, at - (m ? m[0].length : 0), at, 'end');
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+      this.suggest();
+    },
     keys(e) {
       const ta = this.ta, tab = ' '.repeat(LE.store.get('code.tab'));
+      if (e.key === 'Tab' && !e.shiftKey && this.cands && this.cands.length && ta.selectionStart === ta.selectionEnd) { e.preventDefault(); return this.accept(this.cands[0]); }
+      if (e.key === 'Escape' && this.cands && this.cands.length) { this.cands = []; this.hint.style.display = 'none'; return; }
       if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'Enter')) {
         e.preventDefault();
         if (e.shiftKey && e.key === 's') return this.download();

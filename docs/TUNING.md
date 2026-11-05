@@ -1,5 +1,7 @@
 # The tuning sheet
 
+Every setting, by name, with its range, default, status and script word, is in [`SETTINGS.md`](SETTINGS.md) (made from the editor's and the engine's own lists). This sheet explains what they cost and how they trade.
+
 Every setting that changes how Loop3D looks or how fast it runs: what it does, what it costs, what it buys, and how the settings trade against each other. The second half lists the performance tricks we have and the ones we're adding.
 
 **The goal is smoothness you can feel, not just a high number.** A steady 60 fps (a new picture every 16.7 ms, every time) feels better than 90 fps that stutters. So we judge the engine in this order:

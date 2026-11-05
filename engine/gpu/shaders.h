@@ -12,13 +12,13 @@ struct Frame {
   shadowViewProj : mat4x4f,
   camPos : vec4f,        // xyz, time
   sunDir : vec4f,        // towards the sun, w = sun on
-  sunColor : vec4f,      // illuminance (lux) as rgb
-  sh : array<vec4f, 9>,  // sky light, spherical harmonics
+  sunColor : vec4f,      // illuminance (lux) as rgb, w: sky light strength (render.skyLight)
+  sh : array<vec4f, 9>,  // sky light, spherical harmonics; sh[0].w shadow softness, sh[1].w pattern fade
   fog : vec4f,           // density, top, anisotropy, on
-  fogColor : vec4f,
-  params : vec4f,        // light count, exposure compensation, shadow size, auto exposure
+  fogColor : vec4f,      // rgb, w: sun shadow depth bias
+  params : vec4f,        // light count, lamps with shadow rays, shadow map size, auto exposure
   screen : vec4f,        // width, height, 1/width, 1/height
-  fixedExposure : vec4f, // x: exposure when not auto
+  fixedExposure : vec4f, // x: exposure when not auto, y: rays per lamp, z: debug view, w: occlusion strength
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -115,7 +115,7 @@ fn patternLod(m : Material, p : vec3f, n : vec3f, lod : f32) -> vec3f {
     case 8: { feature = 0.003 / sc; avg = 0.3; }
     default: {}
   }
-  let fade = smoothstep(0.4, 1.5, lod / feature);
+  let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
   return vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
 }
 
@@ -280,7 +280,7 @@ fn shadowAt(world : vec3f, n : vec3f) -> f32 {
                               vec2f(0.962, -0.195), vec2f(0.473, -0.480), vec2f(0.519, 0.767), vec2f(0.185, -0.893),
                               vec2f(0.507, 0.064), vec2f(0.896, 0.412), vec2f(-0.322, -0.933), vec2f(-0.792, -0.598));
   for (var i = 0; i < 12; i++) {
-    s += textureSampleCompareLevel(shadowMap, shadowSampler, uv + taps[i] * texel * 1.8, p.z - 0.0015);
+    s += textureSampleCompareLevel(shadowMap, shadowSampler, uv + taps[i] * texel * frame.sh[0].w, p.z - frame.fogColor.w);
   }
   return s / 12.0;
 }
@@ -360,7 +360,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       default: {}
     }
     let lod = length(fwidth(i.world));
-    let fade = smoothstep(0.4, 1.5, lod / feature);
+    let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
     pv = vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
     base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
     rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
@@ -441,8 +441,9 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   // the sky's light: diffuse from its harmonics, glossy from the blurred sky
   let r = reflect(-v, n);
   let envSpec = skyRadiance(r, rough * 6.0) * envBrdf(f0, rough, nv);
-  let occl = clamp(0.4 + 0.6 * (n.y * 0.5 + 0.5), 0.0, 1.0);  // a little less sky low down
-  lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl;
+  // a little less sky low down (render.occlusion), all of it times render.skyLight
+  let occl = mix(1.0, clamp(0.4 + 0.6 * (n.y * 0.5 + 0.5), 0.0, 1.0), frame.fixedExposure.w);
+  lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl * frame.sunColor.w;
   if (m.props.z > 0.0) {  // clear coat: a second, sharp reflection
     let Fc = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
     lo = lo * (1.0 - Fc * m.props.z) + skyRadiance(r, 0.5) * Fc * m.props.z;
@@ -546,10 +547,12 @@ struct SkyOut {
 
 inline const char* kPostWgsl = R"(
 struct Post {
-  exposure : vec4f,     // x fixed exposure, y compensation (stops), z auto, w adapt speed
+  exposure : vec4f,     // x fixed exposure, y compensation (stops), z auto, w sharpen
   look0 : vec4f,        // contrast, saturation, tonemap (0 agx 1 aces 2 filmic 3 linear), mono
-  wb : vec4f,           // white balance gains
-  lift : vec4f, gamma : vec4f, gain : vec4f,
+  wb : vec4f,           // white balance gains, w: lens distortion
+  lift : vec4f,         // w: grain size
+  gamma : vec4f,        // w: bloom size (1 = normal)
+  gain : vec4f,         // w: edge smoothing (FXAA) on
   shadowTint : vec4f, highlightTint : vec4f,
   fx : vec4f,           // bloom, vignette, grain, letterbox aspect
   fx2 : vec4f,          // black level, time, halation, chromatic aberration
@@ -625,8 +628,15 @@ fn grain(p : vec2f, t : f32) -> f32 {
     let barH = (H - W / post.fx.w) * 0.5 / H;
     if (barH > 0.0 && (i.uv.y < barH || i.uv.y > 1.0 - barH)) { return vec4f(0.0, 0.0, 0.0, 1.0); }
   }
-  let huv = i.uv * pu.a.xy;  // in the picture
-  let buv = inB(i.uv * pu.b.xy);  // in the bloom
+  // lens distortion: + barrel, - pincushion
+  var uv = i.uv;
+  if (post.wb.w != 0.0) {
+    let q = uv - 0.5;
+    uv = 0.5 + q * (1.0 - post.wb.w * dot(q, q) * 2.0);
+    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) { return vec4f(0.0, 0.0, 0.0, 1.0); }
+  }
+  let huv = uv * pu.a.xy;  // in the picture
+  let buv = inB(uv * pu.b.xy);  // in the bloom
   if (post.screen.w > 0.5) {  // debug views
     let raw = textureSampleLevel(hdr, linearSampler, inA(huv), 0.0).rgb;
     if (post.screen.w < 1.5 || post.screen.w > 3.5) { return vec4f(clamp(raw, vec3f(0.0), vec3f(1.0)), 1.0); }
@@ -634,13 +644,31 @@ fn grain(p : vec2f, t : f32) -> f32 {
     let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb;
     return vec4f(clamp(b, vec3f(0.0), vec3f(1.0)), 1.0);
   }
-  let cuv = i.uv - 0.5;
+  let cuv = uv - 0.5;
   let r2 = dot(cuv, cuv) * 2.0;
   // lens fringes
   let ca = cuv * (post.fx2.w / W) * pu.a.xy;
   var c = vec3f(textureSampleLevel(hdr, linearSampler, inA(huv + ca), 0.0).r,
                 textureSampleLevel(hdr, linearSampler, inA(huv), 0.0).g,
                 textureSampleLevel(hdr, linearSampler, inA(huv - ca), 0.0).b);
+  // sharpening and edge smoothing look at the four neighbours
+  if (post.exposure.w > 0.0 || post.gain.w > 0.5) {
+    let tp = 1.0 / vec2f(textureDimensions(hdr));
+    let n0 = textureSampleLevel(hdr, linearSampler, inA(huv + vec2f(tp.x, 0.0)), 0.0).rgb;
+    let n1 = textureSampleLevel(hdr, linearSampler, inA(huv - vec2f(tp.x, 0.0)), 0.0).rgb;
+    let n2 = textureSampleLevel(hdr, linearSampler, inA(huv + vec2f(0.0, tp.y)), 0.0).rgb;
+    let n3 = textureSampleLevel(hdr, linearSampler, inA(huv - vec2f(0.0, tp.y)), 0.0).rgb;
+    let avg = (n0 + n1 + n2 + n3) * 0.25;
+    if (post.gain.w > 0.5) {
+      // edge smoothing: where brightness jumps (in log terms), blend toward the neighbours
+      let lc = log2(lum(c) + 1e-4);
+      let lmin = min(min(log2(lum(n0) + 1e-4), log2(lum(n1) + 1e-4)), min(log2(lum(n2) + 1e-4), log2(lum(n3) + 1e-4)));
+      let lmax = max(max(log2(lum(n0) + 1e-4), log2(lum(n1) + 1e-4)), max(log2(lum(n2) + 1e-4), log2(lum(n3) + 1e-4)));
+      let edge = smoothstep(0.5, 2.0, max(lmax, lc) - min(lmin, lc));
+      c = mix(c, (c + avg * 2.0) / 3.0, edge);
+    }
+    if (post.exposure.w > 0.0) { c = max(c + (c - avg) * post.exposure.w * 2.0, vec3f(0.0)); }
+  }
   // the picture was stored at exposureBuf[1]; the eyes now want exposureBuf[0]
   let ratio = select(1.0, exposureBuf[0] / max(exposureBuf[1], 1e-12), post.exposure.z > 0.5);
   let exposure = ratio * exp2(post.exposure.y);
@@ -669,7 +697,7 @@ fn grain(p : vec2f, t : f32) -> f32 {
   t = post.fx2.x + t * (1.0 - post.fx2.x);
   if (post.look0.w > 0.5) { t = vec3f(dot(t, vec3f(0.25, 0.65, 0.1))); }
   if (post.fx.z > 0.0) {
-    let n = grain(i.uv * vec2f(W, H), post.fx2.y * 60.0);
+    let n = grain(floor(i.uv * vec2f(W, H) / max(post.lift.w, 0.5)), post.fx2.y * 60.0);
     let g = lum(t);
     t = max(vec3f(0.0), t + vec3f(n * post.fx.z * (0.4 + 2.4 * g * (1.0 - g))));
   }
@@ -707,7 +735,7 @@ fn grain(p : vec2f, t : f32) -> f32 {
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
       let w = select(select(0.0625, 0.125, x == 0 || y == 0), 0.25, x == 0 && y == 0);
-      c += textureSampleLevel(hdr, linearSampler, inA(i.uv * pu.a.xy + vec2f(f32(x), f32(y)) * px * 1.5), 0.0).rgb * w;
+      c += textureSampleLevel(hdr, linearSampler, inA(i.uv * pu.a.xy + vec2f(f32(x), f32(y)) * px * 1.5 * post.gamma.w), 0.0).rgb * w;
     }
   }
   return vec4f(c, 1.0);
@@ -889,7 +917,8 @@ struct Ultra {
   camRight : vec4f, // xyz, tan(fov x / 2)
   camUp : vec4f,    // xyz, tan(fov y / 2)
   info : vec4u,     // frame index, width, height, max bounces
-  extra : vec4u,    // pixel block size (1 full, 2 half), lamps, 0, 0
+  extra : vec4u,    // pixel block size (1 full, 2 half), lamps, history cap | firefly clamp x100 << 16,
+                    // flags (1 glossy, 2 glass, 4 depth of field, 8 sun shadows, 16 lamp shadows) | paths per pixel << 8
 };
 struct Px {
   color : vec4f,   // averaged light
@@ -952,7 +981,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     let r = 0.0047 * sqrt(rand());
     let ph = 2.0 * PI * rand();
     let l = normalize(frame.sunDir.xyz + b[0] * (r * cos(ph)) + b[1] * (r * sin(ph)));
-    if (dot(n, l) > 0.0 && traceRay(p, l, 1e-4, 1e7, true).tri == 0xffffffffu) {
+    if (dot(n, l) > 0.0 && ((U.extra.w & 8u) == 0u || traceRay(p, l, 1e-4, 1e7, true).tri == 0xffffffffu)) {
       L += brdf(n, v, l, base, f0, alpha, diffuseW) * frame.sunColor.rgb;
     }
   }
@@ -969,7 +998,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
       var I = li.color.rgb / d2;
       if (li.dir.w > 0.5 && li.dir.w < 1.5) { I *= smoothstep(li.cone.y, li.cone.x, dot(-l, li.dir.xyz)); }
       else if (li.dir.w > 1.5) { I = li.color.rgb * li.cone.z * li.cone.w * max(dot(-l, li.dir.xyz), 0.0) / d2; }
-      if (traceRay(p, l, 1e-4, dist - li.pos.w, true).tri == 0xffffffffu) {
+      if ((U.extra.w & 16u) == 0u || traceRay(p, l, 1e-4, dist - li.pos.w, true).tri == 0xffffffffu) {
         L += brdf(n, v, l, base, f0, alpha, diffuseW) * I * f32(count);
       }
     }
@@ -985,8 +1014,15 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   let bh = (H + B - 1u) / B;
   if (gid.x >= bw || gid.y >= bh) { return; }
   let frameNo = U.info.x;
+  let flags = U.extra.w & 255u;
+  let spp = max(U.extra.w >> 8u, 1u);
   seed = (gid.x * 1973u + gid.y * 9277u + frameNo * 26699u) | 1u;
   _ = rand();
+  var firstN = vec3f(0.0, 0.0, 1.0);
+  var firstD = 1e4;
+  var firstA = vec3f(1.0);
+  var Lsum = vec3f(0.0);
+  for (var sp = 0u; sp < spp; sp++) {
   // a camera ray with a little jitter (anti-aliasing) and lens blur
   let px = f32(gid.x * B) + rand() * f32(B);
   let py = f32(gid.y * B) + rand() * f32(B);
@@ -994,7 +1030,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   let sy = (1.0 - py / f32(H) * 2.0) * U.camUp.w;
   var d = normalize(U.camFwd.xyz + U.camRight.xyz * sx + U.camUp.xyz * sy);
   var o = U.camPos.xyz;
-  if (U.camPos.w > 0.0) {
+  if (U.camPos.w > 0.0 && (flags & 4u) != 0u) {
     let focus = o + d * (U.camFwd.w / dot(d, U.camFwd.xyz));
     let r = sqrt(rand()) * U.camPos.w;
     let a = 2.0 * PI * rand();
@@ -1004,9 +1040,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   var beta = vec3f(1.0);
   var L = vec3f(0.0);
   var specular = true;
-  var firstN = -d;
-  var firstD = 1e4;
-  var firstA = vec3f(1.0);
+  if (sp == 0u) { firstN = -d; }
   for (var bounce = 0u; bounce < U.info.w; bounce++) {
     let h = traceRay(o, d, 1e-4, 1e7, false);
     if (h.tri == 0xffffffffu) {
@@ -1034,11 +1068,11 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     }
     if (front) { L += beta * m.emission.rgb; }
     let metal = m.props.x;
-    let glass = m.props.y;
+    let glass = select(0.0, m.props.y, (flags & 2u) != 0u);
     let alpha = max(rough * rough, 0.002);
     let f0 = mix(vec3f(0.04), base, metal);
     let v = -d;
-    if (bounce == 0u) {
+    if (bounce == 0u && sp == 0u) {
       firstN = n;
       firstD = h.t;
       firstA = select(max(base * (1.0 - metal) + f0 * metal, vec3f(0.03)), vec3f(1.0), glass > 0.5);
@@ -1064,7 +1098,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     let diffuseW = (1.0 - metal);
     L += beta * direct(p + ng * 2e-3, n, v, base, f0, alpha, diffuseW);
     // the next bounce: glossy or diffuse, picked by how much each reflects
-    let pSpec = clamp(0.1 + 0.9 * max(max(f0.x, f0.y), f0.z) + metal * 0.5, 0.1, 0.95);
+    let pSpec = select(0.0, clamp(0.1 + 0.9 * max(max(f0.x, f0.y), f0.z) + metal * 0.5, 0.1, 0.95), (flags & 1u) != 0u);
     let b = basis(n);
     if (rand() < pSpec) {
       // GGX normal (sampled by D), reflected
@@ -1103,11 +1137,17 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   // on screen (rare lucky paths otherwise sparkle as dots)
   L = max(finite3(L), vec3f(0.0));
   let lum = dot(L, vec3f(0.2126, 0.7152, 0.0722));
-  let cap = 4.0 / max(preExposure(), 1e-12);
+  let cap = (f32(U.extra.z >> 16u) / 100.0) / max(preExposure(), 1e-12);
   if (lum > cap) { L *= cap / lum; }
+  Lsum += L;
+  }
+  let L = Lsum / f32(spp);
   let idx = gid.y * bw + gid.x;
   let prev = select(accum[idx].color, vec4f(0.0), frameNo == 0u);
-  let avg = prev + (vec4f(L, 1.0) - prev) / f32(frameNo + 1u);
+  // a history cap keeps the picture following slow changes (0 = sharpen forever)
+  let hist = U.extra.z & 0xffffu;
+  let n = select(frameNo, min(frameNo, hist - 1u), hist > 0u);
+  let avg = prev + (vec4f(L, 1.0) - prev) / f32(n + 1u);
   accum[idx].color = avg;
   accum[idx].nd = vec4f(firstN, firstD);
   accum[idx].albedo = vec4f(firstA, 1.0);

@@ -10,15 +10,20 @@ rm -rf site && mkdir -p site
 if [ -n "${PLAYER_PREBUILT:-}" ]; then
   cp "$PLAYER_PREBUILT/player.js" "$PLAYER_PREBUILT/player.wasm" site/
 else
-  emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null
+  # build.opt from the projects' project.json (the first that says), else O3
+  opt=$(python3 -c 'import json,glob;print(next((json.load(open(f)).get("build",{}).get("opt") for f in sorted(glob.glob("projects/*/project.json")) if json.load(open(f)).get("build",{}).get("opt")),"O3"))')
+  emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release "-DLOOP_OPT=-$opt" >/dev/null
   cmake --build build-web -j4
   cp build-web/player.js build-web/player.wasm site/
 fi
-cp web/index.html site/
+cp web/index.html web/loop_ui.js site/
 cp web/editor/editor.html site/editor.html
 mkdir -p site/editor && cp web/editor/*.js web/editor/*.css site/editor/
 # stamp the build (benchmarks record which build they ran) and the tracker's link
 stamp="$(git rev-parse --short HEAD 2>/dev/null || echo dev) $(date -u +%F)"
+# build.stamp: false in a project.json leaves the pages unstamped
+nostamp=$(python3 -c 'import json,glob;print(any(json.load(open(f)).get("build",{}).get("stamp") is False for f in glob.glob("projects/*/project.json")))')
+[ "$nostamp" = "True" ] && stamp=""
 sed -i "s|__BUILD__|$stamp|" site/index.html site/editor.html
 [ -f web/tracker_url.txt ] && sed -i "s|__TRACKER__|$(tr -d '\n' < web/tracker_url.txt)|" site/index.html
 # every project's scenes, flat, plus scenes/index.json

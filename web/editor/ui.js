@@ -51,11 +51,12 @@ window.LE = window.LE || {};
     resetMany(ids) { ids.forEach((id) => store.reset(id)); },
     on(fn) { listeners.push(fn); },
     modifiedIn(scope) { return Object.keys(values[scope]).filter((id) => items.has(id)); },
+    // live: reaches the engine (or the editor) as you change it; build: read by
+    // the site build from project.json; nb: a feature not built yet; you: needs you
     status(it) {
-      if (!it.bind) return 'nw';
-      if (it.always) return 'built';
-      if (it.bind.startsWith('restart:')) return 'restart';
-      return 'live';
+      if (it.bind === 'build') return 'build';
+      if (it.bind) return 'live';
+      return it.status === 'you' ? 'you' : 'nb';
     },
     exportJson(scope) { return JSON.stringify({ loop3d: scope === 'editor' ? 'editor-preferences' : 'project-settings', project: scope === 'project' ? store.project : undefined, values: values[scope] }, null, 2); },
     importJson(scope, text) {
@@ -79,9 +80,9 @@ window.LE = window.LE || {};
   };
   function badgeFor(it) {
     const st = store.status(it);
-    if (st === 'nw') return h('span', { class: 'badge nw', title: 'The engine can\'t act on this yet. It is saved, and it is on the list of next tasks.' }, 'Not wired');
-    if (st === 'restart') return h('span', { class: 'badge rs', title: 'Applies when the viewport restarts (Window → Restart viewport).' }, 'Restart');
-    if (st === 'built') return h('span', { class: 'badge', title: 'Built into the engine; always on.' }, 'Built in');
+    if (st === 'nb') return h('span', { class: 'badge nw', title: (it.help ? it.help + ' ' : '') + 'A feature the engine doesn\'t have yet: on the roadmap (docs/TUNING.md).' }, 'Not built yet');
+    if (st === 'you') return h('span', { class: 'badge rs', title: (it.help ? it.help + ' ' : '') + 'This one needs you.' }, 'Needs you');
+    if (st === 'build') return h('span', { class: 'badge', title: 'Read by the site build (tools/build_site.sh) from project.json: use File → Save to project.' }, 'Build');
     return null;
   }
   // A row for one setting. get/set default to the store.
@@ -351,9 +352,10 @@ window.LE = window.LE || {};
       try { const n = store.importJson(scope, await f.text()); LE.toast('Imported ' + n + ' settings'); draw(); } catch (e) { LE.toast('That file isn\'t a settings file', 'err'); }
     };
     const all = [...items.values()].filter((it) => it.scope === scope);
-    const wired = all.filter((it) => it.bind).length;
+    const wired = all.filter((it) => store.status(it) === 'live' || store.status(it) === 'build').length;
+    const nb = all.filter((it) => store.status(it) === 'nb').length, you = all.filter((it) => store.status(it) === 'you').length;
     const footer = h('footer', {},
-      h('span', { class: 'dim' }, all.length + ' settings · ' + wired + ' connected to the engine · ' + (all.length - wired) + ' not wired yet'),
+      h('span', { class: 'dim' }, all.length + ' settings · ' + wired + ' working · ' + nb + ' not built yet' + (you ? ' · ' + you + ' need you' : '')),
       h('span', { class: 'spacer' }),
       fileIn,
       h('button', { onclick: () => fileIn.click() }, 'Import…'),

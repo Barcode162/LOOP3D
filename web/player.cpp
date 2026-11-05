@@ -9,6 +9,7 @@
 #include <emscripten/html5.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -16,6 +17,7 @@
 #include <string>
 
 #include "engine/core/json.h"
+#include "engine/core/settings.h"
 #include "engine/gpu/renderer.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
@@ -53,10 +55,13 @@ struct Player {
   // The editor's overrides, kept across scene changes: the film look, fog and
   // camera fields it has set (JSON objects; empty = the scene's own).
   Json lookOverride = Json::object(), worldOverride = Json::object();
-  float walkSpeed = 1.6f, runSpeed = 4.5f, lookSpeed = 1;
   bool paused = false;    // the editor's pause: the world and the film hold, the view still moves
-  double timeScale = 1;   // slow motion / fast forward
+  bool halted = false;    // script.onError "stop": the scene's script stopped at a problem
+  size_t problemsSeen = 0;
   int stepFrames = 0;     // paused: advance this many script steps
+  double sunClock = 0;    // the day cycle: world seconds since the sun last moved
+  float aspect = 16.0f / 9;
+  Camera lastCam;
   std::string log;  // the engine's messages for the editor's console
 };
 Player g;
@@ -127,8 +132,10 @@ uint64_t skySignature(const Scene& s) {
   };
   mix(static_cast<float>(static_cast<int>(s.sky.kind)));
   mix(s.sky.turbidity), mix(s.sky.starNits), mix(s.sky.intensity), mix(s.sky.colorNits);
+  mix(s.sky.color.x), mix(s.sky.color.y), mix(s.sky.color.z), mix(s.sky.groundAlbedo.x), mix(s.sky.groundAlbedo.y), mix(s.sky.groundAlbedo.z);
   for (const Light& l : s.lights)
-    if (l.kind == Light::Kind::kSun) mix(l.direction.x), mix(l.direction.y), mix(l.direction.z), mix(l.lux);
+    if (l.kind == Light::Kind::kSun)
+      mix(l.direction.x), mix(l.direction.y), mix(l.direction.z), mix(l.lux), mix(l.radius), mix(l.color.x), mix(l.color.y), mix(l.color.z);
   return h;
 }
 
@@ -196,12 +203,77 @@ void applyLookOverride(Look& l) {
   if (o.has("monochrome")) l.monochrome = o["monochrome"].boolean(l.monochrome);
 }
 
-// The editor's fog and camera settings over the scene's.
+Light* sunOf(Scene& s) {
+  for (Light& l : s.lights)
+    if (l.kind == Light::Kind::kSun) return &l;
+  return nullptr;
+}
+// sun.elevation and sun.azimuth (degrees) → the light's direction
+void aimSun(Light& sun, float elevDeg, float azDeg) {
+  float e = elevDeg * kPi / 180, a = azDeg * kPi / 180;
+  Vec3 toSun{std::cos(e) * std::sin(a), std::sin(e), -std::cos(e) * std::cos(a)};
+  sun.direction = -toSun;
+}
+void sunAngles(const Light& sun, float& elevDeg, float& azDeg) {
+  Vec3 t = -sun.direction;
+  elevDeg = std::asin(clamp(t.y, -1.0f, 1.0f)) * 180 / kPi;
+  azDeg = std::atan2(t.x, -t.z) * 180 / kPi;
+  if (azDeg < 0) azDeg += 360;
+}
+
+// The editor's fog, sky and sun settings over the scene's.
 void applyWorldOverride(Scene& s) {
   const Json& o = g.worldOverride;
   if (o.size() == 0) return;
   s.fog.density = num(o, "fogDensity", s.fog.density), s.fog.albedo = vec(o, "fogAlbedo", s.fog.albedo);
   s.fog.anisotropy = num(o, "fogAnisotropy", s.fog.anisotropy), s.fog.top = num(o, "fogTop", s.fog.top);
+  if (o.has("skyKind")) {
+    const std::string& k = o["skyKind"].string();
+    s.sky.kind = k == "color" ? Sky::Kind::kColor : k == "none" ? Sky::Kind::kNone : Sky::Kind::kPhysical;
+  }
+  s.sky.turbidity = num(o, "skyTurbidity", s.sky.turbidity), s.sky.intensity = num(o, "skyIntensity", s.sky.intensity);
+  if (o.has("skyStars")) s.sky.starNits = num(o, "skyStars", 0) * 0.02f;  // 0..1 → a clear night's stars
+  if (o.has("skyColor") && o["skyColor"].isString()) {
+    unsigned rgb = 0;
+    if (std::sscanf(o["skyColor"].string().c_str(), "#%6x", &rgb) == 1)
+      s.sky.color = Vec3(((rgb >> 16) & 255) / 255.0f, ((rgb >> 8) & 255) / 255.0f, (rgb & 255) / 255.0f);
+  }
+  s.sky.groundAlbedo = vec(o, "skyGround", s.sky.groundAlbedo);
+  if (o.has("sunElevation") || o.has("sunAzimuth") || o.has("sunLux") || o.has("sunSize")) {
+    Light* sun = sunOf(s);
+    if (!sun) {
+      s.lights.push_back(Light());
+      sun = &s.lights.back();
+      sun->kind = Light::Kind::kSun;
+      aimSun(*sun, 45, 180);
+    }
+    float e, a;
+    sunAngles(*sun, e, a);
+    aimSun(*sun, num(o, "sunElevation", e), num(o, "sunAzimuth", a));
+    sun->lux = num(o, "sunLux", sun->lux);
+    if (o.has("sunSize")) sun->radius = num(o, "sunSize", 0.53f) * kPi / 360;  // degrees across → radius (rad)
+  }
+}
+
+// sun.dayCycle: the sun goes round once every sun.daySpeed minutes of world time.
+void dayCycle(double dt) {
+  const Json& o = g.worldOverride;
+  if (!o.has("dayCycle") || !o["dayCycle"].boolean(false) || !g.stage) return;
+  Light* sun = sunOf(g.stage->scene);
+  if (!sun) return;
+  g.sunClock += dt;
+  if (g.sunClock < 0.25) return;  // the sky is rebuilt at most four times a second
+  float minutes = std::max(0.1f, num(o, "daySpeed", 24));
+  float e, a;
+  sunAngles(*sun, e, a);
+  // move along the arc from east (rising) over the top to west, then below
+  float step = static_cast<float>(g.sunClock / (minutes * 60) * 360);
+  g.sunClock = 0;
+  Vec3 t = -sun->direction;
+  Vec3 axis = normalize(Vec3(std::cos(a * kPi / 180), 0, std::sin(a * kPi / 180)));
+  Quat q = Quat::axisAngle(axis, step * kPi / 180);
+  sun->direction = -normalize(q.rotate(t));
+  ++g.stage->version;
 }
 void applyCameraOverride(Camera& c) {
   const Json& o = g.worldOverride;
@@ -209,6 +281,7 @@ void applyCameraOverride(Camera& c) {
   c.focalLength = num(o, "focalLength", c.focalLength), c.fStop = num(o, "fStop", c.fStop);
   c.focusDistance = num(o, "focusDistance", c.focusDistance), c.shutter = num(o, "shutter", c.shutter), c.iso = num(o, "iso", c.iso);
   c.exposureCompensation = num(o, "exposureCompensation", c.exposureCompensation);
+  if (o.has("sensor")) sensorByName(o["sensor"].string(), c.sensor);
   if (o.has("autoExposure")) c.autoExposure = o["autoExposure"].boolean(c.autoExposure);
   if (o.has("blades")) c.blades = static_cast<int>(o["blades"].number(c.blades));
 }
@@ -228,6 +301,14 @@ void startScript(const std::string& src) {
   g.problems.clear();
   g.vm->load(src, "scene.loop");
   for (auto& p : g.vm->problems()) g.problems += p.text() + "\n";
+  g.problemsSeen = g.vm->problems().size();
+  g.halted = false;
+  g.sunClock = 0;
+  if (g.problemsSeen) {
+    const std::string& onError = config().script.onError;
+    if (onError == "stop") g.halted = true;
+    else if (onError == "pause") g.paused = true;
+  }
   logLine("scene started: " + g.stage->title + " (" + std::to_string(g.stage->scene.instances.size()) + " things, " +
           std::to_string(g.stage->scene.lights.size()) + " lights)");
   if (g.worldOverride.size()) applyWorldOverride(g.stage->scene), ++g.stage->version;
@@ -276,7 +357,9 @@ void syncScene() {
 Camera walkCamera(float dt) {
   // ease the look toward where the controls point, and the body toward the
   // speed asked for: starting and stopping feel like a person, not a robot
-  float kLook = 1 - std::exp(-18 * dt), kMove = 1 - std::exp(-7 * dt);
+  const Config::Player& pc = config().player;
+  const Config::Physics& body = config().physics;
+  float kLook = 1 - std::exp(-config().camera.smoothing * dt), kMove = 1 - std::exp(-pc.accel * dt);
   g.yaw += (g.yawTarget - g.yaw) * kLook;
   g.pitch += (g.pitchTarget - g.pitch) * kLook;
   Vec2 m = g.move;
@@ -285,26 +368,32 @@ Camera walkCamera(float dt) {
   if (g.keys[2]) m.x -= 1;
   if (g.keys[3]) m.x += 1;
   if (length(m) > 1) m = normalize(m);
-  float speed = g.keys[4] ? g.runSpeed : g.walkSpeed;
+  float speed = g.keys[4] ? pc.run : pc.walk;
   Vec3 fwd{std::sin(g.yaw), 0, -std::cos(g.yaw)}, right{std::cos(g.yaw), 0, std::sin(g.yaw)};
   Vec3 want = (fwd * m.y + right * m.x) * speed;
   g.vel += (want - g.vel) * kMove;
   // walk through the world, not through its walls: slide and step like a body
-  Vec3 body = g.pos - Vec3(0, 0.75f, 0);
-  g.stage->world.moveCharacter(body, Vec3(g.vel.x * dt, 0, g.vel.z * dt), 0.25f, 0.55f, 0.3f);
-  g.pos.x = body.x, g.pos.z = body.z;
+  // the walking body (physics.char*): a capsule whose centre is below the eyes
+  float half = std::max(0.05f, body.charHeight * 0.5f - body.charRadius);
+  Vec3 centre = g.pos - Vec3(0, pc.eye - body.charHeight * 0.5f, 0);
+  g.stage->world.moveCharacter(centre, Vec3(g.vel.x * dt, 0, g.vel.z * dt), body.charRadius, half, body.charStep);
+  g.pos.x = centre.x, g.pos.z = centre.z;
   // stand on the land, with a gentle step bob when walking
   float ground = 0;
   if (!g.stage->terrains.empty()) ground = g.stage->terrains.back().height(g.pos.x, g.pos.z);
   static float bobPhase = 0;
   float sp = length(g.vel);
   bobPhase += sp * dt * 2.1f;
-  float bob = std::sin(bobPhase * kTwoPi) * 0.025f * std::min(1.0f, sp / 1.6f);
-  float eye = ground + 1.6f + bob;
+  float bob = std::sin(bobPhase * kTwoPi) * pc.bob * std::min(1.0f, sp / 1.6f);
+  float eye = ground + pc.eye + bob;
   g.pos.y += (eye - g.pos.y) * (1 - std::exp(-12 * dt));
   Camera c = g.stage->scene.camera;
   c.position = g.pos;
-  Vec3 dir{std::sin(g.yaw) * std::cos(g.pitch), std::sin(g.pitch), -std::cos(g.yaw) * std::cos(g.pitch)};
+  // cam.shake: a little handheld drift
+  float sh = config().camera.shake;
+  float t = static_cast<float>(emscripten_get_now() / 1000.0);
+  float sy = sh * 0.02f * (std::sin(t * 1.3f) + 0.5f * std::sin(t * 3.1f)), sp2 = sh * 0.015f * (std::sin(t * 1.7f + 1) + 0.5f * std::sin(t * 2.3f));
+  Vec3 dir{std::sin(g.yaw + sy) * std::cos(g.pitch + sp2), std::sin(g.pitch + sp2), -std::cos(g.yaw + sy) * std::cos(g.pitch + sp2)};
   c.target = g.pos + dir;
   return c;
 }
@@ -332,21 +421,35 @@ bool frameBody(double now) {
   // costs well under a millisecond), but never for more than 8 ms in one
   // frame: past that the world runs a little slower for a moment instead of
   // each catch-up making the next frame slower still.
-  double sdt = g.paused ? 0.0 : dt * g.timeScale;  // the world's time (walking keeps real time)
+  const Config::Script& sc = config().script;
+  double sdt = g.paused ? 0.0 : dt * sc.timeScale;  // the world's time (walking keeps real time)
   if (g.paused && g.stepFrames > 0) sdt = 1.0 / 120 * g.stepFrames, g.stepFrames = 0;
   g.accumulator += sdt;
   int steps = 0;
   double stepStart = emscripten_get_now();
-  while (g.accumulator >= 1.0 / 120 && steps < 12 && (steps < 2 || emscripten_get_now() - stepStart < 8)) {
-    g.vm->update(1.0 / 120);
-    g.stage->update(1.0f / 120);
-    g.accumulator -= 1.0 / 120;
+  // script.tick steps a second; at most script.maxSteps and script.catchUp ms a frame
+  const double tick = 1.0 / std::clamp(sc.tick, 30, 480);
+  while (g.accumulator >= tick && steps < sc.maxSteps && (steps < 2 || emscripten_get_now() - stepStart < sc.catchUp)) {
+    if (!g.halted) g.vm->update(tick);
+    g.stage->update(static_cast<float>(tick));
+    g.accumulator -= tick;
     ++steps;
   }
   double dropped = 0;
-  if (g.accumulator >= 1.0 / 120) dropped = g.accumulator, g.accumulator = 0;
+  if (g.accumulator >= tick) dropped = g.accumulator, g.accumulator = 0;
+  dayCycle(sdt);
+  // a problem while running: script.onError says what happens
+  if (g.vm->problems().size() > g.problemsSeen) {
+    std::string fresh;
+    for (size_t i = g.problemsSeen; i < g.vm->problems().size(); ++i) fresh += g.vm->problems()[i].text() + "\n";
+    g.problemsSeen = g.vm->problems().size();
+    EM_ASM({ if (window.loopProblems) window.loopProblems(UTF8ToString($0)); }, fresh.c_str());
+    if (sc.onError == "stop") g.halted = true, logLine("the script stopped at a problem (script.onError: stop)");
+    else if (sc.onError == "pause") g.paused = true, logLine("paused at a problem (script.onError: pause)");
+  }
   syncScene();
   Stage& s = *g.stage;
+  s.autoplay = g.autoplay || config().script.autoplay;
   // lines, questions and the next scene go to the page
   for (const Stage::UiMessage& m : s.ui) {
     std::string opts;
@@ -387,6 +490,7 @@ bool frameBody(double now) {
   }
   applyLookOverride(look);
   applyCameraOverride(cam);
+  g.lastCam = cam;
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
   if (g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade)) {
@@ -416,8 +520,9 @@ EMSCRIPTEN_KEEPALIVE void loop_key(int code, int down) {
 }
 EMSCRIPTEN_KEEPALIVE void loop_move(float x, float y) { g.move = {x, y}; }
 EMSCRIPTEN_KEEPALIVE void loop_look(float dx, float dy) {
-  g.yawTarget += dx * 0.0045f * g.lookSpeed;
-  g.pitchTarget = clamp(g.pitchTarget - dy * 0.0045f * g.lookSpeed, -1.45f, 1.45f);
+  const Config::Player& pc = config().player;
+  g.yawTarget += dx * 0.0045f * pc.look;
+  g.pitchTarget = clamp(g.pitchTarget - dy * 0.0045f * pc.look * (pc.invertY ? -1 : 1), -1.45f, 1.45f);
 }
 EMSCRIPTEN_KEEPALIVE void loop_set_mode(int movie) {
   g.movie = movie != 0 && g.stage && !g.stage->film.shots.empty();
@@ -468,7 +573,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_perf_end() {
   perf.on = false;
   const auto& iv = perf.interval;
   float p50 = pct(iv, 0.5f);
-  float hitchAt = std::max(2 * p50, 25.0f);
+  float hitchAt = std::max(2 * p50, config().perf.hitch);
   int hitches = 0;
   double total = 0, hitchTime = 0;
   for (float x : iv) {
@@ -507,31 +612,57 @@ EMSCRIPTEN_KEEPALIVE void loop_set_autoplay(int on) {
   if (g.stage) g.stage->autoplay = on != 0;
   g.autoplay = on != 0;
 }
-// The editor: set one engine switch by name, live.
-//   view (debug view 0-4), skip (pass bits), res (0 auto, 0.2-1 held),
-//   lamps / rays (lamp shadows, -1 the quality's own), prepass (0/1),
-//   walk / run (m/s), look (mouse speed multiplier)
-// Returns 1 if the name is known.
+// A setting by name in the editor's layer (Json text; "null" gives the
+// project's or scene's value back). Returns 1, or 0 with the reason logged.
+EMSCRIPTEN_KEEPALIVE int loop_set_setting(const char* id, const char* json) {
+  Json v;
+  if (!Json::parse(json ? json : "null", v)) return 0;
+  std::string err;
+  if (!Settings::get().set(Settings::kEditor, id ? id : "", v, &err)) {
+    logLine(err);
+    return 0;
+  }
+  return 1;
+}
+// A setting's value in effect, as JSON.
+EMSCRIPTEN_KEEPALIVE const char* loop_get_setting(const char* id) {
+  static std::string out;
+  out = Settings::get().value(id ? id : "").dump();
+  return out.c_str();
+}
+// Every engine setting: id, kind, default, value, range, help, layers.
+EMSCRIPTEN_KEEPALIVE const char* loop_settings_json() {
+  static std::string out;
+  out = Settings::get().list().dump();
+  return out.c_str();
+}
+// The project's settings (project.json "settings"), under the scene's and the editor's.
+EMSCRIPTEN_KEEPALIVE int loop_set_project_settings(const char* json) {
+  Json v;
+  if (!Json::parse(json ? json : "{}", v) || !v.isObject()) return 0;
+  Settings::get().clear(Settings::kProject);
+  std::string err;
+  bool ok = Settings::get().setMany(Settings::kProject, v, &err);
+  if (!ok) logLine("project settings: " + err);
+  return ok ? 1 : 0;
+}
+// Older name for a few settings, and the editor's play controls:
+//   pause, step (frames), filmtime (s), skip (test pass bits)
 EMSCRIPTEN_KEEPALIVE int loop_set_option(const char* name, double value) {
   std::string n = name ? name : "";
   int i = static_cast<int>(value);
-  if (n == "view") gpu::g_debugView = std::clamp(i, 0, 4);
-  else if (n == "skip") gpu::g_skipPasses = i & ~256;  // 256 (no screen) is for tests only
-  else if (n == "res") gpu::g_fixedScale = value <= 0 ? 0.0f : std::clamp(static_cast<float>(value), 0.2f, 1.0f);
-  else if (n == "lamps" || n == "rays") {
-    (n == "lamps" ? gpu::g_shadowLamps : gpu::g_shadowRays) = std::max(-1, i);
-    if (g.renderer) g.renderer->setQuality(qualityOf(g.quality));
-  } else if (n == "prepass") gpu::g_prepass = i != 0;
-  else if (n == "walk") g.walkSpeed = std::clamp(static_cast<float>(value), 0.1f, 20.0f);
-  else if (n == "run") g.runSpeed = std::clamp(static_cast<float>(value), 0.1f, 40.0f);
-  else if (n == "look") g.lookSpeed = std::clamp(static_cast<float>(value), 0.05f, 10.0f);
-  else if (n == "pause") g.paused = i != 0;
+  if (n == "pause") g.paused = i != 0;
   else if (n == "step") g.stepFrames = std::clamp(i, 1, 120);
-  else if (n == "timescale") g.timeScale = std::clamp(value, 0.0, 8.0);
   else if (n == "filmtime") g.filmTime = std::max(0.0, value);
-  else return 0;
-  if (n == "step" || n == "filmtime") return 1;  // too frequent for the log
-  logLine("set " + n + " = " + std::to_string(value));
+  else if (n == "skip") gpu::g_skipPasses = i & ~256;  // 256 (no screen) is for tests only
+  else {
+    static const std::pair<const char*, const char*> alias[] = {{"view", "render.view"},  {"res", "render.res"},   {"lamps", "render.lamps"},
+                                                                {"rays", "render.rays"},  {"prepass", "render.prepass"}, {"walk", "player.walk"},
+                                                                {"run", "player.run"},    {"look", "player.look"},   {"timescale", "script.timeScale"}};
+    for (auto& [from, to] : alias)
+      if (n == from) return Settings::get().set(Settings::kEditor, to, Json(value)) ? 1 : 0;
+    return 0;
+  }
   return 1;
 }
 // The editor's film look over the scene's: a JSON object of Look fields
@@ -577,7 +708,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_scene_json() {
     shots.push(o);
   }
   root.set("shotList", shots);
-  root.set("paused", Json(g.paused)), root.set("timeScale", Json(g.timeScale));
+  root.set("paused", Json(g.paused)), root.set("timeScale", Json(static_cast<double>(config().script.timeScale)));
   root.set("meshes", Json(static_cast<int>(sc.meshes.size())));
   root.set("instances", Json(static_cast<int>(sc.instances.size())));
   Json things = Json::array();
@@ -588,6 +719,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_scene_json() {
     t.set("kind", Json(std::string(1, p.kind)));
     t.set("position", v3(p.position)), t.set("rotation", v3(p.rotation)), t.set("scale", v3(p.scale));
     t.set("visible", Json(p.visible)), t.set("solid", Json(p.body >= 0));
+    t.set("size", v3(p.size * p.scale));
     if (p.instance >= 0 && p.instance < static_cast<int>(sc.instances.size())) {
       int m = sc.instances[p.instance].material;
       if (m >= 0 && m < static_cast<int>(sc.materials.size())) t.set("material", Json(sc.materials[m].name));
@@ -629,6 +761,18 @@ EMSCRIPTEN_KEEPALIVE const char* loop_scene_json() {
   look.set("bloom", Json(static_cast<double>(sc.look.bloom))), look.set("vignette", Json(static_cast<double>(sc.look.vignette)));
   look.set("contrast", Json(static_cast<double>(sc.look.contrast))), look.set("saturation", Json(static_cast<double>(sc.look.saturation)));
   root.set("look", look);
+  // where things are on screen, for the editor's overlay (light icons, boxes)
+  {
+    double cw = 16, ch = 9;
+    emscripten_get_element_css_size("#view", &cw, &ch);
+    g.aspect = static_cast<float>(cw / std::max(ch, 1.0));
+    const Camera& lc = g.lastCam;
+    Mat4 vp = Mat4::perspective(lc.fovY(), g.aspect, 0.05f, std::max(config().world.drawDistance, 1.0f)) * Mat4::lookAt(lc.position, lc.target, lc.up);
+    Json m = Json::array();
+    for (int c = 0; c < 4; ++c)
+      for (int r = 0; r < 4; ++r) m.push(Json(static_cast<double>(vp.m[c][r])));
+    root.set("viewProj", m);
+  }
   Json walker = Json::object();
   walker.set("position", v3(g.pos)), walker.set("yaw", Json(static_cast<double>(g.yaw))), walker.set("pitch", Json(static_cast<double>(g.pitch)));
   root.set("player", walker);
@@ -653,9 +797,15 @@ EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
 }
 
 int main() {
-  gpu::g_debugView = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('view') || 0); });
   gpu::g_skipPasses = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('skip') || 0); });
-  gpu::g_fixedScale = static_cast<float>(EM_ASM_DOUBLE({ return +(new URLSearchParams(location.search).get('res') || 0); }));
+  // the page's testing switches (?view= ?res= ?msaa= ?lamps= ?rays= ?prepass=) are settings too
+  for (auto [param, id] : {std::pair{"view", "render.view"}, {"res", "render.res"}, {"msaa", "render.msaa"}, {"lamps", "render.lamps"}, {"rays", "render.rays"}, {"prepass", "render.prepass"}}) {
+    double v = EM_ASM_DOUBLE({ const v = new URLSearchParams(location.search).get(UTF8ToString($0)); return v === null ? NaN : +v; }, param);
+    if (!std::isnan(v)) Settings::get().set(Settings::kEditor, id, Json(v));
+  }
+  // render settings change what the renderer has made (shadow maps, pipelines, pixel density)
+  Settings::get().watch("render.", [](const std::string&) { if (g.renderer) g.renderer->applySettings(); });
+  Settings::get().watch("ultra.", [](const std::string&) { if (g.renderer) g.renderer->applySettings(); });
   gpu::Renderer::create("#view", [](std::unique_ptr<gpu::Renderer> r) {
     if (!r) {
       EM_ASM({ if (window.loopNoGpu) window.loopNoGpu(); });

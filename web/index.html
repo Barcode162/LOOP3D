@@ -80,6 +80,7 @@
 <div id="bench"></div>
 <div class="stick" id="ls"><i></i></div>
 <div class="stick" id="rs"><i></i></div>
+<script src="loop_ui.js"></script>
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
@@ -106,7 +107,7 @@
   window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
   // the loading screen stays until the scene's first frame is on screen
   const showNote = (t, spinning) => { note.textContent = t; note.classList.toggle('loading', !!spinning); note.style.display = 'block'; };
-  window.loopShown = () => { note.style.display = 'none'; };
+  window.loopShown = () => { note.style.display = 'none'; fade.in(M); };
   window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; };
   window.loopGpuLost = () => showNote('The graphics card restarted. Reconnecting…', true);
   window.loopGpuBack = (q) => {
@@ -121,53 +122,33 @@
   const linesBox = document.getElementById('lines'), askBox = document.getElementById('ask');
   window.loopUi = (kind, speaker, text, options, seconds) => {
     if (kind === 'clear') { linesBox.innerHTML = ''; return; }
-    if (kind === 'line') {
-      const d = document.createElement('div');
-      d.className = 'line';
-      if (speaker) { const w = document.createElement('span'); w.className = 'who'; w.textContent = speaker; d.appendChild(w); }
-      d.appendChild(document.createTextNode(text));
-      linesBox.appendChild(d);
-      while (linesBox.children.length > 2) linesBox.firstChild.remove();
-      setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 700); }, seconds * 1000);
-      return;
-    }
+    if (kind === 'line') { LoopUI.showLine(linesBox, M, { speaker, text, seconds }); return; }
     if (kind === 'ask' && bench) {
       const pick = benchChoices.length ? benchChoices[(benchAsked++) % benchChoices.length] : 0;
       setTimeout(() => M && M._loop_choose(Math.min(pick, options.split('\n').length - 1)), 1200);
       return;
     }
-    if (kind === 'ask') {
-      askBox.innerHTML = '';
-      if (text) { const q = document.createElement('div'); q.className = 'q'; q.textContent = text; askBox.appendChild(q); }
-      options.split('\n').forEach((o, i) => {
-        const b = document.createElement('button');
-        b.textContent = o;
-        b.onclick = () => { askBox.style.display = 'none'; M._loop_choose(i); };
-        askBox.appendChild(b);
-      });
-      askBox.style.display = 'flex';
-    }
+    if (kind === 'ask') LoopUI.showAsk(askBox, M, { text, options: options.split('\n') }, (i) => M._loop_choose(i));
   };
-  async function expandUses(text, seen) {
-    const out = [];
-    for (const line of text.split('\n')) {
-      const m = line.match(/^\s*use\s+"([^"]+)"/);
-      if (!m) { out.push(line); continue; }
-      if (!seen.has(m[1])) {
-        seen.add(m[1]);
-        const r = await fetch('scenes/' + encodeURIComponent(m[1]) + '.loop');
-        out.push(r.ok ? await expandUses(await r.text(), seen) : 'say "can\'t find ' + m[1] + '.loop"');
-      }
-      out.push('');
-    }
-    return out.join('\n');
+  const fetchScene = async (n) => { const r = await fetch('scenes/' + encodeURIComponent(n) + '.loop'); if (!r.ok) throw new Error(r.status); return r.text(); };
+  // ?from=editor: play the scene the editor has open, edits and all
+  const fromEditor = params.get('from') === 'editor' ? LoopUI.handed() : null;
+  const fade = LoopUI.fader(document.body);
+  let index = { projects: [] }, project = null;
+  const titleOf = (n) => { for (const p of index.projects) { const s = p.scenes.find((x) => x.name === n); if (s) return s.title; } return n; };
+  function useProject(name) {
+    const p = index.projects.find((x) => x.scenes.some((s) => s.name === name) || (x.library || []).includes(name));
+    if (!p || p === project) return;
+    project = p;
+    // the project's settings (project.json), under the scene's own
+    const json = JSON.stringify(p.settings || {}), n = M.lengthBytesUTF8(json) + 1, ptr = M._malloc(n);
+    M.stringToUTF8(json, ptr, n); M._loop_set_project_settings(ptr); M._free(ptr);
   }
   async function loadScene(name) {
-    const opt = document.querySelector('#scene option[value="' + name + '"]');
-    showNote('Loading ' + (opt ? opt.textContent.replace(/ \(.*\)$/, '') : 'the next scene') + '…', true);
-    const res = await fetch('scenes/' + encodeURIComponent(name) + '.loop');
-    if (!res.ok) throw new Error(res.status);
-    const text = await expandUses(await res.text(), new Set());
+    useProject(name);
+    showNote(LoopUI.loadingText(M, titleOf(name)), true);
+    const own = fromEditor && fromEditor.scene === name ? fromEditor.text : await fetchScene(name);
+    const text = (await LoopUI.assemble(own, fetchScene)).text;
     // let the loading screen reach the screen first: building a world takes a moment
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
@@ -176,7 +157,8 @@
     setTimeout(() => M._free(p), 1000);
     trailer.src = 'scenes/' + encodeURIComponent(name) + '.png';
   }
-  window.loopGoTo = (name) => {
+  window.loopGoTo = async (name) => {
+    await fade.out(M);
     linesBox.innerHTML = ''; askBox.style.display = 'none';
     if (bench) {
       benchEndScene();
@@ -276,7 +258,7 @@
     const sc = document.getElementById('scene');
     // the scene picker lists every project's scenes (scenes/index.json, made by tools/build_projects.py)
     try {
-      const idx = await (await fetch('scenes/index.json')).json();
+      const idx = index = await (await fetch('scenes/index.json')).json();
       sc.innerHTML = '';
       for (const p of idx.projects) {
         const g = document.createElement('optgroup'); g.label = p.title;
@@ -285,11 +267,16 @@
       }
     } catch (e) { /* keep the built-in entry */ }
     if (![...sc.options].some((o) => o.value === sceneName)) { const o = document.createElement('option'); o.value = o.textContent = sceneName; sc.appendChild(o); }
+    if (fromEditor && fromEditor.scene === sceneName) document.getElementById('title').textContent = 'From the editor: ' + sceneName;
+    LoopUI.gamepad(() => M, useIt, () => { if (movie) setMode(false); });
+    LoopUI.pauseWhenHidden(() => M);
+    setInterval(() => LoopUI.applyPage(M, { hud: [...document.querySelectorAll('.bar')] }), 1000);
     sc.value = sceneName;
     sc.onchange = () => { sc.blur(); location.hash = sc.value; window.loopGoTo(sc.value); };
     document.getElementById('benchSel').onchange = (e) => {
       const kind = e.target.value; e.target.value = ''; e.target.blur();
       if (!kind) return;
+      useProject(sceneName);
       const u = new URLSearchParams(location.search); u.set('bench', kind); u.set('quality', q.value);
       location.href = location.pathname + '?' + u.toString() + '#' + (kind === 'story' && sceneName.startsWith('ardane_') ? 'ardane_01_home' : sceneName);
     };
@@ -324,8 +311,10 @@
   addEventListener('keydown', (e) => {
     // a menu that still has focus after a click would take these keys too
     // (the arrows change the quality, E jumps to a scene, and both reload)
-    if ((e.code in keyMap || e.code === 'KeyE') && e.target instanceof HTMLSelectElement) e.preventDefault();
-    if (e.code === 'KeyE' && !e.repeat) useIt();
+    if (!M) return;
+    const use = LoopUI.useKey(M);
+    if ((e.code in LoopUI.keyMap(M) || e.code === use) && e.target instanceof HTMLSelectElement) e.preventDefault();
+    if (e.code === use && !e.repeat) useIt();
   });
   // sound: the engine mixes; the page just hands the samples to the speakers
   let audioCtx = null;
@@ -334,7 +323,7 @@
     if (!M) return;
     if (audioCtx) { audioCtx.close(); audioCtx = null; soundBtn.classList.remove('on'); return; }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
-    const frames = 2048, node = audioCtx.createScriptProcessor(frames, 0, 2);
+    const frames = LoopUI.setting(M, 'audio.buffer', 2048), node = audioCtx.createScriptProcessor(frames, 0, 2);
     const ptr = M._malloc(frames * 2 * 4);
     node.onaudioprocess = (e) => {
       M._loop_audio(ptr, frames);
@@ -354,9 +343,9 @@
   trailer.onerror = () => { trailerBtn.disabled = true; trailerBtn.title = 'No cinema render for this scene yet'; };
 
   // keyboard: W A S D / arrows, shift to run
-  const keyMap = { KeyW: 0, ArrowUp: 0, KeyS: 1, ArrowDown: 1, KeyA: 2, ArrowLeft: 2, KeyD: 3, ArrowRight: 3, ShiftLeft: 4, ShiftRight: 4 };
-  addEventListener('keydown', (e) => { if (e.code in keyMap && M) { M._loop_key(keyMap[e.code], 1); if (movie) setMode(false); } });
-  addEventListener('keyup', (e) => { if (e.code in keyMap && M) M._loop_key(keyMap[e.code], 0); });
+  // walking keys from the settings (keys.forward …), arrows always
+  addEventListener('keydown', (e) => { if (!M) return; const km = LoopUI.keyMap(M); if (e.code in km) { M._loop_key(km[e.code], 1); if (movie) setMode(false); } });
+  addEventListener('keyup', (e) => { if (!M) return; const km = LoopUI.keyMap(M); if (e.code in km) M._loop_key(km[e.code], 0); });
   // mouse: drag to look
   const view = document.getElementById('view');
   let dragging = false, lx = 0, ly = 0;
@@ -391,11 +380,12 @@
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
   }
   stick(document.getElementById('ls'), (x, y) => M && M._loop_move(x, y), false);
-  stick(document.getElementById('rs'), (dx, dy) => M && M._loop_look(dx * 1.6, dy * 1.6), true);
+  stick(document.getElementById('rs'), (dx, dy) => { if (M) { const k = LoopUI.setting(M, 'player.touchLook', 1.6); M._loop_look(dx * k, dy * k); } }, true);
 
   window.Module = { onRuntimeInitialized() { M = window.Module; } };
   const s = document.createElement('script');
   s.src = 'player.js';
+  s.onerror = () => showNote('Couldn\'t load the engine (player.js).', false);
   document.body.appendChild(s);
 })();
 </script>

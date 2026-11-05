@@ -35,7 +35,7 @@ struct Config {
     bool lampShadows = true;
     int maxLights = 256;
     float skyLight = 1, occlusion = 1;
-    bool passScene = true, passExposure = true, passBloom = true, passFilm = true, passShadow = true, passDraw = true, passDepth = true;
+    bool passScene = true, passExposure = true, passBloom = true, passFilm = true, passShadow = true, passDraw = true;
     bool prepass = false;
     int view = 0;
   } render;

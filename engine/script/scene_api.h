@@ -99,11 +99,11 @@ struct Stage {
   std::vector<UiMessage> ui;     // taken by the player each frame
   std::string nextScene;         // set by go_to
   Vec3 playerPos{0};             // where the player is (the player sets it each frame)
-  bool autoplay = false;
+  bool autoplay = false;         // `loop play` and script.autoplay: the player is always near enough
   // move_player(): the player is carried somewhere new (the player takes it)
   bool teleport = false;
   Vec3 teleportTo{0}, teleportLook{0, 0, -1};
-  bool story = false;            // the script has spoken a line or asked (a story scene)         // `loop play`: the player is always near enough
+  bool story = false;            // the script has spoken a line or asked (a story scene)
   void updateTransform(int placedIndex);
 };
 

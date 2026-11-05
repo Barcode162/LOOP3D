@@ -24,10 +24,16 @@ manifests = sorted((root / "projects").glob("*/project.json"), key=lambda m: (js
 for manifest in manifests:
     folder = manifest.parent
     p = json.loads(manifest.read_text())
-    stills = folder / p.get("stills", "stills")
+    build = p.get("build", {})
+    if not build.get("publish", True):
+        continue  # Build → "Include this project on the site" is off
+    stills = folder / p.get("stillsDir", p.get("stills", "stills"))
+    scenes_dir = folder / build.get("scenesDir", ".")
+    library_dir = folder / build.get("libraryDir", ".")
+    with_stills = build.get("stills", True)
     scenes = []
     for name in p.get("scenes", []) + p.get("library", []):
-        src = folder / f"{name}.loop"
+        src = (library_dir if name in p.get("library", []) else scenes_dir) / f"{name}.loop"
         if not src.exists():
             sys.exit(f"{manifest}: no scene file {src.name}")
         if name in owner:
@@ -37,7 +43,7 @@ for manifest in manifests:
         if name in p.get("library", []):
             continue
         m = re.search(r'^title\s+"([^"]*)"', src.read_text(), re.M)
-        has_still = (stills / f"{name}.png").exists()
+        has_still = with_stills and (stills / f"{name}.png").exists()
         if has_still:
             shutil.copy(stills / f"{name}.png", out / f"{name}.png")
         scenes.append({"name": name, "title": m.group(1) if m else name, "still": has_still})
@@ -45,6 +51,7 @@ for manifest in manifests:
         "name": p["name"], "title": p.get("title", p["name"]),
         "description": p.get("description", ""), "start": p.get("start", scenes[0]["name"] if scenes else ""),
         "scenes": scenes, "library": p.get("library", []),
+        "order": p.get("order", 100), "settings": p.get("settings", {}), "build": build,
     })
 
 (out / "index.json").write_text(json.dumps({"projects": projects}, indent=1))

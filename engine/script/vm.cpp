@@ -28,6 +28,10 @@ struct Vm::Fiber {
   bool done = false, noWait = false;
   int timer = -1;  // the timer that started it
   Value result;
+  // the `event` this fiber was started for: each handler keeps its own (two
+  // events in one step used to share one global, the last overwriting the first)
+  Value event;
+  bool hasEvent = false;
 };
 
 // ------------------------------------------------------------------ heap
@@ -64,6 +68,13 @@ void Vm::native(const std::string& name, NativeFn fn, const std::string& help) {
 void Vm::method(const std::string& kind, const std::string& name, NativeFn fn, const std::string& help) {
   methods_[kind][name] = Value::object(alloc<Native>(name, fn, help.empty() ? name : help));
 }
+std::vector<std::pair<std::string, std::string>> Vm::words() const {
+  std::vector<std::pair<std::string, std::string>> out;
+  for (const auto& [name, v] : globals_)
+    if (const Native* n = v.as<Native>()) out.push_back({name, n->help});
+  std::sort(out.begin(), out.end());
+  return out;
+}
 Value Vm::global(const std::string& name) const {
   auto it = globals_.find(name);
   return it == globals_.end() ? Value() : it->second;
@@ -89,6 +100,7 @@ void Vm::collectGarbage() {
     for (auto& v : f->stack) mark(v);
     for (auto& fr : f->frames) markObj(fr.cl);
     mark(f->result);
+    mark(f->event);
   }
   for (auto& t : timers_) markObj(t.fn);
   for (auto& [e, c] : handlers_) markObj(c);
@@ -506,6 +518,7 @@ void Vm::update(double dt) {
       if (ev == name) {
         globals_["event"] = payload;
         spawn(fn, time_);
+        fibers_.back()->event = payload, fibers_.back()->hasEvent = true;
       }
   // timers → fibers
   for (size_t i = 0; i < timers_.size(); ++i) {
@@ -579,6 +592,7 @@ Value Vm::call(Value fn, const std::vector<Value>& args) {
 
 bool Vm::runFiber(Fiber& f, double now) {
   current_ = &f;
+  if (f.hasEvent) globals_["event"] = f.event;
   size_t steps = 0;
   try {
     while (!f.frames.empty()) {
@@ -935,10 +949,12 @@ bool Vm::runFiber(Fiber& f, double now) {
               spawn(c, time_);
               // run the new task straight away, up to its first wait
               Fiber* nf = fibers_.back().get();
+              nf->event = f.event, nf->hasEvent = f.hasEvent;  // a task started from a handler sees its event
               Fiber* saved = current_;
               size_t savedSteps = steps;
               runFiber(*nf, now);
               current_ = saved;
+              if (f.hasEvent) globals_["event"] = f.event;
               steps = savedSteps;
               fr = &f.frames.back();
             }

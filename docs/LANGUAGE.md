@@ -120,6 +120,7 @@ A loop that runs too long without waiting is stopped, with its line, instead of 
   - `noise(x, y, z)`: smooth randomness
   - `wave(t, period)` and `flicker(t, speed, seed)`
 - **Other:** `time()`, `text(v)`, `number(text)`, `type(v)`, `range(n)` / `range(from, to, by)`, `keys(table)`, `list(...)`.
+- Every built-in word and its help: `loop words json` (the editor's suggestions come from the same list).
 
 ## Making a world
 
@@ -140,48 +141,55 @@ Every setting has a sensible default; give only what matters.
   - nature: leaves, needles, autumn leaves, grass, soil, sand, snow, moss
   - glowing: flame, ember, neon, screen, lamp shade
   - plain: white, black, grey
-- **Shapes** (all take `at`, `turn`, `rotation`, `scale`, `material`, `name`, and `collide: no` to walk through):
+- **Shapes** (all take `at`, `turn`, `tilt`, `rotation`, `scale`, `material` (or `made_of`), `name`, and `collide: no` to walk through):
   - `box(size: vec(w, h, d), round)`, `sphere(radius)`, `cylinder(radius, height)`, `cone(radius, height)`, `capsule(radius, height)`, `ring(radius, thickness)`
-  - `ground(size)`, `rock(size, seed)`
-  - `tree(kind: "oak" | "pine" | "birch" | "bush", at, height)`
+  - `ground(size)` (its material also sets what footsteps sound like), `rock(size, seed)`
+  - `tree(kind: "oak" | "pine" | "birch" | "bush", at, height, turn, variant, leaves)`
   - A shape's fields can be read and changed any time: `.position .turn .rotation .scale .visible .material`.
 - **Land:**
-  - `terrain(size, height, ridges, seed, erosion, material)`: mountains and valleys carved by simulated rain
-  - `forest(kind, around, radius, spacing, clearing, steepest)`
+  - `terrain(size, height, ridges, seed, erosion, rain, detail, feature, material)`: mountains and valleys carved by simulated rain (`detail` is scaled by the setting `world.terrainRes`)
+  - `forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves)` (trees per area follow `world.foliageDensity`)
   - `height_at(vec(x, 0, z))`
 - **Light** (real units):
-  - `light(at, lumens, kelvin | color, radius)`; add `aim:` and `angle:` for a spotlight
-  - `panel_light(at, facing, size, lumens)`
-  - `sun(elevation, toward, lux)`
-  - `sky("physical", haze, stars)` or `sky("color", color, nits)`
+  - `light(at, lumens, kelvin | color, radius)`; add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
+  - `panel_light(at, facing, size, lumens, kelvin | color)`
+  - `sun(elevation, toward (or azimuth), lux, kelvin, size: 0.53 deg)`: a wider sun casts softer shadows
+  - `sky("physical", haze, stars, brightness, ground)` or `sky("color", color, nits)`
   - `fog(density, top, glow, color, from, to)`
   - Lights' fields: `.lumens .color .kelvin .position .aim`
 - **Camera and look:**
-  - `camera(at, look_at, lens: 35 mm, f_stop, focus, exposure, auto_exposure)`
-  - `look("natural" | "blockbuster" | "noir" | "golden" | "bleach" | "seventies" | "neon" | "dream" | "documentary" | "horror" | "arctic" | "western", contrast, saturation, warmth, bloom, grain, vignette, bars)`
+  - `camera(at, look_at, lens: 35 mm, f_stop (or aperture), focus, shutter, iso, exposure, auto_exposure, sensor: "ff" | "s35" | "apsc" | "m43" | "imax", blades)`
+  - `look("natural" | "blockbuster" | "noir" | "golden" | "bleach" | "seventies" | "neon" | "dream" | "documentary" | "horror" | "arctic" | "western", …)`: the preset first, then any of `contrast, saturation, warmth, tint, bloom, bloom_size, halation, grain, grain_size, vignette, bars, tone: "agx" | "aces" | "filmic" | "linear", lift, gamma, gain, shadow_tint, highlight_tint, black_level, fringes, distortion, sharpen, monochrome`
 - **Shots** (they play in order):
   - `shot(name, length, from: {at, look_at, lens, f_stop, focus}, to: {...}, ease, shake, fade_in, fade_out, look)`
-  - `orbit(name, length, around, radius, height, from, to, lens)`
+  - `orbit(name, length, around, radius, height, from, to, lens, f_stop, look_at, ease, shake, fade_in, fade_out)`
 - **Physics:**
-  - `solid(shape, mass, bounce, friction, velocity)`: it falls, rolls and knocks, and knocks make the material's sound by themselves
-  - `push(shape, vec(…))`, `gravity(vec(0, -9.81, 0))`
+  - `solid(shape, mass, bounce, friction, velocity)`: it falls, rolls and knocks, and knocks make the material's sound by themselves (bounce and friction default to the settings `physics.bounce` and `physics.friction`)
+  - `push(shape, vec(…))`, `gravity(vec(0, -9.81, 0))` (the setting `physics.gravity`, for this scene)
   - Simple shapes are things to bump into (unless `collide: no`).
 - **People:**
   - `person(at, height, skin, shirt, trousers, facing)`: breathes, shifts weight, walks and runs with planted feet, swings their arms, and their footsteps match the floor
   - Fields: `.walk_to = vec(..)`, `.look_at = vec(..)` (or `nothing`), `.sitting = yes`, `.speed`, `.position`, `.facing`, `.walking`, `.visible`, `.lift` (metres above the ground; also `person(…, lift: 0.6)`)
 - **Sound:**
   - `sound("fire" | "wind" | "rain" | "stream" | "birds" | "crickets" | "night" | "hum" | "applause" | "crowd" | "strings" | "chains" | "synth" | "drones" | "heartbeat", at, volume)` for endless sounds; without `at:` it's everywhere
-  - `sound("footstep" | "impact" | "bell" | "click" | "thud" | "whoosh", variant, at)` for one-offs (variants: wood, metal, glass, stone, grass, gravel, snow, water, carpet, plastic)
+  - `sound("footstep" | "impact" | "bell" | "click" | "thud" | "whoosh", variant, at, strength)` for one-offs (variants: wood, metal, glass, stone, grass, gravel, snow, water, carpet, plastic); endless sounds take `intensity`
+  - Endless sounds play at the volume `audio.ambience`, one-offs and knocks at `audio.effects`, footsteps at `audio.footsteps`
   - Fields: `.volume .position .playing`
   - `room(size, echo)` sets how big the space sounds.
 - **Story** (see [`STORY_GUIDE.md`](STORY_GUIDE.md)):
-  - `line(speaker, text)` shows a line and gives back its seconds; `ask(question, [options])` sends `"choice"` with `event` = the option picked
+  - `line(speaker, text, seconds)` shows a line and gives back its seconds (by default long enough to read at `story.textSpeed`, at least `story.lineMin`); `clear_lines()` takes them away; `ask(question, [options])` sends `"choice"` with `event` = the option picked
   - `go_to("next scene")`; `remember(key, value)`, `recall(key, otherwise)` and `forget_story()` for what the story keeps between scenes
   - `player()`, `near(place, within)`, `move_player(at, look_at)`; pressing Use sends `"use"`
   - `use "common"` at the start of a line brings in `common.loop` from the same folder
 - **Renders** (made by `loop render`):
   - `render(file, quality: "draft" | "good" | "cinema" | "ultra", width, height, samples, at)` for a still
-  - `film(folder, quality, width, fps)` for every frame of the shots
+  - `film(folder, quality, width, height, samples, fps)` for every frame of the shots
+  - Their defaults, and bounces, noise removal, dispersion and motion blur, come from the `cinema.*` settings
+- **Settings** (every one is in [`SETTINGS.md`](SETTINGS.md), by the same name as in the editor):
+  - `setting "physics.iterations", 24`: changes an engine setting for this scene
+  - `settings {story_textSpeed: 20, "audio.reverb": 1.5}`: several at once (`_` or `.` between the parts)
+  - `get_setting("player.walk")`: a setting's value in effect
+  - A scene's settings sit over the project's (`project.json`, `"settings": {…}`); the editor's live changes sit over both. Each new scene starts from the project's again.
 
 ## When something's wrong
 

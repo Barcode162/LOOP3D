@@ -35,7 +35,8 @@ int usage() {
       "loop play   <first scene.loop> [--choices 0,1,0]\n"
       "loop render <script.loop> [--quality draft|good|cinema|ultra] [--width 1920] [--samples N] [--look name]\n"
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
-      "loop settings list    every engine setting, its default and range (JSON)");
+      "loop settings list    every engine setting, its default and range (JSON)\n"
+      "loop words <json|js>  every word of the language and its help");
   return 1;
 }
 
@@ -289,6 +290,20 @@ int main(int argc, char** argv) {
     else return usage();
   }
   if (cmd == "demo") return demo(target, o);
+  if (cmd == "words") {
+    // `loop words js` writes web/editor/words.js: every word of Looped Script and its help
+    Vm vm;
+    Stage stage;
+    installStandardLibrary(vm);
+    installSceneApi(vm, stage);
+    Json words = Json::object();
+    for (auto& [name, help] : vm.words()) words.set(name, Json(help));
+    std::string body = words.dump(0);
+    if (target == "js")
+      std::printf("// Every word of Looped Script and its help, from the engine itself.\n// Made by `loop words js > web/editor/words.js`: don't edit by hand.\nwindow.LOOP_WORDS = %s;\n", body.c_str());
+    else std::printf("%s\n", words.dump(1).c_str());
+    return 0;
+  }
   if (cmd == "settings") {
     // `loop settings list` prints every engine setting as JSON (for the editor's checks and the docs)
     if (target != "list") return usage();

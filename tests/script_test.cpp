@@ -247,3 +247,24 @@ say round(x * 100) / 100
 )");
   CHECK(r.joined() == "0 1 0.5|10");
 }
+
+// Two events in one step: each handler sees its own `event` (they used to
+// share one global, so the second overwrote the first before either ran).
+TEST(script_each_handler_keeps_its_event) {
+  Vm vm;
+  installStandardLibrary(vm);
+  CHECK(vm.load(R"(
+let got = -1
+let used = 0
+when "choice"
+  wait 0.01 s
+  got = event
+when "use"
+  used += 1
+)", "t.loop"));
+  vm.emit("choice", Value::number(2));
+  vm.emit("use");
+  for (int i = 0; i < 5; ++i) vm.update(0.01);
+  CHECK(vm.global("got").isNumber() && vm.global("got").n == 2);
+  CHECK(vm.global("used").n == 1);
+}

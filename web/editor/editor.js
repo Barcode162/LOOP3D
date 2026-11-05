@@ -8,7 +8,7 @@
   const touch = matchMedia('(pointer: coarse)').matches;
   if (touch) document.body.classList.add('touch');
   const QN = ['Phone', 'High', 'Ultra'];
-  let paused = false, booted = false, audioCtx = null, trailerOn = false, split = 0.5, tool = 'select';
+  let paused = false, booted = false, audioCtx = null, trailerOn = false, split = 0.5, tool = 'select', autoAsked = 0;
 
   // ------------------------------------------------------------ settings → engine
   let lookT = 0, worldT = 0;
@@ -28,30 +28,32 @@
       if (E.M) E.setWorld(o);
     }, 16);
   };
-  const skipBits = () => {
-    let bits = 0;
-    for (const it of store.items.values()) if (it.bind && it.bind.startsWith('skip:') && !store.get(it.id)) bits |= +it.bind.slice(5);
-    return bits;
-  };
+  // engine settings (bind 'set'): the editor's layer holds only what differs
+  // from the project's value; null gives the project's or scene's back
+  function sendSetting(it) {
+    if (!E.M) return;
+    const v = store.isModified(it.id) ? store.get(it.id) : null;
+    if (!E.setSetting(it.id, v) && v !== null) LE.log('warn', 'The engine has no setting ' + it.id);
+  }
   function applyEngine(it) {
     if (!E.M || !it.bind) return;
     const v = store.get(it.id), b = it.bind;
     if (b === 'quality') { E.setQuality(+v); syncToolbar(); }
-    else if (b.startsWith('opt:')) { E.setOption(b.slice(4), +v); syncToolbar(); }
-    else if (b.startsWith('skip:')) E.setOption('skip', skipBits());
+    else if (b === 'set') { sendSetting(it); if (it.id.startsWith('render.') || it.id.startsWith('script.')) syncToolbar(); }
     else if (b.startsWith('look:')) pushLook();
     else if (b.startsWith('world:')) pushWorld();
-    else if (b === 'autoplay') E.setAutoplay(!!v);
-    else if (b.startsWith('restart:')) LE.toast(it.label + ': applies when the viewport restarts (Window → Restart viewport)');
+    else if (b === 'project' || b === 'build') LE.toast(it.label + ': kept for this project. File → Save to project writes project.json.');
+    if (it.id === 'render.showLights' || it.id === 'render.showBounds') drawOverlay();
   }
   function applyAllEngine() {
-    // only what differs from the engine's own defaults (quality is set by the device first)
+    // the project's own settings (project.json) first, then the editor's changes over them
+    const proj = E.projectOf(E.scene) || E.index.projects.find((p) => p.name === store.project);
+    if (proj && E.has('loop_set_project_settings')) E.setProjectSettings(proj.settings || {});
     for (const it of store.items.values()) {
       if (!it.bind || it.scope !== 'project') continue;
       if (it.bind === 'quality') { if (store.isModified(it.id) || params.get('quality')) E.setQuality(+(params.get('quality') ?? store.get(it.id))); continue; }
-      if (store.isModified(it.id) && (it.bind.startsWith('opt:') || it.bind === 'autoplay')) applyEngine(it);
+      if (it.bind === 'set') sendSetting(it);
     }
-    E.setOption('skip', skipBits());
     pushLook(); pushWorld();
   }
   function applyEditor(id) {
@@ -74,7 +76,7 @@
     if (id === 'ed.layout') dock.preset(g('ed.layout'));
     if (!id || id.startsWith('vp.') || id.startsWith('snap.') || id === 'gizmo.space') { drawOverlay(); syncToolbar(); }
     if (id === 'vp.statsEvery') startStats();
-    if (P.script && (id === 'code.wrap' || id === 'code.fontSize' || id === 'code.lineNumbers')) P.script.paint();
+    if (P.script && (id === 'code.wrap' || id === 'code.fontSize' || id === 'code.lineNumbers' || id === 'code.minimap')) P.script.paint();
   }
   store.on((id, v, it) => {
     if (it.scope === 'editor') applyEditor(id);
@@ -114,9 +116,11 @@
   C('help', 'Keyboard shortcuts', () => shortcuts(), { key: 'F1' });
   C('reference', 'Looped Script quick reference', () => reference());
   C('about', 'About Loop3D', () => about());
-  C('buildSite', 'Build the web site…', () => LE.info('Build the site', '<p>The editor runs in the browser and can\'t run builds itself yet <span class="badge nw">Not wired</span>. From the repository:</p><pre class="mono">./tools/build_site.sh\ncd site && python3 -m http.server 8000</pre><p>Then open <code>http://localhost:8000/editor.html</code>. Publishing to GitHub Pages is the manual "Publish the player" workflow.</p>'));
-  C('renderStill', 'Render a cinema still…', () => LE.info('Render a cinema still', '<p>Cinema renders run on the computer with the <code>loop</code> tool <span class="badge nw">Not wired</span>:</p><pre class="mono">./build/loop render projects/&lt;project&gt;/' + (E.scene || 'scene') + '.loop --quality ' + store.get('cinema.quality') + '</pre><p>Settings under Project Settings → Cinema renderer will drive it once wired.</p>'));
+  C('buildSite', 'Build the web site…', () => LE.info('Build the site', '<p>The site is built on a computer from the repository (a browser can\'t run the compiler):</p><pre class="mono">./tools/build_site.sh\ncd site && python3 -m http.server 8000</pre><p>It reads each project\'s <code>project.json</code>, including the Build settings saved there with <b>File → Save to project</b>.</p>'));
+  C('renderStill', 'Render a cinema still…', () => LE.info('Render a cinema still', '<p>Cinema renders run on a computer with the <code>loop</code> tool, which reads the project\'s settings (Project Settings → Cinema renderer, saved with File → Save to project):</p><pre class="mono">./build/loop render projects/' + (E.projectOf(E.scene)?.name || '&lt;project&gt;') + '/' + (E.scene || 'scene') + '.loop</pre>'));
   C('clearConsole', 'Clear the console', () => { P.console.entries = []; P.console.draw(); });
+  C('playInPlayer', 'Play in the player (what\'s loaded, edits and all)', () => playInPlayer(), { key: 'Ctrl+Shift+P' });
+  C('saveProject', 'Save to project (project.json)…', () => saveProject());
   for (const p of document.querySelectorAll('#panels .panel')) C('panel:' + p.dataset.panel, 'Show ' + p.dataset.title, () => dock.show(p.dataset.panel), { cat: 'Panel' });
   for (const name of Object.keys(LE.LAYOUTS)) C('layout:' + name, 'Layout: ' + name, () => store.set('ed.layout', name), { cat: 'Layout' });
   for (const [i, n] of QN.entries()) C('quality:' + i, 'Quality: ' + n, () => store.set('render.quality', i), { cat: 'Quality' });
@@ -125,15 +129,15 @@
   // ------------------------------------------------------------ menus
   const panelsMenu = () => [...document.querySelectorAll('.panel')].map((p) => ({ label: p.dataset.title, check: () => dock.isOpen(p.dataset.panel), run: () => dock.toggle(p.dataset.panel), disabled: () => p.dataset.panel === 'viewport' }));
   const MENUS = {
-    File: () => [{ label: 'New scene', cmd: 'newScene', key: 'Ctrl+N' }, { label: 'Open scene…', cmd: 'openScene', key: 'Ctrl+O' }, '-', { label: 'Run script', cmd: 'runScript', key: 'Ctrl+Enter' }, { label: 'Download script (.loop)', cmd: 'saveScript', key: 'Ctrl+Shift+S' }, { label: 'Revert script', cmd: 'revertScript' }, '-', { label: 'Export project settings…', run: () => LE.download(store.project + '.settings.json', store.exportJson('project'), 'application/json') }, { label: 'Export editor preferences…', run: () => LE.download('editor-preferences.json', store.exportJson('editor'), 'application/json') }, '-', { label: 'Open in the player', run: () => open('./#' + (E.scene || ''), '_blank') }, { label: 'Save a screenshot', cmd: 'capture' }],
+    File: () => [{ label: 'New scene', cmd: 'newScene', key: 'Ctrl+N' }, { label: 'Open scene…', cmd: 'openScene', key: 'Ctrl+O' }, '-', { label: 'Run script', cmd: 'runScript', key: 'Ctrl+Enter' }, { label: 'Play in the player', cmd: 'playInPlayer', key: 'Ctrl+Shift+P' }, { label: 'Download script (.loop)', cmd: 'saveScript', key: 'Ctrl+Shift+S' }, { label: 'Revert script', cmd: 'revertScript' }, '-', { label: 'Save to project (project.json)…', cmd: 'saveProject' }, { label: 'Export project settings…', run: () => LE.download(store.project + '.settings.json', store.exportJson('project'), 'application/json') }, { label: 'Export editor preferences…', run: () => LE.download('editor-preferences.json', store.exportJson('editor'), 'application/json') }, '-', { label: 'Open the published scene in the player', run: () => open('./#' + (E.scene || ''), '_blank') }, { label: 'Save a screenshot', cmd: 'capture' }],
     Edit: () => [{ label: 'Undo', run: () => { P.script.ta.focus(); document.execCommand('undo'); }, key: 'Ctrl+Z' }, { label: 'Redo', run: () => { P.script.ta.focus(); document.execCommand('redo'); }, key: 'Ctrl+Shift+Z' }, '-', { label: 'Find in script', cmd: 'find', key: 'Ctrl+F' }, { label: 'Command palette', cmd: 'palette', key: 'Ctrl+P' }, '-', { label: 'Project Settings…', cmd: 'projectSettings', key: 'Ctrl+,' }, { label: 'Editor Preferences…', cmd: 'editorPrefs' }],
     View: () => [{ header: 'Overlays' }, ...[['vp.stats', 'Stats'], ['vp.grid', 'Grid'], ['vp.thirds', 'Rule of thirds'], ['vp.safe', 'Safe frames'], ['vp.crosshair', 'Centre mark']].map(([id, l]) => ({ label: l, check: () => store.get(id), run: () => store.set(id, !store.get(id)) })), { label: 'Trailer compare', check: () => trailerOn, cmd: 'trailer', key: 'T' }, '-', { header: 'Debug view' }, ...['Final picture', 'Raw light', 'Exposure', 'Bloom', 'Ray work'].map((l, i) => ({ label: l, check: () => store.get('render.view') === i, run: () => store.set('render.view', i) })), '-', { label: 'Toolbar', check: () => store.get('ed.toolbar'), run: () => store.set('ed.toolbar', !store.get('ed.toolbar')) }, { label: 'Status bar', check: () => store.get('ed.statusbar'), run: () => store.set('ed.statusbar', !store.get('ed.statusbar')) }, { label: 'Viewport only', cmd: 'maximize', key: 'Shift+Space' }, { label: 'Full screen', cmd: 'fullscreen', key: 'F11' }],
     Project: () => [{ header: 'Projects' }, ...E.index.projects.map((p) => ({ label: p.title, check: () => store.project === p.name, run: () => openScene(p.start) })), '-', { label: 'Project Settings…', cmd: 'projectSettings' }, { label: 'Project info', run: () => projectInfo() }],
     Play: () => [{ label: 'Play (walk)', cmd: 'play', key: 'F5' }, { label: 'Movie (shots)', cmd: 'movie', key: 'F6' }, { label: 'Pause', check: () => paused, cmd: 'pause', key: 'F7' }, { label: 'Step a frame', cmd: 'step', key: 'F8' }, { label: 'Restart scene', cmd: 'stop', key: 'Shift+F5' }, '-', { header: 'World speed' }, ...[0.25, 0.5, 1, 2, 4].map((s) => ({ label: s + '×', check: () => store.get('script.timeScale') === s, run: () => store.set('script.timeScale', s) })), '-', { header: 'Quality' }, ...QN.map((n, i) => ({ label: n, check: () => +store.get('render.quality') === i, run: () => store.set('render.quality', i) }))],
-    Build: () => [{ label: 'Build the web site…', cmd: 'buildSite', badge: 'Not wired' }, { label: 'Render a cinema still…', cmd: 'renderStill', badge: 'Not wired' }, '-', { label: 'Benchmark this scene', cmd: 'benchmark' }, { label: 'Build settings…', run: () => LE.settingsWindow('project', 'build.out') }],
+    Build: () => [{ label: 'Play in the player', cmd: 'playInPlayer' }, { label: 'Save to project (project.json)…', cmd: 'saveProject' }, '-', { label: 'Build the web site…', cmd: 'buildSite' }, { label: 'Render a cinema still…', cmd: 'renderStill' }, '-', { label: 'Benchmark this scene', cmd: 'benchmark' }, { label: 'Build settings…', run: () => LE.settingsWindow('project', 'build.publish') }],
     Tools: () => [{ label: 'Profiler', run: () => dock.show('profiler') }, { label: 'Benchmark this scene', cmd: 'benchmark' }, { label: 'Save a screenshot', cmd: 'capture' }, '-', { label: 'Sound', check: () => !!audioCtx, cmd: 'sound' }, { label: 'Clear console', cmd: 'clearConsole' }, '-', { label: 'Restart viewport', cmd: 'restartViewport' }],
     Window: () => [{ header: 'Panels' }, ...panelsMenu(), '-', { header: 'Layouts' }, ...Object.keys(LE.LAYOUTS).map((n) => ({ label: n[0].toUpperCase() + n.slice(1), check: () => store.get('ed.layout') === n, run: () => { store.set('ed.layout', n); dock.preset(n); } })), '-', { label: 'Reset layout', cmd: 'resetLayout' }],
-    Help: () => [{ label: 'Keyboard shortcuts', cmd: 'help', key: 'F1' }, { label: 'Looped Script quick reference', cmd: 'reference' }, { label: 'What\'s wired and what\'s next', run: () => wiringReport() }, '-', { label: 'About Loop3D', cmd: 'about' }],
+    Help: () => [{ label: 'Keyboard shortcuts', cmd: 'help', key: 'F1' }, { label: 'Looped Script quick reference', cmd: 'reference' }, { label: 'What works and what\'s next', run: () => wiringReport() }, '-', { label: 'About Loop3D', cmd: 'about' }],
   };
   const menusEl = $('#menus');
   for (const [name, fn] of Object.entries(MENUS)) {
@@ -222,12 +226,7 @@
   let focused = false;
   addEventListener('pointerdown', (e) => { focused = vp.contains(e.target); vpFocus(focused); }, true);
   const keyMap = { KeyW: 0, ArrowUp: 0, KeyS: 1, ArrowDown: 1, KeyA: 2, ArrowLeft: 2, KeyD: 3, ArrowRight: 3, ShiftLeft: 4, ShiftRight: 4 };
-  const bound = () => {
-    const m = { ...keyMap };
-    const k = (id) => store.get(id);
-    m[k('keys.forward')] = 0; m[k('keys.back')] = 1; m[k('keys.left')] = 2; m[k('keys.right')] = 3; m[k('keys.run')] = 4;
-    return m;
-  };
+  const bound = () => (E.M ? LoopUI.keyMap(E.M) : keyMap);
   const typing = (e) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || e.target.isContentEditable;
   addEventListener('keydown', (e) => {
     const mod = e.ctrlKey || e.metaKey;
@@ -246,7 +245,7 @@
     const needFocus = store.get('vp.keysNeedFocus');
     const m = bound();
     if (e.code in m && (focused || !needFocus)) { e.preventDefault(); E.key(m[e.code], true); if (E.movie && m[e.code] < 4) E.setMode(false); return; }
-    if (e.code === store.get('keys.use') && !e.repeat && (focused || !needFocus)) return E.useKey();
+    if (E.M && e.code === LoopUI.useKey(E.M) && !e.repeat && (focused || !needFocus)) return E.useKey();
     if (!focused) {
       if (e.key === 't' || e.key === 'T') return LE.run('trailer');
       const tools = { q: 'select', w: 'move', e: 'rotate', r: 'scale' };
@@ -267,8 +266,7 @@
   view.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     if (E.movie) E.setMode(false);
-    const inv = store.get('player.invertY') ? -1 : 1;
-    E.look(e.clientX - lx, (e.clientY - ly) * inv);
+    E.look(e.clientX - lx, e.clientY - ly);  // player.invertY is the engine's
     lx = e.clientX; ly = e.clientY;
   });
   function stick(el, onMove, isLook) {
@@ -289,7 +287,7 @@
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
   }
   stick($('#ls'), (x, y) => E.move(x, y), false);
-  stick($('#rs'), (dx, dy) => E.look(dx * store.get('player.touchLook'), dy * store.get('player.touchLook')), true);
+  stick($('#rs'), (dx, dy) => { const k = LoopUI.setting(E.M, 'player.touchLook', 1.6); E.look(dx * k, dy * k); }, true);
 
   // overlays: grid, thirds, safe frames, centre mark
   const ov = $('#overlay');
@@ -303,9 +301,45 @@
     if (store.get('vp.grid')) { x.strokeStyle = '#ffffff22'; const s = 48 * dpr; for (let i = s; i < W; i += s) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, H); x.stroke(); } for (let j = s; j < H; j += s) { x.beginPath(); x.moveTo(0, j); x.lineTo(W, j); x.stroke(); } }
     if (store.get('vp.thirds')) { x.strokeStyle = '#ffffff66'; for (const f of [1 / 3, 2 / 3]) { x.beginPath(); x.moveTo(W * f, 0); x.lineTo(W * f, H); x.moveTo(0, H * f); x.lineTo(W, H * f); x.stroke(); } }
     if (store.get('vp.safe')) { x.strokeStyle = '#f0b54499'; x.setLineDash([6 * dpr, 4 * dpr]); x.strokeRect(W * 0.05, H * 0.05, W * 0.9, H * 0.9); x.strokeStyle = '#4c9dff99'; x.strokeRect(W * 0.1, H * 0.1, W * 0.8, H * 0.8); x.setLineDash([]); }
+    // light icons and bounding boxes, placed with the engine's own view of the scene
+    const info = P.outliner && P.outliner.info;
+    if (info && info.viewProj && (store.get('render.showLights') || store.get('render.showBounds'))) {
+      const m = info.viewProj;
+      const proj = (p) => {
+        const x = m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12], y = m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13], w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+        return w > 0.05 ? [(x / w * 0.5 + 0.5) * W, (0.5 - y / w * 0.5) * H] : null;
+      };
+      if (store.get('render.showBounds')) {
+        x.strokeStyle = '#4cc38acc';
+        for (const t of info.things.slice(0, 800)) {
+          if (!t.visible || !t.size) continue;
+          const c = t.position, hs = t.size.map((v) => Math.abs(v) / 2);
+          const pts = [];
+          for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) pts.push(proj([c[0] + sx * hs[0], c[1] + sy * hs[1], c[2] + sz * hs[2]]));
+          if (pts.some((q) => !q)) continue;
+          for (const [a, b] of [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]) { x.beginPath(); x.moveTo(...pts[a]); x.lineTo(...pts[b]); x.stroke(); }
+        }
+      }
+      if (store.get('render.showLights')) {
+        x.font = 14 * dpr + 'px system-ui';
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        for (const l of info.lights) {
+          if (l.kind === 'sun') continue;
+          const q = proj(l.position);
+          if (!q) continue;
+          x.fillStyle = '#000a'; x.beginPath(); x.arc(q[0], q[1], 11 * dpr, 0, Math.PI * 2); x.fill();
+          x.fillStyle = '#ffd27a'; x.fillText(l.kind === 'spot' ? '◒' : l.kind === 'rect' ? '▭' : '💡', q[0], q[1]);
+        }
+      }
+    }
     if (store.get('vp.crosshair')) { x.strokeStyle = '#ffffffaa'; const c = 10 * dpr; x.beginPath(); x.moveTo(W / 2 - c, H / 2); x.lineTo(W / 2 + c, H / 2); x.moveTo(W / 2, H / 2 - c); x.lineTo(W / 2, H / 2 + c); x.stroke(); }
   }
   new ResizeObserver(() => { drawOverlay(); P.script && P.script.paint(); }).observe(vp);
+  // the overlay follows the camera while light icons or boxes are on
+  setInterval(() => { if (E.M && (store.get('render.showLights') || store.get('render.showBounds'))) { P.outliner.refresh(true); drawOverlay(); } }, 250);
+  LoopUI.gamepad(() => E.M, () => E.useKey(), () => { if (E.movie) E.setMode(false); });
+  LoopUI.pauseWhenHidden(() => E.M);
+  setInterval(() => E.M && LoopUI.applyPage(E.M), 1000);
 
   // trailer compare: the cinema still over the live view, split by a handle
   const timg = $('#trailerImg'), tsplit = $('#trailerSplit');
@@ -332,24 +366,25 @@
     if (m.kind === 'clear') { linesBox.innerHTML = ''; return; }
     if (m.kind === 'line') {
       LE.log('line', (m.speaker ? m.speaker + ': ' : '') + m.text);
-      const d = h('div', { class: 'line' }, m.speaker ? h('span', { class: 'who', style: 'color:' + store.get('story.speakerColor') }, m.speaker) : null, m.text);
-      linesBox.append(d);
-      while (linesBox.children.length > 2) linesBox.firstChild.remove();
-      setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 700); }, m.seconds * 1000);
+      LoopUI.showLine(linesBox, E.M, m);
       return;
     }
     if (m.kind === 'ask') {
       LE.log('line', '? ' + (m.text || '') + ' [' + m.options.join(' / ') + ']');
-      askBox.innerHTML = '';
-      if (m.text) askBox.append(h('div', { class: 'q' }, m.text));
-      m.options.forEach((o, i) => askBox.append(h('button', { onclick: () => { askBox.style.display = 'none'; E.choose(i); } }, o)));
-      askBox.style.display = 'flex';
+      // autoplay (tests) answers by itself, from script.choices
+      if (LoopUI.setting(E.M, 'script.autoplay', false)) {
+        const list = String(LoopUI.setting(E.M, 'script.choices', '0')).split(',').map(Number).filter((x) => !isNaN(x));
+        const pick = list.length ? list[(autoAsked++) % list.length] : 0;
+        setTimeout(() => E.choose(Math.min(pick, m.options.length - 1)), 1200);
+        return;
+      }
+      LoopUI.showAsk(askBox, E.M, m, (i) => E.choose(i));
     }
   });
 
   // ------------------------------------------------------------ engine events
   E.on('nogpu', () => { showNote('This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari. The editor still works; the viewport needs WebGPU.', false); LE.log('error', 'No WebGPU in this browser.'); LE.status(); });
-  E.on('loading', (name) => { const s = E.projectOf(name)?.scenes.find((x) => x.name === name); showNote('Loading ' + (s ? s.title : name || 'the scene') + '…', true); linesBox.innerHTML = ''; askBox.style.display = 'none'; if (store.get('con.clearOnLoad')) LE.run('clearConsole'); });
+  E.on('loading', (name) => { const s = E.projectOf(name)?.scenes.find((x) => x.name === name); showNote(LoopUI.loadingText(E.M, s ? s.title : name || 'the scene'), true); linesBox.innerHTML = ''; askBox.style.display = 'none'; if (store.get('con.clearOnLoad')) LE.run('clearConsole'); });
   E.on('shown', () => { note.style.display = 'none'; LE.status(); });
   E.on('problems', (t) => { P.script.pendingProblems = true; for (const l of t.trim().split('\n')) LE.log('error', l); dock.show('script'); LE.status(); });
   E.on('gpulost', () => { showNote('The graphics card restarted. Reconnecting…', true); LE.log('warn', 'GPU lost: reconnecting'); });
@@ -384,7 +419,12 @@
   function setProject(p) {
     store.project = p.name;
     store.load('project');
-    for (const [id, v] of [['project.title', p.title], ['project.description', p.description], ['project.start', p.start]]) if (!store.isModified(id)) { const it = store.items.get(id); it.def = v; }
+    // the project's own values (project.json) are its settings' starting points: Reset goes back to them
+    for (const it of store.items.values()) if (it.scope === 'project' && it.origDef === undefined) it.origDef = it.def;
+    for (const it of store.items.values()) if (it.scope === 'project') it.def = it.origDef;
+    for (const [id, v] of [['project.title', p.title], ['project.description', p.description], ['project.start', p.start]]) store.items.get(id).def = v;
+    for (const [id, v] of Object.entries(p.settings || {})) if (store.items.has(id)) store.items.get(id).def = v;
+    for (const [k, v] of Object.entries(p.build || {})) for (const id of ['build.' + k, 'project.' + k]) if (store.items.has(id)) store.items.get(id).def = v;
     E.projectTitle = p.title;
     $('#projectChip').textContent = p.title;
     $('#projectChip').title = p.description;
@@ -413,8 +453,8 @@
   function toggleSound() {
     if (!E.M) return;
     if (audioCtx) { audioCtx.close(); audioCtx = null; syncToolbar(); return; }
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: +store.get('audio.rate') });
-    const frames = +store.get('audio.buffer'), node = audioCtx.createScriptProcessor(frames, 0, 2), ptr = E.M._malloc(frames * 8);
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+    const frames = +LoopUI.setting(E.M, 'audio.buffer', 2048), node = audioCtx.createScriptProcessor(frames, 0, 2), ptr = E.M._malloc(frames * 8);
     node.onaudioprocess = (e) => {
       E.M._loop_audio(ptr, frames);
       const buf = E.M.HEAPF32.subarray(ptr >> 2, (ptr >> 2) + frames * 2), L = e.outputBuffer.getChannelData(0), R = e.outputBuffer.getChannelData(1);
@@ -447,7 +487,7 @@
     clearInterval(tick);
     note.style.display = 'none';
     const r = E.perfEnd();
-    E.setAutoplay(!!store.get('script.autoplay'));
+    E.setAutoplay(!!LoopUI.setting(E.M, 'script.autoplay', false));
     r.scene = E.scene; r.quality = QN[E.quality];
     P.profiler.addRun(r);
     LE.log('engine', 'Benchmark: ' + r.fps.toFixed(1) + ' fps · 99% ' + r.p99Ms.toFixed(1) + ' ms · ' + r.hitches + ' hitches · GPU ' + r.gpuMs.toFixed(1) + ' ms');
@@ -461,13 +501,20 @@
     const arg = rest.join(' ');
     const say = (t) => LE.log('info', t);
     switch (cmd.toLowerCase()) {
-      case 'help': say('help · scene <name> · scenes · quality 0|1|2 · look <name>|off · set <option> <value> · get <setting> · run · pause · step · speed <x> · movie · play · bench · shot · clear · settings [search]\nset options: view skip res lamps rays prepass walk run look pause timescale filmtime'); break;
+      case 'help': say('help · scene <name> · scenes · quality 0|1|2 · look <name>|off · set <setting> <value> · get <setting> · run · pause · step · speed <x> · movie · play · bench · shot · clear · settings\nsettings use the names in Project Settings (hover a label), e.g. set physics.iterations 24'); break;
       case 'scene': case 'open': openScene(arg).catch(() => LE.log('error', 'No scene "' + arg + '"')); break;
       case 'scenes': for (const p of E.index.projects) say(p.title + ': ' + p.scenes.map((s) => s.name).join(', ')); break;
       case 'quality': store.set('render.quality', Math.max(0, Math.min(2, +arg || 0))); break;
       case 'look': store.set('look.preset', arg === 'off' ? '' : arg); break;
-      case 'set': { const [k, v] = rest; say(E.setOption(k, +v) ? k + ' = ' + v : 'unknown option ' + k); break; }
-      case 'get': { const it = store.items.get(arg); say(it ? arg + ' = ' + JSON.stringify(store.get(arg)) : 'no setting ' + arg); break; }
+      case 'set': {
+        const [k, ...vs] = rest;
+        let v = vs.join(' ');
+        try { v = JSON.parse(v); } catch (e) { /* plain text */ }
+        if (store.items.has(k)) { store.set(k, v); say(k + ' = ' + JSON.stringify(store.get(k))); }
+        else say(E.setSetting(k, v) || E.setOption(k, +v) ? k + ' = ' + JSON.stringify(v) : 'no setting ' + k + ' (see the console for a suggestion)');
+        break;
+      }
+      case 'get': { const v = E.getSetting(arg); say(v !== undefined && v !== null ? arg + ' = ' + JSON.stringify(v) + ' (in effect)' : store.items.has(arg) ? arg + ' = ' + JSON.stringify(store.get(arg)) : 'no setting ' + arg); break; }
       case 'run': P.script.run(); break;
       case 'pause': LE.run('pause'); break;
       case 'step': E.setOption('step', +arg || 1); break;
@@ -510,10 +557,44 @@
   }
   function wiringReport() {
     const all = [...store.items.values()];
-    const by = (scope) => all.filter((i) => i.scope === scope);
-    const row = (cat) => { const its = cat.groups.flatMap((g) => g.items); const w = its.filter((i) => i.bind).length; return '<tr><td>' + cat.icon + ' ' + cat.title + '</td><td>' + w + ' / ' + its.length + '</td><td class="dim">' + its.filter((i) => !i.bind).slice(0, 4).map((i) => i.label).join(', ') + (its.length - w > 4 ? '…' : '') + '</td></tr>'; };
-    LE.info('What\'s wired and what\'s next', '<p>' + all.filter((i) => i.bind).length + ' of ' + all.length + ' settings reach the engine today. The rest are saved and marked <span class="badge nw">Not wired</span>: they are the list of next tasks.</p><table class="data"><tr><th>Section</th><th>Wired</th><th>Next</th></tr>' + LE.SCHEMA.project.map(row).join('') + LE.SCHEMA.editor.map(row).join('') + '</table>');
-    void by;
+    const st = (it) => store.status(it);
+    const count = (k) => all.filter((i) => st(i) === k).length;
+    const row = (cat) => {
+      const its = cat.groups.flatMap((g) => g.items);
+      const ok = its.filter((i) => st(i) === 'live' || st(i) === 'build').length;
+      const nb = its.filter((i) => st(i) === 'nb');
+      return '<tr><td>' + cat.icon + ' ' + cat.title + '</td><td>' + ok + ' / ' + its.length + '</td><td class="dim">' + nb.slice(0, 4).map((i) => i.label).join(', ') + (nb.length > 4 ? '…' : '') + '</td></tr>';
+    };
+    LE.info('What works and what\'s next', '<p><b>' + (count('live') + count('build')) + '</b> of ' + all.length + ' settings work today: they change the engine (or the editor, or the site build) as you set them, and a scene can set the engine ones itself with <code>setting "name", value</code>. <span class="badge nw">Not built yet</span> marks ' + count('nb') + ' settings for features the engine doesn\'t have yet (the roadmap); <span class="badge rs">Needs you</span> marks ' + count('you') + ' that are your call.</p><table class="data"><tr><th>Section</th><th>Working</th><th>Not built yet</th></tr>' + LE.SCHEMA.project.map(row).join('') + LE.SCHEMA.editor.map(row).join('') + '</table><p class="dim">Every setting, its script word and its range: docs/SETTINGS.md.</p>');
+  }
+
+  // "Play": the player page, on exactly what's open here (edits and all)
+  function playInPlayer() {
+    if (!E.scene) return LE.toast('Open a scene first');
+    if (!LoopUI.handTo(E.scene, P.script.ta.value, store.project)) return LE.toast('This browser won\'t let the editor hand the scene over (private mode?)', 'err');
+    open('./?from=editor#' + encodeURIComponent(E.scene), '_blank');
+  }
+  // "Save to project": project.json with the settings changed here
+  function saveProject() {
+    const p = E.index.projects.find((x) => x.name === store.project);
+    if (!p) return LE.toast('No project open', 'err');
+    const out = { name: p.name, title: store.get('project.title') || p.title, description: store.get('project.description') || p.description, start: store.get('project.start') || p.start,
+      scenes: p.scenes.map((s) => s.name) };
+    if (p.library && p.library.length) out.library = p.library;
+    out.stills = store.get('project.stillsDir') || 'stills';
+    if (p.order !== undefined) out.order = p.order;
+    const settings = { ...(p.settings || {}) }, build = { ...(p.build || {}) };
+    for (const it of store.items.values()) {
+      if (it.scope !== 'project' || !store.isModified(it.id)) continue;
+      // engine settings go to project.json; the look, fog, sky and camera overrides are for
+      // trying things live (a scene sets its own with look(…), sky(…), fog(…), camera(…))
+      if (it.bind === 'set') settings[it.id] = store.get(it.id);
+      else if (it.bind === 'build') build[it.id.replace(/^(build|project)\./, '')] = store.get(it.id);
+    }
+    if (Object.keys(settings).length) out.settings = settings;
+    if (Object.keys(build).length) out.build = build;
+    LE.download('project.json', JSON.stringify(out, null, 2) + '\n', 'application/json');
+    LE.info('Save to project', '<p>Downloaded <code>project.json</code> for <b>' + (out.title || p.name) + '</b>, with ' + Object.keys(settings).length + ' settings.</p><p>Put it in <code>projects/' + p.name + '/</code> in the repository (replacing the old one). The player, the editor, <code>loop render</code> and the site build all read it.</p>');
   }
 
   // ------------------------------------------------------------ start

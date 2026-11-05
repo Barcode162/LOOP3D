@@ -1,5 +1,7 @@
 #include "engine/gpu/renderer.h"
 
+#include "engine/core/settings.h"
+
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <webgpu/webgpu_cpp.h>
@@ -45,11 +47,6 @@ EM_JS(void, jsCapture, (WGPUDevice devPtr, WGPUTexture texPtr, int w, int h, int
 namespace loop::gpu {
 
 int g_skipPasses = 0;
-int g_debugView = 0;
-float g_fixedScale = 0;
-int g_shadowLamps = -1;
-int g_shadowRays = -1;
-bool g_prepass = false;
 
 namespace {
 
@@ -183,12 +180,7 @@ class GpuRenderer final : public Renderer {
     cs.magFilter = cs.minFilter = wgpu::FilterMode::Linear;
     cs.compare = wgpu::CompareFunction::LessEqual;
     shadowSampler_ = device_.CreateSampler(&cs);
-    g_samples = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('msaa') || 4); });
-    // ?lamps= ?rays= ?prepass= set the switches; without them, keep what they are
-    // (the editor may have changed them, and a lost GPU makes a new renderer)
-    if (int v = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('lamps'); return v === null ? -2 : +v; }); v != -2) g_shadowLamps = v;
-    if (int v = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('rays'); return v === null ? -2 : +v; }); v != -2) g_shadowRays = v;
-    if (EM_ASM_INT({ return new URLSearchParams(location.search).get('prepass') === '1' ? 1 : 0; })) g_prepass = true;
+    g_samples = config().render.msaa > 1 ? 4 : 1;
     for (auto& u : passUbo_) u = buffer(sizeof(PassU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     buildPipelines();
     makeShadowMap();
@@ -207,7 +199,10 @@ class GpuRenderer final : public Renderer {
   void capture(std::function<void(int, int, const uint8_t*)> done) override { captureDone_ = std::move(done); }
 
   void setQuality(Quality q) override {
-    if (q == quality_ && outW_) return;  // picked again: nothing to rebuild
+    if (q == quality_ && outW_) {  // picked again: only the settings may have changed
+      applySettings();
+      return;
+    }
     quality_ = q;
     ultraFrame_ = 0;
     // start a little below full size and climb when calm (a step per 3 calm
@@ -218,26 +213,45 @@ class GpuRenderer final : public Renderer {
     fresh_ = true;
     renderScale_ = q == Quality::kUltra ? 0.65f : 0.87f;
     lightsDirty_ = true;
+    applySettings();
+    outW_ = 0;  // re-make targets for this quality
+  }
+
+  void applySettings() override {
+    const Config::Render& r = config().render;
+    Quality q = quality_;
     // pixels per screen point: past ~1.5 the eye barely sees more, but the GPU
     // pays for every one (2x is 4 times the pixels of 1x). Ultra traces rays
     // for every pixel, so it draws at 1x and the screen scales it up.
-    maxRatio_ = q == Quality::kHigh ? 1.5f : 1.0f;
+    // (render.ratioPhone / ratioHigh / ratioUltra)
+    maxRatio_ = q == Quality::kHigh ? r.ratioHigh : q == Quality::kUltra ? r.ratioUltra : r.ratioPhone;
     // lamp shadows are rays through the scene from every pixel: each one costs
     // about as much as all the rest of the lighting. Phone: none (lamps light
     // without shadows, like before they were added); High: the two lamps that
-    // matter most near the camera, one ray each (crisp shadows). ?lamps=N and
-    // ?rays=N try more on a strong GPU.
+    // matter most near the camera, one ray each (crisp shadows).
+    // render.lamps / render.rays try more on a strong GPU.
     shadowLamps_ = q == Quality::kPhone ? 0 : 2;
     shadowRays_ = 1;
-    if (g_shadowLamps >= 0) shadowLamps_ = g_shadowLamps;
-    if (g_shadowRays > 0) shadowRays_ = g_shadowRays;
+    if (r.lamps >= 0) shadowLamps_ = r.lamps;
+    if (r.rays > 0) shadowRays_ = r.rays;
+    if (!r.lampShadows) shadowLamps_ = 0;
     // Ultra traces the sun's shadows; its shadow map is never read
-    int size = q == Quality::kUltra ? 16 : q == Quality::kPhone ? 1024 : 2048;
+    int size = q == Quality::kUltra ? 16 : q == Quality::kPhone ? r.sunMapPhone : r.sunMapHigh;
+    size = std::clamp(size, 16, static_cast<int>(std::min<uint32_t>(maxTexture_, 8192)));
     if (size != shadowSize_ || !shadowTex_) {
       shadowSize_ = size;
       makeShadowMap();
     }
-    outW_ = 0;  // re-make targets for this quality
+    // multisampling: every scene pipeline and target is made for it
+    int samples = r.msaa > 1 ? 4 : 1;
+    if (samples != g_samples) {
+      g_samples = samples;
+      buildPipelines();
+      outW_ = 0;
+      bindGroupsDirty_ = true;
+    }
+    lightsDirty_ = true;
+    ultraFrame_ = 0;  // Ultra starts its picture again with the new settings
     if (lastScene_ && needRays() && raysBuiltFor_ != static_cast<int>(quality_)) {
       buildRayMeshes(*lastScene_);
       buildRayInstances(*lastScene_);
@@ -271,7 +285,8 @@ class GpuRenderer final : public Renderer {
     fog_ = scene.fog;
     if (skyChanged || !skyBuilt_) {
       SkyModel m;
-      m.build(scene.sky, sunOn_ ? sunDir_ : Vec3(0, 1, 0), sunOn_ ? sunLux_ : 0);
+      // a sun given a size (sun(size:) or sun.size) shows it; otherwise our sun's 0.53 deg
+      m.build(scene.sky, sunOn_ ? sunDir_ : Vec3(0, 1, 0), sunOn_ ? sunLux_ : 0, sunRadius_);
       sunIllum_ = scene.sky.kind == Sky::Kind::kPhysical ? m.sunIlluminance() * sunTint_ : sunTint_ * sunLux_;
       uploadSky(m);
       skyBuilt_ = true;
@@ -372,7 +387,16 @@ class GpuRenderer final : public Renderer {
     if (!data.empty()) queue_.WriteBuffer(instancesBuf_, 0, data.data(), data.size() * sizeof(InstanceU));
   }
 
+  // The passes the settings turn off, as the old skip bits (plus the tests' own).
+  int skipBits() const {
+    const Config::Render& r = config().render;
+    return g_skipPasses | (r.sunShadows ? 0 : 1) | (r.passScene ? 0 : 2) | (r.passExposure ? 0 : 4) | (r.passBloom ? 0 : 8) | (r.passFilm ? 0 : 16) |
+           (r.passShadow ? 0 : 32) | (r.passDraw ? 0 : 64) | (r.lampShadows ? 0 : 512);
+  }
+
   bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) override {
+    const int skip = skipBits();
+    const Config& C = config();
     // at most two frames waiting on the GPU: a slow GPU drops frames instead
     // of falling further and further behind
     if (gs_->lost) return false;
@@ -389,7 +413,7 @@ class GpuRenderer final : public Renderer {
       judgedAt_ = now, perfSkipped_ = perfDrawn_ = 0;
     }
     adaptResolution(now);
-    if (gs_->inFlight >= 2) {
+    if (gs_->inFlight >= std::clamp(C.render.framesInFlight, 1, 3)) {
       ++perfSkipped_;
       // a GPU that hasn't said "done" for 2 seconds lost the signal: stop
       // waiting, and ignore those frames' signals if they turn up later
@@ -405,7 +429,7 @@ class GpuRenderer final : public Renderer {
     ++perfDrawn_;
     resize();
     wgpu::SurfaceTexture st;
-    if (!(g_skipPasses & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)
+    if (!(skip & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)
       surface_.GetCurrentTexture(&st);
       if (st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal && st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal) {
         outW_ = 0;  // the surface needs configuring again
@@ -421,11 +445,11 @@ class GpuRenderer final : public Renderer {
     float aspect = static_cast<float>(width_) / height_;
     Mat4 view = Mat4::lookAt(cam.position, cam.target, cam.up);
     float fovY = cam.fovY();
-    Mat4 proj = Mat4::perspective(fovY, aspect, 0.05f, 4000.0f);
+    Mat4 proj = Mat4::perspective(fovY, aspect, 0.05f, std::max(C.world.drawDistance, 1.0f));
     f.viewProj = proj * view;
     f.invViewProj = f.viewProj.inverse();
     // the sun's shadow: a box round what the camera sees nearby, snapped to texels
-    float R = quality_ == Quality::kPhone ? 25.0f : 40.0f;
+    float R = C.render.shadowDistance > 0 ? C.render.shadowDistance : quality_ == Quality::kPhone ? 25.0f : 40.0f;
     Vec3 fwd = normalize(cam.target - cam.position);
     Vec3 center = cam.position + fwd * (R * 0.6f);
     Vec3 up = std::fabs(sunDir_.y) > 0.99f ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
@@ -437,31 +461,35 @@ class GpuRenderer final : public Renderer {
     f.shadowViewProj = lp * lv;
     f.camPos = {cam.position, time};
     f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
-    f.sunColor = {sunIllum_, 0};
+    f.sunColor = {sunIllum_, C.render.skyLight};
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
+    f.sh[0].w = C.render.shadowSoftness, f.sh[1].w = C.world.patternFade;
     f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
-    f.fogColor = {fog_.albedo, 0};
-    f.params = {static_cast<float>(lights_.size()), (g_skipPasses & 512) ? 0.0f : static_cast<float>(shadowLamps_), static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
+    f.fogColor = {fog_.albedo, C.render.shadowBias};
+    f.params = {static_cast<float>(lightCount()), (skip & 512) ? 0.0f : static_cast<float>(shadowLamps_), static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
     f.screen = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_};
     // a first guess for the eyes: the camera's own settings, or a sunny / indoor guess
     float guess = cam.autoExposure ? (sunOn_ && sunLux_ > 1000 ? 1.0f / 6000 : 1.0f / 30) : exposureFromEv100(cam.ev100());
     // lamp shadows: rays for the big soft lights (one for a small bulb)
-    f.fixedExposure = {guess * std::exp2(0.0f), static_cast<float>(shadowRays_), static_cast<float>(g_debugView), 0};
+    f.fixedExposure = {guess * std::exp2(0.0f), static_cast<float>(shadowRays_), static_cast<float>(C.render.view), C.render.occlusion};
     queue_.WriteBuffer(frameUbo_, 0, &f, sizeof f);
 
     PostU p{};
     float fixedExp = exposureFromEv100(cam.ev100());
-    p.exposure = {fixedExp, cam.exposureCompensation, cam.autoExposure ? 1.0f : 0.0f, 0};
+    p.exposure = {fixedExp, cam.exposureCompensation, cam.autoExposure ? 1.0f : 0.0f, look.sharpen};
     p.look0 = {look.contrast, look.saturation, static_cast<float>(static_cast<int>(look.tonemap)), look.monochrome ? 1.0f : 0.0f};
     Vec3 wb = whiteBalanceGains(look.temperature, look.tint);
-    p.wb = {wb, 0};
-    p.lift = {look.lift, 0}, p.gamma = {look.gamma, 0}, p.gain = {look.gain, 0};
+    p.wb = {wb, look.distortion};
+    p.lift = {look.lift, look.grainSize}, p.gamma = {look.gamma, look.bloomRadius / 0.02f}, p.gain = {look.gain, C.render.fxaa ? 1.0f : 0.0f};
     p.shadowTint = {look.shadowTint, 0}, p.highlightTint = {look.highlightTint, 0};
     p.fx = {look.bloom, look.vignette, look.grain, look.letterbox};
     p.fx2 = {look.blackLevel, time, look.halation, look.chromaticAberration};
-    p.screen = {static_cast<float>(outW_), static_cast<float>(outH_), fade, static_cast<float>(g_debugView)};
+    p.screen = {static_cast<float>(outW_), static_cast<float>(outH_), fade, static_cast<float>(C.render.view)};
     queue_.WriteBuffer(postUbo_, 0, &p, sizeof p);
-    ExposureU e{{static_cast<float>(width_), static_cast<float>(height_), dt, f.fixedExposure.x}, {1e-7f, 5000.0f, 3.0f, 1.2f}};  // eyes adapt from sunlight down to a candle-lit room
+    // eyes adapt between the scene brightnesses cam.minEv .. cam.maxEv (sunlight
+    // down to a candle-lit room), at cam.adaptSpeed
+    ExposureU e{{static_cast<float>(width_), static_cast<float>(height_), dt, f.fixedExposure.x},
+                {exposureFromEv100(C.camera.maxEv), exposureFromEv100(C.camera.minEv), 3.0f * C.camera.adaptSpeed, 1.2f * C.camera.adaptSpeed}};
     queue_.WriteBuffer(expUbo_, 0, &e, sizeof e);
     lastExposure_ = fixedExp;
 
@@ -487,13 +515,17 @@ class GpuRenderer final : public Renderer {
       u.camFwd = {f, focus};
       u.camRight = {r, ty * static_cast<float>(width_) / height_};
       u.camUp = {up, ty};
-      u.info[0] = ultraFrame_, u.info[1] = width_, u.info[2] = height_, u.info[3] = 5;
-      u.extra[0] = ultraScale_, u.extra[1] = static_cast<uint32_t>(lights_.size());
+      const Config::Ultra& U = C.ultra;
+      u.info[0] = ultraFrame_, u.info[1] = width_, u.info[2] = height_, u.info[3] = static_cast<uint32_t>(std::clamp(U.bounces, 1, 16));
+      u.extra[0] = ultraScale_, u.extra[1] = static_cast<uint32_t>(lightCount());
+      u.extra[2] = static_cast<uint32_t>(std::clamp(U.history, 0, 65535)) | (static_cast<uint32_t>(std::clamp(U.clamp, 0.5f, 600.0f) * 100) << 16);
+      u.extra[3] = (U.glossy ? 1u : 0u) | (U.glass ? 2u : 0u) | (U.dof ? 4u : 0u) | (U.sunShadows ? 8u : 0u) | (U.lampShadows ? 16u : 0u) |
+                   (static_cast<uint32_t>(std::clamp(U.spp, 1, 16)) << 8);
       queue_.WriteBuffer(ultraUbo_, 0, &u, sizeof u);
       ++ultraFrame_;
     }
     // ---- 1. sun shadow
-    if (raster && !(g_skipPasses & 32)) {
+    if (raster && !(skip & 32)) {
       wgpu::RenderPassDepthStencilAttachment da;
       da.view = shadowView_;
       da.depthLoadOp = wgpu::LoadOp::Clear;
@@ -508,7 +540,7 @@ class GpuRenderer final : public Renderer {
       rp.colorAttachments = &dc;
       rp.depthStencilAttachment = &da;
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
-      if (sunOn_ && !(g_skipPasses & 1)) {
+      if (sunOn_ && !(skip & 1)) {
         pass.SetPipeline(shadowPipe_);
         pass.SetBindGroup(0, sceneGroup0_);
         drawBatches(pass, false, true);
@@ -525,8 +557,10 @@ class GpuRenderer final : public Renderer {
       cp.DispatchWorkgroups((bw + 7) / 8, (bh + 7) / 8);
       // clean the noise, keeping edges
       cp.SetPipeline(denoisePipe_);
-      for (int k = 0; k < 4; ++k) {
-        uint32_t prm[12] = {bw, bh, k == 0 ? 0u : (1u << (k - 1)), k == 3 ? 1u : 0u, width_, height_, ultraScale_, ultraFrame_, 0, 0, 0, 0};
+      // ultra.denoise off: one pass that only writes the picture
+      const int passes = C.ultra.denoise ? std::clamp(C.ultra.denoisePasses, 1, 4) : 1;
+      for (int k = 0; k < passes; ++k) {
+        uint32_t prm[12] = {bw, bh, k == 0 ? 0u : (1u << (k - 1)), k == passes - 1 ? 1u : 0u, width_, height_, ultraScale_, ultraFrame_, 0, 0, 0, 0};
         float fe[2] = {f.fixedExposure.x, cam.autoExposure ? 1.0f : 0.0f};
         std::memcpy(&prm[8], fe, 8);
         queue_.WriteBuffer(denoiseUbo_[k], 0, prm, sizeof prm);
@@ -536,7 +570,7 @@ class GpuRenderer final : public Renderer {
       cp.End();
     }
     // ---- 2. the scene, in light (HDR), 4x multisampled
-    if (raster && !(g_skipPasses & 64)) {
+    if (raster && !(skip & 64)) {
       wgpu::RenderPassColorAttachment ca;
       ca.view = g_samples > 1 ? msaaView_ : hdrView_;
       if (g_samples > 1) ca.resolveTarget = hdrView_;
@@ -553,18 +587,18 @@ class GpuRenderer final : public Renderer {
       wgpu::RenderPassDescriptor rp;
       rp.colorAttachmentCount = 1;
       rp.colorAttachments = &ca;
-      if (!(g_skipPasses & 128)) rp.depthStencilAttachment = &da;
+      if (!(skip & 128)) rp.depthStencilAttachment = &da;
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
       pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
       pass.SetBindGroup(0, sceneGroup0_);
       pass.SetBindGroup(1, sceneGroup1_);
       pass.SetBindGroup(2, rayGroup_);
-      if (!(g_skipPasses & 2)) {
-        int rays = shadowLamps_ > 0 && !(g_skipPasses & 512) ? 1 : 0;
+      if (!(skip & 2)) {
+        int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
         // the depth pre-pass (?prepass=1, off by default): hidden surfaces cost
         // no shadow rays, but it needs both passes to land on exactly the same
         // depth, which Apple GPUs don't promise, and it measured no faster
-        if (rays && g_prepass) {
+        if (rays && C.render.prepass) {
           pass.SetPipeline(depthPipe_);
           drawBatches(pass, false, false);
           pass.SetPipeline(opaqueAfterDepthPipe_[rays]);
@@ -580,7 +614,7 @@ class GpuRenderer final : public Renderer {
       pass.End();
     }
     // ---- 3. how bright it is: the eyes adjust
-    if (!(g_skipPasses & 4)) {
+    if (!(skip & 4)) {
       wgpu::ComputePassEncoder cp = enc.BeginComputePass();
       cp.SetPipeline(exposurePipe_);
       cp.SetBindGroup(0, exposureGroup_);
@@ -589,12 +623,12 @@ class GpuRenderer final : public Renderer {
     }
     // ---- 4. bloom: down the chain, then back up, adding
     if (passUniformsDirty_) writePassUniforms();
-    if (!(g_skipPasses & 8)) {
+    if (!(skip & 8)) {
       for (int i = 0; i < kBloomLevels; ++i) postPass(enc, bloomViews_[i], downPipe_, downGroups_[i], false, levelW(i), levelH(i));
       for (int i = kBloomLevels - 2; i >= 0; --i) postPass(enc, bloomViews_[i], upPipe_, upGroups_[i], true, levelW(i), levelH(i));
     }
     // ---- 5. the film, onto the screen
-    if (!(g_skipPasses & (16 | 256))) postPass(enc, st.texture.CreateView(), finalPipe_, finalGroup_, false);
+    if (!(skip & (16 | 256))) postPass(enc, st.texture.CreateView(), finalPipe_, finalGroup_, false);
     // a capture: the same film pass into a texture the page reads back
     wgpu::Texture captureTex;
     if (captureDone_) {
@@ -653,13 +687,17 @@ class GpuRenderer final : public Renderer {
   // nothing: the targets stay, only the part of them drawn changes.
   void adaptResolution(double now) {
     static constexpr float kSteps[] = {1.0f, 0.87f, 0.75f, 0.65f, 0.56f, 0.5f, 0.42f, 0.35f};
-    if (g_fixedScale > 0) {
-      renderScale_ = std::clamp(g_fixedScale, 0.2f, 1.0f);
+    const Config::Render& cr = config().render;
+    if (cr.res > 0) {
+      renderScale_ = std::clamp(cr.res, 0.2f, 1.0f);
       return;
     }
     if (judgedAt_ == 0) judgedAt_ = now;
     double secs = (now - judgedAt_) / 1000.0;
-    int lowest = quality_ == Quality::kUltra ? 7 : 5;
+    // render.floor / floorUltra: the smallest size it may drop to
+    float floorScale = quality_ == Quality::kUltra ? cr.floorUltra : cr.floor;
+    int lowest = 0;
+    while (lowest < 7 && kSteps[lowest + 1] >= floorScale - 1e-3f) ++lowest;
     // a GPU that hasn't finished a single frame for 2 s: smallest size now
     bool stuck = gs_->gpuCount == 0 && gs_->inFlight > 0 && now - gs_->lastProgress > 2000;
     if (secs < 1.0 && !stuck) return;
@@ -668,7 +706,7 @@ class GpuRenderer final : public Renderer {
     // the screen's own rate, from the calmest moments (the browser asks for
     // fewer frames when the GPU is swamped, so this second's ask can't be the aim)
     displayHz_ = std::max(displayHz_, std::min(240.0f, static_cast<float>(asked / std::max(secs, 1e-3))));
-    float aim = std::min(displayHz_, 60.0f);
+    float aim = std::min(displayHz_, static_cast<float>(cr.targetFps));
     float gpu = gs_->gpuCount ? static_cast<float>(gs_->gpuSum / gs_->gpuCount) : (gs_->inFlight > 0 ? static_cast<float>(now - gs_->lastProgress) : 0.0f);
     // the GPU is what holds frames back when its time per frame fills most of
     // the gap between frames (not a busy script, not a phone saving power)
@@ -678,13 +716,13 @@ class GpuRenderer final : public Renderer {
     gs_->gpuSum = 0, gs_->gpuCount = 0;
     judgedAt_ = now;
     sinceScale_ += static_cast<float>(secs);
-    const float budget = 1000.0f / 60;
+    const float budget = 1000.0f / std::max(cr.targetFps, 1);
     auto stepFor = [&](float scale) {  // the first step at or below this scale
       int k = 0;
       while (k < lowest && kSteps[k] > scale + 1e-3f) ++k;
       return k;
     };
-    bool slowGpu = gpu > budget * 1.1f;
+    bool slowGpu = gpu > budget * cr.slowGpu / 100;
     if (stuck || (gpuBound && fps < aim * 0.88f)) {
       if (step_ < lowest && (sinceScale_ > 1.2f || stuck || gpu > budget * 2)) {
         // cost goes with the number of pixels, the square of the scale
@@ -697,15 +735,19 @@ class GpuRenderer final : public Renderer {
     } else if (fps >= aim * 0.97f) {
       ++calmSeconds_, ++longCalm_;
       float up = step_ > 0 ? kSteps[step_ - 1] / kSteps[step_] : 1.0f;
-      bool fits = gpu * up * up < budget;
-      if (calmSeconds_ >= 3 && step_ > ceilStep_ && fits) --step_, calmSeconds_ = 0, sinceScale_ = 0;
+      bool fits = gpu * up * up < budget * cr.climbUnder / 100;
+      if (calmSeconds_ >= cr.calm && step_ > ceilStep_ && fits) --step_, calmSeconds_ = 0, sinceScale_ = 0;
       // Ultra restarts its picture on every change: it doesn't go looking for more
       if (longCalm_ >= 20 && ceilStep_ > 0 && quality_ != Quality::kUltra) --ceilStep_, longCalm_ = 0;
     } else {
       calmSeconds_ = 0;
     }
+    step_ = std::min(step_, lowest);
     renderScale_ = kSteps[step_];
   }
+
+  // render.maxLights: the brightest (they go first, see uploadLights) are kept
+  size_t lightCount() const { return std::min(lights_.size(), static_cast<size_t>(std::clamp(config().render.maxLights, 1, kMaxLights))); }
 
  private:
   void readLights(const Scene& scene) {
@@ -717,6 +759,7 @@ class GpuRenderer final : public Renderer {
         sunDir_ = normalize(-l.direction);
         sunLux_ = l.lux;
         sunTint_ = l.color;
+        sunRadius_ = std::fabs(l.radius - 0.02f) < 1e-6f ? 0.00465f : std::clamp(l.radius, 0.001f, 0.2f);  // 0.02: the default, never set
         continue;
       }
       if (lights_.size() >= kMaxLights) continue;
@@ -1294,6 +1337,7 @@ class GpuRenderer final : public Renderer {
   uint64_t maxBinding_ = 128ull << 20, maxBufferSize_ = 256ull << 20;
   uint32_t maxTexture_ = 8192;
   float ratio_ = 1, maxRatio_ = 2;
+  float sunRadius_ = 0.00465f;
   int shadowSize_ = 2048;
   Quality quality_ = Quality::kHigh;
 

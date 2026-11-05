@@ -69,16 +69,20 @@ A scene's script asks for renders itself (`render file: "x.png", quality: "cinem
 - **Docked panels** you can drag between docks, resize and close: Viewport, Script, Project, Outliner, Inspector, Look, Console, Content, Timeline, Profiler. Layout presets for scripting, look and lighting, and performance. On a phone: the view on top, the panels in tabs below.
 - **Play controls:** walk (Play), Movie, pause, step a frame, restart, world speed, quality, debug views, trailer compare (the cinema still over the live view with a split handle), screenshot, sound, benchmark.
 - **Script editor:** Looped Script highlighting, line numbers, problems marked on their lines, Ctrl+Enter to run, edits kept in the browser.
-- **Project Settings and Editor Preferences:** about 290 settings in one schema (`web/editor/settings_schema.js`), searchable, with reset, import and export. Settings that reach the engine apply live. The rest are saved and marked **Not wired**: they are the list of next tasks (Help → What's wired and what's next).
-- **Command palette** (Ctrl+P) for every command, scene and setting, and a console that takes commands (`help`).
+- **Project Settings and Editor Preferences:** about 270 settings (`web/editor/settings_schema.js`), searchable, with reset, import and export. About 230 work, live: 131 of them are engine settings with one name everywhere (the editor, `project.json`, and scripts: `setting "physics.iterations", 24`). The rest are marked **Not built yet** (features on the roadmap) or **Needs you**. Every one is listed in [`docs/SETTINGS.md`](docs/SETTINGS.md).
+- **Play in the player** (Ctrl+Shift+P): opens the player on exactly what's open in the editor, edits and all. **File → Save to project** writes the project's `project.json` with its settings.
+- **Command palette** (Ctrl+P) for every command, scene and setting, and a console that takes commands (`help`, `set physics.iterations 24`).
+- **Script editor extras:** word suggestions and help from the engine's own word list (`loop words js > web/editor/words.js`), a minimap.
+
+Checks: `node tools/check_settings.js` (the editor's and engine's settings agree), `node tools/settings_doc.js > docs/SETTINGS.md`, and in a browser on a virtual display `xvfb-run -a node tools/settings_browser_check.js` (every setting set, read back and drawn with).
 
 ## Honest status
 
-- **Size:** about 15,700 lines of engine, tools, player and tests; 58 automated checks, all passing. A strong foundation, not yet Unreal-sized.
+- **Size:** about 18,000 lines of engine, tools, player and tests, plus the editor; 65 automated checks, all passing. A strong foundation, not yet Unreal-sized.
 - **Real GPUs untested by us:** the live renderer is tested in Chromium with a software GPU (SwiftShader) on a virtual display. It tells us what costs what, not real frame rates: the frame rate on your phone or computer is the truth (run the benchmark).
 - **Lamp shadows are ray-traced** live on High, for the two brightest lamps near the camera, one ray each (crisp edges); Ultra traces every lamp. Phone lights lamps without shadows: each shadow ray per pixel costs about as much as all the other lighting. `?lamps=N&rays=N` tries more on a strong GPU.
 - **Resolution adapts by itself:** each quality starts a little below full size, climbs when the GPU keeps up and drops when it doesn't (down to half, or a third on Ultra). Changing it costs nothing: the scene is drawn into part of full-size targets and stretched to the screen.
 - **The GPU can be taken away** by the browser (a driver reset, memory running low, a frame that took too long). The player then gets a new one and carries on; twice in a minute and it steps down a quality.
 - **People are simple** (capsule bodies) and walk straight to where they're sent, without steering around things.
-- **The editor edits scripts, not yet objects:** moving things with the mouse and saving that back to `.loop` comes next, along with every setting marked Not wired.
+- **The editor edits scripts, not yet objects:** moving things with the mouse and saving that back to `.loop` comes next, along with the settings marked Not built yet.
 - **Not yet:** model import (glTF), character faces and hair, streaming big worlds, multiplayer.

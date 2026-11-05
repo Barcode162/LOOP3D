@@ -25,6 +25,11 @@ window.LE = window.LE || {};
   E.setLook = (obj) => (has('loop_set_look') ? withStr(JSON.stringify(obj), (p) => E.M._loop_set_look(p)) : 0);
   E.setWorld = (obj) => (has('loop_set_world') ? withStr(JSON.stringify(obj), (p) => E.M._loop_set_world(p)) : 0);
   E.setAutoplay = (on) => E.M && E.M._loop_set_autoplay(on ? 1 : 0);
+  // engine settings by name (engine/core/settings.h); null clears the editor's value
+  E.setSetting = (id, value) => (has('loop_set_setting') ? withStr(id, (p) => withStr(JSON.stringify(value === undefined ? null : value), (q) => E.M._loop_set_setting(p, q))) : 0);
+  E.getSetting = (id) => { if (!has('loop_get_setting')) return undefined; try { return JSON.parse(withStr(id, (p) => read(E.M._loop_get_setting(p)))); } catch (e) { return undefined; } };
+  E.settingsList = () => { try { return JSON.parse(read(E.M._loop_settings_json())); } catch (e) { return []; } };
+  E.setProjectSettings = (obj) => withStr(JSON.stringify(obj || {}), (p) => E.M._loop_set_project_settings(p));
   E.setMode = (movie) => { E.movie = !!movie; if (E.M) E.M._loop_set_mode(movie ? 1 : 0); E.emit('mode', E.movie); };
   E.useKey = () => E.M && withStr('use', (p) => E.M._loop_emit(p));
   E.choose = (i) => E.M && E.M._loop_choose(i);
@@ -73,25 +78,14 @@ window.LE = window.LE || {};
   };
   // Runs script text as the scene (what the Script panel's Run does).
   // Shared scripts (`use "x"`) go first and the scene's own lines follow
-  // unchanged, so a problem's line number maps back by E.lineOffset.
+  // unchanged, so a problem's line number maps back by E.lineOffset (web/loop_ui.js).
   E.lineOffset = 0;
   E.runText = async (text, name) => {
-    const seen = new Set(), pre = [];
-    const own = [];
-    for (const line of text.split('\n')) {
-      const m = line.match(/^\s*use\s+"([^"]+)"/);
-      if (m && !seen.has(m[1])) {
-        seen.add(m[1]);
-        try { pre.push(await E.expandUses(await E.fetchScene(m[1]), seen)); } catch (e) { pre.push('say "can\'t find ' + m[1] + '.loop"'); }
-        own.push('');
-      } else own.push(m ? '' : line);
-    }
-    const head = pre.length ? pre.join('\n') + '\n' : '';
-    E.lineOffset = head ? head.split('\n').length - 1 : 0;
-    const full = head + own.join('\n');
+    const a = await LoopUI.assemble(text, E.fetchScene);
+    E.lineOffset = a.offset;
     E.emit('loading', name || E.scene);
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
-    withStr(full, (p) => E.M._loop_run_script(p));
+    withStr(a.text, (p) => E.M._loop_run_script(p));
   };
   E.loadScene = async (name) => {
     const text = await E.fetchScene(name);

@@ -305,3 +305,8 @@ table.data th { color: var(--dim); font-weight: 500; }
 .help-table td { padding: 3px 10px 3px 0; vertical-align: top; }
 .ref h4 { margin: 14px 0 4px; }
 .ref code { font-family: var(--mono); background: var(--bg2); padding: 0 4px; border-radius: 3px; }
+
+.code .minimap { width: 70px; flex: none; border-left: 1px solid var(--line); background: var(--bg2); cursor: pointer; display: none; }
+.hint { display: none; gap: 4px; align-items: center; padding: 3px 8px; border-top: 1px solid var(--line); background: var(--panel); font-size: 11px; overflow-x: auto; white-space: nowrap; flex: none; }
+.hint .cand { min-height: 20px; padding: 0 6px; font: 11px var(--mono); }
+.hint .cand.on { border-color: var(--accent); }

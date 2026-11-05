@@ -16,6 +16,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS engine/*.cpp)
 # The GPU renderer and the web runtime need Emscripten's WebGPU.
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/engine/(gpu|web)/")
 
+# the web player's optimisation (project setting build.opt; tools/build_site.sh passes it)
+set(LOOP_OPT "-O3" CACHE STRING "optimisation for the web player")
+
 if(EMSCRIPTEN)
   file(GLOB_RECURSE GPU_SOURCES CONFIGURE_DEPENDS engine/gpu/*.cpp engine/web/*.cpp)
   list(APPEND ENGINE_SOURCES ${GPU_SOURCES})
@@ -54,7 +57,7 @@ else()
     -sINITIAL_MEMORY=64MB
     -sSTACK_SIZE=2MB
     -sENVIRONMENT=web
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_capture,_loop_audio,_loop_choose,_loop_set_autoplay,_loop_perf_begin,_loop_perf_end,_loop_perf_graph,_loop_set_option,_loop_set_look,_loop_set_world,_loop_scene_json,_loop_log"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_capture,_loop_audio,_loop_choose,_loop_set_autoplay,_loop_perf_begin,_loop_perf_end,_loop_perf_graph,_loop_set_option,_loop_set_look,_loop_set_world,_loop_scene_json,_loop_log,_loop_set_setting,_loop_get_setting,_loop_settings_json,_loop_set_project_settings"
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,stringToUTF8,lengthBytesUTF8,HEAPU8,HEAPF32"
-    -O3)
+    ${LOOP_OPT})
 endif()

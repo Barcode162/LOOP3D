@@ -12,17 +12,10 @@ namespace loop::gpu {
 
 enum class Quality { kPhone, kHigh, kUltra };
 
-// Debugging: skip passes (1 shadow, 2 scene, 4 exposure, 8 bloom, 16 film).
+// Testing only: 256 draws off-screen (browsers that can't show WebGPU).
+// Everything else the renderer can be tuned by lives in the engine
+// settings (engine/core/settings.h: config().render, .ultra, .camera, .world).
 extern int g_skipPasses;
-extern int g_debugView;  // 1 raw light, 2 exposure, 3 bloom
-// Testing: draw at this share of full resolution (0 = automatic).
-extern float g_fixedScale;
-// Testing / the editor: lamp shadows (lamps that cast them, rays per lamp;
-// -1 = the quality's own choice) and the depth pre-pass. Changes to the lamp
-// settings take effect on the next setQuality.
-extern int g_shadowLamps;
-extern int g_shadowRays;
-extern bool g_prepass;
 
 class Renderer {
  public:
@@ -49,6 +42,9 @@ class Renderer {
   virtual float gpuMs() const = 0;
   virtual float lastGpuMs() const = 0;
   virtual void setQuality(Quality q) = 0;
+  // Reads the render settings again (lamp shadows, pixel density, shadow
+  // maps, multisampling); call after any render.* setting changes.
+  virtual void applySettings() = 0;
   // The browser took the GPU away (a driver reset, too little memory, a
   // frame that ran too long): this renderer can't draw again. Make a new one
   // and sync the scene into it.

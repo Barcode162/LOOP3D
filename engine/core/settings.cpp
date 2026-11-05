@@ -90,7 +90,6 @@ Settings::Settings() {
   B("render.passFilm", r.passFilm, "debug: the film pass (tone curve, grading, grain)");
   B("render.passShadow", r.passShadow, "debug: the shadow pass");
   B("render.passDraw", r.passDraw, "debug: the scene pass");
-  B("render.passDepth", r.passDepth, "debug: the depth buffer");
   B("render.prepass", r.prepass, "depth pre-pass: shade each pixel once");
   I("render.view", r.view, 0, 4, "debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work");
 

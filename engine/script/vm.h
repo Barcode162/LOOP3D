@@ -47,6 +47,8 @@ class Vm {
   void define(const std::string& name, Value v) { globals_[name] = v; }
   Value global(const std::string& name) const;
   bool hasGlobal(const std::string& name) const { return globals_.count(name) != 0; }
+  // Every built-in word and its help ("box(size, at, material)"), by name.
+  std::vector<std::pair<std::string, std::string>> words() const;
   // Calls a script function (or built-in) from C++. Can't wait inside.
   Value call(Value fn, const std::vector<Value>& args);
 
