@@ -1,0 +1,37 @@
+# Story: walk up to the keeper. Before: they say nothing. After: they talk,
+# ask you something with buttons, and remember your answer (even in other
+# scenes: recall("showcase favourite")).
+use "showcase_common"
+title "Story"
+mode "game"
+room_shell(size: vec(12, 4.5, 12), floor: "floorboards", walls: "plaster")
+let keeper = person(at: vec(0, 0, -3), facing: 0 deg, shirt: material(color: rgb(0.45, 0.25, 0.5)))
+let talking = yes
+let answer = -1
+when "choice"
+  answer = event
+to show(on)
+  talking = on
+before_after(vec(4, 0, 4), show, what: "lines, questions and a story that remembers")
+task
+  repeat forever
+    if talking and near(keeper.position, 2.5)
+      keeper.look_at = player() + vec(0, 1.6, 0)
+      let before = recall("showcase favourite", otherwise: "")
+      if before != ""
+        wait line("Keeper", "You came back. Still fond of " + before + "?")
+      else
+        wait line("Keeper", "Welcome to the hall. Every room here is the same engine.")
+        answer = -1
+        let options = ["The glade", "The light", "The physics"]
+        ask "Which room did you like best?", options
+        while answer < 0
+          wait 0.1 s
+        remember "showcase favourite", options[answer].lower()
+        wait line("Keeper", "I'll remember that: " + options[answer].lower() + ".")
+      while near(keeper.position, 3.5)
+        wait 0.3 s
+    wait 0.3 s
+enter_room()
+door_back()
+look "natural"

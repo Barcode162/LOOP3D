@@ -1,0 +1,23 @@
+# Materials: every named material on its own plinth. Before: all plain grey.
+use "showcase_common"
+title "Materials"
+mode "game"
+room_shell(size: vec(18, 5, 16), floor: "floorboards", walls: "plaster", lumens: 9000)
+light at: vec(-5, 4, 3), lumens: 2500, kelvin: 3200, radius: 0.3
+light at: vec(5, 4, -3), lumens: 2500, kelvin: 6500, radius: 0.3
+let names = materials()
+let balls = []
+let cols = 12
+for i from 0 to names.length - 1
+  let row = floor(i / cols)
+  let x = -7.7 + (i % cols) * 1.4
+  let z = -6 + row * 1.6
+  plinth(vec(x, 0, z), height: 0.8, material: "black")
+  balls.push({ball: sphere(0.32, at: vec(x, 1.12, z), material: names[i]), name: names[i]})
+to show(on)
+  for each b in balls
+    b.ball.material = b.name if on else "grey"
+before_after(vec(5.5, 0, 5), show, what: "the material library")
+enter_room(depth: 16)
+door_back(depth: 16)
+look "natural", bloom: 0.05

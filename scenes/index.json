@@ -33,6 +33,80 @@
    "build": {}
   },
   {
+   "name": "showcase",
+   "title": "Showcase",
+   "description": "What Loop3D can do, one room at a time: a hero forest ruin at the highest quality, and a hall of rooms that each show one feature, before and after.",
+   "start": "showcase_glade",
+   "scenes": [
+    {
+     "name": "showcase_glade",
+     "title": "The Glade",
+     "still": true
+    },
+    {
+     "name": "showcase_hall",
+     "title": "The Hall of Features",
+     "still": false
+    },
+    {
+     "name": "showcase_materials",
+     "title": "Materials",
+     "still": false
+    },
+    {
+     "name": "showcase_light",
+     "title": "Light",
+     "still": false
+    },
+    {
+     "name": "showcase_sky",
+     "title": "Sky",
+     "still": false
+    },
+    {
+     "name": "showcase_fog",
+     "title": "Fog",
+     "still": false
+    },
+    {
+     "name": "showcase_physics",
+     "title": "Physics",
+     "still": false
+    },
+    {
+     "name": "showcase_people",
+     "title": "People",
+     "still": false
+    },
+    {
+     "name": "showcase_sound",
+     "title": "Sound",
+     "still": false
+    },
+    {
+     "name": "showcase_film",
+     "title": "Film",
+     "still": false
+    },
+    {
+     "name": "showcase_story",
+     "title": "Story",
+     "still": false
+    },
+    {
+     "name": "showcase_settings",
+     "title": "Settings",
+     "still": false
+    }
+   ],
+   "library": [
+    "showcase_common"
+   ],
+   "order": 1,
+   "settings": {},
+   "build": {}
+  },
+  {
    "name": "echoes_of_ardane",
    "title": "Echoes of Ardane",
    "description": "A 24-scene story made with Loop3D. A project like any other: the engine does not need it.",
