@@ -9,8 +9,15 @@ warp, droplet hydraulic + thermal erosion, `toMesh(step)`, Bridson `poissonDisk`
 `plants.*` (`growTree` with conifer mode → bark + leaves meshes, `makeRock`,
 `makeGrassTuft`).
 
-**Tests (9):** closed volumes, outward normals, weld, BVH vs brute force, noise
+`gltf.*` (2026-11-05): `loadGlb` reads glTF 2.0 binary: node tree (matrix
+or TRS) baked in, triangles merged into one mesh per material, POSITION/NORMAL/
+TEXCOORD_0/TANGENT, u8/u16/u32 indices, metal-rough materials, emissive with
+`KHR_materials_emissive_strength`, alpha modes, embedded JPEG/PNG pictures.
+Not yet: skins, animations, morph targets, sparse accessors, external or base64
+buffers, other extensions.
+
+**Tests (9, + 2 in model_test):** closed volumes, outward normals, weld, BVH vs brute force, noise
 ranges, erosion carves, Poisson spacing, plants grow, tube sides face out.
 
-**Gaps:** no model import (glTF/OBJ: P0), no mesh simplification / LOD generation,
+**Gaps:** glTF skins/animations and OBJ, no mesh simplification / LOD generation,
 no CSG, no UV unwrapping, no BVH refit (rebuild only), no spatial streaming.

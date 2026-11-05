@@ -85,4 +85,5 @@ Checks: `node tools/check_settings.js` (the editor's and engine's settings agree
 - **The GPU can be taken away** by the browser (a driver reset, memory running low, a frame that took too long). The player then gets a new one and carries on; twice in a minute and it steps down a quality.
 - **People are simple** (capsule bodies) and walk straight to where they're sent, without steering around things.
 - **The editor edits scripts, not yet objects:** moving things with the mouse and saving that back to `.loop` comes next, along with the settings marked Not built yet.
-- **Not yet:** model import (glTF), character faces and hair, streaming big worlds, multiplayer.
+- **Models from files:** `.glb` models (our own glTF and JPEG readers) with their pictures, metal, roughness, glow and glass, in cinema renders; the live player draws them without their pictures yet.
+- **Not yet:** pictures on models in the live player, normal maps, skinned models, character faces and hair, streaming big worlds, multiplayer.

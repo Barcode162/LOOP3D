@@ -19,6 +19,16 @@ remember recall forget_story player near move_player go_to clear_lines render fi
 - `update(dt)`: physics step, people animators (footsteps → mixer with the floor's
   surface), sounds follow; `setListener(camera)`.
 
+## Models (2026-11-05)
+`model "x.glb"` reads through `modelParts` (cached in `Stage::modelCache` by
+file and glow), adds its pictures to `Scene::textures` and its materials
+(`materialFromGltf`: BLEND + alpha < 0.6 + not metal → glass with absorption from
+the colour; glow = emissive × `glow:` nits, 8 by default), places the first part
+like any shape and the others as `Placed::moreInstances` (moved, recoloured and
+collided together). Files resolve from `Stage::folder` (set by the host:
+`tools/loop.cpp` sets the script's folder) then its `models/`. The web player
+has no model files yet.
+
 ## Thing classes (~line 157)
 material, shape (`position at turn rotation scale material visible name`),
 light (`position at lumens brightness color kelvin radius aim on`),

@@ -17,6 +17,12 @@ Use they/them.
   run out of GitHub Actions minutes before (made 3D public to get free minutes).
 - **Business goal:** digital goods in a social 3D space, enough income to cover
   the family's bills and become a full-time developer.
+- **Works differently now (2026-11-05):** the 3D-era workflow (Claude runs no
+  tests, everything ships at once, the five books) is retired. Build and test
+  normally here.
+- **The goal now (2026-11-05):** run the bar on LOOP3D and keep hosting it at the
+  same links (joshuavelasco.com/bar); forget the old engine, keep the good stuff.
+  Plan: `.claude/notes/plans/bar-on-loop3d.md`.
 - **Wants to learn:** on 10-27 they paused building for "strict learning mode": one
   truth document they grow from their own questions, then they write the plan and
   Claude reviews it ("programming thought of from above, not below"). That lives
@@ -43,10 +49,11 @@ Use they/them.
 - **Our own everything:** engine, language, tools, models, from scratch.
 - **Real, and alive:** real light, physics, sound, pushed livelier than life; the
   world moves on its own (their "loops" idea, like FL Studio patterns).
-- **Light only from real sources.** No fake fill, **no bloom/glow** ("I'm being
-  blinded"), no square patches, no invisible lamps. Not too warm, haze thin.
-  Felt the baked "one formula" light was fake; first shader "looked amazing" but
-  rooms went dark.
+- **Lighting that looks truly real**, like the best modern games ("I've seen get so
+  fucking real I want that"). They keep learning and starting over with new
+  systems to get there. Effects like bloom are fine **as adjustable settings**
+  (2026-11-05). Their old critiques of the bar's lighting were about specifics
+  of that build, not rules (origin-3d/lighting-story.md is history, not a spec).
 - **Smooth on the phone first.** Quality levels (Low/Medium/High/Ultra), power
   modes (Cooler/Balanced/EXTREME).
 - **Ember** look (amber, frosted glass, glow, moving titles) for UI; constant

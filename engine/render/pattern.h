@@ -14,7 +14,8 @@ struct Surface {
 };
 
 // `p` world position, `n` shading normal, `uv` mesh coordinates.
-Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv);
+// `textures`: the scene's model pictures (may be null).
+Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, const std::vector<Texture>* textures = nullptr);
 // The pattern's mix value (0 = baseColor, 1 = colorB) and height (0..1).
 void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, float& mix, float& height, Vec3& tintOut);
 

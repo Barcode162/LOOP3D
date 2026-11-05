@@ -30,8 +30,10 @@ The single hardest, most repeated topic. Read before any light or look work.
 6. The same light model must work inside and outside, at any time of day.
 7. Everything has an off switch and before/after pictures; the phone is the judge.
 
-## LOOP3D today vs these rules
-LOOP3D's live renderer has bloom on by default (`Look::bloom = 0.04`,
-`look` presets add more) and halation. That contradicts rule 1 as the user
-stated it for the bar. Ask before changing defaults; at least keep bloom
-opt-in for their projects.
+## Status (2026-11-05)
+History, not a spec: the user said these critiques were about specifics of the
+bar's builds that "never made it quite right". What they want is lighting that
+looks as real as the best modern games; bloom and similar effects are fine as
+adjustable settings (LOOP3D already has `look bloom:` and the editor's Look panel).
+The lessons above (measure against a path tracer, avoid grid/cache artefacts,
+light on moving things, view-dependent response) are still useful engineering.

@@ -129,13 +129,26 @@ void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, V
   }
 }
 
-Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv) {
+Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, const std::vector<Texture>* textures) {
   Surface s;
   s.base = m.baseColor;
   s.roughness = m.roughness;
   s.metallic = m.metallic;
   s.normal = n;
   s.alpha = m.opacity;
+  if (textures) {
+    auto tex = [&](int i) -> const Texture* { return i >= 0 && i < static_cast<int>(textures->size()) && !(*textures)[i].empty() ? &(*textures)[i] : nullptr; };
+    if (const Texture* t = tex(m.baseTexture)) {
+      Vec4 c = t->sample(uv.x, uv.y, true);
+      s.base = s.base * c.xyz();
+      s.alpha *= c.w;
+    }
+    if (const Texture* t = tex(m.metalRoughTexture)) {
+      Vec4 c = t->sample(uv.x, uv.y, false);
+      s.roughness = saturate(s.roughness * c.y);
+      s.metallic = saturate(s.metallic * c.z);
+    }
+  }
   if (m.pattern.kind == Pattern::Kind::kNone) return s;
   float mix, h;
   Vec3 tint;

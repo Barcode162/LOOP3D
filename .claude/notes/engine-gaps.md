@@ -11,8 +11,8 @@ Remove a row when it is built; add rows as they are found.
 ## Content pipeline
 | Gap | Priority | Notes |
 |---|---|---|
-| **3D:** Model import (glTF 2.0: meshes, materials, skins, clips) | P0 | JSON parser exists; needs binary buffers, base64, image decode (PNG exists, JPEG doesn't) |
-| Image textures in the language | P1 | `Pattern::kImage` exists in the scene model, no word loads files |
+| **3D:** Model import, the rest: pictures in the live renderer, normal maps, emissive pictures, skins and clips, separate-file and base64 buffers | P0 | **.glb meshes, materials, JPEG/PNG pictures, glass: built 2026-11-05** (`engine/geometry/gltf.*`, `engine/core/jpeg.*`, word `model`); cinema renders only |
+| Image textures in the language (a picture on a box) | P2 | models carry pictures now (`Scene::textures`); a word for a loose picture file is still missing |
 | Asset/resource system (load once, refer by name, hot reload) | P1 | |
 | Scene serialization (editor object edits saved back to `.loop`) | P1 | editor edits scripts only |
 
@@ -67,7 +67,7 @@ Remove a row when it is built; add rows as they are found.
 | **3D:** WebGL2 backend (every browser plays) | P1 | user asked 2026-10-27 #7 and 11-01 #1; 3D's `looped/draw/` |
 | A shared world clock + loops on things (the user's own idea) | P1 | 3D's world model; LOOP3D has `every`/fibers per scene, not a shared clock |
 | **3D:** Light baking / probes / relight (settle and repair) | P2 | 3D's `looped/bake/`; the user later found pure baking "fake" |
-| Bloom off by default for the user's projects | P1 | user rule: no artificial glow (lighting-story.md) |
+| Bloom as a clear adjustable setting (already: `look bloom:`; maybe a `render.bloom` engine setting) | P2 | user, 2026-11-05 |
 
 ## Engine core and tooling
 | Gap | Priority | Setting |

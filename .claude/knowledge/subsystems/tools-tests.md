@@ -20,7 +20,7 @@ run-time problems) · `play first.loop [--choices 0,1]` (whole story through eve
 
 ## Tests
 Own runner (`tests/test.h`): `TEST(name)`, `CHECK`, `CHECK_NEAR`; `loop_tests
-<substring>` filters. 66 tests in 9 files; full build ~20 s, tests pass at
+<substring>` filters. 69 tests in 10 files; full build ~20 s, tests pass at
 `a56c14c`. CI: only the manual Pages workflow runs them (no CI on push).
 
 ## Gaps

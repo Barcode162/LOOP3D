@@ -5,7 +5,9 @@
 #include <unordered_map>
 
 #include "engine/core/random.h"
+#include "engine/core/file.h"
 #include "engine/core/settings.h"
+#include "engine/geometry/gltf.h"
 #include "engine/geometry/plants.h"
 #include "engine/render/materials.h"
 
@@ -17,7 +19,9 @@ void Stage::updateTransform(int i) {
   Placed& p = placed[i];
   Quat q = p.useQuat ? p.quat : Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
   Vec3 s = p.visible ? p.scale : Vec3(0);
-  scene.instances[p.instance].transform = Mat4::trs(p.position, q, s);
+  Mat4 xf = Mat4::trs(p.position, q, s);
+  scene.instances[p.instance].transform = xf;
+  for (int i : p.moreInstances) scene.instances[i].transform = xf;
   ++transformsVersion;
 }
 
@@ -42,7 +46,10 @@ void Stage::update(float dt) {
   if (collidersDirty) {
     world.clearStatic();
     for (const Placed& p : placed)
-      if (p.collide && p.body < 0 && p.visible) world.addStaticMesh(scene.meshes[scene.instances[p.instance].mesh], scene.instances[p.instance].transform);
+      if (p.collide && p.body < 0 && p.visible) {
+        world.addStaticMesh(scene.meshes[scene.instances[p.instance].mesh], scene.instances[p.instance].transform);
+        for (int i : p.moreInstances) world.addStaticMesh(scene.meshes[scene.instances[i].mesh], scene.instances[i].transform);
+      }
     collidersDirty = false;
   }
   // physics: solid shapes follow their bodies
@@ -278,7 +285,9 @@ bool setShape(Vm& vm, Thing& t, const std::string& f, const Value& v) {
   else if (f == "visible") p.visible = v.truthy();
   else if (f == "name") p.name = vm.show(v);
   else if (f == "material") {
-    s.scene.instances[p.instance].material = materialFrom(vm, v);
+    int m = materialFrom(vm, v);
+    s.scene.instances[p.instance].material = m;
+    for (int i : p.moreInstances) s.scene.instances[i].material = m;
     ++s.version;
     return true;
   } else return false;
@@ -442,6 +451,70 @@ Value place(Args& a, int mesh, char kind = 'm', Vec3 size = Vec3(1)) {
 
 float f32(double d) { return static_cast<float>(d); }
 
+// glTF's glow has no unit; this many nits per unit of emissive x strength
+// (the bar's models were tuned for 8 in the original engine). `glow:` on the
+// model word changes it.
+constexpr float kGltfNitsPerUnit = 8;
+
+// A glTF material as ours. See-through (BLEND) and nearly clear with no metal
+// becomes real glass; the rest keeps its colour, metal, roughness and glow.
+Material materialFromGltf(const GltfMaterial& g, int textureBase, float nitsPerUnit) {
+  Material m;
+  m.name = g.name.empty() ? "model" : g.name;
+  m.baseColor = g.baseColor.xyz();
+  m.metallic = saturate(g.metallic), m.roughness = saturate(g.roughness);
+  m.emission = g.emissive * nitsPerUnit;
+  auto tex = [&](int i) { return i >= 0 ? textureBase + i : -1; };
+  m.baseTexture = tex(g.baseTexture), m.metalRoughTexture = tex(g.metalRoughTexture);
+  m.normalTexture = tex(g.normalTexture), m.emissiveTexture = tex(g.emissiveTexture);
+  if (g.alpha == GltfMaterial::Alpha::kMask) m.alphaCutoff = g.alphaCutoff;
+  if (g.alpha == GltfMaterial::Alpha::kBlend) {
+    if (g.baseColor.w < 0.6f && g.metallic < 0.5f) {
+      m.transmission = 1, m.ior = 1.5f;
+      // the colour tints the light passing through (about 1 cm of glass gives it)
+      Vec3 c = vmax(m.baseColor, Vec3(0.02f));
+      m.absorption = Vec3(-std::log(c.x), -std::log(c.y), -std::log(c.z)) * 20;
+      m.baseColor = Vec3(1);
+    } else {
+      m.opacity = saturate(g.baseColor.w);
+    }
+  }
+  return m;
+}
+
+// Reads a model once per scene: its parts as (mesh, material) in the scene.
+const std::vector<std::pair<int, int>>& modelParts(Args& a, const std::string& file, float nitsPerUnit) {
+  Stage& s = stageOf(a.vm);
+  std::string key = file + " " + std::to_string(nitsPerUnit);
+  auto it = s.modelCache.find(key);
+  if (it != s.modelCache.end()) return it->second;
+  // the scene's folder, then its models/ folder
+  std::vector<std::string> tries = {joinPath(s.folder, file), joinPath(joinPath(s.folder, "models"), file)};
+  GltfModel g;
+  std::string err, used;
+  bool ok = false;
+  for (const std::string& path : tries) {
+    std::vector<uint8_t> bytes;
+    if (!readFile(path, bytes)) continue;
+    used = path;
+    ok = loadGlb(bytes, g, &err);
+    break;
+  }
+  if (used.empty()) a.vm.fail("there's no model called \"" + file + "\"", "put the .glb next to the scene or in its models/ folder");
+  if (!ok) a.vm.fail("the model \"" + file + "\" can't be read: " + err);
+  int texBase = static_cast<int>(s.scene.textures.size());
+  for (Texture& t : g.textures) s.scene.textures.push_back(std::move(t));
+  std::vector<int> mats;
+  for (const GltfMaterial& gm : g.materials) mats.push_back(s.scene.addMaterial(materialFromGltf(gm, texBase, nitsPerUnit)));
+  std::vector<std::pair<int, int>> parts;
+  for (GltfModel::Part& p : g.parts) {
+    int mat = p.material >= 0 && p.material < static_cast<int>(mats.size()) ? mats[p.material] : 0;
+    parts.push_back({s.scene.addMesh(std::move(p.mesh)), mat});
+  }
+  ++s.version;
+  return s.modelCache[key] = std::move(parts);
+}
+
 // Trees, kept as a few shapes per kind and placed many times.
 std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant) {
   auto& c = meshCache(st);
@@ -566,6 +639,25 @@ void installSceneApi(Vm& vm, Stage& stage) {
     float r = f32(a.num(0, "radius", 0.3)), h = f32(a.num(1, "height", 1.8));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("capsule", {r, h}), [&] { return shapes::capsule(r, h); }), 'c', Vec3(r, h, r));
   }, "capsule(radius, height, at, material)");
+  vm.native("model", [](Args& a) {
+    std::string file = a.text(0, "file", "");
+    if (file.empty()) a.vm.fail("model needs a file, like model \"stool.glb\", at: vec(0, 0, 0)");
+    const auto& parts = modelParts(a, file, f32(a.num(-1, "glow", kGltfNitsPerUnit)));
+    if (parts.empty()) a.vm.fail("the model \"" + file + "\" has no triangles in it");
+    Stage& s = stageOf(a.vm);
+    const Value* override = a.get(-1, "material") ? a.get(-1, "material") : a.get(-1, "made_of");
+    int forced = override ? materialFrom(a.vm, *override) : -1;
+    Value thing = place(a, parts[0].first, 'm', Vec3(1));
+    Stage::Placed& pl = s.placed.back();
+    if (forced < 0) s.scene.instances[pl.instance].material = parts[0].second;
+    for (size_t i = 1; i < parts.size(); ++i) {
+      s.scene.add(parts[i].first, forced >= 0 ? forced : parts[i].second);
+      pl.moreInstances.push_back(static_cast<int>(s.scene.instances.size() - 1));
+    }
+    pl.collide = a.flag(-1, "collide", false);
+    s.updateTransform(static_cast<int>(s.placed.size() - 1));
+    return thing;
+  }, "model(file, at, turn, scale, name, glow, collide): a .glb model from the scene's folder or its models/ folder");
   vm.native("ring", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), t = f32(a.num(1, "thickness", 0.1));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("torus", {r, t}), [&] { return shapes::torus(r, t, 96, 48); }));

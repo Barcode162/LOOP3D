@@ -16,6 +16,13 @@
   vignette, grain, CA, distortion, letterbox, monochrome. 12 named looks.
 - `Camera`: physical; `autoExposure` meters to middle grey; `ev100()`.
 
+## Model pictures (2026-11-05)
+`Material::baseTexture/metalRoughTexture/normalTexture/emissiveTexture` index
+`Scene::textures`; `shadeSurface(..., &scene.textures)` multiplies colour (sRGB
+→ linear, alpha into `Surface::alpha`), roughness (G) and metal (B);
+`alphaCutoff` cuts with the picture's alpha. Normal and emissive pictures are
+read but not used yet (the path tracer has no tangents per hit).
+
 ## Path tracer
 - `setScene` builds the `SceneBvh` (BLAS per mesh, TLAS over instances), light lists
   (emissive triangles, lamps, panels, sun) and the `SkyModel`.

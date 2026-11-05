@@ -50,6 +50,7 @@ window.LOOP_WORDS = {
 "max": "max",
 "min": "min",
 "mode": "mode \"movie\": plays its shots; \"game\": you walk around",
+"model": "model(file, at, turn, scale, name, glow, collide): a .glb model from the scene's folder or its models/ folder",
 "move_player": "move_player(at: vec(…), look_at: vec(…)): carry the player somewhere new (feet at `at`)",
 "near": "near(vec(…), within: 2 m): is the player that close (on the ground)?",
 "noise": "noise(x, y, z): smooth randomness, -1..1",

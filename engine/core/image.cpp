@@ -19,6 +19,30 @@ Vec4 Image::sample(float u, float v) const {
   return a * (1 - ty) + b * ty;
 }
 
+Vec4 Texture::sample(float u, float v, bool srgb) const {
+  if (empty()) return {1, 1, 1, 1};
+  static float lut[256];
+  static bool ready = false;
+  if (!ready) {
+    for (int i = 0; i < 256; ++i) lut[i] = srgbToLinear(i / 255.0f);
+    ready = true;
+  }
+  float fx = u * width - 0.5f, fy = v * height - 0.5f;
+  if (!std::isfinite(fx) || !std::isfinite(fy)) fx = fy = 0;
+  int x0 = static_cast<int>(std::floor(fx)), y0 = static_cast<int>(std::floor(fy));
+  float tx = fx - x0, ty = fy - y0;
+  auto wrap = [](int i, int n) { i %= n; return i < 0 ? i + n : i; };
+  int xa = wrap(x0, width), xb = wrap(x0 + 1, width), ya = wrap(y0, height), yb = wrap(y0 + 1, height);
+  auto px = [&](int x, int y) {
+    const uint8_t* p = &rgba[(static_cast<size_t>(y) * width + x) * 4];
+    if (srgb) return Vec4(lut[p[0]], lut[p[1]], lut[p[2]], p[3] / 255.0f);
+    return Vec4(p[0] / 255.0f, p[1] / 255.0f, p[2] / 255.0f, p[3] / 255.0f);
+  };
+  Vec4 a = px(xa, ya) * (1 - tx) + px(xb, ya) * tx;
+  Vec4 b = px(xa, yb) * (1 - tx) + px(xb, yb) * tx;
+  return a * (1 - ty) + b * ty;
+}
+
 float linearToSrgb(float v) {
   v = saturate(v);
   return v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1 / 2.4f) - 0.055f;

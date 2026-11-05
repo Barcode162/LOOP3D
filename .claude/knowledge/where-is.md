@@ -25,6 +25,7 @@
 | Physics behaviour | `engine/physics/physics.cpp` (`substep`, `collide`, `solveJoints`, `stepCloth`, `moveCharacter`) |
 | How people move | `engine/anim/anim.cpp` (`Animator::update`, `humanSkeleton`); people glue in `scene_api.cpp` (`Stage::update`) |
 | A sound or ambience | `engine/audio/audio.cpp` (`makeSound`, `makeAmbience`, `surfaceOf`) |
+| Model files (.glb), JPEG | `engine/geometry/gltf.*`, `engine/core/jpeg.*`; word `model` and `materialFromGltf` in `scene_api.cpp` |
 | Mesh shapes | `engine/geometry/mesh.cpp` (`shapes::`) |
 | Terrain, forests, scattering | `engine/geometry/terrain.cpp`, `plants.cpp`; words `terrain`/`forest` in scene_api |
 | Ray casts (CPU) | `engine/geometry/bvh.*` (per mesh), `engine/render/scene_bvh.*` (instanced scene) |

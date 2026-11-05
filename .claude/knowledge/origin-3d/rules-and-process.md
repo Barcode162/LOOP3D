@@ -1,6 +1,6 @@
 # Rules and process in 3D (the old Charter)
 
-**Status for LOOP3D: not confirmed.** These governed 3D. Some match how this
+**Status: history** (the user retired this workflow on 2026-11-05: "another workflow from the past, I do things different now"). Was: **not confirmed.** These governed 3D. Some match how this
 repo already works, some conflict with it (marked ⚠). Ask the user which carry
 over before relying on them; until then follow this repo's CLAUDE.md and the
 session's own instructions.

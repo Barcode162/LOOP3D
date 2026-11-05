@@ -5,6 +5,10 @@
 - `ease.h`: `Ease` curves shared by shots and scripts.
 - `image.*`: float RGBA `Image`, sRGB, own zlib (LZ77 + fixed Huffman out, all block
   types in), CRC32, PNG encode/decode, PFM out.
+- `jpeg.*` (2026-11-05): our own baseline JPEG decoder (Huffman, float IDCT,
+  any subsampling with smooth colour upsampling, restart markers); refuses
+  progressive with a reason. `Texture` in `image.h`: 8-bit RGBA with an sRGB
+  lookup-table sampler (a quarter of an `Image`'s memory).
 - `json.*`: `Json` value, parse/dump (std::map objects: keys come out sorted).
 - `jobs.*`: thread pool + `parallelFor`; inline on the web (no threads).
 - `log.*`, `file.*`, `time.h`.

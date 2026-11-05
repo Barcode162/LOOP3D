@@ -33,6 +33,10 @@ change `engine/render/*` and the WGSL together.
 Only in Chromium on SwiftShader under `xvfb-run` (`tools/web_check.js`). Use
 `&msaa=1` to judge shader cost. Numbers rank costs; real devices give real fps.
 
+## Models
+Drawn with their colour factors only: `Scene::textures` isn't uploaded yet
+(the bar plan's stage 2: a texture array or atlas, sampled in `kSceneWgsl`).
+
 ## Gaps (NB in the editor; TUNING §7)
 Temporal upscaling (TAAU, the biggest planned win), TAA, cascaded and cached sun
 shadows, half-res lamp shadows, contact shadows, clustered lights, SSAO, reflections,

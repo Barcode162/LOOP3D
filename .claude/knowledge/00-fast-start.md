@@ -48,7 +48,7 @@ Scene ─▶ gpu::Renderer::draw (live)   or   PathTracer::render → develop() 
 | `web/player.cpp` | WASM entry: frame loop, walk camera, scene sync, `loop_*` exports to JS |
 | `web/index.html`, `web/loop_ui.js` | the player page |
 | `web/editor/` | the editor (plain JS): editor.js, panels.js, ui.js, engine.js (bridge), settings_schema.js (~270 settings), words.js (generated) |
-| `tests/` | own tiny runner (`TEST`, `CHECK`, `CHECK_NEAR`), 66 tests in 9 files |
+| `tests/` | own tiny runner (`TEST`, `CHECK`, `CHECK_NEAR`), 69 tests in 10 files |
 | `projects/` | samples (cabin, courtyard, the_gate, the_woods) and echoes_of_ardane (24 scenes + common). Engine never depends on them |
 | `docs/` | LANGUAGE, STORY_GUIDE, TUNING, SETTINGS (generated) |
 | `perf/` | benchmark runs (`perf/raw/`, `runs.json`, `segments.json`) |
