@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-05** · Published `4096756` to https://barcode162.github.io/LOOP3D/ (GitHub's own build, pictured here
+  first): no live grain; the bar at its hidden link `#bar` (draws at Phone quality; High is too heavy for the
+  software GPU: the next steps). GitHub refuses workflow starts from Claude, so the build went on `gh-pages` directly.
 - **2026-11-05** · One of everything: the Showcase (`project/showcase`) and the bar's transfer to Loop3D (stages 1–4,
   `claude/legends-skill-creation-duhg2k`: glTF and JPEG readers, textures live, `projects/bar3d`) joined `main`;
   the hand-off notes and the engine-gaps list folded into `PLAN.md`; the bar's plan is
