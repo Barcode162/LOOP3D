@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="112554d 2026-11-05">
+<meta name="loop-build" content="4096756 2026-11-05">
 <style>
   :root { --ink: #f4efe6; --dim: #b9ae9c; --glass: rgba(18, 14, 10, 0.55); --line: rgba(255, 220, 170, 0.18); --amber: #ffb35c; }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -149,6 +149,7 @@
     showNote(LoopUI.loadingText(M, titleOf(name)), true);
     const own = fromEditor && fromEditor.scene === name ? fromEditor.text : await fetchScene(name);
     const text = (await LoopUI.assemble(own, fetchScene)).text;
+    await LoopUI.loadModels(M, text);
     // let the loading screen reach the screen first: building a world takes a moment
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);

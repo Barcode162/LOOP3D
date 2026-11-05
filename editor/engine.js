@@ -84,6 +84,7 @@ window.LE = window.LE || {};
     const a = await LoopUI.assemble(text, E.fetchScene);
     E.lineOffset = a.offset;
     E.emit('loading', name || E.scene);
+    await LoopUI.loadModels(E.M, a.text);
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     withStr(a.text, (p) => E.M._loop_run_script(p));
   };

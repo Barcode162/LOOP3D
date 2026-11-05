@@ -73,6 +73,7 @@ window.LE = window.LE || {};
       { title: 'Anti-aliasing', items: [
         en('render.msaa', 'MSAA', 4, opts([1, 'Off'], [4, '4x']), E({ help: 'Multisampling of the scene pass. Changes live (the pipelines are rebuilt).' })),
         tog('render.fxaa', 'Edge smoothing (FXAA)', false, E({ help: 'Cheap smoothing of hard edges in the film pass; most useful with MSAA off.' })),
+        tog('render.filmGrain', 'Film grain while playing', false, E({ help: 'Off: the live picture never fizzes. Stills and film frames always keep a scene\'s grain.' })),
         tog('render.taa', 'Temporal anti-aliasing', false, NB('Comes with temporal upscaling.')),
       ] },
       { title: 'Sun shadows', items: [
@@ -94,6 +95,7 @@ window.LE = window.LE || {};
       ] },
       { title: 'Lighting', items: [
         num('render.maxLights', 'Most lamps drawn', 256, E({ min: 1, max: 256, step: 1, help: 'The brightest near the camera are kept.' })),
+        en('render.textureSize', 'Model picture size', 256, opts(64, 128, 256, 512, 1024), E({ help: 'Pixels square for each model picture on the GPU. Sharper costs memory: 256 is about 0.35 MB a picture, 512 four times that.' })),
         sl('render.skyLight', 'Light from the sky', 1, 0, 4, 0.05, E({ unit: 'x' })),
         sl('render.occlusion', 'Shading in creases and undersides', 1, 0, 2, 0.05, E({ unit: 'x' })),
         tog('render.clustered', 'Clustered lights', false, NB('Lamps sorted into screen tiles, so 30+ lamps cost little more than 3.')),
@@ -400,6 +402,7 @@ window.LE = window.LE || {};
     { id: 'build', title: 'Build & publish', icon: '⇪', groups: [
       { title: 'Web build', items: [
         tog('build.publish', 'Include this project on the site', true, { bind: 'build' }),
+        tog('build.listed', 'Show it in the scene picker', true, { bind: 'build', help: 'Off: on the site but only at its own link (#scene), a hidden link.' }),
         tog('build.stills', 'Include trailer stills', true, { bind: 'build' }),
         tog('build.stamp', 'Stamp the build on the pages', true, { bind: 'build' }),
         en('build.opt', 'Optimisation', 'O3', opts('O0', 'O1', 'O2', 'O3', 'Os', 'Oz'), { bind: 'build', help: 'Read by tools/build_site.sh (LOOP_OPT).' }),
