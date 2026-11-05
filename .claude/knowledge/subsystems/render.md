@@ -20,7 +20,8 @@
 `Material::baseTexture/metalRoughTexture/normalTexture/emissiveTexture` index
 `Scene::textures`; `shadeSurface(..., &scene.textures)` multiplies colour (sRGB
 → linear, alpha into `Surface::alpha`), roughness (G) and metal (B);
-`alphaCutoff` cuts with the picture's alpha. Normal and emissive pictures are
+`alphaCutoff` cuts with the picture's alpha; `roughnessMin` keeps a surface from
+being smoother than its real value (both renderers). Normal and emissive pictures are
 read but not used yet (the path tracer has no tangents per hit).
 
 ## Path tracer

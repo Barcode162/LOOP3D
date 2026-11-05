@@ -48,8 +48,8 @@ Scene ─▶ gpu::Renderer::draw (live)   or   PathTracer::render → develop() 
 | `web/player.cpp` | WASM entry: frame loop, walk camera, scene sync, `loop_*` exports to JS |
 | `web/index.html`, `web/loop_ui.js` | the player page |
 | `web/editor/` | the editor (plain JS): editor.js, panels.js, ui.js, engine.js (bridge), settings_schema.js (~270 settings), words.js (generated) |
-| `tests/` | own tiny runner (`TEST`, `CHECK`, `CHECK_NEAR`), 69 tests in 10 files |
-| `projects/` | samples (cabin, courtyard, the_gate, the_woods) and echoes_of_ardane (24 scenes + common). Engine never depends on them |
+| `tests/` | own tiny runner (`TEST`, `CHECK`, `CHECK_NEAR`), 70 tests in 10 files |
+| `projects/` | samples (cabin, courtyard, the_gate, the_woods), echoes_of_ardane (24 scenes + common), bar3d (the live bar, made by `tools/import_bar.py` from Barcode162/3D; 167 models). Engine never depends on them |
 | `docs/` | LANGUAGE, STORY_GUIDE, TUNING, SETTINGS (generated) |
 | `perf/` | benchmark runs (`perf/raw/`, `runs.json`, `segments.json`) |
 

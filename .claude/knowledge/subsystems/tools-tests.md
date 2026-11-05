@@ -16,11 +16,12 @@ run-time problems) · `play first.loop [--choices 0,1]` (whole story through eve
 | `settings_browser_check.js` | every live setting set, read back, drawn with |
 | `editor_check.js` | editor end to end in a browser |
 | `build_projects.py` | projects → `site/scenes/` |
+| `import_bar.py <3D repo>` | the original bar → `projects/bar3d/` (scene, models, credits, real material values); never edits 3D |
 | `perf_add.py` | benchmark JSON → `perf/raw/`, rebuild `runs.json`, `segments.json` |
 
 ## Tests
 Own runner (`tests/test.h`): `TEST(name)`, `CHECK`, `CHECK_NEAR`; `loop_tests
-<substring>` filters. 69 tests in 10 files; full build ~20 s, tests pass at
+<substring>` filters. 70 tests in 10 files; full build ~20 s, tests pass at
 `a56c14c`. CI: only the manual Pages workflow runs them (no CI on push).
 
 ## Gaps

@@ -12,6 +12,7 @@
 - `json.*`: `Json` value, parse/dump (std::map objects: keys come out sorted).
 - `jobs.*`: thread pool + `parallelFor`; inline on the web (no threads).
 - `log.*`, `file.*`, `time.h`.
+- Settings added 2026-11-05: `render.textureSize` (model pictures on the GPU).
 - `settings.*`: the registry (see [../architecture.md](../architecture.md#settings-enginecoresettings)).
 
 **Tests:** core_test (9), settings_test (7).

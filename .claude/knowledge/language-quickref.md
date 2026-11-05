@@ -36,6 +36,7 @@ starts_with ends_with trim repeat length.
 | Piece | `title`, `mode "movie"\|"game"` |
 | Materials | `material("oak")`, `material(like:, …props)`, `materials()`; 59 names; patterns checker tiles bricks wood planks marble noise ground |
 | Models | model "x.glb" (at turn scale name material glow collide): from the scene folder or its models/ folder; pictures, metal, roughness, glow, glass |
+| Invisible walls | blocker(size, at, turn): bumped into, never drawn |
 | Shapes | box(size, round) sphere cylinder cone capsule ring ground rock tree(kind oak/pine/birch/bush) — all take at turn tilt rotation scale material/made_of name collide |
 | Land | terrain(size height ridges seed erosion rain detail feature material), forest(kind around radius spacing clearing clear_around steepest seed leaves), height_at |
 | Light | light(at lumens kelvin\|color radius aim angle softness aim_is_direction), panel_light, sun(elevation toward\|azimuth lux kelvin size), sky("physical" haze stars brightness ground \| "color" color nits), fog(density top glow color from to) |
