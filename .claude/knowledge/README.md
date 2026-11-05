@@ -16,6 +16,8 @@ rules, the commands, the traps, and the gaps, verified against the code.
 | [language-quickref.md](language-quickref.md) | writing or reading `.loop` files |
 | [history.md](history.md) | before performance or GPU work |
 | [subsystems/](subsystems/) | deep work in one engine folder |
+| [user.md](user.md) | **always** (auto-loaded): who the user is and how to work with them |
+| [origin-3d/](origin-3d/README.md) | the original repo (live bar and site, first engine, every past request, the lighting story) |
 
 ## Keeping it true
 - The canonical docs stay in `docs/` and `README.md`; these notes point to them

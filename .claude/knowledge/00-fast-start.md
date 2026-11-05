@@ -13,6 +13,14 @@ itself (movie). Two renderers draw the same `Scene`:
   Phone / High / Ultra (Ultra = GPU path tracer).
 - **Cinema**: CPU path tracer (`engine/render/pathtracer.*`) via `loop render`.
 
+## The bigger picture
+LOOP3D is the fresh rewrite of the engine from the user's original repo
+**Barcode162/3D**, which runs the live site and bar (joshuavelasco.com/bar) on the
+first Looped. The user, their taste and their rules: [user.md](user.md). The
+original's systems, assets, requests and lessons: [origin-3d/](origin-3d/README.md).
+Several LOOP3D gaps (glTF, skinning, WebGL2, LOD, multiplayer) are solved there
+([origin-3d/port-map.md](origin-3d/port-map.md)).
+
 ## The pipeline (one line each)
 ```
 .loop text ─lexer─▶ tokens (units → metres/seconds/radians, indent → blocks)

@@ -6,7 +6,7 @@ the engine and every session starts with it.
 | Folder | What's in it |
 |---|---|
 | `skills/` | Project skills Claude Code loads automatically. Each is a folder with a `SKILL.md`. The registry and lineage are in [`skills/README.md`](skills/README.md). |
-| `knowledge/` | Everything about the engine, re-cut for Claude and checked against the code. Start at [`knowledge/README.md`](knowledge/README.md). |
+| `knowledge/` | Everything about the engine, re-cut for Claude and checked against the code. Start at [`knowledge/README.md`](knowledge/README.md). Includes `user.md` and `origin-3d/` (everything absorbed from the original Barcode162/3D repo). |
 | `tools/` | Claude's own scripts (`knowledge_stale.sh`: what changed since the knowledge was verified). |
 | `notes/` | Claude's working memory: engine gaps found, lessons learned, plans in progress. |
 
