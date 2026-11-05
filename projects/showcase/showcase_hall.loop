@@ -1,0 +1,82 @@
+# The Hall: a long stone gallery with a door for each thing the engine
+# does. Walk up to a door to hear what's behind it; walk through to go in.
+# Every room has a glowing plinth: press Use there for before and after.
+use "showcase_common"
+title "The Hall of Features"
+mode "game"
+
+let stone = material(like: "stone", color: rgb(0.62, 0.6, 0.56), roughness: 0.8)
+let floor_tiles = material(like: "marble", color: rgb(0.85, 0.83, 0.78), roughness: 0.25)
+let length = 56
+let width = 10
+let h = 6
+box size: vec(width, 0.2, length), at: vec(0, -0.1, 0), material: floor_tiles
+box size: vec(width, 0.3, length), at: vec(0, h + 0.15, 0), material: stone
+box size: vec(width, h, 0.3), at: vec(0, h / 2, -length / 2), material: stone
+box size: vec(width, h, 0.3), at: vec(0, h / 2, length / 2), material: stone
+
+# the rooms, five down each side, and the glade at the far end
+let rooms = [
+  {name: "showcase_materials", title: "Materials", says: "Seventy-odd real materials: metals, glass that splits light, cloth, skin, wax, leaves."},
+  {name: "showcase_light", title: "Light", says: "Lamps in real lumens and kelvin, a spotlight, a softbox, and ray-traced lamp shadows."},
+  {name: "showcase_sky", title: "Sky", says: "A physical sky: blue noon, red sunset and stars, as the sun goes round."},
+  {name: "showcase_fog", title: "Fog", says: "Height fog that glows where the sun shines through it."},
+  {name: "showcase_physics", title: "Physics", says: "Things that fall, roll, stack and knock, each with its own sound."},
+  {name: "showcase_people", title: "People", says: "People who breathe, walk with planted feet, sit, and turn to look at you."},
+  {name: "showcase_sound", title: "Sound", says: "Sound placed in 3D: fire, water, birds and a bell, in a small room or a great hall."},
+  {name: "showcase_film", title: "Film", says: "Twelve film looks, cinema bars, grain, glow and lens effects."},
+  {name: "showcase_story", title: "Story", says: "Lines on screen, a question with buttons, and a story that remembers what you chose."},
+  {name: "showcase_settings", title: "Settings", says: "A scene changing the engine's own settings as it runs: world speed, walking speed, reading speed."}
+]
+let doors = []
+for i from 0 to 9
+  let side = -1 if i % 2 == 0 else 1
+  let z = 20 - floor(i / 2) * 9
+  let x = side * (width / 2)
+  # the wall either side of the door, the door's glowing frame, and a dark way through
+  box size: vec(0.3, h, 3.5), at: vec(x + side * 0.15, h / 2, z - 2.75), material: stone
+  box size: vec(0.3, h, 3.5), at: vec(x + side * 0.15, h / 2, z + 2.75), material: stone
+  box size: vec(0.3, h - 3, 2), at: vec(x + side * 0.15, 3 + (h - 3) / 2, z), material: stone
+  let glow = material(color: rgb(0.03, 0.03, 0.03), glow: rgb(1.0, 0.75, 0.45) * 700)
+  box size: vec(0.1, 3, 0.1), at: vec(x, 1.5, z - 1.05), material: glow, collide: no
+  box size: vec(0.1, 3, 0.1), at: vec(x, 1.5, z + 1.05), material: glow, collide: no
+  box size: vec(0.1, 0.1, 2.2), at: vec(x, 3.0, z), material: glow, collide: no
+  box size: vec(2, 3, 2), at: vec(x + side * 1.2, 1.5, z), material: "black", collide: no
+  light at: vec(x - side * 1.2, 2.8, z), lumens: 900, kelvin: 3000, radius: 0.1
+  doors.push({at: vec(x, 0, z), room: rooms[i]})
+# the side walls beyond the doors (the doors' own walls fill z 24.5 .. -20.5)
+for each side in [-1, 1]
+  box size: vec(0.3, h, 3.5), at: vec(side * (width / 2 + 0.15), h / 2, 26.25), material: stone
+  box size: vec(0.3, h, 7.5), at: vec(side * (width / 2 + 0.15), h / 2, -24.25), material: stone
+
+# the far end: a green-lit arch to the glade
+let leafy = material(color: rgb(0.03, 0.04, 0.03), glow: rgb(0.55, 1.0, 0.45) * 500)
+box size: vec(3, 3.4, 0.1), at: vec(0, 1.7, -length / 2 + 0.25), material: leafy, collide: no
+
+# light: a row of warm lamps down the middle, and soft skylights
+for i from 0 to 5
+  light at: vec(0, h - 0.4, 22 - i * 9), lumens: 2500, kelvin: 3200, radius: 0.2
+  panel_light at: vec(0, h - 0.02, 22 - i * 9), facing: vec(0, -1, 0), size: vec(3, 2, 0), lumens: 5000, kelvin: 5600
+room size: 0.75, echo: 0.35
+sound "hum", volume: 0.05
+
+look "natural", bloom: 0.08, vignette: 0.3
+move_player at: vec(0, 0, 25.5), look_at: vec(0, 1.5, 0)
+camera at: vec(0, 1.6, 25.5), look_at: vec(0, 1.5, 0), lens: 24 mm
+
+task
+  wait 1 s
+  line "", "Ten rooms, one thing each. Walk up to a door to hear what's inside; the glade is at the far end.", seconds: 6
+  let said = ""
+  repeat forever
+    for each d in doors
+      if near(d.at, 3.2) and said != d.room.name
+        said = d.room.name
+        line d.room.title, d.room.says, seconds: 5
+      if near(d.at, 1.0)
+        go_to d.room.name
+        return
+    if near(vec(0, 0, -length / 2 + 0.8), 1.4)
+      go_to "showcase_glade"
+      return
+    wait 0.15 s

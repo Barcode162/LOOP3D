@@ -150,6 +150,16 @@ Every setting has a sensible default; give only what matters.
   - `terrain(size, height, ridges, seed, erosion, rain, detail, feature, material)`: mountains and valleys carved by simulated rain (`detail` is scaled by the setting `world.terrainRes`)
   - `forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves)` (trees per area follow `world.foliageDensity`)
   - `height_at(vec(x, 0, z))`
+- **Nature, ruins and creatures** (the model library; every one is one handle with `.position` and `.visible`):
+  - `grass(around, radius, density: 6 per m², height, clearing, clear_around, dry_share, material, seed)`: a meadow of curved blades on the land
+  - `fern(at, size, turn, seed)`: arching fronds of leaflets
+  - `flower("daisy" | "violet" | "poppy" | "bluebell", at, size, turn)` and `flowers(around, radius, count, kinds: [...], size, seed)`: wild flowers, in drifts
+  - `column(at, height, radius, flutes, broken: yes, seed, material)`: a fluted stone column (`tilt: 90 deg` lays a drum on its side)
+  - `log(at, length, radius, turn, tilt, seed)`: a fallen log with cut ends
+  - `butterfly(around, radius, color: "orange" | "blue" | "white", size, speed, height)`: flutters from flower to flower, resting now and then; the engine moves it
+  - `fireflies(around, radius, count, height, size)`: glowing motes that drift and twinkle
+  - `tree(…)` gives back the tree; `tree` and `forest` take `leaf_size:` (smaller leaves come in greater numbers)
+  - Materials for them: `fern`, `fresh leaves`, `blades`, `dry blades`, `daisy`, `violet`, `poppy`, `bluebell`, `pollen`, `stem`, `wing blue`, `wing orange`, `wing white`, `firefly`, `ruin stone`, `mossy stone`, `forest floor`
 - **Light** (real units):
   - `light(at, lumens, kelvin | color, radius)`; add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
   - `panel_light(at, facing, size, lumens, kelvin | color)`

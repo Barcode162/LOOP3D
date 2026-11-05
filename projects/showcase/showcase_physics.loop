@@ -1,0 +1,29 @@
+# Physics: a stack of crates and a row of balls. Before: weightless, they hang
+# where they are. After: gravity: they fall, roll, stack and knock, each knock
+# sounding like its material.
+use "showcase_common"
+title "Physics"
+mode "game"
+room_shell(size: vec(14, 6, 14), floor: "floorboards", walls: "brick", lumens: 9000)
+gravity vec(0, 0, 0)
+let things = []
+for row from 0 to 4
+  for k from 0 to 4 - row
+    let crate = box(size: vec(0.6, 0.6, 0.6), at: vec(-1.2 + k * 0.62 + row * 0.31, 0.3 + row * 0.61 + 0.5, -3), material: "old wood")
+    things.push(solid(crate, mass: 4))
+let ball_mats = ["rubber", "steel", "glass", "oak", "plastic"]
+for i from 0 to 4
+  let b = sphere(0.22, at: vec(-2 + i, 2.5, 0.5), material: ball_mats[i])
+  things.push(solid(b, mass: 1, bounce: 0.8 if i == 0 else 0.3))
+let cannon = sphere(0.3, at: vec(4, 0.8, -3), material: "iron")
+solid cannon, mass: 20
+to show(on)
+  gravity vec(0, -9.81, 0) if on else vec(0, 0, 0)
+  if on
+    task
+      wait 1.2 s
+      push cannon, vec(-160, 20, 0)
+before_after(vec(4.5, 0, 4.5), show, what: "gravity, collisions and knocks")
+enter_room(depth: 14)
+door_back(depth: 14)
+look "natural"

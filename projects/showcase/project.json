@@ -1,0 +1,14 @@
+{
+  "order": 1,
+  "name": "showcase",
+  "title": "Showcase",
+  "description": "What Loop3D can do, one room at a time: a hero forest ruin at the highest quality, and a hall of rooms that each show one feature, before and after.",
+  "start": "showcase_glade",
+  "scenes": [
+    "showcase_glade", "showcase_hall", "showcase_materials", "showcase_light", "showcase_sky",
+    "showcase_fog", "showcase_physics", "showcase_people", "showcase_sound", "showcase_film",
+    "showcase_story", "showcase_settings"
+  ],
+  "library": ["showcase_common"],
+  "stills": "stills"
+}

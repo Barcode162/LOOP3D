@@ -96,3 +96,41 @@ let fire = sound("fire", at: vec(0, 0.5, -2), volume: 0.8)
   for (float x : buf) e += x * x;
   CHECK(e > 0);
 }
+
+// The model library: grass, flowers, ferns, columns, logs, trees (with a
+// handle now), and creatures the engine moves by itself.
+TEST(scene_api_glade_library) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  bool ok = vm.load(R"(
+ground 40
+let g = grass(around: vec(0, 0, 0), radius: 4, density: 6)
+let fl = flowers(around: vec(0, 0, 0), radius: 3, count: 24, kinds: ["daisy", "poppy"])
+let f = fern(vec(1, 0, 1))
+let c = column(at: vec(0, 0, -3), broken: yes)
+let lg = log(at: vec(0, 0, 2))
+let t = tree("birch", at: vec(4, 0, 0))
+let b = butterfly(around: vec(0, 0, 0))
+let ff = fireflies(around: vec(0, 0, 0), count: 10)
+let start = b.position
+)", "t.loop");
+  for (auto& p : vm.problems()) std::printf("    %s\n", p.text().c_str());
+  CHECK(ok);
+  CHECK(vm.global("g").isObj());
+  // grass: many tufts sharing four shapes
+  size_t tufts = 0;
+  for (const auto& p : st.groups[0].parts) tufts += st.placed[p].instance >= 0;
+  CHECK(tufts > 100);
+  CHECK(st.groups.size() == 6);  // grass, flowers, fern, log, tree, fireflies
+  CHECK(st.critters.size() == 11);
+  // creatures move on their own
+  Vec3 b0 = st.critters[0].pos;
+  for (int i = 0; i < 120; ++i) vm.update(1.0 / 60), st.update(1.0f / 60);
+  CHECK(length(st.critters[0].pos - b0) > 0.05f);
+  // hiding a model hides every part
+  CHECK(vm.load("g.visible = no\nt.visible = no\n", "t2.loop"));
+  CHECK(!st.placed[st.groups[0].parts[0]].visible);
+  CHECK(st.scene.instances[st.placed[st.groups[4].parts[1]].instance].transform.m[0][0] == 0);
+}

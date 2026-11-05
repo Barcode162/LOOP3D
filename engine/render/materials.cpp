@@ -112,6 +112,34 @@ const Entry kLibrary[] = {
        m.baseColor = srgb(0.30f, 0.38f, 0.12f), m.roughness = 1, m.sheen = 0.4f;
        m.pattern.kind = Pattern::Kind::kNoise, m.pattern.colorB = srgb(0.20f, 0.27f, 0.08f), m.pattern.scale = 10, m.pattern.bump = 1;
      }},
+    // ---- the glade: undergrowth, flowers, creatures, ruins
+    {"fern", [](Material& m) { m.baseColor = srgb(0.18f, 0.36f, 0.09f), m.roughness = 0.55f, m.translucency = 0.55f, m.leafShape = true, m.sheen = 0.2f; }},
+    {"fresh leaves", [](Material& m) { m.baseColor = srgb(0.42f, 0.58f, 0.12f), m.roughness = 0.55f, m.translucency = 0.65f, m.leafShape = true; }},
+    {"blades", [](Material& m) { m.baseColor = srgb(0.32f, 0.50f, 0.13f), m.roughness = 0.6f, m.translucency = 0.6f, m.sheen = 0.3f; }},
+    {"dry blades", [](Material& m) { m.baseColor = srgb(0.62f, 0.58f, 0.30f), m.roughness = 0.7f, m.translucency = 0.5f, m.sheen = 0.3f; }},
+    {"daisy", [](Material& m) { m.baseColor = srgb(0.96f, 0.96f, 0.93f), m.roughness = 0.5f, m.translucency = 0.5f, m.leafShape = true; }},
+    {"violet", [](Material& m) { m.baseColor = srgb(0.52f, 0.36f, 0.82f), m.roughness = 0.45f, m.translucency = 0.5f, m.leafShape = true, m.sheen = 0.4f; }},
+    {"poppy", [](Material& m) { m.baseColor = srgb(0.86f, 0.12f, 0.06f), m.roughness = 0.45f, m.translucency = 0.6f, m.leafShape = true, m.sheen = 0.3f; }},
+    {"bluebell", [](Material& m) { m.baseColor = srgb(0.30f, 0.38f, 0.86f), m.roughness = 0.45f, m.translucency = 0.5f, m.leafShape = true; }},
+    {"pollen", [](Material& m) { m.baseColor = srgb(0.95f, 0.72f, 0.10f), m.roughness = 0.9f, m.sheen = 0.5f; }},
+    {"stem", [](Material& m) { m.baseColor = srgb(0.26f, 0.42f, 0.14f), m.roughness = 0.6f, m.translucency = 0.4f; }},
+    {"wing blue", [](Material& m) { m.baseColor = srgb(0.20f, 0.55f, 0.95f), m.roughness = 0.3f, m.translucency = 0.4f, m.leafShape = true, m.clearcoat = 0.4f; }},
+    {"wing orange", [](Material& m) { m.baseColor = srgb(0.95f, 0.50f, 0.08f), m.roughness = 0.4f, m.translucency = 0.5f, m.leafShape = true; }},
+    {"wing white", [](Material& m) { m.baseColor = srgb(0.96f, 0.95f, 0.88f), m.roughness = 0.5f, m.translucency = 0.6f, m.leafShape = true; }},
+    {"firefly", [](Material& m) { m.baseColor = Vec3(0.05f), m.emission = Vec3(0.75f, 1.0f, 0.35f) * 900.0f; }},
+    {"ruin stone", [](Material& m) {
+       // weathered limestone, darker and greener in its hollows
+       m.baseColor = srgb(0.62f, 0.60f, 0.54f), m.roughness = 0.9f;
+       m.pattern.kind = Pattern::Kind::kNoise, m.pattern.colorB = srgb(0.34f, 0.38f, 0.26f), m.pattern.scale = 3, m.pattern.bump = 2.5f, m.pattern.contrast = 1.6f;
+     }},
+    {"mossy stone", [](Material& m) {
+       m.baseColor = srgb(0.48f, 0.49f, 0.42f), m.roughness = 0.95f, m.sheen = 0.25f;
+       m.pattern.kind = Pattern::Kind::kNoise, m.pattern.colorB = srgb(0.24f, 0.36f, 0.10f), m.pattern.scale = 2.2f, m.pattern.bump = 3, m.pattern.contrast = 2.4f;
+     }},
+    {"forest floor", [](Material& m) {
+       m.baseColor = srgb(0.28f, 0.33f, 0.14f), m.roughness = 0.95f;
+       m.pattern.kind = Pattern::Kind::kGround, m.pattern.colorB = srgb(0.32f, 0.24f, 0.15f), m.pattern.scale = 1.5f, m.pattern.bump = 2;
+     }},
     // ---- light givers (nits)
     {"flame", [](Material& m) { m.baseColor = Vec3(0), m.emission = kelvin(1850) * 30000.0f; }},
     {"ember", [](Material& m) { m.baseColor = srgb(0.1f, 0.03f, 0.02f), m.roughness = 0.9f, m.emission = kelvin(1200) * 800.0f; }},

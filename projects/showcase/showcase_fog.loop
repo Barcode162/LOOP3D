@@ -1,0 +1,29 @@
+# Fog: a sunken court of columns. Before: clear air. After: height fog that
+# glows where the low sun shines through it (the cinema render traces real
+# shafts of light through it).
+use "showcase_common"
+title "Fog"
+mode "game"
+ground 80, material: "moss"
+for i from 0 to 7
+  column(at: vec(-3, 0, 6 - i * 3), height: 5, radius: 0.32, broken: i == 5, seed: i)
+  column(at: vec(3, 0, 6 - i * 3), height: 5, radius: 0.32, broken: i == 2, seed: i + 9)
+forest kind: "pine", around: vec(0, 0, -10), radius: 40, spacing: 6, clearing: 12, seed: 2, leaf_size: 0.7
+sun elevation: 10 deg, toward: 15 deg, kelvin: 3800
+sky "physical", haze: 4
+to show(on)
+  if on
+    fog 0.035, top: 4, glow: 0.88, color: vec(0.9, 0.9, 0.85)
+  else
+    fog 0
+before_after(vec(1.5, 0, 9), show, what: "height fog lit by the sun")
+move_player at: vec(0, 0, 11), look_at: vec(0, 1.5, -10)
+camera at: vec(0, 1.6, 11), look_at: vec(0, 1.5, -10), lens: 28 mm
+task
+  wait 2 s
+  repeat forever
+    if near(vec(0, 0, 14), 1.2)
+      go_to "showcase_hall"
+      return
+    wait 0.2 s
+look "natural", bloom: 0.08
