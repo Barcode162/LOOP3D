@@ -19,6 +19,7 @@ struct TreeShape {
   float leafSize = 0.28f;
   int leavesPerTip = 14;
   bool conifer = false;     // a straight trunk with whorls, getting shorter up top
+  float detail = 1;         // < 1: fewer bark segments and sides, fewer leaf cards (trees far away)
   uint32_t seed = 1;
 };
 struct TreeMeshes {

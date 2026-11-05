@@ -327,8 +327,11 @@ int main(int argc, char** argv) {
     if (!loadScript(target, vm, stage)) return 1;
     for (double t = 0; t < o.seconds; t += 1.0 / 60) vm.update(1.0 / 60), stage.update(1.0f / 60);
     printProblems(vm.problems());
-    std::printf("%zu things, %zu lights, %zu shots (%.1f s)\n", stage.scene.instances.size(), stage.scene.lights.size(), stage.film.shots.size(),
-                stage.film.length());
+    size_t tris = 0;
+    for (const MeshInstance& in : stage.scene.instances)
+      if (in.mesh >= 0 && in.mesh < static_cast<int>(stage.scene.meshes.size())) tris += stage.scene.meshes[in.mesh].triangleCount();
+    std::printf("%zu things, %zu lights, %zu shots (%.1f s), %.2f M triangles drawn, %zu shapes\n", stage.scene.instances.size(), stage.scene.lights.size(),
+                stage.film.shots.size(), stage.film.length(), tris / 1e6, stage.scene.meshes.size());
     return vm.problems().empty() ? 0 : 1;
   }
   if (cmd == "render") return renderScript(target, o);

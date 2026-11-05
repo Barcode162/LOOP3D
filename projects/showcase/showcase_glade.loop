@@ -31,8 +31,8 @@ for i from 0 to 9
   rock size: random(7, 11), at: vec(x + 2, y_at(x, z) + 7, z - 3), seed: i + 40, material: cliff_stone
 
 # ---- the walls: a ring of tall pines and oaks round a clearing
-forest kind: "pine", around: vec(0, 0, -6), radius: 46, spacing: 5.5, clearing: 14, clear_around: vec(0, 0, -2), seed: 4, leaf_size: 0.7
-forest kind: "oak", around: vec(0, 0, -4), radius: 36, spacing: 8, clearing: 12, clear_around: vec(0, 0, -2), seed: 8, leaf_size: 0.32
+forest kind: "pine", around: vec(0, 0, -6), radius: 46, spacing: 5.5, clearing: 14, clear_around: vec(0, 0, -2), seed: 4, leaf_size: 0.7, detail: 0.45
+forest kind: "oak", around: vec(0, 0, -4), radius: 36, spacing: 8, clearing: 12, clear_around: vec(0, 0, -2), seed: 8, leaf_size: 0.32, detail: 0.5
 # hero trees that frame the picture: a big pine right of the path, an oak left
 let hero_pine = tree("pine", at: vec(4.6, y_at(4.6, -1) - 0.2, -1), height: 19, variant: 2, leaf_size: 0.7)
 let hero_oak = tree("oak", at: vec(-10, y_at(-10, -4) - 0.2, -4), height: 13, variant: 1, leaf_size: 0.32)

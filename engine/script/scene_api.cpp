@@ -579,9 +579,10 @@ Value newGroup(Vm& vm, Stage& s, std::vector<int> parts, Vec3 at) {
 float groundAt(Stage& s, float x, float z) { return s.terrains.empty() ? s.world.groundHeight : s.terrains.back().height(x, z); }
 
 // Trees, kept as a few shapes per kind and placed many times.
-std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant, float leafScale = 1) {
+std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant, float leafScale = 1, float detail = 1) {
   auto& c = meshCache(st);
-  std::string key = "tree " + kind + " " + std::to_string(variant) + (leafScale == 1 ? "" : " leaves " + std::to_string(leafScale));
+  std::string key = "tree " + kind + " " + std::to_string(variant) + (leafScale == 1 ? "" : " leaves " + std::to_string(leafScale)) +
+                    (detail == 1 ? "" : " detail " + std::to_string(detail));
   auto it = c.find(key + " bark");
   if (it != c.end()) return {it->second, c[key + " leaves"]};
   TreeShape ts;
@@ -600,6 +601,7 @@ std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant, 
     ts.leafSize *= leafScale;
     ts.leavesPerTip = std::min(48, static_cast<int>(std::lround(ts.leavesPerTip / std::max(leafScale, 0.2f))));
   }
+  ts.detail = std::clamp(detail, 0.2f, 1.0f);
   TreeMeshes t = growTree(ts);
   int b = st.scene.addMesh(std::move(t.bark)), l = st.scene.addMesh(std::move(t.leaves));
   c[key + " bark"] = b;
@@ -733,7 +735,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
   vm.native("tree", [](Args& a) {
     Stage& s = stageOf(a.vm);
     std::string kind = a.text(0, "kind", "oak");
-    auto [b, l] = treeMeshes(s, kind, static_cast<int>(a.num(-1, "variant", 0)) % 4, f32(a.num(-1, "leaf_size", 1)));
+    auto [b, l] = treeMeshes(s, kind, static_cast<int>(a.num(-1, "variant", 0)) % 4, f32(a.num(-1, "leaf_size", 1)), f32(a.num(-1, "detail", 1)));
     bool conifer = kind == "pine" || kind == "fir" || kind == "spruce";
     Vec3 at = a.vec(-1, "at", {});
     float scale = f32(a.num(-1, "height", conifer ? 14 : 10) / (conifer ? 14 : 10));
@@ -1001,7 +1003,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
       if (clearing > 0 && length(Vec2(w.x - clearAt.x, w.z - clearAt.z)) < clearing) continue;
       if (h && h->slope(w.x, w.z) > maxSlope) continue;
       w.y = h ? h->height(w.x, w.z) - 0.2f : c.y;
-      auto [b, l] = treeMeshes(s, kind, rng.below(4), f32(a.num(-1, "leaf_size", 1)));
+      auto [b, l] = treeMeshes(s, kind, rng.below(4), f32(a.num(-1, "leaf_size", 1)), f32(a.num(-1, "detail", 1)));
       Mat4 xf = Mat4::trs(w, Quat::axisAngle({0, 1, 0}, rng.uniform() * kTwoPi), Vec3(0.7f + 0.6f * rng.uniform()));
       s.scene.add(b, bark, xf);
       s.scene.add(l, leaf, xf);
@@ -1009,7 +1011,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     }
     ++s.version;
     return Value::number(count);
-  }, "forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves, leaf_size): plants trees on the land");
+  }, "forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves, leaf_size, detail: 1): plants trees on the land (detail 0.4 for far-off trees: a fraction of the triangles)");
 
   // ---- light
   vm.native("light", [](Args& a) {

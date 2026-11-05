@@ -12,7 +12,8 @@ struct Grower {
   TreeMeshes out;
 
   void leafCluster(Vec3 at, Vec3 dir, float scale) {
-    for (int i = 0; i < s.leavesPerTip; ++i) {
+    const int leaves = std::max(2, static_cast<int>(std::lround(s.leavesPerTip * std::sqrt(std::min(s.detail, 1.0f)))));
+    for (int i = 0; i < leaves; ++i) {
       Vec3 off = uniformSphere(rng.uniform2()) * (s.leafSize * 3 * scale);
       Vec3 c = at + off + dir * (s.leafSize * rng.uniform());
       Vec3 n = normalize(off + Vec3(0, 0.6f, 0));
@@ -31,7 +32,7 @@ struct Grower {
   }
 
   void branch(Vec3 start, Vec3 dir, float len, float radius, int level) {
-    const int steps = std::max(3, 8 - level);
+    const int steps = std::max(2, static_cast<int>(std::lround((8 - level) * s.detail)));
     std::vector<Vec3> path = {start};
     std::vector<float> radii = {radius};
     Vec3 p = start, d = dir;
@@ -41,7 +42,7 @@ struct Grower {
       path.push_back(p);
       radii.push_back(radius * (1 - 0.7f * i / steps));
     }
-    out.bark.append(shapes::tube(path, radii, std::max(5, 12 - level * 2), false));
+    out.bark.append(shapes::tube(path, radii, std::max(3, static_cast<int>(std::lround((12 - level * 2) * s.detail))), false));
     if (level >= s.levels) {
       leafCluster(p, d, 1.0f);
       return;
