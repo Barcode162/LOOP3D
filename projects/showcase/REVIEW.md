@@ -184,7 +184,7 @@ the gap to the reference is **assets** (image textures, model import, denser fol
   and Movie for the shots.
 - **Player:** `index.html#showcase_glade`, or `#showcase_hall` for the rooms.
 - **Cinema still:** `./build/loop render projects/showcase/showcase_glade.loop` writes
-  `showcase_glade.png` (64 samples at 1280×720: about 40 minutes on 4 CPU cores).
+  `showcase_glade.png` (64 samples at 1280×720: about 35 minutes on 4 CPU cores, 135 CPU-minutes).
 - **Checks:**
   - `./build/loop check projects/showcase/<scene>.loop`
   - `./build/loop play projects/showcase/<scene>.loop` (presses Use, so it runs each
