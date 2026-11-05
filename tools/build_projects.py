@@ -47,6 +47,12 @@ for manifest in manifests:
         if has_still:
             shutil.copy(stills / f"{name}.png", out / f"{name}.png")
         scenes.append({"name": name, "title": m.group(1) if m else name, "still": has_still})
+    # the project's other pictures (reviews, before and after) at <site>/<project>/
+    if with_stills and stills.is_dir():
+        for png in sorted(stills.glob("*.png")):
+            if png.stem not in owner:
+                (site / p["name"]).mkdir(exist_ok=True)
+                shutil.copy(png, site / p["name"] / png.name)
     projects.append({
         "name": p["name"], "title": p.get("title", p["name"]),
         "description": p.get("description", ""), "start": p.get("start", scenes[0]["name"] if scenes else ""),

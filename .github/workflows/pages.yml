@@ -1,39 +1,42 @@
-# Builds the web player and publishes it to GitHub Pages.
-# It only runs when started by hand (Actions → "Publish the player" → Run),
-# so nothing goes public until the owner decides.
+# Builds the web player from main and publishes it: https://barcode162.github.io/LOOP3D/
+# It only runs when started by hand (Actions → "Publish the player" → Run workflow),
+# so nothing changes on the public page until then. Pages serves the gh-pages
+# branch: the new site replaces its files in one new commit (its history stays).
 name: Publish the player
 on:
   workflow_dispatch:
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
+concurrency:
+  group: publish
+  cancel-in-progress: false
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Engine tests
+        run: |
+          sudo apt-get install -y ninja-build
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ./build/loop_tests
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: 6.0.13
-      - name: Engine tests
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build -j
-          ./build/loop_tests
       - name: The site
+        run: ./tools/build_site.sh
+      - name: Publish to gh-pages
         run: |
-          sudo apt-get install -y ninja-build
-          ./tools/build_site.sh
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --depth 1 origin gh-pages
+          git worktree add --detach pub FETCH_HEAD
+          cd pub
+          git rm -rq --ignore-unmatch .
+          cp -r ../site/. .
+          touch .nojekyll
+          git add -A
+          if git diff --cached --quiet; then echo "the public page already has this build"; exit 0; fi
+          git commit -q -m "Site: from main ($(git -C .. rev-parse --short HEAD))"
+          git push origin HEAD:gh-pages
