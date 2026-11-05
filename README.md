@@ -26,9 +26,9 @@ J Production's engine, written from scratch in C++ with no outside engines or li
 
 | Level | Where | What for |
 |---|---|---|
-| Phone | live, Safari | playable on the iPhone |
-| High | live, computer | sharper, still playable |
-| Ultra | live, high-end GPU | path traced, slow but close to the cinema look |
+| Phone | live, Safari | smooth on the iPhone: 1x pixels, sun shadows, lamps without shadows |
+| High | live, computer | sharper (1.5x pixels), crisp shadows from the two lamps that matter most |
+| Ultra | live, high-end GPU | path traced at 1x, sharpens while the camera holds still; close to the cinema look |
 | Cinema | `loop render` | the best stills and film frames (the "trailer") |
 
 The player's **Trailer view** button shows the cinema still of a scene next to the live picture: the target beside where we are.
@@ -87,8 +87,9 @@ A full story made in Loop3D, to show what it can do: [`stories/echoes_of_ardane/
 ## Honest status
 
 - **Size:** about 16,500 lines of engine, tools, player and tests, plus 2,450 lines of Looped Script in the demo story; 58 automated checks, all passing. A strong foundation, not yet Unreal-sized.
-- **Real phones untested:** the live renderer was tested in a headless browser with a software GPU. Frame rate on the iPhone needs checking on the phone.
-- **Lamp shadows are ray-traced** live, for the brightest lamps near the camera (3 on Phone, 6 on High; Ultra traces them all).
-- **Resolution adapts by itself:** when the GPU falls behind, the player draws fewer pixels (down to half, or a third on Ultra) and climbs back when it can. The stats line shows real frames drawn, the CPU time per frame and the resolution in use.
+- **Real GPUs untested by us:** the live renderer is tested in Chromium with a software GPU (SwiftShader) on a virtual display. It tells us what costs what, not real frame rates: the frame rate on your phone or computer is the truth (run the benchmark).
+- **Lamp shadows are ray-traced** live on High, for the two brightest lamps near the camera, one ray each (crisp edges); Ultra traces every lamp. Phone lights lamps without shadows: each shadow ray per pixel costs about as much as all the other lighting. `?lamps=N&rays=N` tries more on a strong GPU.
+- **Resolution adapts by itself:** each quality starts a little below full size, climbs when the GPU keeps up and drops when it doesn't (down to half, or a third on Ultra). Changing it costs nothing: the scene is drawn into part of full-size targets and stretched to the screen.
+- **The GPU can be taken away** by the browser (a driver reset, memory running low, a frame that took too long). The player then gets a new one and carries on; twice in a minute and it steps down a quality.
 - **People are simple** (capsule bodies, no faces) and walk straight to where they're sent, without steering around things.
 - **Not yet:** an editor app, model import (glTF), character faces and hair, streaming big worlds, multiplayer.

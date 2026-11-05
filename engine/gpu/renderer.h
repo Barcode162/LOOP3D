@@ -15,6 +15,8 @@ enum class Quality { kPhone, kHigh, kUltra };
 // Debugging: skip passes (1 shadow, 2 scene, 4 exposure, 8 bloom, 16 film).
 extern int g_skipPasses;
 extern int g_debugView;  // 1 raw light, 2 exposure, 3 bloom
+// Testing: draw at this share of full resolution (0 = automatic).
+extern float g_fixedScale;
 
 class Renderer {
  public:
@@ -41,6 +43,12 @@ class Renderer {
   virtual float gpuMs() const = 0;
   virtual float lastGpuMs() const = 0;
   virtual void setQuality(Quality q) = 0;
+  // The browser took the GPU away (a driver reset, too little memory, a
+  // frame that ran too long): this renderer can't draw again. Make a new one
+  // and sync the scene into it.
+  virtual bool lost() const = 0;
+  // Frames sent to the GPU that it hasn't finished yet.
+  virtual int framesInFlight() const = 0;
   virtual float pixelRatio() const = 0;
   virtual size_t drawCalls() const = 0;
   virtual float currentExposure() const = 0;

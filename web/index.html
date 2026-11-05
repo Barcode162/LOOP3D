@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
+<link rel="icon" href="data:,">
 <meta name="loop-build" content="__BUILD__">
 <style>
   :root { --ink: #f4efe6; --dim: #b9ae9c; --glass: rgba(18, 14, 10, 0.55); --line: rgba(255, 220, 170, 0.18); --amber: #ffb35c; }
@@ -17,6 +18,8 @@
   button.on { border-color: var(--amber); color: var(--amber); }
   #title { font-weight: 650; letter-spacing: 0.02em; }
   #stats { font: 12px ui-monospace, monospace; color: var(--dim); }
+  #note.loading::after { content: ''; display: block; width: 28px; height: 28px; margin: 12px auto 0; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--amber); animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   #note { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: min(520px, 86vw); text-align: center; background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 18px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   #lines { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); width: min(680px, 90vw); text-align: center; pointer-events: none; }
   #lines .line { display: inline-block; margin: 4px auto; padding: 8px 14px; border-radius: 12px; background: rgba(10, 8, 6, 0.6); font-size: 17px; line-height: 1.4; transition: opacity 0.6s; }
@@ -70,7 +73,7 @@
     <option value="2">Ultra</option>
   </select>
 </div>
-<div id="note">Loading Loop3D…</div>
+<div id="note" class="loading">Loading Loop3D…</div>
 <div id="problems"></div>
 <div id="lines"></div>
 <div id="ask"></div>
@@ -99,8 +102,22 @@
   const qualityNames = ['Phone', 'High', 'Ultra'];
   const TRACKER = '__TRACKER__';
 
+  // a GPU that's gone leaves its last "done" promises rejected: expected, not news
+  addEventListener('unhandledrejection', (e) => { if (String(e.reason).includes('external Instance reference')) e.preventDefault(); });
   window.loopNoGpu = () => { note.textContent = 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
   window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
+  // the loading screen stays until the scene's first frame is on screen
+  const showNote = (t, spinning) => { note.textContent = t; note.classList.toggle('loading', !!spinning); note.style.display = 'block'; };
+  window.loopShown = () => { note.style.display = 'none'; };
+  window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; };
+  window.loopGpuLost = () => showNote('The graphics card restarted. Reconnecting…', true);
+  window.loopGpuBack = (q) => {
+    const sel = document.getElementById('quality');
+    const lowered = +sel.value !== q;
+    sel.value = String(q);
+    if (lowered) { showNote('Switched to ' + qualityNames[q] + ' so it keeps running smoothly.', false); setTimeout(() => { note.style.display = 'none'; }, 3500); }
+    else note.style.display = 'none';
+  };
   window.loopSay = (t) => console.log('[say]', t);
   // dialogue lines fade in, stay long enough to read, fade out
   const linesBox = document.getElementById('lines'), askBox = document.getElementById('ask');
@@ -148,9 +165,13 @@
     return out.join('\n');
   }
   async function loadScene(name) {
+    const opt = document.querySelector('#scene option[value="' + name + '"]');
+    showNote('Loading ' + (opt ? opt.textContent.replace(/ \(.*\)$/, '') : 'the next scene') + '…', true);
     const res = await fetch('scenes/' + encodeURIComponent(name) + '.loop');
     if (!res.ok) throw new Error(res.status);
     const text = await expandUses(await res.text(), new Set());
+    // let the loading screen reach the screen first: building a world takes a moment
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
     M.stringToUTF8(text, p, n);
     M._loop_run_script(p);
@@ -165,7 +186,7 @@
       if (bench === 'scene' || name === first || benchSegments.length >= 60) { benchFinish(); return; }
       benchBegin(name);
     }
-    loadScene(name).catch(() => {});
+    loadScene(name).catch(() => showNote('Couldn\'t load the scene "' + name + '".', false));
   };
   function benchBegin(name) {
     benchScene = name;
@@ -250,16 +271,15 @@
     setMode(movie);
   };
   window.loopReady = async () => {
-    note.style.display = 'none';
     const q = document.getElementById('quality');
     q.value = params.get('quality') || (touch ? '0' : '1');
-    q.onchange = () => M._loop_set_quality(+q.value);
+    q.onchange = () => { M._loop_set_quality(+q.value); q.blur(); };
     M._loop_set_quality(+q.value);
     const sc = document.getElementById('scene');
     sc.value = sceneName;
-    sc.onchange = () => { location.hash = sc.value; window.loopGoTo(sc.value); };
+    sc.onchange = () => { sc.blur(); location.hash = sc.value; window.loopGoTo(sc.value); };
     document.getElementById('benchSel').onchange = (e) => {
-      const kind = e.target.value; e.target.value = '';
+      const kind = e.target.value; e.target.value = ''; e.target.blur();
       if (!kind) return;
       const u = new URLSearchParams(location.search); u.set('bench', kind); u.set('quality', q.value);
       location.href = location.pathname + '?' + u.toString() + '#' + (kind === 'story' && sceneName.startsWith('ardane_') ? 'ardane_01_home' : sceneName);
@@ -273,8 +293,7 @@
     try {
       await loadScene(sceneName);
     } catch (e) {
-      note.style.display = 'block';
-      note.textContent = 'Couldn\'t load the scene "' + sceneName + '".';
+      showNote('Couldn\'t load the scene "' + sceneName + '".', false);
     }
     setInterval(() => {
       try {
@@ -293,7 +312,12 @@
   modeBtn.onclick = () => setMode(!movie);
   const useIt = () => { if (M) { const n = M.lengthBytesUTF8('use') + 1, p = M._malloc(n); M.stringToUTF8('use', p, n); M._loop_emit(p); M._free(p); } };
   document.getElementById('useBtn').onclick = useIt;
-  addEventListener('keydown', (e) => { if (e.code === 'KeyE') useIt(); });
+  addEventListener('keydown', (e) => {
+    // a menu that still has focus after a click would take these keys too
+    // (the arrows change the quality, E jumps to a scene, and both reload)
+    if ((e.code in keyMap || e.code === 'KeyE') && e.target instanceof HTMLSelectElement) e.preventDefault();
+    if (e.code === 'KeyE' && !e.repeat) useIt();
+  });
   // sound: the engine mixes; the page just hands the samples to the speakers
   let audioCtx = null;
   const soundBtn = document.getElementById('soundBtn');

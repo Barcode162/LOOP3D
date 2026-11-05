@@ -46,8 +46,27 @@ namespace loop::gpu {
 
 int g_skipPasses = 0;
 int g_debugView = 0;
+float g_fixedScale = 0;
 
 namespace {
+
+// What the GPU's callbacks report. Shared (not a renderer member) so a "done"
+// or "lost" signal that arrives after its renderer is gone touches nothing freed.
+struct GpuState {
+  bool lost = false;
+  int inFlight = 0;
+  uint32_t gate = 0;          // bumps when the watchdog gives up on old frames
+  double lastDone = 0, lastProgress = 0;
+  float gpuMs = 0, lastGpuMs = 0;
+};
+
+// The first few WebGPU errors go to the page (a black screen should say why).
+int g_gpuErrors = 0;
+void reportGpuError(const std::string& m) {
+  if (++g_gpuErrors > 3) return;
+  emscripten_log(EM_LOG_ERROR, "WebGPU: %s", m.c_str());
+  EM_ASM({ if (window.loopGpuProblem) window.loopGpuProblem(UTF8ToString($0)); }, m.c_str());
+}
 
 std::string str(wgpu::StringView s) { return s.data ? std::string(std::string_view(s)) : std::string(); }
 
@@ -83,6 +102,12 @@ struct InstanceU {
 struct PostU {
   Vec4 exposure, look0, wb, lift, gamma, gain, shadowTint, highlightTint, fx, fx2, screen;
 };
+// Per post pass: where each of its two pictures holds this frame. The scene
+// is drawn into the top-left part of full-size targets (automatic resolution
+// changes cost nothing); uv * scale reaches it, clamped to its last texel.
+struct PassU {
+  Vec4 a, b;  // xy uv scale, zw largest uv
+};
 struct UltraU {
   Vec4 camPos, camFwd, camRight, camUp;
   uint32_t info[4];
@@ -107,6 +132,7 @@ static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
 constexpr int kBloomLevels = 6;
+constexpr int kFinalPass = 2 * kBloomLevels - 1;  // pass uniforms: bloom down, bloom up, then the film
 int g_samples = 4;  // multisampling of the scene pass (1 = off)
 
 struct GpuMesh {
@@ -121,8 +147,14 @@ struct Batch {
 
 class GpuRenderer final : public Renderer {
  public:
-  GpuRenderer(std::string canvas, wgpu::Instance inst, wgpu::Surface surface, wgpu::Adapter adapter, wgpu::Device device)
-      : canvas_(std::move(canvas)), instance_(inst), surface_(surface), adapter_(adapter), device_(device), queue_(device.GetQueue()) {
+  GpuRenderer(std::string canvas, wgpu::Instance inst, wgpu::Surface surface, wgpu::Adapter adapter, wgpu::Device device, std::shared_ptr<GpuState> state)
+      : canvas_(std::move(canvas)), instance_(inst), surface_(surface), adapter_(adapter), device_(device), queue_(device.GetQueue()), gs_(std::move(state)) {
+    wgpu::Limits lim;
+    if (device_.GetLimits(&lim)) {
+      maxBinding_ = lim.maxStorageBufferBindingSize;
+      maxBufferSize_ = lim.maxBufferSize;
+      maxTexture_ = lim.maxTextureDimension2D;
+    }
     wgpu::SurfaceCapabilities caps;
     surface_.GetCapabilities(adapter_, &caps);
     format_ = caps.formatCount > 0 ? caps.formats[0] : wgpu::TextureFormat::BGRA8Unorm;
@@ -147,6 +179,9 @@ class GpuRenderer final : public Renderer {
     cs.compare = wgpu::CompareFunction::LessEqual;
     shadowSampler_ = device_.CreateSampler(&cs);
     g_samples = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('msaa') || 4); });
+    testLamps_ = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('lamps'); return v === null ? -1 : +v; });
+    testRays_ = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('rays'); return v === null ? -1 : +v; });
+    for (auto& u : passUbo_) u = buffer(sizeof(PassU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     buildPipelines();
     makeShadowMap();
     // a plain sky until the scene says otherwise
@@ -158,22 +193,50 @@ class GpuRenderer final : public Renderer {
     uploadSky(m);
   }
 
-  float pixelRatio() const override { return ratio_; }
+  float pixelRatio() const override { return ratio_ * renderScale_; }
   size_t drawCalls() const override { return drawCalls_; }
   float currentExposure() const override { return lastExposure_; }
   void capture(std::function<void(int, int, const uint8_t*)> done) override { captureDone_ = std::move(done); }
 
   void setQuality(Quality q) override {
+    if (q == quality_ && outW_) return;  // picked again: nothing to rebuild
     quality_ = q;
     ultraFrame_ = 0;
-    ultraScale_ = 1;
-    renderScale_ = scaleCeil_ = 1, calmSeconds_ = 0, sinceScale_ = 0;
+    // start a little below full size and climb when calm (a step per 3 calm
+    // seconds): a first frame too heavy for the GPU can then never run so long
+    // that the browser takes the GPU away. Ultra starts lower still.
+    step_ = q == Quality::kUltra ? 3 : 1, ceilStep_ = 0, calmSeconds_ = 0, sinceScale_ = 0, longCalm_ = 0;
+    renderScale_ = q == Quality::kUltra ? 0.65f : 0.87f;
     lightsDirty_ = true;
-    maxRatio_ = q == Quality::kPhone ? 1.5f : 2.0f;
-    shadowSize_ = q == Quality::kUltra ? 4096 : 2048;
-    makeShadowMap();
-    width_ = 0;  // re-make targets
+    // pixels per screen point: past ~1.5 the eye barely sees more, but the GPU
+    // pays for every one (2x is 4 times the pixels of 1x). Ultra traces rays
+    // for every pixel, so it draws at 1x and the screen scales it up.
+    maxRatio_ = q == Quality::kHigh ? 1.5f : 1.0f;
+    // lamp shadows are rays through the scene from every pixel: each one costs
+    // about as much as all the rest of the lighting. Phone: none (lamps light
+    // without shadows, like before they were added); High: the two lamps that
+    // matter most near the camera, one ray each (crisp shadows). ?lamps=N and
+    // ?rays=N try more on a strong GPU.
+    shadowLamps_ = q == Quality::kPhone ? 0 : 2;
+    shadowRays_ = 1;
+    if (testLamps_ >= 0) shadowLamps_ = testLamps_;
+    if (testRays_ > 0) shadowRays_ = testRays_;
+    // Ultra traces the sun's shadows; its shadow map is never read
+    int size = q == Quality::kUltra ? 16 : q == Quality::kPhone ? 1024 : 2048;
+    if (size != shadowSize_ || !shadowTex_) {
+      shadowSize_ = size;
+      makeShadowMap();
+    }
+    outW_ = 0;  // re-make targets for this quality
+    if (lastScene_ && needRays() && raysBuiltFor_ != static_cast<int>(quality_)) {
+      buildRayMeshes(*lastScene_);
+      buildRayInstances(*lastScene_);
+      raysBuiltFor_ = static_cast<int>(quality_);
+    }
   }
+
+  bool lost() const override { return gs_->lost; }
+  int framesInFlight() const override { return gs_->inFlight; }
 
   void sync(const Scene& scene, bool geometryChanged, bool skyChanged) override {
     if (geometryChanged || meshes_.size() != scene.meshes.size()) {
@@ -212,25 +275,43 @@ class GpuRenderer final : public Renderer {
   }
 
   void reset() override {
+    // free the old scene's GPU memory now, not whenever the browser collects it
+    for (GpuMesh& m : meshes_) {
+      if (m.vb) m.vb.Destroy();
+      if (m.ib) m.ib.Destroy();
+    }
     meshes_.clear();
     meshRoot_.clear();
     meshBox_.clear();
     rayTrisCpu_.clear();
     rayBlasCpu_.clear();
+    if (rayTris_) rayTris_.Destroy();
     rayTris_ = nullptr;
+    bindGroupsDirty_ = true;
     batches_.clear();
     lastScene_ = nullptr;
     skyBuilt_ = false;
     lights_.clear();
     lightsDirty_ = true;
     lastPlaces_.clear();
+    raysBuiltFor_ = -1;
     ultraFrame_ = 0;
   }
 
+  // Rays through the scene are only needed for lamp shadows (High) and Ultra:
+  // Phone builds no ray trees at all (less work when a scene loads, and every
+  // frame something moves).
+  bool needRays() const { return quality_ == Quality::kUltra || shadowLamps_ > 0; }
+
   void syncTransforms(const Scene& scene) override {
     lastScene_ = &scene;
-    buildRayMeshes(scene);
-    buildRayInstances(scene);
+    if (needRays()) {
+      buildRayMeshes(scene);
+      buildRayInstances(scene);
+      raysBuiltFor_ = static_cast<int>(quality_);
+    } else {
+      raysBuiltFor_ = -1;  // not kept up to date now: rebuild if a quality needs it
+    }
     // something moved more than a couple of millimetres (not just breathing):
     // let the old picture fade quickly instead of smearing
     float moved = 0;
@@ -283,22 +364,29 @@ class GpuRenderer final : public Renderer {
   bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) override {
     // at most two frames waiting on the GPU: a slow GPU drops frames instead
     // of falling further and further behind
+    if (gs_->lost) return false;
     adaptResolution(dt);
-    if (inFlight_ >= 2) {
+    double now = emscripten_get_now();
+    if (gs_->inFlight >= 2) {
       ++perfSkipped_;
-      // a GPU that never says it's done (a lost callback, a hidden tab) must
-      // not freeze the picture for good
-      if (++stuckFrames_ > 90) inFlight_ = 0, stuckFrames_ = 0;
-      return false;
+      // a GPU that hasn't said "done" for 2 seconds lost the signal: stop
+      // waiting, and ignore those frames' signals if they turn up later
+      // (counting them would let more and more frames pile up on the GPU)
+      if (now - gs_->lastProgress > 2000) {
+        ++gs_->gate;
+        gs_->inFlight = 0;
+      } else {
+        return false;
+      }
     }
-    stuckFrames_ = 0;
+    if (gs_->inFlight == 0) gs_->lastProgress = now;
     ++perfDrawn_;
     resize();
     wgpu::SurfaceTexture st;
     if (!(g_skipPasses & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)
       surface_.GetCurrentTexture(&st);
       if (st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal && st.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal) {
-        width_ = 0;  // the surface needs configuring again
+        outW_ = 0;  // the surface needs configuring again
         return false;
       }
     }
@@ -331,11 +419,12 @@ class GpuRenderer final : public Renderer {
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
     f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
     f.fogColor = {fog_.albedo, 0};
-    f.params = {static_cast<float>(lights_.size()), (g_skipPasses & 512) ? 0.0f : quality_ == Quality::kPhone ? 3.0f : 6.0f, static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
+    f.params = {static_cast<float>(lights_.size()), (g_skipPasses & 512) ? 0.0f : static_cast<float>(shadowLamps_), static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
     f.screen = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_};
     // a first guess for the eyes: the camera's own settings, or a sunny / indoor guess
     float guess = cam.autoExposure ? (sunOn_ && sunLux_ > 1000 ? 1.0f / 6000 : 1.0f / 30) : exposureFromEv100(cam.ev100());
-    f.fixedExposure = {guess * std::exp2(0.0f), 0, 0, 0};
+    // lamp shadows: rays for the big soft lights (one for a small bulb)
+    f.fixedExposure = {guess * std::exp2(0.0f), static_cast<float>(shadowRays_), static_cast<float>(g_debugView), 0};
     queue_.WriteBuffer(frameUbo_, 0, &f, sizeof f);
 
     PostU p{};
@@ -348,14 +437,15 @@ class GpuRenderer final : public Renderer {
     p.shadowTint = {look.shadowTint, 0}, p.highlightTint = {look.highlightTint, 0};
     p.fx = {look.bloom, look.vignette, look.grain, look.letterbox};
     p.fx2 = {look.blackLevel, time, look.halation, look.chromaticAberration};
-    p.screen = {static_cast<float>(width_), static_cast<float>(height_), fade, static_cast<float>(g_debugView)};
+    p.screen = {static_cast<float>(outW_), static_cast<float>(outH_), fade, static_cast<float>(g_debugView)};
     queue_.WriteBuffer(postUbo_, 0, &p, sizeof p);
     ExposureU e{{static_cast<float>(width_), static_cast<float>(height_), dt, f.fixedExposure.x}, {1e-7f, 5000.0f, 3.0f, 1.2f}};  // eyes adapt from sunlight down to a candle-lit room
     queue_.WriteBuffer(expUbo_, 0, &e, sizeof e);
     lastExposure_ = fixedExp;
 
     wgpu::CommandEncoder enc = device_.CreateCommandEncoder();
-    bool ultra = quality_ == Quality::kUltra && rayTris_ && accumBuf_;
+    bool raster = quality_ != Quality::kUltra;
+    bool ultra = !raster && rayTris_ && accumBuf_ && ultraGroup_;
     if (ultra) {
       // when the camera moves a little, the picture blends toward the new
       // view (a short trail, never a burst of noise); a cut starts afresh
@@ -381,7 +471,7 @@ class GpuRenderer final : public Renderer {
       ++ultraFrame_;
     }
     // ---- 1. sun shadow
-    if (!ultra && !(g_skipPasses & 32)) {
+    if (raster && !(g_skipPasses & 32)) {
       wgpu::RenderPassDepthStencilAttachment da;
       da.view = shadowView_;
       da.depthLoadOp = wgpu::LoadOp::Clear;
@@ -424,12 +514,14 @@ class GpuRenderer final : public Renderer {
       cp.End();
     }
     // ---- 2. the scene, in light (HDR), 4x multisampled
-    if (!ultra && !(g_skipPasses & 64)) {
+    if (raster && !(g_skipPasses & 64)) {
       wgpu::RenderPassColorAttachment ca;
       ca.view = g_samples > 1 ? msaaView_ : hdrView_;
       if (g_samples > 1) ca.resolveTarget = hdrView_;
       ca.loadOp = wgpu::LoadOp::Clear;
-      ca.storeOp = wgpu::StoreOp::Store;
+      // the 4 samples per pixel are only needed until they're averaged into
+      // the picture: keeping them would write 4 pictures' worth to memory
+      ca.storeOp = g_samples > 1 ? wgpu::StoreOp::Discard : wgpu::StoreOp::Store;
       ca.clearValue = {0, 0, 0, 1};
       wgpu::RenderPassDepthStencilAttachment da;
       da.view = depthView_;
@@ -441,15 +533,26 @@ class GpuRenderer final : public Renderer {
       rp.colorAttachments = &ca;
       if (!(g_skipPasses & 128)) rp.depthStencilAttachment = &da;
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+      pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
       pass.SetBindGroup(0, sceneGroup0_);
       pass.SetBindGroup(1, sceneGroup1_);
       pass.SetBindGroup(2, rayGroup_);
       if (!(g_skipPasses & 2)) {
-        pass.SetPipeline(opaquePipe_);
+        int rays = shadowLamps_ > 0 && !(g_skipPasses & 512) ? 1 : 0;
+        // the depth pre-pass pays when lighting a pixel is dear (lamp shadow
+        // rays): hidden surfaces then cost no rays. Phone's lighting is cheap,
+        // and phone GPUs already skip hidden pixels themselves. 1024: off (testing)
+        if (rays && !(g_skipPasses & 1024)) {
+          pass.SetPipeline(depthPipe_);
+          drawBatches(pass, false, false);
+          pass.SetPipeline(opaqueAfterDepthPipe_[rays]);
+        } else {
+          pass.SetPipeline(opaquePipe_[rays]);
+        }
         drawBatches(pass, false, false);
         pass.SetPipeline(skyPipe_);
         pass.Draw(3);
-        pass.SetPipeline(glassPipe_);
+        pass.SetPipeline(glassPipe_[rays]);
         drawBatches(pass, true, false);
       }
       pass.End();
@@ -463,9 +566,10 @@ class GpuRenderer final : public Renderer {
       cp.End();
     }
     // ---- 4. bloom: down the chain, then back up, adding
+    if (passUniformsDirty_) writePassUniforms();
     if (!(g_skipPasses & 8)) {
-      for (int i = 0; i < kBloomLevels; ++i) postPass(enc, bloomViews_[i], downPipe_, downGroups_[i], false);
-      for (int i = kBloomLevels - 2; i >= 0; --i) postPass(enc, bloomViews_[i], upPipe_, upGroups_[i], true);
+      for (int i = 0; i < kBloomLevels; ++i) postPass(enc, bloomViews_[i], downPipe_, downGroups_[i], false, levelW(i), levelH(i));
+      for (int i = kBloomLevels - 2; i >= 0; --i) postPass(enc, bloomViews_[i], upPipe_, upGroups_[i], true, levelW(i), levelH(i));
     }
     // ---- 5. the film, onto the screen
     if (!(g_skipPasses & (16 | 256))) postPass(enc, st.texture.CreateView(), finalPipe_, finalGroup_, false);
@@ -473,7 +577,7 @@ class GpuRenderer final : public Renderer {
     wgpu::Texture captureTex;
     if (captureDone_) {
       wgpu::TextureDescriptor td;
-      td.size = {width_, height_, 1};
+      td.size = {outW_, outH_, 1};
       td.format = format_;
       td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
       captureTex = device_.CreateTexture(&td);
@@ -481,56 +585,71 @@ class GpuRenderer final : public Renderer {
     }
     wgpu::CommandBuffer cb = enc.Finish();
     queue_.Submit(1, &cb);
-    ++inFlight_;
+    ++gs_->inFlight;
     // GPU time per frame, estimated from when the GPU says it's done: from
     // submit (or from the end of the frame before, if it was still busy)
     double submitted = emscripten_get_now();
-    queue_.OnSubmittedWorkDone(wgpu::CallbackMode::AllowSpontaneous, [this, submitted](wgpu::QueueWorkDoneStatus, wgpu::StringView) {
-      --inFlight_;
-      double now = emscripten_get_now();
-      double ms = now - std::max(submitted, lastDone_);
-      lastDone_ = now;
-      lastGpuMs_ = static_cast<float>(ms);
-      gpuMs_ += (lastGpuMs_ - gpuMs_) * 0.1f;
-    });
+    queue_.OnSubmittedWorkDone(wgpu::CallbackMode::AllowSpontaneous,
+                               [gs = gs_, gate = gs_->gate, submitted](wgpu::QueueWorkDoneStatus status, wgpu::StringView) {
+                                 if (gate != gs->gate || status != wgpu::QueueWorkDoneStatus::Success) return;
+                                 --gs->inFlight;
+                                 double done = emscripten_get_now();
+                                 double ms = done - std::max(submitted, gs->lastDone);
+                                 gs->lastDone = gs->lastProgress = done;
+                                 gs->lastGpuMs = static_cast<float>(ms);
+                                 gs->gpuMs += (gs->lastGpuMs - gs->gpuMs) * 0.1f;
+                               });
     if (captureTex) {
       // the page copies and reads it with the browser's own WebGPU calls
       captureDone_ = nullptr;
-      jsCapture(device_.Get(), captureTex.Get(), static_cast<int>(width_), static_cast<int>(height_), format_ == wgpu::TextureFormat::BGRA8Unorm ? 1 : 0);
+      jsCapture(device_.Get(), captureTex.Get(), static_cast<int>(outW_), static_cast<int>(outH_), format_ == wgpu::TextureFormat::BGRA8Unorm ? 1 : 0);
     }
     ++presented_;
     return true;
   }
 
   uint64_t presentedFrames() const override { return presented_; }
-  float gpuMs() const override { return gpuMs_; }
-  float lastGpuMs() const override { return lastGpuMs_; }
+  float gpuMs() const override { return gs_->gpuMs; }
+  float lastGpuMs() const override { return gs_->lastGpuMs; }
   float renderScale() const override { return renderScale_; }
 
-  // Once a second: if the GPU dropped frames, draw fewer pixels; after a few
-  // calm seconds, try more again, but not past a size that was too slow
-  // a moment ago (so it settles instead of swinging back and forth).
+  // Automatic resolution, checked once a second. Too slow (fewer than 88% of
+  // the frames we aim for reached the screen; the aim is every frame the
+  // screen asks for, up to 60 a second): draw fewer pixels, a step, or two
+  // when far behind. Calm for 3 seconds: a step back up, but not to a size
+  // that was too slow a moment ago; after 20 calm seconds that limit lifts a
+  // step, in case the scene got lighter. A change costs nothing: the targets
+  // stay, only the part of them drawn changes.
   void adaptResolution(float dt) {
+    static constexpr float kSteps[] = {1.0f, 0.87f, 0.75f, 0.65f, 0.56f, 0.5f, 0.42f, 0.35f};
+    if (g_fixedScale > 0) {
+      renderScale_ = std::clamp(g_fixedScale, 0.2f, 1.0f);
+      return;
+    }
     perfClock_ += dt;
     sinceScale_ += dt;
     if (perfClock_ < 1.0f) return;
-    float skipped = static_cast<float>(perfSkipped_) / std::max(1, perfSkipped_ + perfDrawn_);
+    int asked = perfSkipped_ + perfDrawn_;
+    float fps = perfDrawn_ / perfClock_;
+    float aim = std::min(asked / perfClock_, 60.0f);
     perfSkipped_ = perfDrawn_ = 0;
     perfClock_ = 0;
-    float lowest = quality_ == Quality::kUltra ? 0.35f : 0.5f;
-    if (skipped > 0.12f && renderScale_ > lowest && sinceScale_ > 1.5f) {
-      scaleCeil_ = renderScale_ - 0.05f;  // this size was too much
-      renderScale_ = std::max(lowest, renderScale_ * (skipped > 0.4f ? 0.7f : 0.85f));
-      calmSeconds_ = 0, sinceScale_ = 0;
-      width_ = 0;  // re-make targets at the new size
-    } else if (skipped == 0) {
-      if (++calmSeconds_ >= 4 && renderScale_ < scaleCeil_ && sinceScale_ > 4) {
-        renderScale_ = std::min(scaleCeil_, renderScale_ + 0.1f);
-        calmSeconds_ = 0, sinceScale_ = 0;
-        width_ = 0;
+    int lowest = quality_ == Quality::kUltra ? 7 : 5;
+    if (fps < aim * 0.88f) {
+      if (step_ < lowest && sinceScale_ > 1.2f) {
+        ceilStep_ = std::max(ceilStep_, step_ + 1);  // this size was too much: don't come straight back
+        step_ = std::min(lowest, step_ + (fps < aim * 0.6f ? 2 : 1));
+        calmSeconds_ = longCalm_ = 0, sinceScale_ = 0;
       }
-      if (calmSeconds_ >= 30) scaleCeil_ = std::min(1.0f, scaleCeil_ + 0.1f), calmSeconds_ = 4;  // conditions change: try again now and then
-    } else calmSeconds_ = 0;
+    } else if (fps >= aim * 0.97f) {
+      ++calmSeconds_, ++longCalm_;
+      if (calmSeconds_ >= 3 && step_ > ceilStep_) --step_, calmSeconds_ = 0, sinceScale_ = 0;
+      // Ultra restarts its picture on every change: it doesn't go looking for more
+      if (longCalm_ >= 20 && ceilStep_ > 0 && quality_ != Quality::kUltra) --ceilStep_, longCalm_ = 0;
+    } else {
+      calmSeconds_ = 0;
+    }
+    renderScale_ = kSteps[step_];
   }
 
  private:
@@ -578,8 +697,13 @@ class GpuRenderer final : public Renderer {
     for (size_t i = 0; i < lights_.size(); ++i) {
       const LightU& L = lights_[i];
       Vec3 d = L.pos.xyz() - eye;
-      float power = luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w : 1.0f);
-      rank[i] = {power / std::max(dot(d, d), 0.25f), static_cast<uint32_t>(i)};
+      // panels go last: they cast no ray shadows, so the shader's few shadow
+      // rays go to the bulbs, lanterns and fires
+      if (L.dir.w > 1.5f) {
+        rank[i] = {-1.0f / (1.0f + dot(d, d)), static_cast<uint32_t>(i)};
+        continue;
+      }
+      rank[i] = {luminance(L.color.xyz()) / std::max(dot(d, d), 0.25f), static_cast<uint32_t>(i)};
     }
     std::stable_sort(rank.begin(), rank.end(), [](auto& a, auto& b) { return a.first > b.first; });
     sortedLights_.resize(lights_.size());
@@ -604,6 +728,7 @@ class GpuRenderer final : public Renderer {
   bool ensureStorage(wgpu::Buffer& b, size_t& cap, size_t stride, size_t count) {
     if (b && count <= cap) return false;
     cap = std::max<size_t>(count, cap * 2);
+    if (b) b.Destroy();
     b = buffer(stride * cap, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
     bindGroupsDirty_ = true;
     return true;
@@ -641,7 +766,8 @@ class GpuRenderer final : public Renderer {
     }
   }
 
-  void postPass(wgpu::CommandEncoder& enc, wgpu::TextureView target, wgpu::RenderPipeline& pipe, wgpu::BindGroup& group, bool load) {
+  void postPass(wgpu::CommandEncoder& enc, wgpu::TextureView target, wgpu::RenderPipeline& pipe, wgpu::BindGroup& group, bool load, uint32_t vw = 0,
+                uint32_t vh = 0) {
     wgpu::RenderPassColorAttachment ca;
     ca.view = target;
     ca.loadOp = load ? wgpu::LoadOp::Load : wgpu::LoadOp::Clear;
@@ -651,6 +777,7 @@ class GpuRenderer final : public Renderer {
     rp.colorAttachmentCount = 1;
     rp.colorAttachments = &ca;
     wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+    if (vw && vh) pass.SetViewport(0, 0, static_cast<float>(vw), static_cast<float>(vh), 0, 1);
     pass.SetPipeline(pipe);
     pass.SetBindGroup(0, group);
     pass.Draw(3);
@@ -715,7 +842,7 @@ class GpuRenderer final : public Renderer {
       denoiseLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C, true), st2, ssbo(5, C)});
     }
     scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F)});
-    postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F)});
+    postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
     std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl;
     wgpu::ShaderModule sm = module(sceneCode, "scene");
@@ -741,7 +868,8 @@ class GpuRenderer final : public Renderer {
     vbl.attributeCount = 3;
     vbl.attributes = attrs;
 
-    auto scenePipe = [&](const char* fs, bool blend, bool writeDepth, bool sky) {
+    auto scenePipe = [&](const char* fs, bool blend, bool writeDepth, bool sky, wgpu::CompareFunction cmp = wgpu::CompareFunction::Less, bool color = true,
+                         int lampShadows = -1) {
       wgpu::RenderPipelineDescriptor d;
       d.layout = sceneL;
       d.vertex.module = sm;
@@ -749,6 +877,7 @@ class GpuRenderer final : public Renderer {
       if (!sky) d.vertex.bufferCount = 1, d.vertex.buffers = &vbl;
       wgpu::ColorTargetState ct;
       ct.format = wgpu::TextureFormat::RGBA16Float;
+      if (!color) ct.writeMask = wgpu::ColorWriteMask::None;
       wgpu::BlendState bs;
       if (blend) {
         bs.color = {wgpu::BlendOperation::Add, wgpu::BlendFactor::One, wgpu::BlendFactor::OneMinusSrcAlpha};
@@ -760,18 +889,32 @@ class GpuRenderer final : public Renderer {
       fst.entryPoint = fs;
       fst.targetCount = 1;
       fst.targets = &ct;
+      wgpu::ConstantEntry ce;
+      if (lampShadows >= 0) {
+        ce.key = "kLampShadows";
+        ce.value = lampShadows;
+        fst.constantCount = 1;
+        fst.constants = &ce;
+      }
       d.fragment = &fst;
       d.primitive.cullMode = wgpu::CullMode::None;
       wgpu::DepthStencilState ds;
       ds.format = wgpu::TextureFormat::Depth32Float;
       ds.depthWriteEnabled = writeDepth;
-      ds.depthCompare = sky ? wgpu::CompareFunction::LessEqual : wgpu::CompareFunction::Less;
+      ds.depthCompare = sky ? wgpu::CompareFunction::LessEqual : cmp;
       d.depthStencil = &ds;
       d.multisample.count = static_cast<uint32_t>(g_samples);
       return device_.CreateRenderPipeline(&d);
     };
-    opaquePipe_ = scenePipe("fsOpaque", false, true, false);
-    glassPipe_ = scenePipe("fsGlass", true, false, false);
+    const auto L = wgpu::CompareFunction::Less, E = wgpu::CompareFunction::Equal;
+    // with the depth pre-pass: depth first, then light only the nearest surface;
+    // [1] with lamp shadows, [0] without (the ray code compiled out)
+    depthPipe_ = scenePipe("fsDepth", false, true, false, L, false);
+    for (int r = 0; r < 2; ++r) {
+      opaquePipe_[r] = scenePipe("fsOpaque", false, true, false, L, true, r);
+      opaqueAfterDepthPipe_[r] = scenePipe("fsOpaque", false, false, false, E, true, r);
+      glassPipe_[r] = scenePipe("fsGlass", true, false, false, L, true, r);
+    }
     skyPipe_ = scenePipe("fsSky", false, false, true);
     {
       wgpu::RenderPipelineDescriptor d;
@@ -850,6 +993,8 @@ class GpuRenderer final : public Renderer {
   }
 
   void makeShadowMap() {
+    if (shadowTex_) shadowTex_.Destroy();
+    if (shadowDummyTex_) shadowDummyTex_.Destroy();
     wgpu::TextureDescriptor td;
     td.size = {static_cast<uint32_t>(shadowSize_), static_cast<uint32_t>(shadowSize_), 1};
     td.format = wgpu::TextureFormat::Depth24Plus;
@@ -858,7 +1003,8 @@ class GpuRenderer final : public Renderer {
     shadowView_ = shadowTex_.CreateView();
     td.format = wgpu::TextureFormat::R8Unorm;
     td.usage = wgpu::TextureUsage::RenderAttachment;
-    shadowDummy_ = device_.CreateTexture(&td).CreateView();
+    shadowDummyTex_ = device_.CreateTexture(&td);
+    shadowDummy_ = shadowDummyTex_.CreateView();
     bindGroupsDirty_ = true;
   }
 
@@ -900,6 +1046,7 @@ class GpuRenderer final : public Renderer {
     td.format = wgpu::TextureFormat::RGBA16Float;
     td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
     td.mipLevelCount = static_cast<uint32_t>(levels);
+    if (skyTex_) skyTex_.Destroy();
     skyTex_ = device_.CreateTexture(&td);
     for (int l = 0; l < levels; ++l) {
       int w = W >> l, h = H >> l;
@@ -921,40 +1068,110 @@ class GpuRenderer final : public Renderer {
     bindGroupsDirty_ = true;
   }
 
+  // The canvas and the full-size targets follow the window (re-made only when
+  // it changes size, or the quality changes); the part of them drawn each
+  // frame follows the automatic resolution, which costs nothing to change.
   void resize() {
     double cw = 0, ch = 0;
     emscripten_get_element_css_size(canvas_.c_str(), &cw, &ch);
-    ratio_ = std::min(maxRatio_, static_cast<float>(emscripten_get_device_pixel_ratio())) * renderScale_;
-    uint32_t w = static_cast<uint32_t>(std::max(1.0, cw * ratio_)), h = static_cast<uint32_t>(std::max(1.0, ch * ratio_));
-    if (w == width_ && h == height_) return;
-    width_ = w, height_ = h;
-    emscripten_set_canvas_element_size(canvas_.c_str(), static_cast<int>(w), static_cast<int>(h));
+    ratio_ = std::min(maxRatio_, static_cast<float>(emscripten_get_device_pixel_ratio()));
+    uint32_t ow = std::min(maxTexture_, static_cast<uint32_t>(std::max(1.0, cw * ratio_)));
+    uint32_t oh = std::min(maxTexture_, static_cast<uint32_t>(std::max(1.0, ch * ratio_)));
+    if (ow != outW_ || oh != outH_) makeTargets(ow, oh);
+    uint32_t w = std::clamp<uint32_t>(static_cast<uint32_t>(std::lround(ow * renderScale_)), 1, ow);
+    uint32_t h = std::clamp<uint32_t>(static_cast<uint32_t>(std::lround(oh * renderScale_)), 1, oh);
+    if (w != width_ || h != height_) {
+      width_ = w, height_ = h;
+      ultraFrame_ = 0;  // Ultra's averages are per pixel: start afresh
+      passUniformsDirty_ = true;
+    }
+  }
+
+  static size_t blocks(uint32_t w, uint32_t h, uint32_t b) { return static_cast<size_t>((w + b - 1) / b) * ((h + b - 1) / b); }
+
+  void makeTargets(uint32_t ow, uint32_t oh) {
+    outW_ = ow, outH_ = oh;
+    emscripten_set_canvas_element_size(canvas_.c_str(), static_cast<int>(ow), static_cast<int>(oh));
     wgpu::SurfaceConfiguration c;
     c.device = device_;
     c.format = format_;
-    c.width = w, c.height = h;
+    c.width = ow, c.height = oh;
     c.alphaMode = wgpu::CompositeAlphaMode::Opaque;
     c.presentMode = wgpu::PresentMode::Fifo;
     if (!(g_skipPasses & 256)) surface_.Configure(&c);
-    auto target = [&](uint32_t tw, uint32_t th, wgpu::TextureFormat f, uint32_t samples, wgpu::TextureUsage u) {
+    // the old targets' memory goes back now (the browser would otherwise keep
+    // it until it next collects garbage, and big screens use hundreds of MB)
+    auto drop = [](wgpu::Texture& t) {
+      if (t) t.Destroy();
+      t = nullptr;
+    };
+    auto dropBuf = [](wgpu::Buffer& b) {
+      if (b) b.Destroy();
+      b = nullptr;
+    };
+    drop(msaaTex_), drop(depthTex_), drop(hdrTex_);
+    for (auto& t : bloomTex_) drop(t);
+    dropBuf(accumBuf_), dropBuf(denoiseA_), dropBuf(denoiseB_);
+    auto target = [&](uint32_t tw, uint32_t th, wgpu::TextureFormat f, uint32_t samples, wgpu::TextureUsage u, wgpu::Texture& keep) {
       wgpu::TextureDescriptor td;
       td.size = {std::max(1u, tw), std::max(1u, th), 1};
       td.format = f;
       td.sampleCount = samples;
       td.usage = u;
-      return device_.CreateTexture(&td).CreateView();
+      keep = device_.CreateTexture(&td);
+      return keep.CreateView();
     };
-    if (g_samples > 1) msaaView_ = target(w, h, wgpu::TextureFormat::RGBA16Float, static_cast<uint32_t>(g_samples), wgpu::TextureUsage::RenderAttachment);
-    depthView_ = target(w, h, wgpu::TextureFormat::Depth32Float, static_cast<uint32_t>(g_samples), wgpu::TextureUsage::RenderAttachment);
-    hdrView_ = target(w, h, wgpu::TextureFormat::RGBA16Float, 1, wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding);
-    ultraFrame_ = 0;
-    accumBuf_ = buffer(static_cast<size_t>(w) * h * 48, wgpu::BufferUsage::Storage);
-    denoiseA_ = buffer(static_cast<size_t>(w) * h * 16, wgpu::BufferUsage::Storage);
-    denoiseB_ = buffer(static_cast<size_t>(w) * h * 16, wgpu::BufferUsage::Storage);
+    const auto attach = wgpu::TextureUsage::RenderAttachment;
+    if (quality_ != Quality::kUltra) {  // Ultra draws with rays: no triangles, no depth
+      if (g_samples > 1) msaaView_ = target(ow, oh, wgpu::TextureFormat::RGBA16Float, static_cast<uint32_t>(g_samples), attach, msaaTex_);
+      depthView_ = target(ow, oh, wgpu::TextureFormat::Depth32Float, static_cast<uint32_t>(g_samples), attach, depthTex_);
+    }
+    hdrView_ = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding, hdrTex_);
+    if (quality_ == Quality::kUltra) {
+      // Ultra's running averages: one path per pixel, or per 2x2 block when
+      // the screen is too big for what this GPU lets one buffer hold
+      uint64_t limit = std::min(maxBinding_, maxBufferSize_);
+      ultraScale_ = 1;
+      while (ultraScale_ < 4 && blocks(ow, oh, ultraScale_) * 48 > limit) ++ultraScale_;
+      size_t n = blocks(ow, oh, ultraScale_);
+      accumBuf_ = buffer(n * 48, wgpu::BufferUsage::Storage);
+      denoiseA_ = buffer(n * 16, wgpu::BufferUsage::Storage);
+      denoiseB_ = buffer(n * 16, wgpu::BufferUsage::Storage);
+    }
     for (int i = 0; i < kBloomLevels; ++i)
-      bloomViews_[i] = target(w >> (i + 1), h >> (i + 1), wgpu::TextureFormat::RGBA16Float, 1,
-                              wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding);
+      bloomViews_[i] = target(ow >> (i + 1), oh >> (i + 1), wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding, bloomTex_[i]);
+    width_ = height_ = 0;  // the drawn part is worked out again
+    ultraFrame_ = 0;
     bindGroupsDirty_ = true;
+    passUniformsDirty_ = true;
+  }
+
+  // Bloom level i: its full size, and the part of it in use this frame.
+  uint32_t levelW(int i) const { return std::max(1u, width_ >> (i + 1)); }
+  uint32_t levelH(int i) const { return std::max(1u, height_ >> (i + 1)); }
+
+  // Where each post pass finds its two pictures this frame.
+  void writePassUniforms() {
+    auto part = [](uint32_t vw, uint32_t vh, uint32_t aw, uint32_t ah) {
+      aw = std::max(1u, aw), ah = std::max(1u, ah);
+      return Vec4(static_cast<float>(vw) / aw, static_cast<float>(vh) / ah, (vw - 0.5f) / aw, (vh - 0.5f) / ah);
+    };
+    Vec4 hdr = part(width_, height_, outW_, outH_);
+    Vec4 lv[kBloomLevels];
+    for (int i = 0; i < kBloomLevels; ++i) lv[i] = part(levelW(i), levelH(i), outW_ >> (i + 1), outH_ >> (i + 1));
+    Vec4 whole{1, 1, 1, 1};
+    PassU u;
+    for (int i = 0; i < kBloomLevels; ++i) {  // down: hdr (or the level above) into level i
+      u.a = i == 0 ? hdr : lv[i - 1], u.b = whole;
+      queue_.WriteBuffer(passUbo_[i], 0, &u, sizeof u);
+    }
+    for (int i = 0; i + 1 < kBloomLevels; ++i) {  // up: level i+1 added into level i
+      u.a = lv[i + 1], u.b = hdr;
+      queue_.WriteBuffer(passUbo_[kBloomLevels + i], 0, &u, sizeof u);
+    }
+    u.a = hdr, u.b = lv[0];  // the film: the picture and the bloom, onto the screen
+    queue_.WriteBuffer(passUbo_[kFinalPass], 0, &u, sizeof u);
+    passUniformsDirty_ = false;
   }
 
   wgpu::BindGroup group(wgpu::BindGroupLayout l, std::vector<wgpu::BindGroupEntry> e) {
@@ -987,16 +1204,18 @@ class GpuRenderer final : public Renderer {
     // each pass reads one texture and writes another; the unused second slot
     // gets a texture that isn't the one being written
     for (int i = 0; i < kBloomLevels - 1; ++i)
-      upGroups_[i] = group(postLayout_, {bufE(0, postUbo_), texE(1, bloomViews_[i + 1]), texE(2, hdrView_), sampE(3, linear_), bufE(4, exposureBuf_)});
+      upGroups_[i] = group(postLayout_, {bufE(0, postUbo_), texE(1, bloomViews_[i + 1]), texE(2, hdrView_), sampE(3, linear_), bufE(4, exposureBuf_),
+                                         bufE(5, passUbo_[kBloomLevels + i])});
     for (int i = 0; i < kBloomLevels; ++i) {
       wgpu::TextureView src = i == 0 ? hdrView_ : bloomViews_[i - 1];
-      downGroups_[i] = group(postLayout_, {bufE(0, postUbo_), texE(1, src), texE(2, skyView_), sampE(3, linear_), bufE(4, exposureBuf_)});
+      downGroups_[i] = group(postLayout_, {bufE(0, postUbo_), texE(1, src), texE(2, skyView_), sampE(3, linear_), bufE(4, exposureBuf_), bufE(5, passUbo_[i])});
     }
-    finalGroup_ = group(postLayout_, {bufE(0, postUbo_), texE(1, hdrView_), texE(2, bloomViews_[0]), sampE(3, linear_), bufE(4, exposureBuf_)});
+    finalGroup_ = group(postLayout_, {bufE(0, postUbo_), texE(1, hdrView_), texE(2, bloomViews_[0]), sampE(3, linear_), bufE(4, exposureBuf_), bufE(5, passUbo_[kFinalPass])});
     exposureGroup_ = group(expLayout_, {bufE(0, expUbo_), texE(1, hdrView_), bufE(2, exposureBuf_)});
     if (!rayTris_) emptyRayScene();
     rayGroup_ = group(rayLayout_, {bufE(0, rayTris_), bufE(1, rayBlas_), bufE(2, rayInst_), bufE(3, rayTlas_)});
     if (!ultraUbo_) ultraUbo_ = buffer(sizeof(UltraU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+    ultraGroup_ = nullptr;
     if (accumBuf_) {
       ultraGroup_ = group(ultraLayout_, {bufE(0, accumBuf_), texE(1, hdrView_), texE(2, skyView_), sampE(3, linear_), bufE(4, ultraUbo_)});
       // passes: average → A, A → B (step 1), B → A (step 2), A → B (step 4, onto the picture)
@@ -1014,7 +1233,11 @@ class GpuRenderer final : public Renderer {
   wgpu::Device device_;
   wgpu::Queue queue_;
   wgpu::TextureFormat format_;
-  uint32_t width_ = 0, height_ = 0;
+  int shadowRays_ = 1, shadowLamps_ = 2, testLamps_ = -1, testRays_ = -1;
+  uint32_t width_ = 0, height_ = 0;   // the part drawn this frame
+  uint32_t outW_ = 0, outH_ = 0;      // the canvas, and every full-size target
+  uint64_t maxBinding_ = 128ull << 20, maxBufferSize_ = 256ull << 20;
+  uint32_t maxTexture_ = 8192;
   float ratio_ = 1, maxRatio_ = 2;
   int shadowSize_ = 2048;
   Quality quality_ = Quality::kHigh;
@@ -1022,10 +1245,12 @@ class GpuRenderer final : public Renderer {
   wgpu::Buffer frameUbo_, postUbo_, expUbo_, lightsBuf_, materialsBuf_, instancesBuf_, exposureBuf_;
   size_t materialsCap_ = 0, instancesCap_ = 0;
   wgpu::Sampler linear_, shadowSampler_;
-  wgpu::Texture shadowTex_, skyTex_;
+  wgpu::Texture shadowTex_, shadowDummyTex_, skyTex_, msaaTex_, depthTex_, hdrTex_, bloomTex_[kBloomLevels];
+  wgpu::Buffer passUbo_[2 * kBloomLevels];
+  bool passUniformsDirty_ = true;
   wgpu::TextureView shadowDummy_, shadowView_, skyView_, msaaView_, depthView_, hdrView_, bloomViews_[kBloomLevels];
   wgpu::BindGroupLayout scene0Layout_, scene1Layout_, postLayout_, expLayout_;
-  wgpu::RenderPipeline opaquePipe_, glassPipe_, skyPipe_, shadowPipe_, downPipe_, upPipe_, finalPipe_;
+  wgpu::RenderPipeline opaquePipe_[2], depthPipe_, opaqueAfterDepthPipe_[2], glassPipe_[2], skyPipe_, shadowPipe_, downPipe_, upPipe_, finalPipe_;
   wgpu::ComputePipeline exposurePipe_;
   wgpu::BindGroup sceneGroup0_, sceneGroup1_, downGroups_[kBloomLevels], upGroups_[kBloomLevels], finalGroup_, exposureGroup_;
   bool bindGroupsDirty_ = true, skyBuilt_ = false;
@@ -1076,8 +1301,10 @@ class GpuRenderer final : public Renderer {
   // Writes into the buffer, making a bigger one only when it doesn't fit.
   void uploadStorage(wgpu::Buffer& b, const void* data, size_t bytes) {
     size_t& cap = storageCap_[&b];
+    if (!b) cap = 0;  // a fresh buffer (after a new scene) starts from what's needed, not 1.5x the last scene's
     if (!b || bytes > cap) {
       cap = std::max<size_t>(std::max<size_t>(bytes, 256), cap * 3 / 2);
+      if (b) b.Destroy();
       b = buffer(cap, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
       bindGroupsDirty_ = true;
     }
@@ -1159,6 +1386,9 @@ class GpuRenderer final : public Renderer {
         if (m.transmission > 0) flags |= 2;
         if (m.leafShape) flags |= 4;
       }
+      // only shadows use the rays outside Ultra, and glowing things and glass
+      // cast none: leave them out, so rays don't wade through rain and neon
+      if ((flags & 3) && quality_ != Quality::kUltra) continue;
       it.ri.info[0] = meshRoot_[in.mesh], it.ri.info[1] = static_cast<uint32_t>(std::max(0, in.material)), it.ri.info[2] = flags, it.ri.info[3] = 0;
       items.push_back(it);
     }
@@ -1213,14 +1443,13 @@ class GpuRenderer final : public Renderer {
     uploadStorage(rayInst_, ordered.data(), ordered.size() * sizeof(RayInstU));
     uploadStorage(rayTlas_, nodes.data(), nodes.size() * sizeof(NodeU));
   }
-  int inFlight_ = 0;
+  std::shared_ptr<GpuState> gs_;
+  int raysBuiltFor_ = -1;  // the quality the top ray tree was built for
   std::vector<Mat4> lastPlaces_;
   // automatic resolution: fewer pixels when the GPU falls behind
-  float renderScale_ = 1, scaleCeil_ = 1, perfClock_ = 0, sinceScale_ = 0;
-  int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, stuckFrames_ = 0;
+  float renderScale_ = 1, perfClock_ = 0, sinceScale_ = 0;
+  int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, longCalm_ = 0, step_ = 0, ceilStep_ = 0;
   uint64_t presented_ = 0;
-  double lastDone_ = 0;
-  float gpuMs_ = 0, lastGpuMs_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
 };
 
@@ -1230,12 +1459,14 @@ struct Pending {
   wgpu::Surface surface;
   wgpu::Adapter adapter;
   std::function<void(std::unique_ptr<Renderer>)> ready;
+  std::shared_ptr<GpuState> state;
 };
 
 }  // namespace
 
 void Renderer::create(const char* canvas, std::function<void(std::unique_ptr<Renderer>)> ready) {
-  auto* p = new Pending{canvas, wgpu::CreateInstance(nullptr), {}, {}, std::move(ready)};
+  g_gpuErrors = 0;
+  auto* p = new Pending{canvas, wgpu::CreateInstance(nullptr), {}, {}, std::move(ready), nullptr};
   if (!p->instance) {
     auto r = std::move(p->ready);
     delete p;
@@ -1259,13 +1490,26 @@ void Renderer::create(const char* canvas, std::function<void(std::unique_ptr<Ren
     p->adapter = a;
     wgpu::DeviceDescriptor dd;
     dd.label = "loop3d";
-    dd.SetUncapturedErrorCallback([](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView m) {
-      emscripten_log(EM_LOG_ERROR, "WebGPU: %s", str(m).c_str());
+    // ask for as much buffer room as this GPU has (the defaults, 128 and
+    // 256 MB, are less than a big screen's Ultra averages or a big world's rays)
+    wgpu::Limits have, want;
+    if (a.GetLimits(&have)) {
+      want.maxStorageBufferBindingSize = std::min<uint64_t>(have.maxStorageBufferBindingSize, 1ull << 30);
+      want.maxBufferSize = std::min<uint64_t>(have.maxBufferSize, 1ull << 30);
+      dd.requiredLimits = &want;
+    }
+    dd.SetUncapturedErrorCallback([](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView m) { reportGpuError(str(m)); });
+    auto state = std::make_shared<GpuState>();
+    p->state = state;
+    dd.SetDeviceLostCallback(wgpu::CallbackMode::AllowSpontaneous, [state](const wgpu::Device&, wgpu::DeviceLostReason why, wgpu::StringView m) {
+      state->lost = true;
+      if (why != wgpu::DeviceLostReason::Destroyed && why != wgpu::DeviceLostReason::CallbackCancelled)
+        emscripten_log(EM_LOG_WARN, "WebGPU device lost: %s", str(m).c_str());
     });
     a.RequestDevice(&dd, wgpu::CallbackMode::AllowSpontaneous, [p](wgpu::RequestDeviceStatus s2, wgpu::Device d, wgpu::StringView msg) {
       auto r = std::move(p->ready);
       std::unique_ptr<Renderer> out;
-      if (s2 == wgpu::RequestDeviceStatus::Success) out = std::make_unique<GpuRenderer>(p->canvas, p->instance, p->surface, p->adapter, d);
+      if (s2 == wgpu::RequestDeviceStatus::Success) out = std::make_unique<GpuRenderer>(p->canvas, p->instance, p->surface, p->adapter, d, p->state);
       else emscripten_log(EM_LOG_ERROR, "WebGPU device: %s", str(msg).c_str());
       delete p;
       r(std::move(out));

@@ -45,14 +45,21 @@ struct Player {
   double fpsTime = 0;
   float fps = 0;
   double cpuMs = 0, frameStart = 0;
+  int quality = 1;              // 0 Phone, 1 High, 2 Ultra
+  uint64_t scriptSerial = 0;    // counts scenes started
+  bool awaitingFirstFrame = false;
+  double lastGpuReset = -1e9;
 };
 Player g;
+
+gpu::Quality qualityOf(int q) { return q == 0 ? gpu::Quality::kPhone : q == 1 ? gpu::Quality::kHigh : gpu::Quality::kUltra; }
 
 // The frame recorder: the time between frames that reached the screen (what
 // the eye feels), the CPU and GPU time of each, and the resolution drawn.
 // A benchmark records one scene at a time and gets its numbers as JSON.
 struct Perf {
   bool on = false, waitingFirst = false;
+  uint64_t serialAtBegin = 0;  // load time counts from the next scene's script
   double scriptStart = 0, lastShown = 0, loadMs = -1, started = 0;
   uint64_t rafFrames = 0, shownAtStart = 0;
   std::vector<float> interval, cpu, gpu, scale;
@@ -72,7 +79,7 @@ void perfShown(double now, double cpuMs) {
       perf.scale.push_back(g.renderer->renderScale());
     }
   }
-  if (perf.on && perf.waitingFirst) {
+  if (perf.on && perf.waitingFirst && g.scriptSerial > perf.serialAtBegin) {
     perf.waitingFirst = false;
     perf.loadMs = emscripten_get_now() - perf.scriptStart;  // same clock as scriptStart
     perf.started = now;
@@ -116,8 +123,39 @@ uint64_t skySignature(const Scene& s) {
   return h;
 }
 
+// The renderer has nothing of the world yet: send all of it on the next frame.
+void forgetSynced() {
+  g.seenVersion = ~0ull, g.seenTransforms = ~0ull, g.seenLights = ~0ull, g.seenMeshes = 0, g.seenInstances = 0, g.seenMaterials = 0, g.seenLightCount = 0;
+  g.skyKey = 0;
+}
+
+// The browser took the GPU away (a driver reset, memory running out, a frame
+// that took too long). Before, the picture stayed black for good; now we ask
+// for a new GPU, send it the whole world again and carry on. Lost twice in a
+// minute: this quality is too much for this GPU, so step down one.
+void recoverGpu() {
+  g.renderer.reset();
+  double now = emscripten_get_now();
+  if (now - g.lastGpuReset < 60000 && g.quality > 0) --g.quality;
+  g.lastGpuReset = now;
+  EM_ASM({ if (window.loopGpuLost) window.loopGpuLost(); });
+  gpu::Renderer::create("#view", [](std::unique_ptr<gpu::Renderer> r) {
+    if (!r) {
+      EM_ASM({ if (window.loopNoGpu) window.loopNoGpu(); });
+      return;
+    }
+    g.renderer = std::move(r);
+    g.renderer->setQuality(qualityOf(g.quality));
+    g.lastPresented = 0;  // the new renderer counts its frames from zero
+    forgetSynced();
+    EM_ASM({ if (window.loopGpuBack) window.loopGpuBack($0); }, g.quality);
+  });
+}
+
 void startScript(const std::string& src) {
   perf.scriptStart = emscripten_get_now();
+  ++g.scriptSerial;
+  g.awaitingFirstFrame = true;
   perf.lastShown = 0;
   if (g.renderer) g.renderer->reset();
   g.vm = std::make_unique<Vm>();
@@ -130,7 +168,7 @@ void startScript(const std::string& src) {
   g.vm->load(src, "scene.loop");
   for (auto& p : g.vm->problems()) g.problems += p.text() + "\n";
   if (!g.problems.empty()) EM_ASM({ if (window.loopProblems) window.loopProblems(UTF8ToString($0)); }, g.problems.c_str());
-  g.seenVersion = ~0ull, g.seenTransforms = ~0ull, g.seenLights = ~0ull, g.seenMeshes = 0, g.seenInstances = 0, g.seenMaterials = 0, g.seenLightCount = 0;
+  forgetSynced();
   g.movie = g.stage->mode == "movie" && !g.stage->film.shots.empty();
   g.filmTime = 0;
   const Camera& c = g.stage->scene.camera;
@@ -222,20 +260,25 @@ bool frameBody(double now) {
     startScript(g.pendingScript);
     g.pendingScript.clear();
   }
+  if (g.renderer && g.renderer->lost()) recoverGpu();
   if (!g.renderer || !g.vm) return true;
   double dt = g.lastTime > 0 ? std::min(0.1, (now - g.lastTime) / 1000.0) : 1.0 / 60;
   g.lastTime = now;
-  // scripts tick on a fixed clock
+  // scripts tick on a fixed clock. After a slow frame they catch up (a step
+  // costs well under a millisecond), but never for more than 8 ms in one
+  // frame: past that the world runs a little slower for a moment instead of
+  // each catch-up making the next frame slower still.
   g.accumulator += dt;
   int steps = 0;
-  while (g.accumulator >= 1.0 / 120 && steps++ < 4) {
+  double stepStart = emscripten_get_now();
+  while (g.accumulator >= 1.0 / 120 && steps < 12 && (steps < 2 || emscripten_get_now() - stepStart < 8)) {
     g.vm->update(1.0 / 120);
     g.stage->update(1.0f / 120);
     g.accumulator -= 1.0 / 120;
+    ++steps;
   }
-  // a slow frame doesn't pile up work for the next one: the world just runs
-  // a little slower for a moment
-  if (g.accumulator > 1.0 / 120) g.accumulator = 0;
+  double dropped = 0;
+  if (g.accumulator >= 1.0 / 120) dropped = g.accumulator, g.accumulator = 0;
   syncScene();
   Stage& s = *g.stage;
   // lines, questions and the next scene go to the page
@@ -254,7 +297,7 @@ bool frameBody(double now) {
   float fade = 1;
   Look look = s.scene.look;
   if (g.movie) {
-    g.filmTime += dt;
+    g.filmTime = std::max(0.0, g.filmTime + dt - dropped);  // the camera keeps step with the script (lines, cues)
     float len = s.film.length();
     if (len > 0 && g.filmTime > len) {
       // a story scene holds its last shot (just before it fades) until the
@@ -278,7 +321,13 @@ bool frameBody(double now) {
   }
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
-  if (g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade)) perfShown(now, emscripten_get_now() - g.frameStart);
+  if (g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade)) {
+    perfShown(now, emscripten_get_now() - g.frameStart);
+    if (g.awaitingFirstFrame) {  // the page can take its loading screen away
+      g.awaitingFirstFrame = false;
+      EM_ASM({ if (window.loopShown) window.loopShown(); });
+    }
+  }
   if (perf.on) ++perf.rafFrames;
   // frames per second that reached the screen (dropped ones don't count)
   g.fpsTime += dt;
@@ -314,7 +363,8 @@ EMSCRIPTEN_KEEPALIVE void loop_set_mode(int movie) {
   }
 }
 EMSCRIPTEN_KEEPALIVE void loop_set_quality(int q) {
-  if (g.renderer) g.renderer->setQuality(q == 0 ? gpu::Quality::kPhone : q == 1 ? gpu::Quality::kHigh : gpu::Quality::kUltra);
+  g.quality = std::clamp(q, 0, 2);
+  if (g.renderer) g.renderer->setQuality(qualityOf(g.quality));
 }
 EMSCRIPTEN_KEEPALIVE void loop_emit(const char* event) {
   if (g.vm) g.vm->emit(event ? event : "");
@@ -340,6 +390,7 @@ EMSCRIPTEN_KEEPALIVE void loop_audio(float* stereo, int frames) {
 EMSCRIPTEN_KEEPALIVE void loop_perf_begin() {
   perf.on = true;
   perf.waitingFirst = true;
+  perf.serialAtBegin = g.scriptSerial;
   perf.loadMs = -1;
   perf.rafFrames = 0;
   perf.interval.clear(), perf.cpu.clear(), perf.gpu.clear(), perf.scale.clear();
@@ -391,9 +442,9 @@ EMSCRIPTEN_KEEPALIVE void loop_set_autoplay(int on) {
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];
   if (!g.stage) return "{}";
-  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
+  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
                 g.renderer ? g.renderer->renderScale() : 1.0f, g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
-                g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime);
+                g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime, g.renderer ? g.renderer->framesInFlight() : 0, g.renderer ? g.renderer->lastGpuMs() : 0.0f);
   return buf;
 }
 }
@@ -401,6 +452,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
 int main() {
   gpu::g_debugView = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('view') || 0); });
   gpu::g_skipPasses = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('skip') || 0); });
+  gpu::g_fixedScale = static_cast<float>(EM_ASM_DOUBLE({ return +(new URLSearchParams(location.search).get('res') || 0); }));
   gpu::Renderer::create("#view", [](std::unique_ptr<gpu::Renderer> r) {
     if (!r) {
       EM_ASM({ if (window.loopNoGpu) window.loopNoGpu(); });
@@ -408,7 +460,8 @@ int main() {
     }
     g.renderer = std::move(r);
     bool phone = EM_ASM_INT({ return /iPhone|iPad|Android/i.test(navigator.userAgent) ? 1 : 0; });
-    g.renderer->setQuality(phone ? gpu::Quality::kPhone : gpu::Quality::kHigh);
+    g.quality = phone ? 0 : 1;
+    g.renderer->setQuality(qualityOf(g.quality));
     EM_ASM({ if (window.loopReady) window.loopReady(); });
     emscripten_request_animation_frame_loop(frame, nullptr);
   });
