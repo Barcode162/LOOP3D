@@ -47,6 +47,9 @@ namespace loop::gpu {
 int g_skipPasses = 0;
 int g_debugView = 0;
 float g_fixedScale = 0;
+int g_shadowLamps = -1;
+int g_shadowRays = -1;
+bool g_prepass = false;
 
 namespace {
 
@@ -181,9 +184,11 @@ class GpuRenderer final : public Renderer {
     cs.compare = wgpu::CompareFunction::LessEqual;
     shadowSampler_ = device_.CreateSampler(&cs);
     g_samples = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('msaa') || 4); });
-    testLamps_ = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('lamps'); return v === null ? -1 : +v; });
-    testRays_ = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('rays'); return v === null ? -1 : +v; });
-    prepass_ = EM_ASM_INT({ return new URLSearchParams(location.search).get('prepass') === '1' ? 1 : 0; }) != 0;
+    // ?lamps= ?rays= ?prepass= set the switches; without them, keep what they are
+    // (the editor may have changed them, and a lost GPU makes a new renderer)
+    if (int v = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('lamps'); return v === null ? -2 : +v; }); v != -2) g_shadowLamps = v;
+    if (int v = EM_ASM_INT({ const v = new URLSearchParams(location.search).get('rays'); return v === null ? -2 : +v; }); v != -2) g_shadowRays = v;
+    if (EM_ASM_INT({ return new URLSearchParams(location.search).get('prepass') === '1' ? 1 : 0; })) g_prepass = true;
     for (auto& u : passUbo_) u = buffer(sizeof(PassU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     buildPipelines();
     makeShadowMap();
@@ -224,8 +229,8 @@ class GpuRenderer final : public Renderer {
     // ?rays=N try more on a strong GPU.
     shadowLamps_ = q == Quality::kPhone ? 0 : 2;
     shadowRays_ = 1;
-    if (testLamps_ >= 0) shadowLamps_ = testLamps_;
-    if (testRays_ > 0) shadowRays_ = testRays_;
+    if (g_shadowLamps >= 0) shadowLamps_ = g_shadowLamps;
+    if (g_shadowRays > 0) shadowRays_ = g_shadowRays;
     // Ultra traces the sun's shadows; its shadow map is never read
     int size = q == Quality::kUltra ? 16 : q == Quality::kPhone ? 1024 : 2048;
     if (size != shadowSize_ || !shadowTex_) {
@@ -559,7 +564,7 @@ class GpuRenderer final : public Renderer {
         // the depth pre-pass (?prepass=1, off by default): hidden surfaces cost
         // no shadow rays, but it needs both passes to land on exactly the same
         // depth, which Apple GPUs don't promise, and it measured no faster
-        if (rays && prepass_) {
+        if (rays && g_prepass) {
           pass.SetPipeline(depthPipe_);
           drawBatches(pass, false, false);
           pass.SetPipeline(opaqueAfterDepthPipe_[rays]);
@@ -1283,8 +1288,7 @@ class GpuRenderer final : public Renderer {
   wgpu::Device device_;
   wgpu::Queue queue_;
   wgpu::TextureFormat format_;
-  int shadowRays_ = 1, shadowLamps_ = 2, testLamps_ = -1, testRays_ = -1;
-  bool prepass_ = false;
+  int shadowRays_ = 1, shadowLamps_ = 2;
   uint32_t width_ = 0, height_ = 0;   // the part drawn this frame
   uint32_t outW_ = 0, outH_ = 0;      // the canvas, and every full-size target
   uint64_t maxBinding_ = 128ull << 20, maxBufferSize_ = 256ull << 20;

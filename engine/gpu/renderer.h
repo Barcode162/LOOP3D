@@ -17,6 +17,12 @@ extern int g_skipPasses;
 extern int g_debugView;  // 1 raw light, 2 exposure, 3 bloom
 // Testing: draw at this share of full resolution (0 = automatic).
 extern float g_fixedScale;
+// Testing / the editor: lamp shadows (lamps that cast them, rays per lamp;
+// -1 = the quality's own choice) and the depth pre-pass. Changes to the lamp
+// settings take effect on the next setQuality.
+extern int g_shadowLamps;
+extern int g_shadowRays;
+extern bool g_prepass;
 
 class Renderer {
  public:

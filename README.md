@@ -41,13 +41,14 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
 ./build/loop_tests
 
 # check a script, run it, render what it asks for
-./build/loop check  examples/cabin.loop
-./build/loop run    examples/courtyard.loop --seconds 10
-./build/loop render examples/courtyard.loop --quality good     # draft | good | cinema | ultra
+./build/loop check  projects/samples/cabin.loop
+./build/loop run    projects/samples/courtyard.loop --seconds 10
+./build/loop render projects/samples/courtyard.loop --quality good     # draft | good | cinema | ultra
 
-# the web player (needs Emscripten), then open site/ in a browser
+# the web player and the editor (needs Emscripten), then open site/ in a browser
 ./tools/build_site.sh
-cd site && python3 -m http.server 8000      # http://localhost:8000/?scene=courtyard
+cd site && python3 -m http.server 8000      # player: http://localhost:8000/#courtyard
+                                            # editor: http://localhost:8000/editor.html
 ```
 
 A scene's script asks for renders itself (`render file: "x.png", quality: "cinema"`), and for a whole film with `film "frames", fps: 24` (numbered PNGs).
@@ -57,7 +58,19 @@ A scene's script asks for renders itself (`render file: "x.png", quality: "cinem
 - [`docs/LANGUAGE.md`](docs/LANGUAGE.md): the language and every word.
 - [`docs/TUNING.md`](docs/TUNING.md): every quality and look setting, what it costs, how they trade, and the performance tricks we have and are adding.
 - [`docs/STORY_GUIDE.md`](docs/STORY_GUIDE.md): how to turn a written story into Loop3D scenes, step by step. **Give this to the AI writing your story.**
-- `examples/`: `cabin.loop` (a candlelit room), `courtyard.loop` (a living courtyard: a person, physics, sound, shots).
+- `projects/`: games and films made with the engine, each a folder with a `project.json`. The engine needs none of them.
+  - `projects/samples/`: `cabin` (a candlelit room), `courtyard` (a living courtyard: a person, physics, sound, shots), and a two-scene story (`the_gate`, `the_woods`).
+  - `projects/echoes_of_ardane/`: a 24-scene story.
+
+## The editor
+
+`site/editor.html` (source in `web/editor/`, plain HTML, CSS and JS like the rest of the engine):
+
+- **Docked panels** you can drag between docks, resize and close: Viewport, Script, Project, Outliner, Inspector, Look, Console, Content, Timeline, Profiler. Layout presets for scripting, look and lighting, and performance. On a phone: the view on top, the panels in tabs below.
+- **Play controls:** walk (Play), Movie, pause, step a frame, restart, world speed, quality, debug views, trailer compare (the cinema still over the live view with a split handle), screenshot, sound, benchmark.
+- **Script editor:** Looped Script highlighting, line numbers, problems marked on their lines, Ctrl+Enter to run, edits kept in the browser.
+- **Project Settings and Editor Preferences:** about 290 settings in one schema (`web/editor/settings_schema.js`), searchable, with reset, import and export. Settings that reach the engine apply live. The rest are saved and marked **Not wired**: they are the list of next tasks (Help → What's wired and what's next).
+- **Command palette** (Ctrl+P) for every command, scene and setting, and a console that takes commands (`help`).
 
 ## Honest status
 
@@ -67,4 +80,5 @@ A scene's script asks for renders itself (`render file: "x.png", quality: "cinem
 - **Resolution adapts by itself:** each quality starts a little below full size, climbs when the GPU keeps up and drops when it doesn't (down to half, or a third on Ultra). Changing it costs nothing: the scene is drawn into part of full-size targets and stretched to the screen.
 - **The GPU can be taken away** by the browser (a driver reset, memory running low, a frame that took too long). The player then gets a new one and carries on; twice in a minute and it steps down a quality.
 - **People are simple** (capsule bodies) and walk straight to where they're sent, without steering around things.
-- **Not yet:** an editor app, model import (glTF), character faces and hair, streaming big worlds, multiplayer.
+- **The editor edits scripts, not yet objects:** moving things with the mouse and saving that back to `.loop` comes next, along with every setting marked Not wired.
+- **Not yet:** model import (glTF), character faces and hair, streaming big worlds, multiplayer.
