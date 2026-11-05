@@ -7,5 +7,8 @@
   "scenes": [
     "bar"
   ],
-  "stills": "stills"
+  "stills": "stills",
+  "build": {
+    "listed": false
+  }
 }

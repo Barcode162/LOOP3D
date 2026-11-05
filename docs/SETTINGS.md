@@ -522,6 +522,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Include this project on the site | `build.publish` | true |  | project.json |  |  |
+| Show it in the scene picker | `build.listed` | true |  | project.json |  | Off: on the site but only at its own link (#scene), a hidden link. |
 | Include trailer stills | `build.stills` | true |  | project.json |  |  |
 | Stamp the build on the pages | `build.stamp` | true |  | project.json |  |  |
 | Optimisation | `build.opt` | O3 | O0 / O1 / O2 / O3 / Os / Oz | project.json |  | Read by tools/build_site.sh (LOOP_OPT). |
@@ -649,4 +650,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-10 project.json · 132 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you
+11 project.json · 132 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you

@@ -402,6 +402,7 @@ window.LE = window.LE || {};
     { id: 'build', title: 'Build & publish', icon: '⇪', groups: [
       { title: 'Web build', items: [
         tog('build.publish', 'Include this project on the site', true, { bind: 'build' }),
+        tog('build.listed', 'Show it in the scene picker', true, { bind: 'build', help: 'Off: on the site but only at its own link (#scene), a hidden link.' }),
         tog('build.stills', 'Include trailer stills', true, { bind: 'build' }),
         tog('build.stamp', 'Stamp the build on the pages', true, { bind: 'build' }),
         en('build.opt', 'Optimisation', 'O3', opts('O0', 'O1', 'O2', 'O3', 'Os', 'Oz'), { bind: 'build', help: 'Read by tools/build_site.sh (LOOP_OPT).' }),

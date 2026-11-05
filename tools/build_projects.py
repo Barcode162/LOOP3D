@@ -69,6 +69,8 @@ for manifest in manifests:
             have = json.loads(merged.read_text()) if merged.exists() else {}
             have.update(json.loads(table.read_text()))
             merged.write_text(json.dumps(have))
+    if not build.get("listed", True):
+        continue  # Build → "Show it in the scene picker" is off: only its own link (#scene) opens it
     projects.append({
         "name": p["name"], "title": p.get("title", p["name"]),
         "description": p.get("description", ""), "start": p.get("start", scenes[0]["name"] if scenes else ""),
