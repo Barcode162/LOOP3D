@@ -30,6 +30,8 @@ namespace loop::script {
 struct RenderRequest {
   std::string file;
   int width = 1920, height = 1080, samples = 256;
+  int bounces = 8;
+  bool denoise = true, dispersion = true, motionBlur = true;
   bool film = false;  // render every frame of the shots
   float at = 0;       // script time to render at (stills)
 };

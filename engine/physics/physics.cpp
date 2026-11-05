@@ -408,7 +408,7 @@ void World::step(float dt) {
     staticDirty_ = false;
   }
   accumulator_ += std::min(dt, 0.25f);
-  const float h = 1.0f / 120;
+  const float h = 1.0f / std::clamp(stepRate, 30.0f, 480.0f);
   while (accumulator_ >= h) {
     substep(h);
     accumulator_ -= h;
@@ -448,7 +448,7 @@ void World::substep(float h) {
     c.tMass[0] = effMass(c.t1), c.tMass[1] = effMass(c.t2);
     Vec3 vr = A.v + cross(A.w, ra) - (B ? B->v + cross(B->w, rb) : Vec3(0));
     float vn = dot(vr, c.normal);
-    float e = std::max(A.d.restitution, B ? B->d.restitution : 0.2f);
+    float e = std::max(A.d.restitution, B ? B->d.restitution : staticBounce);
     c.restitutionVel = vn < -1.0f ? -e * vn : 0;
     // push apart what overlaps; let what's about to touch close the gap exactly
     // the gap about to close may close exactly; overlap is fixed separately
@@ -472,7 +472,7 @@ void World::substep(float h) {
       };
       Vec3 vr = A.v + cross(A.w, ra) - (B ? B->v + cross(B->w, rb) : Vec3(0));
       // friction (inside the cone set by the normal impulse)
-      float mu = std::sqrt(A.d.friction * (B ? B->d.friction : 0.6f));
+      float mu = std::sqrt(A.d.friction * (B ? B->d.friction : staticFriction));
       for (int k = 0; k < 2; ++k) {
         Vec3 t = k == 0 ? c.t1 : c.t2;
         float jt = -dot(vr, t) * c.tMass[k];
@@ -529,7 +529,7 @@ void World::substep(float h) {
     dq = dq * b.q;
     b.q = Quat{b.q.x + dq.x, b.q.y + dq.y, b.q.z + dq.z, b.q.w + dq.w}.normalized();
     // sleep when still for half a second
-    if (dot(b.v, b.v) < 0.0025f && dot(b.w, b.w) < 0.01f) {
+    if (dot(b.v, b.v) < sleepSpeed * sleepSpeed && dot(b.w, b.w) < 4 * sleepSpeed * sleepSpeed) {
       b.sleepTimer += h;
       if (b.sleepTimer > 0.5f) b.asleep = true, b.v = b.w = Vec3(0);
     } else b.sleepTimer = 0;
@@ -626,12 +626,12 @@ void World::stepCloth(Cloth& c, float h) {
   for (size_t i = 0; i < n; ++i) {
     if (c.invMass[i] == 0) continue;
     c.v[i] += gravity * h;
-    c.v[i] += (c.wind - c.v[i]) * (0.6f * h);  // air drag toward the wind
+    c.v[i] += (c.wind + wind - c.v[i]) * (0.6f * h);  // air drag toward the wind
     c.v[i] *= 1 - c.damping;
     c.prev[i] = c.x[i];
     c.x[i] += c.v[i] * h;
   }
-  for (int it = 0; it < 8; ++it) {
+  for (int it = 0; it < clothIterations; ++it) {
     for (const Cloth::Link& l : c.links) {
       float wa = c.invMass[l.i], wb = c.invMass[l.j];
       if (wa + wb == 0) continue;
@@ -753,7 +753,7 @@ bool World::moveCharacter(Vec3& pos, Vec3 move, float radius, float halfHeight, 
         float depth;
         if (sphereVsWorld(c, radius, n, depth, hp) && depth > 0) {
           float foot = p.y - halfHeight - radius;
-          if (n.y > 0.6f) ground = true, p.y += depth / std::max(n.y, 0.6f);  // stand: push straight up
+          if (n.y > walkableCos) ground = true, p.y += depth / std::max(n.y, walkableCos);  // stand: push straight up
           else if (hp.y < foot + stepHeight && n.y > 0.02f) {
             // a ledge low enough to step onto: rise over it instead of being pushed back
             float horiz = std::sqrt(sqr(c.x - hp.x) + sqr(c.z - hp.z));
@@ -783,7 +783,7 @@ bool World::moveCharacter(Vec3& pos, Vec3 move, float radius, float halfHeight, 
       float depth;
       bool blocked = false;
       for (float off : {-halfHeight + 0.01f, 0.0f, halfHeight})
-        if (sphereVsWorld(up + Vec3(0, off, 0), radius * 0.98f, n, depth, hp) && depth > 0 && n.y < 0.6f) blocked = true;
+        if (sphereVsWorld(up + Vec3(0, off, 0), radius * 0.98f, n, depth, hp) && depth > 0 && n.y < walkableCos) blocked = true;
       if (!blocked) {
         tryPos = up;
         resolve(tryPos);

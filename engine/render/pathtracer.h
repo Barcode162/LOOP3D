@@ -22,7 +22,8 @@ struct RenderSettings {
   int samples = 64;       // per pixel
   int maxBounces = 10;
   bool denoise = true;
-  bool caustics = false;  // light focused through glass onto diffuse surfaces (slow to converge)
+  bool caustics = false;
+  bool dispersion = true; // glass splits light into rainbows (materials with dispersion)  // light focused through glass onto diffuse surfaces (slow to converge)
   float clamp = 0;        // max brightness of a bounce, in multiples of the scene's average; 0 = auto
   uint32_t seed = 1;
   // Called now and then with progress 0..1; return false to stop early.

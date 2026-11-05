@@ -92,6 +92,12 @@ class World {
  public:
   Vec3 gravity{0, -9.81f, 0};
   int velocityIterations = 16, positionIterations = 4;
+  float stepRate = 120;           // fixed sub-steps per second
+  float sleepSpeed = 0.05f;       // slower than this (m/s) for half a second: asleep
+  float staticFriction = 0.6f, staticBounce = 0.2f;  // the fixed world's surfaces
+  float walkableCos = 0.6f;       // moveCharacter stands on slopes whose normal.y is above this
+  int clothIterations = 8;
+  Vec3 wind{0};                   // added to every cloth's own wind
   bool groundPlane = true;  // an endless floor at y = groundHeight
   float groundHeight = 0;
 
@@ -114,7 +120,7 @@ class World {
   // Pin cloth particle i in place (inverse mass 0).
   void pin(Cloth& c, int i) { c.invMass[i] = 0; }
 
-  // Moves time on by dt, in fixed sub-steps of at most 1/120 s.
+  // Moves time on by dt, in fixed sub-steps of 1/stepRate s.
   void step(float dt);
   RayHit raycast(const Ray& r, float maxDist = kInf) const;
   const std::vector<Contact>& contacts() const { return contacts_; }

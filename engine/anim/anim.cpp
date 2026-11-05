@@ -1,5 +1,7 @@
 #include "engine/anim/anim.h"
 
+#include "engine/core/settings.h"
+
 #include <algorithm>
 
 namespace loop::anim {
@@ -153,7 +155,8 @@ void Animator::update(float dt) {
   time_ += dt;
   float groundY = (ground ? ground(position.x, position.z) : 0) + lift;
   float targetSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-  speed_ += (targetSpeed - speed_) * (1 - std::exp(-6 * dt));
+  const Config::Anim& cfg = config().anim;
+  speed_ += (targetSpeed - speed_) * (1 - std::exp(-dt / std::max(cfg.blend, 0.01f)));
   sit_ += ((sitting ? 1.0f : 0.0f) - sit_) * (1 - std::exp(-3 * dt));
   breath_ += dt * kTwoPi / 4.2f;  // ~14 breaths a minute
   // face where you're going, smoothly
@@ -181,14 +184,14 @@ void Animator::update(float dt) {
   pel.rotation = Quat::axisAngle({0, 1, 0}, walkAmt * std::sin(ph) * 0.12f) * Quat::axisAngle({0, 0, 1}, walkAmt * std::cos(ph) * 0.04f);
   float lean = walkAmt * lerp(0.05f, 0.18f, run);
   pose_.local[spine_].rotation = Quat::axisAngle({1, 0, 0}, -lean - sit_ * 0.05f) * Quat::axisAngle({0, 1, 0}, -walkAmt * std::sin(ph) * 0.15f);
-  float br = std::sin(breath_);
+  float br = cfg.breathing ? std::sin(breath_) : 0.0f;
   pose_.local[chest_].rotation = Quat::axisAngle({1, 0, 0}, br * 0.015f);
   pose_.local[chest_].scale = Vec3(1 + br * 0.008f, 1, 1 + br * 0.012f);
   // ---- arms swing against the legs; elbows bend more when running
   for (int side = 0; side < 2; ++side) {
     int* arm = side == 0 ? armL_ : armR_;
     float s = side == 0 ? 1.0f : -1.0f;
-    float swing = walkAmt * std::sin(ph) * s * lerp(0.35f, 0.7f, run);
+    float swing = cfg.armSwing ? walkAmt * std::sin(ph) * s * lerp(0.35f, 0.7f, run) : 0.0f;
     pose_.local[arm[0]].rotation = Quat::axisAngle({1, 0, 0}, swing) * Quat::axisAngle({0, 0, 1}, -s * (0.08f + idle * 0.02f * br));
     pose_.local[arm[1]].rotation = Quat::axisAngle({1, 0, 0}, -(0.15f + walkAmt * lerp(0.15f, 1.3f, run) + sit_ * 0.6f));
   }
@@ -231,10 +234,12 @@ void Animator::update(float dt) {
       Vec3 wantDir = parentWorld.rotation.conjugate().rotate(normalize(to - from));
       pose_.local[bone].rotation = Quat::fromTo(restDir, wantDir);
     };
-    int pel = s_.bones[leg[0]].parent;
-    aim(leg[0], hip, newKnee, w[pel]);
-    auto w2 = world();
-    aim(leg[1], newKnee, endP, w2[leg[0]]);
+    if (cfg.ik) {  // without IK the legs hang as they are
+      int pel = s_.bones[leg[0]].parent;
+      aim(leg[0], hip, newKnee, w[pel]);
+      auto w2 = world();
+      aim(leg[1], newKnee, endP, w2[leg[0]]);
+    }
     // a foot lands as its phase passes the bottom
     float fp = std::fmod(phase_ + (side == 0 ? 0.0f : 0.5f), 1.0f);
     float prev = std::fmod(lastFootPhase_ + (side == 0 ? 0.0f : 0.5f), 1.0f);

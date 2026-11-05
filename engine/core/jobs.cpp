@@ -1,5 +1,7 @@
 #include "engine/core/jobs.h"
 
+#include "engine/core/settings.h"
+
 namespace loop {
 
 JobSystem::JobSystem(int threads) {
@@ -21,7 +23,7 @@ JobSystem::~JobSystem() {
 }
 
 JobSystem& JobSystem::shared() {
-  static JobSystem js;
+  static JobSystem js(config().cinema.threads);  // 0 = every hardware thread
   return js;
 }
 

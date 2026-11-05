@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 
 #include "engine/core/file.h"
+#include "engine/core/json.h"
+#include "engine/core/settings.h"
 #include "engine/core/time.h"
 #include "engine/render/demo_scenes.h"
 #include "engine/render/film.h"
@@ -32,7 +34,8 @@ int usage() {
       "loop run    <script.loop> [--seconds 10]\n"
       "loop play   <first scene.loop> [--choices 0,1,0]\n"
       "loop render <script.loop> [--quality draft|good|cinema|ultra] [--width 1920] [--samples N] [--look name]\n"
-      "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]");
+      "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
+      "loop settings list    every engine setting, its default and range (JSON)");
   return 1;
 }
 
@@ -71,7 +74,24 @@ std::string expandUses(const std::string& src, const std::string& dir, std::vect
   return out;
 }
 
+// A scene's project (project.json in its folder) brings its settings:
+// "settings": {"cinema.quality": "cinema", "physics.iterations": 24, …}
+void loadProjectSettings(const std::string& scenePath) {
+  std::string text;
+  if (!readText(joinPath(directoryOf(scenePath), "project.json"), text)) return;
+  Json p;
+  std::string err;
+  if (!Json::parse(text, p, &err)) {
+    std::fprintf(stderr, "project.json: %s\n", err.c_str());
+    return;
+  }
+  Settings::get().clear(Settings::kProject);
+  if (p.has("settings") && !Settings::get().setMany(Settings::kProject, p["settings"], &err)) std::fprintf(stderr, "project.json settings: %s\n", err.c_str());
+  if (p.has("mode")) Settings::get().set(Settings::kProject, "project.mode", p["mode"]);
+}
+
 bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
+  loadProjectSettings(path);
   std::string src;
   if (!readText(path, src)) {
     std::fprintf(stderr, "can't read %s\n", path.c_str());
@@ -87,13 +107,16 @@ bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
   return ok;
 }
 
-Image renderStill(const Scene& scene, const Camera& cam, int w, int h, int samples, uint32_t frame, const std::string& label) {
+Image renderStill(const Scene& scene, const Camera& cam, int w, int h, int samples, uint32_t frame, const std::string& label,
+                  const RenderRequest* req = nullptr) {
   Scene shot = scene;  // the camera may differ per frame
   shot.camera = cam;
+  if (req && !req->motionBlur) shot.camera.positionEnd = Vec3(kInf);
   PathTracer pt;
   pt.setScene(shot);
   RenderSettings rs;
   rs.width = w, rs.height = h, rs.samples = samples, rs.seed = frame + 1;
+  if (req) rs.maxBounces = req->bounces, rs.denoise = req->denoise, rs.dispersion = req->dispersion;
   rs.progress = [&](float p) {
     std::fprintf(stderr, "\r%s %3d%%", label.c_str(), static_cast<int>(p * 100));
     return true;
@@ -123,6 +146,9 @@ int renderScript(const std::string& path, const Options& o) {
     std::string base = path.substr(path.find_last_of('/') + 1);
     r.file = base.substr(0, base.find('.')) + ".png";
     r.samples = 64, r.width = 1280, r.height = 720;
+    const Config::Cinema& cc = config().cinema;
+    r.bounces = cc.bounces, r.denoise = cc.denoise, r.dispersion = cc.dispersion, r.motionBlur = cc.motionBlur;
+    if (cc.width > 0) r.width = cc.width, r.height = cc.height > 0 ? cc.height : cc.width * 9 / 16;
     todo.push_back(r);
   }
   for (const RenderRequest& req0 : todo) {
@@ -134,7 +160,7 @@ int renderScript(const std::string& path, const Options& o) {
         stage.update(static_cast<float>(step));
       }
       Camera cam = stage.film.shots.empty() ? stage.scene.camera : stage.film.at(req.at, stage.scene.camera);
-      Image pic = renderStill(stage.scene, cam, req.width, req.height, req.samples, 0, req.file);
+      Image pic = renderStill(stage.scene, cam, req.width, req.height, req.samples, 0, req.file, &req);
       writePng(req.file, pic, true);
       std::printf("wrote %s\n", req.file.c_str());
       continue;
@@ -159,7 +185,7 @@ int renderScript(const std::string& path, const Options& o) {
       if (!sh.look.empty()) lookByName(sh.look, sc.look);
       char name[256];
       std::snprintf(name, sizeof name, "%s/frame_%05d.png", req.file.c_str(), f + 1);
-      Image pic = renderStill(sc, cam, req.width, req.height, req.samples, static_cast<uint32_t>(f), name);
+      Image pic = renderStill(sc, cam, req.width, req.height, req.samples, static_cast<uint32_t>(f), name, &req);
       if (fade < 1)
         for (auto& p : pic.px) p = Vec4(p.xyz() * fade, 1);
       writePng(name, pic, true);
@@ -263,6 +289,12 @@ int main(int argc, char** argv) {
     else return usage();
   }
   if (cmd == "demo") return demo(target, o);
+  if (cmd == "settings") {
+    // `loop settings list` prints every engine setting as JSON (for the editor's checks and the docs)
+    if (target != "list") return usage();
+    std::printf("%s\n", Settings::get().list().dump(1).c_str());
+    return 0;
+  }
   if (cmd == "check") {
     std::string src;
     if (!readText(target, src)) return std::fprintf(stderr, "can't read %s\n", target.c_str()), 1;

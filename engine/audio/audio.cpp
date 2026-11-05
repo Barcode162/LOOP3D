@@ -1,5 +1,7 @@
 #include "engine/audio/audio.h"
 
+#include "engine/core/settings.h"
+
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -382,7 +384,14 @@ struct Mixer::Impl {
     std::vector<float> delay = std::vector<float>(64, 0.0f);
     int dpos = 0;
     float lastDist = -1;
+    Category category = Category::kEffects;
+    Vec3 lastAt{0};
+    bool moved = false;
+    std::vector<float> stretch;  // Doppler: the voice's own samples before resampling
+    float carry = 0;             // last sample of the previous block (smooth joins)
   };
+  Vec3 lastListener{0};
+  bool listenerSeen = false;
   std::vector<Src> srcs;
   int nextId = 1;
   std::vector<float> mono;
@@ -429,12 +438,13 @@ struct Mixer::Impl {
 Mixer::Mixer() : impl_(std::make_unique<Impl>()) {}
 Mixer::~Mixer() = default;
 
-int Mixer::play(std::unique_ptr<Voice> v, Vec3 at, float volume, bool spatial, bool loop) {
+int Mixer::play(std::unique_ptr<Voice> v, Vec3 at, float volume, bool spatial, bool loop, Category category) {
   if (!v) return 0;
   Impl::Src s;
   s.id = impl_->nextId++;
   s.v = std::move(v);
-  s.at = at, s.volume = volume, s.spatial = spatial, s.loop = loop;
+  s.at = at, s.volume = volume, s.spatial = spatial, s.loop = loop, s.category = category;
+  s.lastAt = at;
   s.air.set('l', 20000, 0.7f);
   impl_->srcs.push_back(std::move(s));
   return impl_->srcs.back().id;
@@ -461,20 +471,54 @@ void Mixer::render(float* out, int frames) {
   I.mono.assign(frames, 0.0f);
   std::vector<float> wetIn(frames, 0.0f);
   Vec3 right = normalize(cross(listener.forward, listener.up));
+  const Config::Audio& cfg = config().audio;
+  const float block = static_cast<float>(frames) / kRate;
+  // how fast the listener moves (for Doppler), from where it was last block
+  Vec3 lv = listener.velocity;
+  if (lengthSq(lv) == 0 && I.listenerSeen) lv = (listener.position - I.lastListener) / block;
+  I.lastListener = listener.position, I.listenerSeen = true;
   for (auto& s : I.srcs) {
     std::fill(I.mono.begin(), I.mono.end(), 0.0f);
-    if (!s.v->render(I.mono.data(), frames)) s.alive = false;
-    float pan = 0.5f, gain = s.volume, itd = 0;
+    // Doppler: a sound coming closer is higher, going away lower (speed of sound 343 m/s)
+    float ratio = 1;
+    if (s.spatial && cfg.doppler) {
+      Vec3 sv = lengthSq(s.vel) > 0 ? s.vel : (s.at - s.lastAt) / block;
+      Vec3 toL = listener.position - s.at;
+      float dl = length(toL);
+      if (dl > 1e-3f) {
+        Vec3 u = toL / dl;
+        float vs = clamp(dot(sv, u), -150.0f, 150.0f), vl = clamp(dot(lv, -u), -150.0f, 150.0f);
+        ratio = clamp((343 + vl) / (343 - vs), 0.5f, 2.0f);
+      }
+    }
+    s.lastAt = s.at;
+    if (std::fabs(ratio - 1) < 1e-3f) {
+      if (!s.v->render(I.mono.data(), frames)) s.alive = false;
+    } else {
+      int need = static_cast<int>(std::ceil(frames * ratio)) + 1;
+      s.stretch.assign(need, 0.0f);
+      if (!s.v->render(s.stretch.data() + 1, need - 1)) s.alive = false;
+      s.stretch[0] = s.carry;
+      for (int i = 0; i < frames; ++i) {
+        float x = i * ratio;
+        int k = static_cast<int>(x);
+        float f = x - k;
+        I.mono[i] = s.stretch[std::min(k, need - 1)] * (1 - f) + s.stretch[std::min(k + 1, need - 1)] * f;
+      }
+      s.carry = s.stretch[need - 1];
+    }
+    const float cat[] = {cfg.ambience, cfg.effects, cfg.footsteps, cfg.dialogue, cfg.music};
+    float pan = 0.5f, gain = s.volume * cat[static_cast<int>(s.category)], itd = 0;
     if (s.spatial) {
       Vec3 d = s.at - listener.position;
       float dist = std::max(length(d), 0.3f);
       Vec3 dir = d / dist;
       float side = dot(dir, right);
       pan = 0.5f + 0.5f * side;
-      itd = side * 0.00066f * kRate;  // up to ~0.66 ms between the ears
-      gain *= 1.0f / (1 + (dist - 0.3f) * 0.6f);  // gentle inverse-distance
-      // far sounds lose their highs (air), and Doppler for fast movers
-      s.air.set('l', clamp(20000 / (1 + dist * 0.05f), 2500.0f, 20000.0f), 0.7f);
+      if (cfg.earDelay) itd = side * 0.00066f * kRate;  // up to ~0.66 ms between the ears
+      gain *= 1.0f / (1 + (dist - 0.3f) * 0.6f * cfg.distance);  // gentle inverse-distance
+      // far sounds lose their highs (air)
+      s.air.set('l', cfg.airAbsorb ? clamp(20000 / (1 + dist * 0.05f), 2500.0f, 20000.0f) : 20000.0f, 0.7f);
     }
     for (int i = 0; i < frames; ++i) {
       if (s.fade > 0) {
@@ -498,16 +542,18 @@ void Mixer::render(float* out, int frames) {
   I.srcs.erase(std::remove_if(I.srcs.begin(), I.srcs.end(), [](const Impl::Src& s) { return !s.alive && !s.loop; }), I.srcs.end());
   // the room
   float fb = 0.7f + 0.28f * saturate(roomSize), damp = 0.2f + 0.3f * (1 - roomSize);
+  float wet = roomWet * cfg.reverb, master = masterVolume * cfg.master;
   for (int i = 0; i < frames; ++i) {
     float in = wetIn[i] * 0.015f;
     for (int side = 0; side < 2; ++side) {
       float acc = 0;
       for (auto& c : I.combs[side]) acc += c.process(in, fb, damp);
       for (auto& a : I.aps[side]) acc = a.process(acc);
-      out[i * 2 + side] += acc * roomWet;
+      out[i * 2 + side] += acc * wet;
     }
-    // a soft limiter so many sounds together never clip harshly
-    for (int side = 0; side < 2; ++side) out[i * 2 + side] = std::tanh(out[i * 2 + side] * masterVolume);
+    // a soft limiter so many sounds together never clip harshly (or a hard clip at ±1)
+    for (int side = 0; side < 2; ++side)
+      out[i * 2 + side] = cfg.limiter ? std::tanh(out[i * 2 + side] * master) : clamp(out[i * 2 + side] * master, -1.0f, 1.0f);
   }
 }
 

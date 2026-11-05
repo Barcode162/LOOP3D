@@ -550,7 +550,7 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     b.glass = glass;
     b.glassAlpha = rough < 0.03f ? 0 : rough * rough;
     float ior = M.ior;
-    if (glass > 0 && M.dispersion > 0) {
+    if (glass > 0 && M.dispersion > 0 && settings.dispersion) {
       if (wavelength == 0) {
         wavelength = 380 + 340 * rng.uniform();
         beta *= spectrum().weight(wavelength);

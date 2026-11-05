@@ -106,4 +106,14 @@ bool lookByName(const std::string& name, Look& o) {
   return false;
 }
 
+bool sensorByName(const std::string& name, Vec2& out) {
+  if (name == "ff" || name == "full frame") out = {36, 24};
+  else if (name == "s35" || name == "super 35") out = {24.89f, 18.66f};
+  else if (name == "apsc" || name == "aps-c") out = {23.6f, 15.6f};
+  else if (name == "m43" || name == "micro 4/3") out = {17.3f, 13};
+  else if (name == "imax" || name == "imax 65") out = {70.41f, 52.63f};
+  else return false;
+  return true;
+}
+
 }  // namespace loop

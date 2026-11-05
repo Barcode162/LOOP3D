@@ -123,6 +123,8 @@ struct Look {
 // The built-in looks by name: natural, blockbuster, noir, golden, bleach,
 // seventies, neon, dream, documentary, horror, arctic, western.
 bool lookByName(const std::string& name, Look& out);
+// Camera sensors by name (mm): ff (full frame 36×24), s35, apsc, m43, imax.
+bool sensorByName(const std::string& name, Vec2& out);
 std::vector<std::string> lookNames();
 
 struct MeshInstance {

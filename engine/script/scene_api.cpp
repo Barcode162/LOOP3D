@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "engine/core/random.h"
+#include "engine/core/settings.h"
 #include "engine/geometry/plants.h"
 #include "engine/render/materials.h"
 
@@ -27,6 +28,16 @@ void Stage::setListener(const Camera& cam) {
 
 void Stage::update(float dt) {
   if (dt <= 0) return;
+  // the physics settings (project, scene and editor) in effect now
+  const Config::Physics& pc = config().physics;
+  world.gravity = pc.gravity;
+  world.stepRate = static_cast<float>(pc.rate);
+  world.velocityIterations = pc.iterations;
+  world.sleepSpeed = pc.sleep;
+  world.staticFriction = pc.friction, world.staticBounce = pc.bounce;
+  world.walkableCos = std::cos(pc.charSlope * kPi / 180);
+  world.clothIterations = pc.clothIterations;
+  world.wind = pc.wind;
   // fixed things to bump into: every simple shape that isn't solid
   if (collidersDirty) {
     world.clearStatic();
@@ -45,7 +56,7 @@ void Stage::update(float dt) {
     if (dv > 1.2f && !b.asleep) {
       const Material& m = scene.materials[scene.instances[p.instance].material];
       mixer.play(audio::makeSound("impact", audio::surfaceOf(m.name), clamp(dv / 6, 0.1f, 1.0f), static_cast<uint32_t>(i * 7919 + static_cast<int>(dv * 100))), b.x,
-                 clamp(dv / 5, 0.2f, 1.0f));
+                 clamp(dv / 5, 0.2f, 1.0f), true, false, audio::Category::kEffects);
     }
     p.lastVelocity = b.v;
     if (b.asleep && !p.useQuat) continue;
@@ -98,6 +109,34 @@ std::unordered_map<Vm*, Stage*>& stages() {
 Stage& stageOf(Vm& vm) { return *stages().at(&vm); }
 
 std::map<std::string, int>& meshCache(Stage& s) { return s.meshCache; }
+
+// A script value as a setting's value: numbers, yes/no, text, vec(…) or [a, b, c].
+Json settingValue(Vm& vm, const Value& v) {
+  if (v.isNumber()) return Json(v.n);
+  if (v.isBool()) return Json(v.b);
+  if (v.isVec()) {
+    Json a = Json::array();
+    for (int i = 0; i < 3; ++i) a.push(Json(static_cast<double>(v.v[i])));
+    return a;
+  }
+  if (List* l = v.as<List>()) {
+    Json a = Json::array();
+    for (const Value& x : l->items) a.push(x.isNumber() ? Json(x.n) : Json(vm.show(x)));
+    return a;
+  }
+  if (v.isNothing()) return Json();
+  return Json(vm.show(v));
+}
+void setSetting(Vm& vm, const std::string& id, const Value& v) {
+  std::string err;
+  // names may be written with _ for the dot: physics_iterations
+  std::string name = id;
+  if (!Settings::get().find(name) && name.find('.') == std::string::npos) {
+    size_t u = name.find('_');
+    if (u != std::string::npos) name[u] = '.';
+  }
+  if (!Settings::get().set(Settings::kScene, name, settingValue(vm, v), &err)) vm.fail(err, "every setting is listed in docs/SETTINGS.md");
+}
 int cachedMesh(Stage& st, const std::string& key, const std::function<Mesh()>& make) {
   auto& c = meshCache(st);
   auto it = c.find(key);
@@ -437,6 +476,36 @@ Vec3 unitLuminanceOr(Vec3 c) {
 void installSceneApi(Vm& vm, Stage& stage) {
   stages()[&vm] = &stage;
   if (stage.scene.findMaterial("default") < 0) stage.scene.addMaterial(Material());
+  // a new scene starts from the project's settings: forget the last scene's
+  Settings::get().clear(Settings::kScene);
+  if (!config().project.mode.empty()) stage.mode = config().project.mode;
+
+  // ---- settings: the same names as the editor and project.json
+  vm.native("setting", [](Args& a) {
+    std::string id = a.text(0, "name", "");
+    const Value* v = a.get(1, "value");
+    if (id.empty() || !v) a.vm.fail("setting needs a name and a value, like setting \"render.lamps\", 4");
+    setSetting(a.vm, id, *v);
+    return Value();
+  }, "setting \"physics.iterations\", 24: changes an engine setting for this scene (names as in the editor)");
+  vm.native("settings", [](Args& a) {
+    Table* t = a.count ? a.pos[0].as<Table>() : nullptr;
+    if (!t) a.vm.fail("settings needs a table, like settings {render_lamps: 4, story_textSpeed: 20}");
+    for (auto& [k, v] : t->entries) setSetting(a.vm, k, v);
+    return Value();
+  }, "settings {story_textSpeed: 20, audio_reverb: 1.5}: several settings at once (_ or . between the parts)");
+  vm.native("get_setting", [](Args& a) {
+    std::string id = a.text(0, "name", "");
+    if (!Settings::get().find(id)) {
+      std::string s = Settings::get().suggest(id);
+      a.vm.fail("there's no setting \"" + id + "\"", s.empty() ? "" : "did you mean \"" + s + "\"?");
+    }
+    Json j = Settings::get().value(id);
+    if (j.isNumber()) return Value::number(j.number());
+    if (j.type() == Json::Type::kBool) return Value::boolean(j.boolean());
+    if (j.isArray()) return Value::vec(Vec3(static_cast<float>(j[0].number()), static_cast<float>(j[1].number()), static_cast<float>(j[2].number())));
+    return a.vm.text(j.string());
+  }, "get_setting(\"player.walk\"): a setting's value in effect now");
 
   vm.native("title", [](Args& a) {
     stageOf(a.vm).title = a.text(0, "name", "Untitled");
@@ -540,7 +609,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
   vm.native("terrain", [](Args& a) {
     Stage& s = stageOf(a.vm);
     float size = f32(a.num(-1, "size", 1000));
-    int res = static_cast<int>(a.num(-1, "detail", 257));
+    int res = static_cast<int>(a.num(-1, "detail", 257) * config().world.terrainRes);
     HeightMap h(std::clamp(res, 17, 1025), size);
     HeightMap::Shape sh;
     sh.height = f32(a.num(-1, "height", 120));
@@ -580,6 +649,10 @@ void installSceneApi(Vm& vm, Stage& stage) {
     std::string kind = a.text(-1, "kind", "pine");
     Vec3 c = a.vec(-1, "around", {});
     float radius = f32(a.num(-1, "radius", 60)), spacing = f32(a.num(-1, "spacing", 7));
+    // world.foliageDensity: trees per area (spacing shrinks as density grows)
+    float density = config().world.foliageDensity;
+    if (density <= 0.001f) return Value::number(0);
+    spacing /= std::sqrt(density);
     float maxSlope = f32(a.num(-1, "steepest", 0.3));
     float clearing = f32(a.num(-1, "clearing", 0));
     Vec3 clearAt = a.vec(-1, "clear_around", c);
@@ -653,9 +726,11 @@ void installSceneApi(Vm& vm, Stage& stage) {
     sun->direction = -toSun;
     sun->lux = f32(a.num(-1, "lux", 100000));
     sun->color = a.has(-1, "kelvin") ? kelvin(f32(a.num(-1, "kelvin", 5800))) : Vec3(1);
+    // size: the sun's width in the sky (0.53 deg is our sun); wider = softer shadows
+    sun->radius = f32(a.num(-1, "size", 0.0093)) * 0.5f;
     ++s.version;
     return Value();
-  }, "sun(elevation: 20 deg, toward: 135 deg, lux)");
+  }, "sun(elevation: 20 deg, toward: 135 deg, lux, kelvin, size: 0.53 deg)");
   vm.native("sky", [](Args& a) {
     Stage& s = stageOf(a.vm);
     std::string k = a.text(0, "kind", "physical");
@@ -668,9 +743,10 @@ void installSceneApi(Vm& vm, Stage& stage) {
     s.scene.sky.intensity = f32(a.num(-1, "brightness", s.scene.sky.intensity));
     if (a.has(-1, "color")) s.scene.sky.color = a.vec(-1, "color", Vec3(1));
     s.scene.sky.colorNits = f32(a.num(-1, "nits", s.scene.sky.colorNits));
+    if (a.has(-1, "ground")) s.scene.sky.groundAlbedo = a.vec(-1, "ground", s.scene.sky.groundAlbedo);
     ++s.version;
     return Value();
-  }, "sky(\"physical\", haze, stars) or sky(\"color\", color, nits)");
+  }, "sky(\"physical\", haze, stars, brightness, ground) or sky(\"color\", color, nits)");
   vm.native("fog", [](Args& a) {
     Stage& s = stageOf(a.vm);
     s.scene.fog.density = f32(a.num(0, "density", 0.01));
@@ -696,9 +772,14 @@ void installSceneApi(Vm& vm, Stage& stage) {
     c.iso = f32(a.num(-1, "iso", c.iso));
     c.exposureCompensation = f32(a.num(-1, "exposure", c.exposureCompensation));
     if (a.has(-1, "auto_exposure")) c.autoExposure = a.flag(-1, "auto_exposure", true);
+    c.blades = static_cast<int>(a.num(-1, "blades", c.blades));
+    if (a.has(-1, "sensor")) {
+      std::string k = a.text(-1, "sensor", "ff");
+      if (!sensorByName(k, c.sensor)) a.vm.fail("there's no sensor called \"" + k + "\"", "sensors: ff (full frame), s35, apsc, m43, imax");
+    }
     ++s.version;
     return Value();
-  }, "camera(at, look_at, lens: 35 mm, f_stop: 2.8, focus, exposure)");
+  }, "camera(at, look_at, lens: 35 mm, f_stop: 2.8, focus, shutter, iso, exposure, auto_exposure, sensor: \"s35\", blades)");
   vm.native("look", [](Args& a) {
     Stage& s = stageOf(a.vm);
     std::string n = a.text(0, "name", "natural");
@@ -715,9 +796,27 @@ void installSceneApi(Vm& vm, Stage& stage) {
     l.grain = f32(a.num(-1, "grain", l.grain));
     l.vignette = f32(a.num(-1, "vignette", l.vignette));
     l.letterbox = f32(a.num(-1, "bars", l.letterbox));
+    if (a.has(-1, "tone")) {
+      std::string t = a.text(-1, "tone", "agx");
+      if (t == "agx") l.tonemap = Look::Tonemap::kAgX;
+      else if (t == "aces") l.tonemap = Look::Tonemap::kAces;
+      else if (t == "filmic") l.tonemap = Look::Tonemap::kFilmic;
+      else if (t == "linear") l.tonemap = Look::Tonemap::kLinear;
+      else a.vm.fail("a tone curve is \"agx\", \"aces\", \"filmic\" or \"linear\"");
+    }
+    l.lift = a.vec(-1, "lift", l.lift), l.gamma = a.vec(-1, "gamma", l.gamma), l.gain = a.vec(-1, "gain", l.gain);
+    l.shadowTint = a.vec(-1, "shadow_tint", l.shadowTint), l.highlightTint = a.vec(-1, "highlight_tint", l.highlightTint);
+    l.blackLevel = f32(a.num(-1, "black_level", l.blackLevel));
+    l.bloomRadius = f32(a.num(-1, "bloom_size", l.bloomRadius));
+    l.halation = f32(a.num(-1, "halation", l.halation));
+    l.chromaticAberration = f32(a.num(-1, "fringes", l.chromaticAberration));
+    l.distortion = f32(a.num(-1, "distortion", l.distortion));
+    l.sharpen = f32(a.num(-1, "sharpen", l.sharpen));
+    l.grainSize = f32(a.num(-1, "grain_size", l.grainSize));
+    if (a.has(-1, "monochrome")) l.monochrome = a.flag(-1, "monochrome", false);
     ++s.version;
     return Value();
-  }, "look(\"noir\", contrast, saturation, warmth, bloom, grain, vignette, bars)");
+  }, "look(\"noir\", contrast, saturation, warmth, tint, bloom, bloom_size, halation, grain, grain_size, vignette, bars, tone, lift, gamma, gain, shadow_tint, highlight_tint, black_level, fringes, distortion, sharpen, monochrome)");
   auto framing = [](Args& a, const Value* v, Framing base) {
     if (!v) return base;
     Table* t = v->as<Table>();
@@ -791,8 +890,8 @@ void installSceneApi(Vm& vm, Stage& stage) {
       default: d.shape = physics::ShapeKind::kBox, d.halfExtents = p.size * p.scale * 0.5f; break;
     }
     d.mass = f32(a.num(-1, "mass", 1));
-    d.restitution = f32(a.num(-1, "bounce", 0.2));
-    d.friction = f32(a.num(-1, "friction", 0.6));
+    d.restitution = f32(a.num(-1, "bounce", config().physics.bounce));
+    d.friction = f32(a.num(-1, "friction", config().physics.friction));
     d.position = p.position;
     d.rotation = Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
     d.velocity = a.vec(-1, "velocity", {});
@@ -808,13 +907,18 @@ void installSceneApi(Vm& vm, Stage& stage) {
     return Value();
   }, "push(shape, vec(0, 5, 0)): a shove, in kg·m/s");
   vm.native("gravity", [](Args& a) {
-    stageOf(a.vm).world.gravity = a.vec(0, "pull", {0, -9.81f, 0});
+    // the scene's physics.gravity setting (the editor can still change it live)
+    Vec3 g = a.vec(0, "pull", {0, -9.81f, 0});
+    setSetting(a.vm, "physics.gravity", Value::vec(g));
+    stageOf(a.vm).world.gravity = config().physics.gravity;
     return Value();
-  });
+  }, "gravity(vec(0, -1.62, 0)): the pull on everything (m/s²); the Moon is -1.62");
 
   // ---- people
   vm.native("person", [](Args& a) {
     Stage& s = stageOf(a.vm);
+    if (static_cast<int>(s.people.size()) >= config().anim.maxPeople)
+      a.vm.fail("this scene already has " + std::to_string(s.people.size()) + " people, the most allowed", "raise the setting anim.maxPeople");
     Stage::Person per;
     float h = f32(a.num(-1, "height", 1.75));
     per.skeleton = std::make_unique<anim::Skeleton>(anim::humanSkeleton(h));
@@ -827,7 +931,8 @@ void installSceneApi(Vm& vm, Stage& stage) {
     int index = static_cast<int>(s.people.size());
     per.animator->onFootstep = [sp, index](int foot, Vec3 at, float strength) {
       std::string surface = sp->people[index].footSurface.empty() ? (sp->terrains.empty() ? sp->groundSurface : std::string("grass")) : sp->people[index].footSurface;
-      sp->mixer.play(audio::makeSound("footstep", surface, strength, static_cast<uint32_t>(foot * 131 + at.x * 1000 + at.z * 977)), at, 0.7f);
+      sp->mixer.play(audio::makeSound("footstep", surface, strength, static_cast<uint32_t>(foot * 131 + at.x * 1000 + at.z * 977)), at, 0.7f, true, false,
+                     audio::Category::kFootsteps);
     };
     // the body: limbs as capsules between joints, a head, a torso
     const anim::Skeleton& sk = *per.skeleton;
@@ -882,7 +987,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     r.at = a.vec(-1, "at", {});
     r.volume = f32(a.num(-1, "volume", 1));
     bool everywhere = !a.has(-1, "at");
-    r.mixerId = s.mixer.play(std::move(v), r.at, r.volume, !everywhere, endless);
+    r.mixerId = s.mixer.play(std::move(v), r.at, r.volume, !everywhere, endless, endless ? audio::Category::kAmbience : audio::Category::kEffects);
     s.sounds.push_back(r);
     return Value::object(a.vm.newThing(&kSoundClass, static_cast<int>(s.sounds.size() - 1)));
   }, "sound(\"fire\", at: vec(…), volume) for endless sounds; sound(\"impact\", \"glass\", at: …) for one-offs");
@@ -902,8 +1007,11 @@ void installSceneApi(Vm& vm, Stage& stage) {
     if (a.count >= 2) m.speaker = a.vm.show(a.pos[0]), m.text = a.vm.show(a.pos[1]);
     else m.text = a.text(0, "text", "");
     m.speaker = a.text(-1, "speaker", m.speaker);
-    // long enough to read: about 15 characters a second, at least 2 s
-    m.seconds = f32(a.num(-1, "seconds", std::max(2.0, m.text.size() / 15.0 + 1)));
+    // long enough to read: story.textSpeed characters a second (15), at least story.lineMin (2 s)
+    const Config::Story& st = config().story;
+    size_t chars = 0;
+    for (unsigned char ch : m.text) chars += (ch & 0xC0) != 0x80;  // letters, not bytes
+    m.seconds = f32(a.num(-1, "seconds", std::max<double>(st.lineMin, chars / std::max(st.textSpeed, 1.0f) + 1)));
     s.ui.push_back(m);
     return Value::number(m.seconds);
   }, "line(\"Mira\", \"The ember has gone out.\"): a line of dialogue on screen; gives back how long it shows");
@@ -969,18 +1077,21 @@ void installSceneApi(Vm& vm, Stage& stage) {
     m.kind = "clear";
     stageOf(a.vm).ui.push_back(m);
     return Value();
-  });
+  }, "clear_lines(): takes every line of dialogue off the screen");
 
   // ---- renders (made by the `loop` command with the cinema renderer)
   vm.native("render", [](Args& a) {
     Stage& s = stageOf(a.vm);
     RenderRequest r;
     r.file = a.text(0, "file", s.title + ".png");
-    std::string q = a.text(-1, "quality", "good");
+    const Config::Cinema& cc = config().cinema;
+    std::string q = a.text(-1, "quality", cc.quality.empty() ? "good" : cc.quality);
     r.samples = q == "draft" ? 16 : q == "good" ? 128 : q == "cinema" ? 1024 : q == "ultra" ? 4096 : 128;
+    if (cc.samples > 0) r.samples = cc.samples;
     r.samples = static_cast<int>(a.num(-1, "samples", r.samples));
-    r.width = static_cast<int>(a.num(-1, "width", 1920));
-    r.height = static_cast<int>(a.num(-1, "height", r.width * 9 / 16));
+    r.width = static_cast<int>(a.num(-1, "width", cc.width > 0 ? cc.width : 1920));
+    r.height = static_cast<int>(a.num(-1, "height", cc.height > 0 ? cc.height : r.width * 9 / 16));
+    r.bounces = cc.bounces, r.denoise = cc.denoise, r.dispersion = cc.dispersion, r.motionBlur = cc.motionBlur;
     r.at = f32(a.num(-1, "at", a.vm.time()));
     s.renders.push_back(r);
     return Value();
@@ -989,13 +1100,16 @@ void installSceneApi(Vm& vm, Stage& stage) {
     Stage& s = stageOf(a.vm);
     RenderRequest r;
     r.film = true;
-    r.file = a.text(0, "folder", "frames");
-    std::string q = a.text(-1, "quality", "good");
+    const Config::Cinema& cc = config().cinema;
+    r.file = a.text(0, "folder", cc.folder);
+    std::string q = a.text(-1, "quality", cc.quality.empty() ? "good" : cc.quality);
     r.samples = q == "draft" ? 8 : q == "good" ? 64 : q == "cinema" ? 512 : 64;
+    if (cc.samples > 0) r.samples = cc.samples;
     r.samples = static_cast<int>(a.num(-1, "samples", r.samples));
-    r.width = static_cast<int>(a.num(-1, "width", 1280));
-    r.height = static_cast<int>(a.num(-1, "height", r.width * 9 / 16));
-    s.film.fps = f32(a.num(-1, "fps", 24));
+    r.width = static_cast<int>(a.num(-1, "width", cc.width > 0 ? cc.width : 1280));
+    r.height = static_cast<int>(a.num(-1, "height", cc.height > 0 ? cc.height : r.width * 9 / 16));
+    r.bounces = cc.bounces, r.denoise = cc.denoise, r.dispersion = cc.dispersion, r.motionBlur = cc.motionBlur;
+    s.film.fps = f32(a.num(-1, "fps", cc.fps));
     s.renders.push_back(r);
     return Value();
   }, "film(folder, quality, width, fps): renders every frame of the shots");

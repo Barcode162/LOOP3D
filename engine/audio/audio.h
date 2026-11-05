@@ -40,6 +40,9 @@ std::vector<std::string> ambienceNames();
 // The surface/material word a material name sounds like ("oak" → "wood").
 std::string surfaceOf(const std::string& materialName);
 
+// What a sound is, for its volume setting (audio.ambience, audio.effects, …).
+enum class Category { kAmbience, kEffects, kFootsteps, kDialogue, kMusic };
+
 class Mixer {
  public:
   Mixer();
@@ -52,7 +55,9 @@ class Mixer {
 
   // Plays a voice at a place (or everywhere when `spatial` is false).
   // Returns an id for moving it, changing its volume or stopping it.
-  int play(std::unique_ptr<Voice> v, Vec3 at, float volume = 1, bool spatial = true, bool loop = false);
+  // The engine's audio settings (config().audio) scale it by category and
+  // turn ear delay, air, Doppler and the limiter on or off.
+  int play(std::unique_ptr<Voice> v, Vec3 at, float volume = 1, bool spatial = true, bool loop = false, Category category = Category::kEffects);
   void move(int id, Vec3 at, Vec3 velocity = {});
   void setVolume(int id, float volume);
   void stop(int id, float fadeSeconds = 0.3f);
