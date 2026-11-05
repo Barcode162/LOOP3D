@@ -7,7 +7,9 @@ rooms that each show one thing the engine does, **before and after**.
 ![The reference and the Glade, side by side](stills/review_side_by_side.png)
 
 *Left: the reference picture. Right: the Glade, rendered by Loop3D's cinema renderer
-(`loop render`). Below it on the branch: `stills/showcase_glade.png`.*
+(`loop render`). Full size: `stills/showcase_glade.png`. Live views from the editor, at a
+quarter resolution on this machine's software GPU, are in `stills/live_*.png`: the hall, the
+materials, light and physics rooms, and the glade.*
 
 ---
 
@@ -121,11 +123,18 @@ the room shell, the door back and the start position.
    path tracer treats glowing things as lights).
 7. **Text in the world.** There's no 3D text, so the hall's doors are named by a line on
    screen when you walk up, not by a sign.
-8. **Weight.** The glade is about 4.6 million triangles (after the new `detail:` for far
+8. **The live haze.** The same fog that makes god rays in the cinema still turns into an
+   even beige haze over the whole forest live, because live fog has no shadows to break it
+   into shafts. See `stills/live_glade_walk.png` (live, Phone quality, a quarter resolution, on
+   this machine's software GPU) against `stills/showcase_glade.png`. Lowering the fog would
+   help the live view but cost the still its shafts; I kept it for the still. **Needed:** the
+   volumetric pass from step 1, or a separate live fog strength.
+9. **Weight.** The glade is about 4.6 million triangles (after the new `detail:` for far
    trees; 9.25 million before). A desktop GPU draws it. A phone will be slow on High: use Phone
    quality, and lower Forest density in Project Settings → World before the scene builds.
-   **On this test machine** (a software GPU on the CPU) the browser dropped the GPU on the
-   glade, so the live pictures here come from the cinema renderer.
+   **On this test machine** (a software GPU on the CPU) a live frame of the glade takes about
+   16 seconds. With the CPU also busy rendering, the browser dropped the GPU, which led to the
+   lighter far-off trees and a clearer message for that case.
 
 ---
 
