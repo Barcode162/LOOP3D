@@ -8,6 +8,7 @@
 
 #include "engine/core/file.h"
 #include "engine/core/settings.h"
+#include "engine/project/library.h"
 #include "engine/script/lexer.h"
 
 namespace loop {
@@ -266,10 +267,16 @@ std::string expandUses(const std::string& src, const std::string& dir, std::vect
     if (a != std::string::npos && line.compare(a, 5, "use \"") == 0) {
       size_t q = line.find('"', a + 5);
       std::string name = line.substr(a + 5, q - a - 5);
+      // the scene's own folder first, then the library
       std::string file = joinPath(dir, name + ".loop"), text;
+      std::error_code ec;
+      if (!std::filesystem::is_regular_file(file, ec)) {
+        std::string lib = libraryEntryPath(findLibrary(dir), name);
+        if (!lib.empty()) file = lib;
+      }
       if (std::find(seen.begin(), seen.end(), file) == seen.end()) {
         seen.push_back(file);
-        if (readText(file, text)) out += expandUses(text, dir, seen) + "\n";
+        if (readText(file, text)) out += expandUses(text, directoryOf(file), seen) + "\n";
         else out += "say \"can't find " + name + ".loop\"\n";
       }
       out += "\n";

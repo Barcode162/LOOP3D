@@ -29,9 +29,13 @@ of it in solid, checked steps and report at the end.
 4. **Commit small, push `main`.** GitHub's **Check** tests and builds every push. The public player changes only
    when it's published: the **Publish the player** workflow (by hand), or, where Claude can't start workflows,
    the `site` artifact of a green Check put on `gh-pages` as one new commit. Then open the live page to check it.
-5. **Log:** one line at the top of `LOG.md` per request: the date, what the user asked (short), what was done,
+5. **Grow the library:** whatever a goal makes that another project could use (a model, a room, a piece, a
+   light rig, a clip, a sound) goes into `library/<kinds>/<name>.loop` with its card (what it is, how to
+   place it, its credit and licence, where it came from), and the project uses it from there
+   (`loop library check`; the library test refuses an entry without a licence).
+6. **Log:** one line at the top of `LOG.md` per request: the date, what the user asked (short), what was done,
    the commit. Change `PLAN.md` when the order changes.
-6. **Reply short:** what's done, what to look at on the phone, what's next. Never say done or live without checking.
+7. **Reply short:** what's done, what to look at on the phone, what's next. Never say done or live without checking.
 
 ## The engine's rules
 - **One of everything:** one engine, one language, one way to do each thing. Look for what exists before adding.
@@ -54,7 +58,8 @@ of it in solid, checked steps and report at the end.
 ## Where things are
 `engine/` (core, project, geometry, render, gpu, script, physics, anim, audio; which side each part is on:
 `engine/modules.json`) · `web/` (the player, the editor) ·
-`tools/loop.cpp` (the `loop` command: check, run, play, render, budget, project, words, settings) · `projects/`
+`tools/loop.cpp` (the `loop` command: check, run, play, render, budget, project, library, words, settings) ·
+`library/` (what every project shares, growing with every goal) · `projects/`
 (each project's folder; a cover page `name.looped` names it and its first scene) · `tests/` ·
 `docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING) · `perf/` (benchmark runs from the phone).
 The public player: https://barcode162.github.io/LOOP3D/ (the editor: `editor.html`), published from `gh-pages`.

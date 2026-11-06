@@ -204,6 +204,7 @@ Every setting has a sensible default; give only what matters.
   - `player()`, `near(place, within)`, `move_player(at, look_at)`; pressing Use sends `"use"`
   - The player stands on the land and on the top of any fixed thing underfoot (a dock, a bridge, a stair), stepping up as high as `physics.charStep`
   - `use "common"` at the start of a line brings in `common.loop` from the same folder; in a project's `places/`, a script whose name ends in `_common` holds what the scenes share and is never listed as a scene
+  - **The library** (`library/`, shared by every project): `use "lantern"` brings in a library entry by name when the scene's folder has no script of that name. Each entry starts with its card (what it is, how to place it, its credit and licence, where it came from); `loop library list` shows them, and the editor's Build space places them with a tap. Entries so far: `lantern`, `sailing_boat` (models), `room_shell` (rooms), `plinth`, `lintel` (pieces)
 - **Renders** (made by `loop render`):
   - `render(file, quality: "draft" | "good" | "cinema" | "ultra", width, height, samples, at)` for a still
   - `film(folder, quality, width, height, samples, fps)` for every frame of the shots

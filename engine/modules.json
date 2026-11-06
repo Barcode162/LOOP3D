@@ -5,7 +5,7 @@
      "files": ["engine/core/math.*", "engine/core/json.*", "engine/core/file.*", "engine/core/log.*", "engine/core/jobs.*", "engine/core/settings.*", "engine/core/meter.*", "engine/core/random.h", "engine/core/time.h", "engine/core/ease.h"]},
     {"name": "Language", "side": "core", "status": "in place", "what": "Looped Script: reading, compiling and running scripts",
      "files": ["engine/script/lexer.*", "engine/script/parser.*", "engine/script/compiler.*", "engine/script/vm.*", "engine/script/stdlib.cpp", "engine/script/value.h", "engine/script/ast.h", "engine/script/bytecode.h"]},
-    {"name": "Projects", "side": "core", "status": "in place", "what": "a project's cover page (.looped): its name and first scene",
+    {"name": "Projects", "side": "core", "status": "in place", "what": "a project's cover page (.looped): its name and first scene; the library every project shares",
      "files": ["engine/project/*"]},
     {"name": "World words", "side": "core", "status": "to separate", "what": "the script words for things, lights and the camera, with the visual words (looks, shots, patterns, nature) mixed in",
      "files": ["engine/script/scene_api.*"]},

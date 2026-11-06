@@ -9,6 +9,8 @@
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
 //   loop project <name.looped>                a project's cover page as JSON (its name and first scene)
 //   loop new "My Game"                        a new project in projects/, copied from projects/template
+//   loop library list|check|json              the library (library/): its entries; check refuses
+//               an entry with no credit or licence; json is for the site and the editor
 //   Every command that takes a scene also takes a project's cover page (.looped):
 //   it opens the project's first scene.
 //   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
@@ -25,6 +27,7 @@
 #include "engine/core/json.h"
 #include "engine/core/settings.h"
 #include "engine/core/time.h"
+#include "engine/project/library.h"
 #include "engine/project/project.h"
 #include "engine/render/demo_scenes.h"
 #include "engine/render/film.h"
@@ -460,6 +463,38 @@ int main(int argc, char** argv) {
       o.sets.push_back({kv.substr(0, eq), kv.substr(eq + 1)});
     }
     else return usage();
+  }
+  if (cmd == "library") {
+    std::string lib = findLibrary(".");
+    if (lib.empty()) {
+      std::fprintf(stderr, "problem: there's no library/ folder here or above\n");
+      return 1;
+    }
+    std::vector<LibraryEntry> entries;
+    std::vector<std::string> problems;
+    bool ok = readLibrary(lib, entries, problems);
+    for (const std::string& p : problems) std::fprintf(stderr, "problem: %s\n", p.c_str());
+    if (target == "json") {
+      Json all = Json::array();
+      for (const LibraryEntry& e : entries) {
+        Json j = Json::object();
+        j.set("name", Json(e.name)), j.set("what", Json(e.what)), j.set("about", Json(e.about)), j.set("kind", Json(e.kind));
+        j.set("place", Json(e.place)), j.set("credit", Json(e.credit)), j.set("licence", Json(e.licence)), j.set("from", Json(e.from));
+        all.push(j);
+      }
+      std::printf("%s\n", all.dump(1).c_str());
+    } else if (target == "list" || target == "check") {
+      std::string kind;
+      for (const LibraryEntry& e : entries) {
+        if (target == "check") continue;
+        if (e.kind != kind) std::printf("%s%ss\n", kind.empty() ? "" : "\n", (kind = e.kind).c_str());
+        std::printf("  %-16s %s (from %s)\n", e.name.c_str(), e.what.c_str(), e.from.c_str());
+      }
+      if (target == "check" && ok) std::printf("the library's %zu entries are in order\n", entries.size());
+    } else {
+      return usage();
+    }
+    return ok ? 0 : 1;
   }
   if (cmd == "new") {
     std::string folder, why;

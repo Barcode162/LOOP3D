@@ -70,6 +70,31 @@ window.LE = window.LE || {};
   const COLOURS = [[0.9, 0.9, 0.88], [0.12, 0.12, 0.12], [0.8, 0.2, 0.15], [0.95, 0.6, 0.15], [0.95, 0.85, 0.3], [0.3, 0.65, 0.3], [0.2, 0.45, 0.85], [0.5, 0.3, 0.75], [0.9, 0.45, 0.65], [0.45, 0.32, 0.22]];
   const rgbCss = (c) => 'rgb(' + c.map((x) => Math.round(x * 255)).join(',') + ')';
 
+  // ---- the library: what every project can use (library/, scenes/library.json)
+  SP.library = [];
+  fetch('scenes/library.json').then((r) => (r.ok ? r.json() : [])).then((l) => { SP.library = l; if (SP.current === 'build' && !V.sel) SP.redraw(); }).catch(() => {});
+  const KIND_ICON = { model: 'kind', room: 'top', piece: 'part' };
+  // A library entry into the scene: its `use` line at the top (once), then its
+  // example placed where the view looks (AT in its card's place line).
+  async function addFromLibrary(e) {
+    const p = spotAhead(0);
+    const useLine = 'use "' + e.name + '"';
+    let text = H.text, shift = 0;
+    if (!text.split('\n').some((l) => l.trim() === useLine)) {
+      // after the title, mode and other use lines at the top
+      const L = text.split('\n');
+      let at = 0;
+      for (let k = 0; k < L.length && /^(#|title\b|mode\b|use\b|\s*$)/.test(L[k]); k++) if (/^(title|mode|use)\b/.test(L[k])) at = k + 1;
+      text = S.insertAfter(text, at, useLine);
+      shift = 1;
+    }
+    const line = e.place.replace(/AT/g, S.vec([p[0], p[1], p[2]]));
+    text = S.insertAfter(text, lastThingLine() + shift, line);
+    if (!H.commit(text, 'added a ' + e.name.replace(/_/g, ' ') + ' from the library')) return;
+    SP.pendingSelect = null;
+    await SP.rerun();
+  }
+
   function toolBtn(icon, label, onclick, opt = {}) {
     return h('button', { class: 'tool' + (opt.on ? ' on' : '') + (opt.danger ? ' danger' : ''), onclick, disabled: opt.disabled, title: opt.title || label }, I(icon), label);
   }
@@ -95,6 +120,11 @@ window.LE = window.LE || {};
           toolBtn('light', V.workLight ? 'Work light on' : 'Work light', () => { V.setWorkLight(!V.workLight); this.draw(); }, { on: V.workLight, title: 'A lamp at your view, to see while building in the dark. Only in the editor: the world doesn\'t change.' }),
           toolBtn('grid', V.snap ? 'Snap on' : 'Snap off', () => { V.snap = !V.snap; this.draw(); }, { on: V.snap, title: 'Moves snap to 5 cm and turns to 15°' }));
         body.append(tools, view, h('div', { class: 'note' }, 'New things land on the floor in the middle of the view. ', h('b', {}, 'Drag'), ' a picked thing to slide it, use its handles to lift, turn and size it.'));
+        if (SP.library.length) {
+          const lib = h('div', { class: 'tools library' });
+          for (const e of SP.library) lib.append(toolBtn(KIND_ICON[e.kind] || 'layers', e.name.replace(/_/g, ' '), () => addFromLibrary(e), { title: e.what + ' (from ' + e.from + ')' }));
+          body.append(h('div', { class: 'sh-head' }, h('h2', {}, 'From the library'), h('span', { class: 'sub' }, SP.library.length + ' pieces every project shares')), lib);
+        }
         body.append(this.worldCard(), this.listCard());
         return;
       }

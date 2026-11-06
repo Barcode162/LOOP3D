@@ -8,7 +8,9 @@ cover page instead (projects/<name>/<name>.looped, read by `loop project`)
 has the .loop files beside it as its scenes, its first scene first. Their .loop files
 (and trailer stills) go flat into <site>/scenes/, so `use` and `go_to` find
 each other by name, and <site>/scenes/index.json lists the projects for the
-player's scene picker and the editor. The engine never needs any project.
+player's scene picker and the editor. The library's entries go there too (a
+scene's `use` finds them by name), with <site>/scenes/library.json for the
+editor. The engine never needs any project.
 """
 import json
 import re
@@ -108,3 +110,18 @@ for manifest, p in manifests:
 
 (out / "index.json").write_text(json.dumps({"projects": projects}, indent=1))
 print(f"{len(projects)} projects, {sum(len(p['scenes']) for p in projects)} scenes -> {out}")
+
+# the library (library/<kinds>/<name>.loop): every entry flat beside the scenes,
+# so a scene's `use "lantern"` finds it the same way, and library.json (each
+# entry's card, read by the engine itself) for the editor
+import subprocess
+listing = subprocess.run([str(root / "build" / "loop"), "library", "json"], capture_output=True, text=True, cwd=root)
+if listing.returncode:
+    sys.exit("the library: " + listing.stderr.strip())
+entries = json.loads(listing.stdout)
+for e in entries:
+    if e["name"] in owner:
+        sys.exit(f"library entry '{e['name']}' has the name of a scene in {owner[e['name']]} (names must be unique)")
+    shutil.copy(root / "library" / (e["kind"] + "s") / (e["name"] + ".loop"), out / (e["name"] + ".loop"))
+(out / "library.json").write_text(json.dumps(entries, indent=1))
+print(f"the library: {len(entries)} entries -> {out}")

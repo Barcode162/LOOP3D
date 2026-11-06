@@ -1,5 +1,6 @@
 // Checks the editor in a real browser, on a phone screen and a computer screen:
-// adds a box, taps it, drags it (its line is rewritten), undoes and redoes,
+// adds a box, taps it, drags it (its line is rewritten), undoes and redoes, places
+// a piece from the library,
 // opens Logic, adds a shot in Film, a sound and music in Sound, and reloads (nothing
 // lost). Pictures go to <out dir>; it fails if any step goes wrong.
 //   (cd site && python3 -m http.server 8123 &)
@@ -20,6 +21,9 @@ async function run(browser, name, viewport, touch) {
   p.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('Failed to load')) errs.push(m.text().slice(0, 300)); });
   const ready = () => p.waitForFunction(() => window.LE && LE.engine.ready && document.getElementById('vpNote').style.display === 'none', null, { timeout: 120000 });
   await p.goto(BASE + '/editor.html#first_room');
+  // a first visit reloads itself once, to share memory across the cores (web/isolate.js): wait for it
+  await p.waitForFunction(() => window.crossOriginIsolated, null, { timeout: 30000 }).catch(() => {});
+  await p.waitForLoadState('load');
   await p.evaluate(() => { try { localStorage.clear(); indexedDB.deleteDatabase('loop3d-editor'); } catch (e) { /* fresh anyway */ } });
   await p.reload();
   await ready();
@@ -55,6 +59,12 @@ async function run(browser, name, viewport, touch) {
   check((await lines('^box'))[0] === box[0], name + ': undo puts it back');
   await p.click('#redoBtn'); await p.waitForTimeout(600);
   check((await lines('^box'))[0] === moved[0], name + ': redo moves it again');
+  // the library: a tap on one of its pieces brings it in (its use line, once) and places it
+  await p.evaluate(() => LE.view.select(null)); await p.waitForTimeout(400);
+  const things0 = await p.evaluate(() => LE.spaces.refreshInfo().things.length);
+  await tap('plinth'); await p.waitForTimeout(2500);
+  check((await lines('^use "plinth"')).length === 1 && (await lines('^plinth\\(')).length === 1, name + ': a library piece adds its use line and itself (' + (await lines('^plinth'))[0] + ')');
+  check(await p.evaluate((n) => LE.spaces.refreshInfo().things.length > n, things0), name + ': the plinth stands in the world');
   await p.click('#spaces [data-space=logic]'); await p.waitForTimeout(800);
   check(await p.evaluate(() => document.querySelector('.code textarea').value === LE.history.text), name + ': Logic shows the script');
   await p.screenshot({ path: `${OUT}/${name}_logic.png` });

@@ -10,6 +10,7 @@ Writes one JSON file per dataset (rows as objects):
   gaps.json     what the engine is missing (engine/gaps.json)
   phone.json    benchmark runs on the user's iPhone (perf/segments.json)
   budget.json   the work budget's latest table (perf/budget.md)
+  library.json  the library's entries (library/: name, kind, what, where it came from)
   summary.json  the headline figures, one row each
 Run it after `cmake --build build` (the test count) and tools/build_site.sh
 (sizes in the web build); the dashboard is then updated with these files.
@@ -121,6 +122,10 @@ for line in last.splitlines():
         budget.append({"scene": m.group(1), "triangles_m": float(m.group(4)), "draws": int(m.group(6)), "shaded": float(m.group(8)),
                        "lamps": int(m.group(9)), "lamp_work": int(m.group(11)), "fits": verdict == "fits", "over_on": "" if verdict == "fits" else verdict})
 
+# ---- the library: every entry (library/<kinds>/<name>.loop), read by the engine itself
+lib_out = subprocess.run([str(ROOT / "build/loop"), "library", "json"], cwd=ROOT, capture_output=True, text=True)
+library = [{"name": e["name"], "kind": e["kind"], "what": e["what"], "from": e["from"]} for e in (json.loads(lib_out.stdout) if lib_out.returncode == 0 else [])]
+
 # ---- headline figures
 test_out = subprocess.run([str(ROOT / "build/loop_tests")], cwd=ROOT, capture_output=True, text=True).stdout
 m = re.search(r"(\d+) tests, (\d+) failed checks", test_out)
@@ -147,9 +152,10 @@ summary = [
     {"metric": "scenes_over_budget", "value": sum(1 for b in budget if not b["fits"])},
     {"metric": "scenes_measured", "value": len(budget)},
     {"metric": "phone_runs", "value": len(phone)},
+    {"metric": "library_entries", "value": len(library)},
 ]
 
 OUT.mkdir(parents=True, exist_ok=True)
-for name, data in [("parts", parts), ("growth", growth), ("pieces", pieces), ("gaps", gaps), ("phone", phone), ("budget", budget), ("summary", summary)]:
+for name, data in [("parts", parts), ("growth", growth), ("pieces", pieces), ("gaps", gaps), ("phone", phone), ("budget", budget), ("library", library), ("summary", summary)]:
     (OUT / f"{name}.json").write_text(json.dumps(data, indent=1))
     print(f"{name}.json: {len(data)} rows")
