@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · Published `cb88328` (GitHub's build, pictured first): simpler distant trees.
 - **2026-11-06** · "Resume go": plan step 4, third part: simpler distant trees (levels of detail; the same
   trees, thinned; the shadow pass one version simpler): The Woods 10.7 M → 3.7 M triangles, 9 of 41 scenes over
   budget. `loop budget --set name=value`, a "heaviest shapes" list and copies per level; the picture tool waits
