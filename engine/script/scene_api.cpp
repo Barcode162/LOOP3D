@@ -4,6 +4,7 @@
 #include <map>
 #include <unordered_map>
 
+#include "engine/core/meter.h"
 #include "engine/core/random.h"
 #include "engine/core/file.h"
 #include "engine/core/settings.h"
@@ -98,6 +99,7 @@ void Stage::update(float dt) {
   world.wind = pc.wind;
   // fixed things to bump into: every simple shape that isn't solid
   if (collidersDirty) {
+    MeterScope collidersTime(Part::kPhysics);
     world.clearStatic();
     for (const Placed& p : placed)
       if (p.collide && p.body < 0 && p.visible) {
@@ -108,25 +110,29 @@ void Stage::update(float dt) {
     collidersDirty = false;
   }
   // physics: solid shapes follow their bodies
-  world.step(dt);
-  for (size_t i = 0; i < placed.size(); ++i) {
-    Placed& p = placed[i];
-    if (p.body < 0) continue;
-    const physics::Body& b = world.body(p.body);
-    // a sudden stop is a knock: play the material's sound, as hard as it hit
-    float dv = length(b.v - p.lastVelocity);
-    if (dv > 1.2f && !b.asleep) {
-      const Material& m = scene.materials[scene.instances[p.instance].material];
-      mixer.play(audio::makeSound("impact", audio::surfaceOf(m.name), clamp(dv / 6, 0.1f, 1.0f), static_cast<uint32_t>(i * 7919 + static_cast<int>(dv * 100))), b.x,
-                 clamp(dv / 5, 0.2f, 1.0f), true, false, audio::Category::kEffects);
+  {
+    MeterScope physicsTime(Part::kPhysics);
+    world.step(dt);
+    for (size_t i = 0; i < placed.size(); ++i) {
+      Placed& p = placed[i];
+      if (p.body < 0) continue;
+      const physics::Body& b = world.body(p.body);
+      // a sudden stop is a knock: play the material's sound, as hard as it hit
+      float dv = length(b.v - p.lastVelocity);
+      if (dv > 1.2f && !b.asleep) {
+        const Material& m = scene.materials[scene.instances[p.instance].material];
+        mixer.play(audio::makeSound("impact", audio::surfaceOf(m.name), clamp(dv / 6, 0.1f, 1.0f), static_cast<uint32_t>(i * 7919 + static_cast<int>(dv * 100))), b.x,
+                   clamp(dv / 5, 0.2f, 1.0f), true, false, audio::Category::kEffects);
+      }
+      p.lastVelocity = b.v;
+      if (b.asleep && !p.useQuat) continue;
+      p.position = b.x, p.quat = b.q, p.useQuat = true;
+      updateTransform(static_cast<int>(i));
     }
-    p.lastVelocity = b.v;
-    if (b.asleep && !p.useQuat) continue;
-    p.position = b.x, p.quat = b.q, p.useQuat = true;
-    updateTransform(static_cast<int>(i));
   }
+  // critters and people: steer, animate, and lay the body's shapes along the bones
+  MeterScope peopleTime(Part::kPeople);
   updateCritters(dt);
-  // people: steer, animate, and lay the body's shapes along the bones
   for (Person& per : people) {
     anim::Animator& a = *per.animator;
     if (per.walking) {

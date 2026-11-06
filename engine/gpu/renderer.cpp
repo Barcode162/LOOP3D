@@ -700,6 +700,31 @@ class GpuRenderer final : public Renderer {
   uint64_t presentedFrames() const override { return presented_; }
   float gpuMs() const override { return gs_->gpuMs; }
   float lastGpuMs() const override { return gs_->lastGpuMs; }
+  size_t gpuBytes() const override {
+    auto buf = [](const wgpu::Buffer& b) -> size_t { return b ? static_cast<size_t>(b.GetSize()) : 0; };
+    auto tex = [](const wgpu::Texture& t) -> size_t {
+      if (!t) return 0;
+      size_t texel = 4;
+      switch (t.GetFormat()) {
+        case wgpu::TextureFormat::RGBA16Float: texel = 8; break;
+        case wgpu::TextureFormat::R8Unorm: texel = 1; break;
+        default: break;
+      }
+      size_t bytes = 0, w = t.GetWidth(), h = t.GetHeight();
+      for (uint32_t m = 0; m < t.GetMipLevelCount(); ++m, w = std::max<size_t>(1, w / 2), h = std::max<size_t>(1, h / 2)) bytes += w * h * texel;
+      return bytes * t.GetDepthOrArrayLayers() * t.GetSampleCount();
+    };
+    size_t n = 0;
+    for (const GpuMesh& m : meshes_) n += buf(m.vb) + buf(m.ib);
+    for (const wgpu::Buffer* b : {&frameUbo_, &postUbo_, &expUbo_, &lightsBuf_, &materialsBuf_, &instancesBuf_, &exposureBuf_, &visibleBuf_, &ultraUbo_, &accumBuf_,
+                                  &denoiseA_, &denoiseB_, &rayTris_, &rayBlas_, &rayInst_, &rayTlas_})
+      n += buf(*b);
+    for (const wgpu::Buffer& b : passUbo_) n += buf(b);
+    for (const wgpu::Buffer& b : denoiseUbo_) n += buf(b);
+    for (const wgpu::Texture* t : {&modelTex_, &shadowTex_, &shadowDummyTex_, &skyTex_, &msaaTex_, &depthTex_, &hdrTex_}) n += tex(*t);
+    for (const wgpu::Texture& t : bloomTex_) n += tex(t);
+    return n;
+  }
   float renderScale() const override { return renderScale_; }
 
   // Automatic resolution, judged about once a second of real time.

@@ -4,6 +4,7 @@
 #include "engine/core/jobs.h"
 #include "engine/core/json.h"
 #include "engine/core/math.h"
+#include "engine/core/meter.h"
 #include "engine/core/random.h"
 #include "tests/test.h"
 
@@ -96,4 +97,36 @@ TEST(jobs_parallel_for) {
     js.parallelFor(1000, [&](int i) { sum += i; }, 7);
     CHECK(sum == 999 * 1000 / 2);
   }
+}
+
+// The meter adds every timing of a part in a frame, keeps the last frame
+// whole and eases its readings toward what the frames say.
+TEST(meter_parts_add_up_and_settle) {
+  Meter m;
+  m.add(Part::kPhysics, 1.0);
+  m.add(Part::kPhysics, 0.5);  // the fixed clock stepped twice
+  m.add(Part::kDraw, 2.0);
+  m.endFrame();
+  CHECK_NEAR(m.lastMs(Part::kPhysics), 1.5, 1e-9);
+  CHECK_NEAR(m.ms(Part::kPhysics), 1.5, 1e-9);  // the first frame is taken as it is
+  CHECK_NEAR(m.totalMs(), 3.5, 1e-9);
+  for (int i = 0; i < 300; ++i) m.add(Part::kPhysics, 4.0), m.endFrame();
+  CHECK_NEAR(m.ms(Part::kPhysics), 4.0, 1e-3);  // settles on a steady load
+  CHECK_NEAR(m.ms(Part::kDraw), 0.0, 1e-3);     // a part that stopped fades out
+  // a coarse clock (whole milliseconds, 0 or 1) still averages to the truth
+  Meter c;
+  for (int i = 0; i < 3000; ++i) c.add(Part::kScript, i % 10 < 3 ? 1.0 : 0.0), c.endFrame();
+  CHECK_NEAR(c.ms(Part::kScript), 0.3, 0.12);
+  // a scope times its block
+  Meter::get().reset();
+  { MeterScope t(Part::kPeople); volatile double x = 0; for (int i = 0; i < 100000; ++i) x = x + i; }
+  Meter::get().endFrame();
+  CHECK(Meter::get().lastMs(Part::kPeople) > 0);
+  CHECK(std::string(Meter::name(Part::kSend)) == "sending");
+  // the whole frame is smoothed the same way, and a new scene starts afresh
+  Meter f;
+  f.endFrame(5000);  // a frame that loaded a scene, if it were counted
+  f.reset();
+  f.endFrame(3);
+  CHECK_NEAR(f.frameMs(), 3, 1e-9);
 }

@@ -53,6 +53,9 @@ class Renderer {
   virtual int framesInFlight() const = 0;
   virtual float pixelRatio() const = 0;
   virtual size_t drawCalls() const = 0;
+  // Bytes the GPU holds for this renderer now (buffers and pictures; the
+  // screen's own pictures not counted), for the meter.
+  virtual size_t gpuBytes() const = 0;
   virtual float currentExposure() const = 0;
   // Reads the next frame back (for tests and screenshots): RGBA8, top row first.
   virtual void capture(std::function<void(int w, int h, const uint8_t* rgba)> done) = 0;

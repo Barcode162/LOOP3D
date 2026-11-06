@@ -1,8 +1,8 @@
 {
   "about": "The engine's map: every part, which side it belongs to and whether it sits cleanly on that side. core: what runs a world behind the scenes (the language, the world, physics, sound, project files) and must stay fast and small. visual: everything you see (drawing, looks, film, pictures, the editor), extras that cost nothing unless used. tools: what builds and checks. status: 'in place' (one side, clean seams) or 'to separate' (mixes both sides, or lives on the wrong side). Read by tools/dashboard.py for the Loop3D Workshop dashboard; change it when a part moves.",
   "parts": [
-    {"name": "Basics", "side": "core", "status": "in place", "what": "maths, data files, settings, threads",
-     "files": ["engine/core/math.*", "engine/core/json.*", "engine/core/file.*", "engine/core/log.*", "engine/core/jobs.*", "engine/core/settings.*", "engine/core/random.h", "engine/core/time.h", "engine/core/ease.h"]},
+    {"name": "Basics", "side": "core", "status": "in place", "what": "maths, data files, settings, threads, the meter",
+     "files": ["engine/core/math.*", "engine/core/json.*", "engine/core/file.*", "engine/core/log.*", "engine/core/jobs.*", "engine/core/settings.*", "engine/core/meter.*", "engine/core/random.h", "engine/core/time.h", "engine/core/ease.h"]},
     {"name": "Language", "side": "core", "status": "in place", "what": "Looped Script: reading, compiling and running scripts",
      "files": ["engine/script/lexer.*", "engine/script/parser.*", "engine/script/compiler.*", "engine/script/vm.*", "engine/script/stdlib.cpp", "engine/script/value.h", "engine/script/ast.h", "engine/script/bytecode.h"]},
     {"name": "Projects", "side": "core", "status": "in place", "what": "a project's cover page (.looped): its name and first scene",

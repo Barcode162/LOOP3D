@@ -6,7 +6,9 @@
 // walking and looking ease toward where the controls point (no snapping),
 // and the camera never jumps between frames.
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
 #include <emscripten/html5.h>
+#include <malloc.h>
 
 #include <algorithm>
 #include <cmath>
@@ -17,6 +19,7 @@
 #include <string>
 
 #include "engine/core/json.h"
+#include "engine/core/meter.h"
 #include "engine/core/settings.h"
 #include "engine/gpu/renderer.h"
 #include "engine/script/scene_api.h"
@@ -388,6 +391,7 @@ Camera walkCamera(float dt) {
   // the walking body (physics.char*): a capsule whose centre is below the eyes
   float half = std::max(0.05f, body.charHeight * 0.5f - body.charRadius);
   Vec3 centre = g.pos - Vec3(0, pc.eye - body.charHeight * 0.5f, 0);
+  MeterScope walkTime(Part::kPhysics);  // the walking body is physics work
   g.stage->world.moveCharacter(centre, Vec3(g.vel.x * dt, 0, g.vel.z * dt), body.charRadius, half, body.charStep);
   g.pos.x = centre.x, g.pos.z = centre.z;
   // stand on the land, or on whatever fixed thing is underfoot (a dock, a
@@ -445,8 +449,14 @@ bool frameBody(double now);
 bool frame(double now, void*) {
   double t0 = emscripten_get_now();
   g.frameStart = t0;
+  bool loading = !g.pendingScript.empty();  // this frame starts a scene
   bool r = frameBody(now);
-  g.cpuMs += (emscripten_get_now() - t0 - g.cpuMs) * 0.05;
+  if (loading) {
+    Meter::get().reset();  // the loading doesn't linger in the readings
+  } else {
+    Meter::get().endFrame(emscripten_get_now() - t0);
+    g.cpuMs = Meter::get().frameMs();
+  }
   return r;
 }
 bool frameBody(double now) {
@@ -471,7 +481,10 @@ bool frameBody(double now) {
   // script.tick steps a second; at most script.maxSteps and script.catchUp ms a frame
   const double tick = 1.0 / std::clamp(sc.tick, 30, 480);
   while (g.accumulator >= tick && steps < sc.maxSteps && (steps < 2 || emscripten_get_now() - stepStart < sc.catchUp)) {
-    if (!g.halted) g.vm->update(tick);
+    if (!g.halted) {
+      MeterScope scriptTime(Part::kScript);
+      g.vm->update(tick);
+    }
     g.stage->update(static_cast<float>(tick));
     g.accumulator -= tick;
     ++steps;
@@ -488,7 +501,10 @@ bool frameBody(double now) {
     if (sc.onError == "stop") g.halted = true, logLine("the script stopped at a problem (script.onError: stop)");
     else if (sc.onError == "pause") g.paused = true, logLine("paused at a problem (script.onError: pause)");
   }
-  syncScene();
+  {
+    MeterScope sendTime(Part::kSend);
+    syncScene();
+  }
   Stage& s = *g.stage;
   s.autoplay = g.autoplay || config().script.autoplay;
   // lines, questions and the next scene go to the page
@@ -542,7 +558,10 @@ bool frameBody(double now) {
   updateWorkLight(s, cam);
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
-  if (g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade)) {
+  double drawStart = Meter::nowMs();
+  bool drawn = g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);
+  Meter::get().add(Part::kDraw, Meter::nowMs() - drawStart);
+  if (drawn) {
     perfShown(now, emscripten_get_now() - g.frameStart);
     if (g.awaitingFirstFrame) {  // the page can take its loading screen away
       g.awaitingFirstFrame = false;
@@ -1000,6 +1019,20 @@ EMSCRIPTEN_KEEPALIVE const char* loop_log() {
   out.swap(g.log);
   g.log.clear();
   return out.c_str();
+}
+// The meter: each part's CPU time a frame (smoothed), and memory in MB: the
+// engine's own (in use and reserved) and what the GPU holds.
+EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
+  static char buf[512];
+  const Meter& m = Meter::get();
+  struct mallinfo mi = mallinfo();
+  const double mb = 1.0 / (1024 * 1024);
+  std::snprintf(buf, sizeof buf,
+                "{\"scripts\":%.2f,\"physics\":%.2f,\"people\":%.2f,\"sending\":%.2f,\"drawing\":%.2f,\"cpu\":%.2f,\"gpu\":%.2f,"
+                "\"memUsed\":%.1f,\"memReserved\":%.1f,\"gpuMem\":%.1f}",
+                m.ms(Part::kScript), m.ms(Part::kPhysics), m.ms(Part::kPeople), m.ms(Part::kSend), m.ms(Part::kDraw), g.cpuMs,
+                g.renderer ? g.renderer->gpuMs() : 0.0f, mi.uordblks * mb, emscripten_get_heap_size() * mb, g.renderer ? g.renderer->gpuBytes() * mb : 0.0);
+  return buf;
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];
