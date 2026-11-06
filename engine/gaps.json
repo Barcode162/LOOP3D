@@ -90,8 +90,9 @@
       "gap": "The editor can't save moved things back to the script",
       "side": "tools",
       "found": "review",
-      "status": "open",
-      "piece": 0
+      "status": "closed",
+      "piece": 0,
+      "closed": "the editor (2026-11-06)"
     },
     {
       "gap": "Helpers in three languages (C++, Python, JavaScript)",

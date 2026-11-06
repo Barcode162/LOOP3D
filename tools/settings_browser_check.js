@@ -75,10 +75,10 @@ require('fs').mkdirSync(OUT, { recursive: true });
   await snap(page, 'ultra.png');
   await page.evaluate(() => { for (const it of LE.store.items.values()) if (it.scope === 'project' && it.id !== 'render.res') LE.store.reset(it.id); LE.store.set('render.quality', 1); });
   // day cycle
-  await page.evaluate(() => { LE.run('openScene', 'courtyard'); });
+  await page.evaluate(() => { LE.engine.loadScene('courtyard'); });
   await page.waitForTimeout(500);
   await shown();
-  await page.evaluate(() => { LE.store.set('sun.daySpeed', 0.5); LE.store.set('sun.dayCycle', true); LE.store.set('render.showLights', true); LE.store.set('render.showBounds', true); });
+  await page.evaluate(() => { LE.store.set('sun.daySpeed', 0.5); LE.store.set('sun.dayCycle', true); LE.store.set('render.showLights', true); });
   const sky0 = await page.evaluate(() => JSON.stringify(LE.engine.sceneInfo().lights.find((l) => l.kind === 'sun')?.direction));
   await page.waitForTimeout(15000);
   const sky1 = await page.evaluate(() => JSON.stringify(LE.engine.sceneInfo().lights.find((l) => l.kind === 'sun')?.direction));
@@ -88,10 +88,8 @@ require('fs').mkdirSync(OUT, { recursive: true });
 
   // 3. a scene's own setting, the editor over it, and back
   r.layers = await page.evaluate(async () => {
-    const s = LE.panels.script;
-    s.ta.value = 'setting "player.walk", 3\n' + s.ta.value;
-    s.ta.dispatchEvent(new Event('input'));
-    await s.run();
+    LE.history.commit('setting "player.walk", 3\n' + LE.history.text, 'a scene setting');
+    await LE.spaces.rerun();
     await new Promise((res) => setTimeout(res, 2500));
     const scene = LE.engine.getSetting('player.walk');
     LE.store.set('player.walk', 5);
@@ -103,7 +101,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   if (!(r.layers.scene === 3 && r.layers.editor === 5 && r.layers.back === 3)) r.failed.push('layers ' + JSON.stringify(r.layers));
 
   // 4. the editor hands what's open to the player
-  await page.evaluate(() => { const s = LE.panels.script; s.ta.value = s.ta.value.replace(/^title .*$/m, 'title "Handed over"'); s.ta.dispatchEvent(new Event('input')); LoopUI.handTo(LE.engine.scene, s.ta.value, LE.store.project); });
+  await page.evaluate(() => { const t = LE.history.text.replace(/^title .*$/m, 'title "Handed over"'); LE.history.commit(t, 'renamed'); LoopUI.handTo(LE.engine.scene, t, LE.store.project); });
   const player = await context.newPage();
   player.on('pageerror', (e) => errs.push('player: ' + e.message));
   await player.goto(BASE + '/?from=editor&res=0.4#courtyard');
@@ -116,7 +114,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   await player.waitForTimeout(2000);
   await snap(player, 'player_ardane.png');
 
-  r.engineErrors = await page.evaluate(() => LE.panels.console.entries.filter((e) => e.kind === 'error' && !/needs a name/.test(e.text)).map((e) => e.text));
+  r.engineErrors = await page.evaluate(() => LE.logic.messages.filter((e) => e.kind === 'error' && !/needs a name/.test(e.text)).map((e) => e.text));
   if (r.roundTrip.bad.length) r.failed.push(...r.roundTrip.bad);
   if (!r.framesWithEverythingChanged) r.failed.push('no frames with every setting changed');
   if (!r.dayCycleMovesSun) r.failed.push('the day cycle didn\'t move the sun');

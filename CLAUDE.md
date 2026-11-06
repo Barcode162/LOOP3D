@@ -14,14 +14,16 @@ what to look at on the phone. Never make them learn a file, a tool or a command.
 speed. Each goal is one sentence the user can see on the phone. Before building: the one idea it teaches, in a few
 plain sentences. Then wait for the user's go. Build only that goal, show it, say in two or three lines what changed
 and what they learned, and add it to the dashboard (Loop3D Workshop). Never run ahead to the next goal.
+When the user hands over the reins for a bigger goal (2026-11-06: "I give you the reins", the editor), build all
+of it in solid, checked steps and report at the end.
 
 ## Working
 1. **Start:** read `PLAN.md` (the order of work) and the top of `LOG.md` (what happened last). That's all.
 2. **The user asks, you do it.** Ask only when the choice is really theirs (money, making something public,
    deleting their things, a change of direction): one question, your recommendation first.
 3. **Quick checks always run before a push:** `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build
-   build && ./build/loop_tests` (seconds). A bug you fix gets a test. Slow browser checks only when they cover
-   what changed. The web player: `source /opt/emsdk/emsdk_env.sh && ./tools/build_site.sh` (about 30 s; the
+   build && ./build/loop_tests && node tests/editor_source_test.js` (seconds). A bug you fix gets a test. Slow
+   browser checks only when they cover what changed (the editor: `tools/editor_check.js`). The web player: `source /opt/emsdk/emsdk_env.sh && ./tools/build_site.sh` (about 30 s; the
    cloud setup **J Production (Loop3D)** installs Emscripten 6.0.13 there and builds the engine at each start).
 4. **Commit small, push `main`.** GitHub's **Check** tests and builds every push. The public player changes only
    when it's published: the **Publish the player** workflow (by hand), or, where Claude can't start workflows,

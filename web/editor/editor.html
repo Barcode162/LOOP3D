@@ -2,123 +2,69 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0e0b09">
 <title>Loop3D Editor</title>
 <meta name="loop-build" content="__BUILD__">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="editor/editor.css">
 </head>
-<body data-theme="dark">
+<body>
 <div id="app">
-  <header id="menubar" role="menubar">
-    <div class="brand" title="Loop3D Editor · build __BUILD__"><span class="logo">◈</span> Loop3D</div>
-    <nav id="menus"></nav>
-    <div class="spacer"></div>
-    <div id="projectChip" class="chip" title="Project"></div>
-    <button id="paletteBtn" class="ghost" title="Command palette (Ctrl+P)">⌘ Search</button>
+  <!-- the top: the menu, the scene, undo and redo, Play -->
+  <header id="top">
+    <button id="menuBtn" class="ib" aria-label="Menu" title="Menu"></button>
+    <button id="sceneBtn" class="scene" title="Open another scene">
+      <span id="sceneTitle">Loop3D</span><small id="projTitle">Loading…</small>
+    </button>
+    <span class="spacer"></span>
+    <span id="savedDot" class="saved" title="Every change is kept in this browser the moment you make it"></span>
+    <button id="undoBtn" class="ib" aria-label="Undo" title="Undo (Ctrl+Z)" disabled></button>
+    <button id="redoBtn" class="ib" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled></button>
+    <button id="playBtn" class="play" title="Play: walk around in the world (P). Your changes stay."><span class="lbl">Play</span></button>
   </header>
 
-  <div id="toolbar" role="toolbar">
-    <div class="tgroup" aria-label="Play">
-      <button data-cmd="play" id="tbPlay" title="Play: walk around (F5)">▶<span>Play</span></button>
-      <button data-cmd="movie" id="tbMovie" title="Movie: play the shots (F6)">🎬<span>Movie</span></button>
-      <button data-cmd="pause" id="tbPause" title="Pause the world (F7)">❚❚</button>
-      <button data-cmd="step" id="tbStep" title="Step one frame (F8)">▸|</button>
-      <button data-cmd="stop" id="tbStop" title="Restart the scene (Shift+F5)">■</button>
-    </div>
-    <div class="tgroup" aria-label="Transform">
-      <button data-tool="select" class="on" title="Select (Q)">⬚</button>
-      <button data-tool="move" title="Move (W) · not wired yet">✥</button>
-      <button data-tool="rotate" title="Turn (E) · not wired yet">⟲</button>
-      <button data-tool="scale" title="Scale (R) · not wired yet">⤢</button>
-      <button id="tbSpace" title="World / local space">World</button>
-    </div>
-    <div class="tgroup" aria-label="Snapping">
-      <button id="tbSnap" title="Snap moves">⌗ <span id="tbSnapStep">0.25 m</span></button>
-      <button id="tbSnapRot" title="Snap turns">∠ <span id="tbSnapRotStep">15°</span></button>
-    </div>
-    <div class="tgroup" aria-label="View">
-      <label class="tsel" title="Live quality">
-        <select id="tbQuality"><option value="0">Phone</option><option value="1">High</option><option value="2">Ultra</option></select>
-      </label>
-      <label class="tsel" title="Debug view">
-        <select id="tbView"><option value="0">Lit</option><option value="1">Raw light</option><option value="2">Exposure</option><option value="3">Bloom</option><option value="4">Ray work</option></select>
-      </label>
-      <label class="tsel" title="World speed">
-        <select id="tbSpeed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
-      </label>
-      <button id="tbTrailer" title="Compare with the cinema still (T)">◧<span>Trailer</span></button>
-      <button id="tbSound" title="Sound">🔈</button>
-      <button data-cmd="capture" title="Save a screenshot">📷</button>
-    </div>
-    <div class="tgroup" aria-label="Project">
-      <button data-cmd="projectSettings" title="Project Settings (Ctrl+,)">⚙<span>Project</span></button>
-      <button data-cmd="editorPrefs" title="Editor Preferences">☰<span>Editor</span></button>
-      <button data-cmd="benchmark" title="Benchmark this scene">⏱<span>Bench</span></button>
-    </div>
-  </div>
-
-  <main id="workspace">
-    <section class="dock" id="dock-left" data-dock="left"></section>
-    <div class="splitter v" data-split="left"></div>
-    <section class="dock center" id="dock-center" data-dock="center"></section>
-    <div class="splitter v" data-split="right"></div>
-    <section class="dock" id="dock-right" data-dock="right"></section>
-    <div class="splitter h" data-split="bottom"></div>
-    <section class="dock" id="dock-bottom" data-dock="bottom"></section>
+  <!-- the world, always: the engine draws it; the overlay draws the selection and handles -->
+  <main id="stage">
+    <canvas id="view" tabindex="0"></canvas>
+    <canvas id="overlay"></canvas>
+    <div id="touch" aria-label="The world: tap to pick a thing, drag to move it, two fingers to move the view"></div>
+    <div id="vpNote" class="loading">Loading Loop3D…</div>
+    <div id="speed" title="Frames a second and the time each one takes"></div>
+    <div id="hint"></div>
+    <div id="lines"></div>
+    <div id="ask"></div>
+    <div class="stick" id="ls"><i></i></div>
+    <div class="stick" id="rs"><i></i></div>
   </main>
 
-  <footer id="statusbar">
-    <span id="sbState" class="dot">Starting…</span>
-    <span id="sbScene"></span>
-    <span class="spacer"></span>
-    <span id="sbFps" title="Frames per second that reached the screen">— fps</span>
-    <span id="sbGpu" title="GPU time per frame">— ms GPU</span>
-    <span id="sbCpu" title="CPU time per frame">— ms CPU</span>
-    <span id="sbRes" title="Resolution drawn">—%</span>
-    <span id="sbQuality"></span>
-    <span id="sbSaved" title="Script edits are kept in this browser"></span>
-  </footer>
+  <!-- the four spaces; the sheet shows the one picked -->
+  <nav id="spaces" role="tablist" aria-label="Spaces">
+    <button data-space="build" role="tab"><span class="lbl">Build</span></button>
+    <button data-space="logic" role="tab"><span class="lbl">Logic</span></button>
+    <button data-space="film" role="tab"><span class="lbl">Film</span></button>
+    <button data-space="sound" role="tab"><span class="lbl">Sound</span></button>
+  </nav>
+  <section id="sheet" aria-live="polite">
+    <div id="grip" title="Drag to make the sheet taller or shorter"><i></i></div>
+    <div id="sheetBody"></div>
+  </section>
 </div>
 
-<!-- panel bodies; the dock layout moves them into place -->
-<div id="panels" hidden>
-  <div class="panel" data-panel="viewport" data-title="Viewport" data-icon="▣" data-fixed="1">
-    <div id="vpWrap">
-      <canvas id="view" tabindex="0"></canvas>
-      <img id="trailerImg" alt="The cinema still of this scene">
-      <div id="trailerSplit"><i></i></div>
-      <canvas id="overlay"></canvas>
-      <div id="vpStats"></div>
-      <div id="vpNote" class="loading">Loading Loop3D…</div>
-      <div id="vpLines"></div>
-      <div id="vpAsk"></div>
-      <div id="vpHint">Click the view, then <b>WASD</b> to walk · drag to look · <b>E</b> to use</div>
-      <div class="stick" id="ls"><i></i></div>
-      <div class="stick" id="rs"><i></i></div>
-    </div>
-  </div>
-  <div class="panel" data-panel="script" data-title="Script" data-icon="✎"></div>
-  <div class="panel" data-panel="project" data-title="Project" data-icon="▤"></div>
-  <div class="panel" data-panel="outliner" data-title="Outliner" data-icon="☷"></div>
-  <div class="panel" data-panel="inspector" data-title="Inspector" data-icon="ⓘ"></div>
-  <div class="panel" data-panel="look" data-title="Look" data-icon="◐"></div>
-  <div class="panel" data-panel="console" data-title="Console" data-icon="›_"></div>
-  <div class="panel" data-panel="content" data-title="Content" data-icon="▦"></div>
-  <div class="panel" data-panel="timeline" data-title="Timeline" data-icon="⏵"></div>
-  <div class="panel" data-panel="profiler" data-title="Profiler" data-icon="⏱"></div>
-</div>
-
-<div id="modalRoot"></div>
 <div id="menuRoot"></div>
+<div id="modalRoot"></div>
 <div id="toastRoot"></div>
 
 <script src="loop_ui.js"></script>
 <script src="editor/words.js"></script>
 <script src="editor/settings_schema.js"></script>
-<script src="editor/engine.js"></script>
+<script src="editor/icons.js"></script>
 <script src="editor/ui.js"></script>
-<script src="editor/panels.js"></script>
+<script src="editor/engine.js"></script>
+<script src="editor/source.js"></script>
+<script src="editor/history.js"></script>
+<script src="editor/view.js"></script>
+<script src="editor/spaces.js"></script>
 <script src="editor/editor.js"></script>
 </body>
 </html>

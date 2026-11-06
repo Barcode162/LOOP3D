@@ -54,6 +54,17 @@ Next, in order:
 *Done when:* Samples and Ardane switch from the menu with memory staying flat, and a project made from a
 template by AI plays.
 
+## The editor (your reins, 2026-11-06)
+One editor for building, logic, film and sound, made for the phone first, answering years of complaints about
+Blender, Unity, Unreal, Godot, music and video apps (`docs/EDITOR.md`: each complaint and its rule).
+Built: the world view with its own camera, tap to pick, drag to move, handles to lift, turn and size, every
+change written into the script; Build, Logic, Film and Sound; undo, redo and versions through reloads; Play
+without losing changes; the work light. Next, in order:
+1. **Music:** the engine's own instruments and notes on the film's timeline.
+2. **More hands:** lamps, sun and sky, materials, models, groups, people's walks.
+3. **Logic as cards**, the same text underneath.
+4. **Saving to the repo from the phone** (needs you).
+
 ## The player's menu (your steps, 2026-11-06)
 Inspired by 3D's menu button (branch `job/J106`, J106.4) and crosshair (J74.1); one step at a time, you choose.
 1. **Clean screen:** one round menu button in the corner; a tap shows the old buttons beside it (done
@@ -83,7 +94,7 @@ works.
 
 ## Later (the gaps)
 - **Content:** the rest of model import (normal maps, glowing pictures, skins and clips); a picture word for a
-  loose image; load-once assets by name; the editor saves moved things back to the script.
+  loose image; load-once assets by name.
 - **Look:** light shafts in the live fog; wind sway; cascaded sun shadows; contact shadows, ambient occlusion,
   reflections; Ultra with reprojection.
 - **Worlds:** streaming big worlds; building scenes off the main thread; threads and SIMD in the browser.
@@ -92,7 +103,7 @@ works.
   model).
 - **Sound:** the mixer on its own thread.
 - **Engine:** picture tests (before/after, automatic); gamepad; save games; profiler markers; script warnings and
-  a debugger; editor gizmos, snapping, a free camera.
+  a debugger.
 - **Your idea from 3D:** a shared world clock with loops on things.
 - **Every new feature** gets a before/after room in the Showcase.
 

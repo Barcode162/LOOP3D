@@ -2,6 +2,14 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Better than Blender … game dev, music and movie development together … I give you the reins":
+  creators' long-running complaints researched (Blender, Unity, Unreal, Godot, music and video apps, Roblox
+  Studio, Dreams, Nomad Sculpt) and answered rule by rule (`docs/EDITOR.md`); the editor rebuilt phone-first:
+  the world with its own camera, tap to pick, drag to move, handles to lift, turn and size, every change written
+  into the scene's script line; Build, Logic, Film (shots from the view, a timeline) and Sound; undo, redo and
+  200 versions kept through reloads; Play keeps changes; a work light for dark worlds. The engine learnt each
+  thing's script line and picking (tested); `tests/editor_source_test.js` joins the quick checks;
+  `tools/editor_check.js` passes 30 of 30 on a phone and a computer screen. Music is next.
 - **2026-11-06** · "1 yup" (the menu, step 1 of 5): the player's row of buttons waits behind one round menu
   button in the bottom-right corner (after 3D's J106.4); a tap shows the buttons beside it and the thumb sticks
   step aside, ✕ hides them; `story.hud` and `?ui=0` hide it too. Your next steps (own icons, hold on the phone

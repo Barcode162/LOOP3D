@@ -132,8 +132,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Debug view | `render.view` | 0 | 0 / 1 / 2 / 3 / 4 | live · script | `setting "render.view", 0` | debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work |
-| Light icons | `render.showLights` | false |  | editor |  | Drawn over the viewport by the editor. |
-| Bounding boxes | `render.showBounds` | false |  | editor |  | Drawn over the viewport by the editor. |
+| Lamp and sound marks | `render.showLights` | true |  | editor |  | The editor marks where lamps and sounds are, so they can be picked and moved. |
 | Wireframe | `render.wireframe` | false |  | not built yet |  | WebGPU has no line mode: needs its own pipeline. |
 
 ## Ultra (path tracing)
@@ -550,105 +549,42 @@ Kept per browser; they change the editor, not the game.
 
 ## Appearance
 
-### Theme
+### Look
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
-| Theme | `ed.theme` | dark | dark / midnight / light | editor |  |  |
-| Accent | `ed.accent` | #4c9dff |  | editor |  |  |
-| Interface text size | `ed.fontSize` | 12 | 10 … 18 px | editor |  |  |
-| Density | `ed.density` | comfortable | compact / comfortable / spacious | editor |  |  |
-| Tooltips | `ed.tooltips` | true |  | editor |  |  |
-| Show status badges | `ed.badges` | true |  | editor |  |  |
+| Accent | `ed.accent` | #ffb35c |  | editor |  | The colour of picked things, handles and buttons. |
+| Text size | `ed.fontSize` | 15 | 12 … 20 px | editor |  |  |
+| Show the speed | `vp.stats` | true |  | editor |  | Frames a second and the time each takes, in the corner of the view. |
 
-## Layout
-
-### Window
-
-| Setting | Name | Default | Range | Status | In a script | What it does |
-|---|---|---|---|---|---|---|
-| Layout | `ed.layout` | default | default / scripting / lighting / performance / viewport | editor |  |  |
-| Toolbar | `ed.toolbar` | true |  | editor |  |  |
-| Status bar | `ed.statusbar` | true |  | editor |  |  |
-| Remember panel layout | `ed.rememberLayout` | true |  | editor |  |  |
-
-## Viewport
-
-### Overlays
-
-| Setting | Name | Default | Range | Status | In a script | What it does |
-|---|---|---|---|---|---|---|
-| Stats overlay | `vp.stats` | true |  | editor |  |  |
-| Grid | `vp.grid` | false |  | editor |  |  |
-| Rule of thirds | `vp.thirds` | false |  | editor |  |  |
-| Safe frames | `vp.safe` | false |  | editor |  |  |
-| Centre mark | `vp.crosshair` | false |  | editor |  |  |
-| Refresh stats every | `vp.statsEvery` | 500 | 100 … 2000 ms | editor |  |  |
-
-### Navigation
-
-| Setting | Name | Default | Range | Status | In a script | What it does |
-|---|---|---|---|---|---|---|
-| Look with | `vp.drag` | any | any / right | editor |  |  |
-| Keys move only when the viewport has focus | `vp.keysNeedFocus` | true |  | editor |  |  |
-| Free camera speed | `vp.flySpeed` | 5 | 0.5 … 50 m/s | not built yet |  | Comes with object editing. |
-
-## Gizmos & snapping
+## Building
 
 ### Snapping
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
-| Snap moves | `snap.move` | true |  | not built yet |  | Comes with object editing. |
-| Move step | `snap.moveStep` | 0.25 | 0.01 / 0.05 / 0.1 / 0.25 / 0.5 / 1 / 5 / 10 | not built yet |  | Comes with object editing. |
-| Snap turns | `snap.rotate` | true |  | not built yet |  | Comes with object editing. |
-| Turn step | `snap.rotateStep` | 15 | 1 / 5 / 10 / 15 / 30 / 45 / 90 | not built yet |  | Comes with object editing. |
-| Snap scale | `snap.scale` | false |  | not built yet |  | Comes with object editing. |
-| Scale step | `snap.scaleStep` | 0.1 | 0.01 / 0.05 / 0.1 / 0.25 / 0.5 / 1 | not built yet |  | Comes with object editing. |
+| Snap | `snap.move` | true |  | editor |  | Moves land on even steps and turns on even angles (Build → Snap turns it off for a moment). |
+| Move step | `snap.moveStep` | 0.05 | 0.01 / 0.05 / 0.1 / 0.25 / 0.5 / 1 | editor |  |  |
+| Turn step | `snap.rotateStep` | 15 | 5 / 10 / 15 / 30 / 45 / 90 | editor |  |  |
 
-### Gizmo
+### The view
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
-| Size | `gizmo.size` | 1 | 0.5 … 3 x | not built yet |  | Comes with object editing. |
-| Space | `gizmo.space` | world | world / local | not built yet |  | Comes with object editing. |
+| Work light | `ed.workLight` | auto | auto / on / off | editor |  | A lamp at your view while building, never part of the world. "In dark worlds": on when a world has no lamp and no sun. |
+| Editor camera lens | `vp.lens` | 24 | 12 … 85 mm | editor |  | Wider (smaller numbers) shows more of the world while building; the film keeps its own lenses. |
+| Key flying speed | `vp.flySpeed` | 1 | 0.25 … 4 x | editor |  | W A S D Q E on a computer. |
 
-## Script editor
+## Script
 
-### Editing
+### Writing
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Text size | `code.fontSize` | 13 | 10 … 22 px | editor |  |  |
-| Tab width | `code.tab` | 2 | 2 / 4 | editor |  |  |
-| Wrap long lines | `code.wrap` | false |  | editor |  |  |
-| Line numbers | `code.lineNumbers` | true |  | editor |  |  |
-| Run on Ctrl+S | `code.runOnSave` | true |  | editor |  |  |
-| Keep indentation on Enter | `code.autoIndent` | true |  | editor |  |  |
-| Word suggestions | `code.autocomplete` | true |  | editor |  |  |
-| Minimap | `code.minimap` | false |  | editor |  |  |
-
-## Console
-
-### Messages
-
-| Setting | Name | Default | Range | Status | In a script | What it does |
-|---|---|---|---|---|---|---|
-| Keep at most | `con.max` | 1000 | 100 … 10000 lines | editor |  |  |
-| Timestamps | `con.time` | true |  | editor |  |  |
-| Clear when a scene loads | `con.clearOnLoad` | false |  | editor |  |  |
-| Engine messages | `con.engine` | true |  | editor |  |  |
-| Dialogue lines | `con.lines` | true |  | editor |  |  |
-
-## Autosave
-
-### Autosave
-
-| Setting | Name | Default | Range | Status | In a script | What it does |
-|---|---|---|---|---|---|---|
-| Keep script edits in this browser | `save.auto` | true |  | editor |  |  |
-| Every | `save.every` | 5 | 1 … 60 s | editor |  |  |
+| Live | `code.live` | true |  | editor |  | The world rebuilds a moment after you stop typing. |
+| Word suggestions | `code.autocomplete` | true |  | editor |  | The language's words that fit what you're typing, one tap to finish. |
 
 ---
 
-11 project.json · 134 live · script · 49 live · 38 not built yet · 37 editor · 6 needs you
+11 project.json · 134 live · script · 49 live · 29 not built yet · 15 editor · 6 needs you

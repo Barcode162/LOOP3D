@@ -63,6 +63,16 @@ struct Player {
   float aspect = 16.0f / 9;
   Camera lastCam;
   std::string log;  // the engine's messages for the editor's console
+  // The editor's own camera (it turns round what you look at, slides and
+  // zooms) over the walk and the film while it's on; the world keeps running.
+  bool editCam = false;
+  Vec3 editAt{0, 2, 6}, editLook{0, 0.5f, 0};
+  float editLens = 0;  // mm; 0 = the scene camera's lens
+  // The editor's work light: a lamp at the editor camera so things can be
+  // seen while building a dark world. Only while the editor camera is on;
+  // never part of the world (the script doesn't know it).
+  bool workLight = false;
+  int workIndex = -1;  // its place in the scene's lights, or -1
 };
 Player g;
 
@@ -300,6 +310,7 @@ void startScript(const std::string& src) {
   g.stage->folder = "/scene";  // the page puts the scene's models in /scene/models
   g.vm->onSay = [](const std::string& s) { EM_ASM({ if (window.loopSay) window.loopSay(UTF8ToString($0)); }, s.c_str()); };
   g.problems.clear();
+  g.workIndex = -1;  // a new world: the work light is added again if it's on
   g.vm->load(src, "scene.loop");
   for (auto& p : g.vm->problems()) g.problems += p.text() + "\n";
   g.problemsSeen = g.vm->problems().size();
@@ -399,6 +410,30 @@ Camera walkCamera(float dt) {
   return c;
 }
 
+// The work light follows the editor camera, brighter the farther it looks.
+void updateWorkLight(Stage& s, const Camera& cam) {
+  bool want = g.workLight && g.editCam;
+  int n = static_cast<int>(s.scene.lights.size());
+  if (g.workIndex >= n) g.workIndex = -1;
+  if (want) {
+    if (g.workIndex < 0) {
+      Light l;
+      l.castShadows = false, l.radius = 0.05f, l.color = Vec3(1);
+      s.scene.lights.push_back(l);
+      g.workIndex = n;
+    }
+    Light& l = s.scene.lights[g.workIndex];
+    float d = length(cam.target - cam.position) / 4;
+    l.position = cam.position + Vec3(0, 0.3f, 0);
+    l.lumens = 1500 * (1 + d * d);
+    ++s.lightsVersion;
+  } else if (g.workIndex >= 0) {
+    s.scene.lights.erase(s.scene.lights.begin() + g.workIndex);
+    g.workIndex = -1;
+    ++s.version;
+  }
+}
+
 bool frameBody(double now);
 // The time each frame spends on the CPU (script, world, sending to the GPU),
 // smoothed: shown in the stats so a slow script is easy to tell from a slow GPU.
@@ -489,9 +524,16 @@ bool frameBody(double now) {
     }
     cam = walkCamera(static_cast<float>(dt));
   }
+  if (g.editCam) {
+    cam = s.scene.camera;
+    cam.position = g.editAt, cam.target = g.editLook, cam.up = Vec3(0, 1, 0);
+    if (g.editLens > 0) cam.focalLength = g.editLens;
+    cam.positionEnd = Vec3(kInf);
+  }
   applyLookOverride(look);
   applyCameraOverride(cam);
   g.lastCam = cam;
+  updateWorkLight(s, cam);
   g.stage->setListener(cam);
   g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
   if (g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade)) {
@@ -512,6 +554,23 @@ bool frameBody(double now) {
   return true;
 }
 
+float viewAspect() {
+  double cw = 16, ch = 9;
+  emscripten_get_element_css_size("#view", &cw, &ch);
+  g.aspect = static_cast<float>(cw / std::max(ch, 1.0));
+  return g.aspect;
+}
+Json vec3Json(Vec3 v) {
+  Json a = Json::array();
+  a.push(Json(static_cast<double>(v.x))), a.push(Json(static_cast<double>(v.y))), a.push(Json(static_cast<double>(v.z)));
+  return a;
+}
+Json matJson(const Mat4& m) {
+  Json a = Json::array();
+  for (int c = 0; c < 4; ++c)
+    for (int r = 0; r < 4; ++r) a.push(Json(static_cast<double>(m.m[c][r])));
+  return a;
+}
 }  // namespace
 
 extern "C" {
@@ -656,6 +715,7 @@ EMSCRIPTEN_KEEPALIVE int loop_set_option(const char* name, double value) {
   else if (n == "step") g.stepFrames = std::clamp(i, 1, 120);
   else if (n == "filmtime") g.filmTime = std::max(0.0, value);
   else if (n == "skip") gpu::g_skipPasses = i & ~256;  // 256 (no screen) is for tests only
+  else if (n == "worklight") g.workLight = i != 0;
   else {
     static const std::pair<const char*, const char*> alias[] = {{"view", "render.view"},  {"res", "render.res"},   {"lamps", "render.lamps"},
                                                                 {"rays", "render.rays"},  {"prepass", "render.prepass"}, {"cull", "render.cull"}, {"lod", "world.lodBias"}, {"walk", "player.walk"},
@@ -721,6 +781,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_scene_json() {
     t.set("position", v3(p.position)), t.set("rotation", v3(p.rotation)), t.set("scale", v3(p.scale));
     t.set("visible", Json(p.visible)), t.set("solid", Json(p.body >= 0));
     t.set("size", v3(p.size * p.scale));
+    t.set("line", Json(p.line));
     if (p.instance >= 0 && p.instance < static_cast<int>(sc.instances.size())) {
       int m = sc.instances[p.instance].material;
       if (m >= 0 && m < static_cast<int>(sc.materials.size())) t.set("material", Json(sc.materials[m].name));
@@ -780,6 +841,128 @@ EMSCRIPTEN_KEEPALIVE const char* loop_scene_json() {
   out = root.dump();
   return out.c_str();
 }
+// ---- the editor's hands on the world
+
+// The editor camera: {"on": true, "at": [x, y, z], "look_at": [x, y, z], "lens": 24}.
+// Off ({"on": false}) gives the walk or the film back.
+EMSCRIPTEN_KEEPALIVE int loop_edit_camera(const char* json) {
+  Json o;
+  if (!Json::parse(json ? json : "{}", o) || !o.isObject()) return 0;
+  auto vec = [&](const char* k, Vec3 fallback) {
+    if (!o.has(k)) return fallback;
+    const Json& a = o[k];
+    if (!a.isArray() || a.size() < 3) return fallback;
+    return Vec3(static_cast<float>(a[0].number()), static_cast<float>(a[1].number()), static_cast<float>(a[2].number()));
+  };
+  bool wasOn = g.editCam;
+  if (o.has("on")) g.editCam = o["on"].boolean();
+  g.editAt = vec("at", g.editAt), g.editLook = vec("look_at", g.editLook);
+  if (o.has("lens")) g.editLens = static_cast<float>(o["lens"].number());
+  if (g.editCam) g.move = Vec2(0);
+  if (wasOn && !g.editCam && g.stage && !g.movie) {
+    // walking carries on from where the editor camera was
+    g.pos = g.editAt;
+    Vec3 f = normalize(g.editLook - g.editAt);
+    g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
+    g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
+    g.vel = Vec3(0);
+  }
+  return 1;
+}
+
+
+// What's under a point of the view (x, y from 0 to 1, from the top left):
+// the placed thing's index, or -1. The ray leaves the camera shown last.
+EMSCRIPTEN_KEEPALIVE int loop_pick(float x, float y) {
+  if (!g.stage) return -1;
+  const Camera& c = g.lastCam;
+  float aspect = viewAspect();
+  float ty = std::tan(c.fovY() * 0.5f), tx = ty * aspect;
+  Vec3 f = normalize(c.target - c.position), r = normalize(cross(f, c.up)), u = cross(r, f);
+  Vec3 d = normalize(f + r * ((2 * x - 1) * tx) + u * ((1 - 2 * y) * ty));
+  return g.stage->pick(Ray{c.position, d});
+}
+
+// The view as last drawn, light enough to ask every frame: where 3D points
+// land on screen (viewProj, column by column) and the camera.
+EMSCRIPTEN_KEEPALIVE const char* loop_view() {
+  static std::string out;
+  const Camera& c = g.lastCam;
+  float aspect = viewAspect();
+  Json o = Json::object();
+  o.set("viewProj", matJson(Mat4::perspective(c.fovY(), aspect, 0.05f, std::max(config().world.drawDistance, 1.0f)) * Mat4::lookAt(c.position, c.target, c.up)));
+  o.set("at", vec3Json(c.position)), o.set("look_at", vec3Json(c.target));
+  o.set("fovY", Json(static_cast<double>(c.fovY()))), o.set("aspect", Json(static_cast<double>(aspect)));
+  o.set("lens", Json(static_cast<double>(c.focalLength)));
+  o.set("edit", Json(g.editCam));
+  out = o.dump();
+  return out.c_str();
+}
+
+// One thing in full: where it is, its line in the script, and its box in its
+// own space with the matrix that places it (the editor draws its outline).
+EMSCRIPTEN_KEEPALIVE const char* loop_thing(int index) {
+  static std::string out;
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->placed.size())) return "null";
+  const Stage::Placed& p = g.stage->placed[index];
+  const Scene& sc = g.stage->scene;
+  AABB box;
+  auto grow = [&](int inst) {
+    if (inst < 0 || inst >= static_cast<int>(sc.instances.size())) return;
+    int m = sc.instances[inst].mesh;
+    if (m >= 0 && m < static_cast<int>(sc.meshes.size())) box.grow(sc.meshes[m].bounds());
+  };
+  grow(p.instance);
+  for (int more : p.moreInstances) grow(more);
+  if (!box.valid()) box = AABB(Vec3(-0.5f), Vec3(0.5f));
+  Json o = Json::object();
+  o.set("index", Json(index)), o.set("name", Json(p.name)), o.set("line", Json(p.line));
+  o.set("kind", Json(std::string(1, p.kind)));
+  o.set("position", vec3Json(p.position)), o.set("rotation", vec3Json(p.rotation)), o.set("scale", vec3Json(p.scale));
+  o.set("visible", Json(p.visible)), o.set("solid", Json(p.body >= 0));
+  o.set("lo", vec3Json(box.lo)), o.set("hi", vec3Json(box.hi));
+  Quat q = p.useQuat ? p.quat : Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
+  o.set("matrix", matJson(Mat4::trs(p.position, q, p.scale)));
+  if (p.instance >= 0 && p.instance < static_cast<int>(sc.instances.size())) {
+    int m = sc.instances[p.instance].material;
+    if (m >= 0 && m < static_cast<int>(sc.materials.size())) o.set("material", Json(sc.materials[m].name));
+  }
+  int sameLine = 0;
+  if (p.line > 0)
+    for (const Stage::Placed& q2 : g.stage->placed) sameLine += q2.line == p.line ? 1 : 0;
+  o.set("lineCount", Json(sameLine));  // more than 1: made by a repeat
+  out = o.dump();
+  return out.c_str();
+}
+
+// Moves a thing at once, without running the script again (the editor
+// writes the same change into the script): {"at": [..], "rotation": [yaw,
+// pitch, roll], "scale": [..], "visible": true}. Solid things keep falling
+// from where they're put.
+EMSCRIPTEN_KEEPALIVE int loop_thing_set(int index, const char* json) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->placed.size())) return 0;
+  Json o;
+  if (!Json::parse(json ? json : "{}", o) || !o.isObject()) return 0;
+  Stage::Placed& p = g.stage->placed[index];
+  auto vec = [&](const char* k, Vec3& into) {
+    if (!o.has(k)) return;
+    const Json& a = o[k];
+    if (a.isArray() && a.size() >= 3) into = Vec3(static_cast<float>(a[0].number()), static_cast<float>(a[1].number()), static_cast<float>(a[2].number()));
+  };
+  vec("at", p.position), vec("rotation", p.rotation), vec("scale", p.scale);
+  if (o.has("visible")) p.visible = o["visible"].boolean(true);
+  p.useQuat = false;
+  if (p.body >= 0 && p.body < static_cast<int>(g.stage->world.bodyCount())) {
+    // a solid thing starts again from where it's put, still
+    physics::Body& b = g.stage->world.body(p.body);
+    b.x = p.position, b.q = Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
+    b.v = Vec3(0), b.w = Vec3(0), b.asleep = false, b.sleepTimer = 0;
+  }
+  g.stage->updateTransform(index);
+  g.stage->collidersDirty = true;
+  return 1;
+}
+
 // The engine's messages since the last call (scene starts, problems, settings).
 EMSCRIPTEN_KEEPALIVE const char* loop_log() {
   static std::string out;

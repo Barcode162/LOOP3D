@@ -1,78 +1,88 @@
-// Checks the editor in a real browser: loads it, applies settings, opens the
-// settings window, runs a script with a mistake, opens a scene from another
-// project, and lays it out on a phone. Screenshots go to <out dir>.
+// Checks the editor in a real browser, on a phone screen and a computer screen:
+// adds a box, taps it, drags it (its line is rewritten), undoes and redoes,
+// opens Logic, adds a shot in Film and a sound in Sound, and reloads (nothing
+// lost). Pictures go to <out dir>; it fails if any step goes wrong.
 //   (cd site && python3 -m http.server 8123 &)
 //   xvfb-run -a node tools/editor_check.js http://localhost:8123 <out dir>
 // Run it on a virtual display: headless browsers lose WebGPU (docs/TUNING.md §8).
 const { chromium } = require('playwright');
-const BASE = process.argv[2] || 'http://localhost:8123', SP = process.argv[3] || 'out';
-require("fs").mkdirSync(SP, { recursive: true });
+const fs = require('fs');
+const BASE = process.argv[2] || 'http://localhost:8123', OUT = process.argv[3] || 'out';
+fs.mkdirSync(OUT, { recursive: true });
+let failed = 0;
+const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) failed++; };
+
+async function run(browser, name, viewport, touch) {
+  const ctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(String(e.stack || e)));
+  p.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('Failed to load')) errs.push(m.text().slice(0, 300)); });
+  const ready = () => p.waitForFunction(() => window.LE && LE.engine.ready && document.getElementById('vpNote').style.display === 'none', null, { timeout: 120000 });
+  await p.goto(BASE + '/editor.html#first_room');
+  await p.evaluate(() => { try { localStorage.clear(); indexedDB.deleteDatabase('loop3d-editor'); } catch (e) { /* fresh anyway */ } });
+  await p.reload();
+  await ready();
+  await p.waitForTimeout(1500);
+  const lines = (re) => p.evaluate((src) => LE.history.text.split('\n').filter((l) => new RegExp(src).test(l)), re);
+  const tap = (label) => p.evaluate((l) => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === l && x.offsetParent); if (!b) throw new Error('no button ' + l); b.click(); }, label);
+  const spot = () => p.evaluate(() => {
+    const t = LE.engine.thing(LE.view.sel.index), v = LE.engine.view(), m = v.viewProj, q = t.position;
+    const x = m[0] * q[0] + m[4] * q[1] + m[8] * q[2] + m[12], y = m[1] * q[0] + m[5] * q[1] + m[9] * q[2] + m[13], w = m[3] * q[0] + m[7] * q[1] + m[11] * q[2] + m[15];
+    const r = document.getElementById('view').getBoundingClientRect();
+    return { x: r.left + (x / w * 0.5 + 0.5) * r.width, y: r.top + (1 - (y / w * 0.5 + 0.5)) * r.height };
+  });
+
+  await tap('Box');
+  await p.waitForTimeout(2500);
+  const box = await lines('^box');
+  check(box.length === 1, name + ': Box adds a line (' + box[0] + ')');
+  check(await p.evaluate(() => !!LE.view.sel), name + ': the new box is picked');
+  const s0 = await spot();
+  await p.evaluate(() => LE.view.select(null));
+  if (touch) await p.touchscreen.tap(s0.x, s0.y); else await p.mouse.click(s0.x, s0.y);
+  await p.waitForTimeout(800);
+  check(await p.evaluate(() => LE.view.sel && LE.view.sel.line === 7), name + ': a tap on the box picks it (line 7)');
+  await p.screenshot({ path: `${OUT}/${name}_picked.png` });
+  const s1 = await spot();
+  await p.mouse.move(s1.x, s1.y); await p.mouse.down();
+  for (let i = 1; i <= 8; i++) { await p.mouse.move(s1.x + i * 10, s1.y - i * 3); await p.waitForTimeout(30); }
+  await p.mouse.up();
+  await p.waitForTimeout(800);
+  const moved = await lines('^box');
+  check(moved[0] !== box[0] && /at: vec\(/.test(moved[0]), name + ': dragging rewrites its line (' + moved[0] + ')');
+  await p.click('#undoBtn'); await p.waitForTimeout(600);
+  check((await lines('^box'))[0] === box[0], name + ': undo puts it back');
+  await p.click('#redoBtn'); await p.waitForTimeout(600);
+  check((await lines('^box'))[0] === moved[0], name + ': redo moves it again');
+  await p.click('#spaces [data-space=logic]'); await p.waitForTimeout(800);
+  check(await p.evaluate(() => document.querySelector('.code textarea').value === LE.history.text), name + ': Logic shows the script');
+  await p.screenshot({ path: `${OUT}/${name}_logic.png` });
+  await p.click('#spaces [data-space=film]'); await p.waitForTimeout(500);
+  await tap('Shot from here'); await p.waitForTimeout(2500);
+  check((await lines('^shot')).length === 1, name + ': Shot from here adds a shot');
+  check(await p.evaluate(() => LE.spaces.info && LE.spaces.info.shotList.length === 1), name + ': the engine has the shot');
+  await p.screenshot({ path: `${OUT}/${name}_film.png` });
+  await p.click('#spaces [data-space=sound]'); await p.waitForTimeout(500);
+  await tap('fire'); await p.waitForTimeout(2500);
+  check((await lines('^sound "fire"')).length === 1, name + ': a sound is added');
+  check(await p.evaluate(() => LE.view.extra.some((m) => m.kind === 'sound')), name + ': the sound shows in the world');
+  await p.screenshot({ path: `${OUT}/${name}_sound.png` });
+  check(await p.evaluate(() => LE.logic.problems.length === 0), name + ': the edited script has no problems');
+  await p.reload();
+  await ready();
+  await p.waitForTimeout(1500);
+  check((await lines('^(box|shot|sound)')).length === 3, name + ': a reload keeps every change');
+  check(await p.evaluate(() => LE.history.undo.length >= 4), name + ': and undo still knows them');
+  check(!errs.length, name + ': no page errors' + (errs.length ? '\n' + errs.join('\n') : ''));
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: false, args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-webgpu-adapter=swiftshader', '--disable-vulkan-surface'] });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
-  const errs = [];
-  page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await page.goto(BASE + '/editor.html#courtyard');
-  await page.waitForFunction(() => LE.engine.ready && document.getElementById('vpNote').style.display === 'none', null, { timeout: 120000 }).catch(() => errs.push('never showed a frame'));
-  await page.waitForTimeout(4000);
-  const r = {};
-  r.stats = await page.evaluate(() => LE.engine.stats());
-  r.title = await page.title();
-  r.outliner = await page.evaluate(() => { LE.panels.outliner.refresh(); const i = LE.panels.outliner.info; return i && { things: i.things.length, lights: i.lights.length, people: i.people.length, shots: i.shots }; });
-  await page.screenshot({ path: SP + '/ed_desktop.png' });
-  // settings: options and look reach the engine
-  r.setOpt = await page.evaluate(() => LE.engine.setOption('res', 0.5));
-  r.setLook = await page.evaluate(() => { LE.store.set('look.preset', 'noir'); LE.store.set('look.bloom', 0.2); return LE.engine.setLook({ preset: 'noir', bloom: 0.2 }); });
-  r.setWorld = await page.evaluate(() => { LE.store.set('fog.density', 0.03); return 1; });
-  await page.evaluate(() => LE.store.set('render.quality', 0));
-  await page.waitForTimeout(3000);
-  r.statsAfter = await page.evaluate(() => LE.engine.stats());
-  r.qualityToolbar = await page.evaluate(() => document.getElementById('tbQuality').value);
-  await page.screenshot({ path: SP + '/ed_noir.png' });
-  // settings window + search
-  await page.keyboard.press('Control+,');
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: SP + '/ed_settings.png' });
-  await page.fill('.modal header input[type=search]', 'shadow');
-  await page.waitForTimeout(300);
-  r.searchHits = await page.evaluate(() => document.querySelectorAll('.modal .prop').length);
-  await page.screenshot({ path: SP + '/ed_settings_search.png' });
-  await page.keyboard.press('Escape');
-  // reset look, edit and run a script with an error, then a fixed one
-  await page.evaluate(() => { LE.store.resetMany(['look.preset', 'look.bloom', 'fog.density']); });
-  await page.evaluate(() => { LE.dock.show('script'); const s = LE.panels.script; s.ta.value = s.ta.value + '\nbox size: vec(1,1,1), at: vec(0, 3, 0), materal: "gold"\nlet = 3\n'; s.ta.dispatchEvent(new Event('input')); return s.run(); });
-  await page.waitForTimeout(3000);
-  r.problems = await page.evaluate(() => LE.panels.script.problems);
-  await page.screenshot({ path: SP + '/ed_script.png' });
-  // a scene from the other project
-  await page.evaluate(() => { localStorage.clear(); LE.panels.script.dirty = false; return LE.run('openScene', 'ardane_02_market'); });
-  await page.waitForFunction(() => document.getElementById('vpNote').style.display === 'none', null, { timeout: 120000 }).catch(() => errs.push('ardane never showed'));
-  await page.waitForTimeout(3000);
-  r.ardane = await page.evaluate(() => ({ scene: LE.engine.scene, project: LE.store.project, chip: document.getElementById('projectChip').textContent, stats: LE.engine.stats() }));
-  await page.evaluate(() => { LE.dock.show('timeline'); });
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: SP + '/ed_ardane.png' });
-  r.ardaneErr = await page.evaluate(async () => { const s = LE.panels.script; const n = s.ta.value.split('\n').length; s.ta.value += '\nlet = 3\n'; await s.run(); await new Promise((r) => setTimeout(r, 2500)); return { expectLine: n + 1, problems: s.problems, marked: [...s.errLines] }; });
-  await page.evaluate(() => { LE.dock.show('look'); LE.store.set('look.preset', 'neon'); });
-  await page.waitForTimeout(2500);
-  await page.screenshot({ path: SP + '/ed_look.png' });
-  await page.evaluate(() => LE.dock.show('profiler'));
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: SP + '/ed_profiler.png' });
-  r.console = await page.evaluate(() => LE.panels.console.entries.slice(-12).map((e) => e.kind + ': ' + e.text));
-  // phone
-  const ph = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
-  ph.on('pageerror', (e) => errs.push('phone pageerror: ' + e.message));
-  await ph.goto(BASE + '/editor.html#cabin');
-  await ph.waitForFunction(() => LE.engine.ready && document.getElementById('vpNote').style.display === 'none', null, { timeout: 120000 }).catch(() => errs.push('phone never showed'));
-  await ph.waitForTimeout(3000);
-  r.phoneOverflow = await ph.evaluate(() => document.documentElement.scrollWidth > innerWidth);
-  await ph.screenshot({ path: SP + '/ed_phone.png' });
-  await ph.evaluate(() => LE.run('projectSettings'));
-  await ph.waitForTimeout(500);
-  await ph.screenshot({ path: SP + '/ed_phone_settings.png' });
-  r.errs = errs;
-  console.log(JSON.stringify(r, null, 1));
+  await run(browser, 'phone', { width: 430, height: 932 }, true);
+  await run(browser, 'computer', { width: 1440, height: 900 }, false);
   await browser.close();
+  console.log(failed ? failed + ' failed' : 'the editor works');
+  process.exit(failed ? 1 : 0);
 })();

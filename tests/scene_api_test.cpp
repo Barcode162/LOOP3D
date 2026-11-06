@@ -159,3 +159,33 @@ TEST(scene_api_trees_have_far_versions) {
   CHECK(distant.lodCopies[2] >= 1);
   CHECK(distant.sceneTriangles * 5 < close.sceneTriangles);
 }
+
+// The editor's two needs: which script line placed each thing (so moving it
+// rewrites that line), and what a tap on the screen points at.
+TEST(things_know_their_line_and_can_be_picked) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  CHECK(vm.load("# a note\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)\nsphere 0.5, at: vec(3, 0.5, 0)\n"
+                "for i from 0 to 1\n  cylinder 0.2, 1, at: vec(-3 - i, 0.5, 0)\n", "pick.loop"));
+  CHECK(st.placed.size() == 4);
+  if (st.placed.size() != 4) return;
+  CHECK(st.placed[0].line == 2 && st.placed[1].line == 3);
+  CHECK(st.placed[2].line == 5 && st.placed[3].line == 5);  // a repeat: one line, many things
+  float t = 0;
+  CHECK(st.pick(Ray{Vec3(0, 0.5f, 5), Vec3(0, 0, -1)}, &t) == 0);
+  CHECK_NEAR(t, 4.5f, 1e-3f);                                       // the box's front face
+  CHECK(st.pick(Ray{Vec3(3, 0.5f, 5), Vec3(0, 0, -1)}) == 1);       // the ball
+  CHECK(st.pick(Ray{Vec3(0.6f, 0.5f, 5), Vec3(0, 0, -1)}) == -1);   // between them: nothing
+  CHECK(st.pick(Ray{Vec3(-4, 0.5f, 5), Vec3(0, 0, -1)}) == 3);
+  // the corner of the ball's box but not the ball itself: the triangles decide
+  CHECK(st.pick(Ray{Vec3(3.45f, 0.95f, 5), Vec3(0, 0, -1)}) == -1);
+  // moved things are picked where they are now; hidden ones are passed through
+  st.placed[1].position = Vec3(0, 0.5f, 2);
+  st.updateTransform(1);
+  CHECK(st.pick(Ray{Vec3(0, 0.5f, 5), Vec3(0, 0, -1)}) == 1);
+  st.placed[1].visible = false;
+  st.updateTransform(1);
+  CHECK(st.pick(Ray{Vec3(0, 0.5f, 5), Vec3(0, 0, -1)}) == 0);
+}

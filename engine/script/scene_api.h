@@ -57,6 +57,7 @@ struct Stage {
     Vec3 lastVelocity{0};
     bool collide = false;
     std::vector<int> moreInstances;  // a model's other parts, moved with it
+    int line = 0;  // the script line that placed it (0: the engine made it, like a person's limbs)
   };
   // People: a skeleton, its animator and the shapes that make the body.
   struct Person {
@@ -135,6 +136,10 @@ struct Stage {
   Vec3 teleportTo{0}, teleportLook{0, 0, -1};
   bool story = false;            // the script has spoken a line or asked (a story scene)
   void updateTransform(int placedIndex);
+  // What a ray meets first: the placed thing (its index) whose triangles it
+  // hits nearest, or -1. Hidden things are passed through. For the editor's
+  // tap-to-select; `distance` gets how far along the ray.
+  int pick(const Ray& ray, float* distance = nullptr) const;
 };
 
 // Adds every world-making word to `vm`, filling `stage`.

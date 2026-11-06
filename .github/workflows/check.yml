@@ -1,4 +1,4 @@
-# The quick checks on every push: the engine's tests, the settings check, and the
+# The quick checks on every push: the engine's tests, the editor's script edits, the settings check, and the
 # web player built (the same build as "Publish the player", which stays manual).
 # Nothing is published; the built site is kept 3 days as an artifact, so the
 # player can be opened and pictured exactly as it was built.
@@ -20,6 +20,8 @@ jobs:
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
           ./build/loop_tests
+      - name: The editor's script edits (and the engine reads them)
+        run: node tests/editor_source_test.js
       - name: The editor and the engine agree on every setting
         run: node tools/check_settings.js
       - uses: mymindstorm/setup-emsdk@v14

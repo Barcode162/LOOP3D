@@ -26,6 +26,55 @@ void Stage::updateTransform(int i) {
   ++transformsVersion;
 }
 
+int Stage::pick(const Ray& ray, float* distance) const {
+  // Each thing's triangles in its own space: the ray goes there (no copies of
+  // the mesh), its box first so most things are skipped at once.
+  float best = kInf;
+  int hit = -1;
+  std::unordered_map<int, AABB> boxes;  // mesh bounds, once per pick
+  auto meet = [&](int instance) -> float {
+    const MeshInstance& in = scene.instances[instance];
+    if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size())) return kInf;
+    const Mesh& m = scene.meshes[in.mesh];
+    auto b = boxes.find(in.mesh);
+    if (b == boxes.end()) b = boxes.emplace(in.mesh, m.bounds()).first;
+    Mat4 inv = in.transform.inverse();
+    Vec3 o = inv.point(ray.o), d = inv.vector(ray.d);
+    float len = length(d);
+    if (len < 1e-12f) return kInf;
+    d = d / len;  // a unit ray in the thing's space: distances there are scaled by len
+    Vec3 invD{1 / d.x, 1 / d.y, 1 / d.z};
+    if (intersect(b->second, o, invD, 0, kInf) == kInf) return kInf;
+    float near = kInf;
+    for (size_t t = 0; t + 2 < m.indices.size(); t += 3) {
+      Vec3 a = m.positions[m.indices[t]], e1 = m.positions[m.indices[t + 1]] - a, e2 = m.positions[m.indices[t + 2]] - a;
+      Vec3 pv = cross(d, e2);
+      float det = dot(e1, pv);
+      if (std::fabs(det) < 1e-12f) continue;
+      float k = 1 / det;
+      Vec3 tv = o - a;
+      float u = dot(tv, pv) * k;
+      if (u < 0 || u > 1) continue;
+      Vec3 qv = cross(tv, e1);
+      float v = dot(d, qv) * k;
+      if (v < 0 || u + v > 1) continue;
+      float tt = dot(e2, qv) * k;
+      if (tt > 1e-5f && tt < near) near = tt;
+    }
+    return near == kInf ? kInf : near / len;
+  };
+  for (size_t i = 0; i < placed.size(); ++i) {
+    const Placed& p = placed[i];
+    if (!p.visible || p.instance < 0 || p.instance >= static_cast<int>(scene.instances.size())) continue;
+    float t = meet(p.instance);
+    for (int more : p.moreInstances)
+      if (more >= 0 && more < static_cast<int>(scene.instances.size())) t = std::min(t, meet(more));
+    if (t < best) best = t, hit = static_cast<int>(i);
+  }
+  if (distance) *distance = best;
+  return hit;
+}
+
 void Stage::setListener(const Camera& cam) {
   mixer.listener.position = cam.position;
   mixer.listener.forward = normalize(cam.target - cam.position);
@@ -557,6 +606,7 @@ Value place(Args& a, int mesh, char kind = 'm', Vec3 size = Vec3(1)) {
   if (a.has(-1, "tilt")) p.rotation.y = static_cast<float>(a.num(-1, "tilt", 0));
   p.name = a.text(-1, "name", "");
   p.kind = kind, p.size = size;
+  p.line = a.line;
   // simple shapes are things you bump into (walls, tables), unless told not
   p.collide = a.flag(-1, "collide", true) && kind != 'm';
   s.collidersDirty = true;
