@@ -216,6 +216,7 @@ window.LE = window.LE || {};
       ] },
       { title: 'Motion', items: [
         sl('cam.shake', 'Handheld shake (walking)', 0, 0, 1, 0.01, E()),
+        tog('cam.portraitWide', 'Upright screens keep the width', true, E({ help: 'A phone held upright sees as much side to side as a square screen would, and more above and below, instead of a narrow slice.' })),
         sl('cam.smoothing', 'Look smoothing', 18, 1, 60, 1, E({ help: 'How quickly the view eases to where you point it (higher = snappier).' })),
         tog('cam.motionBlur', 'Live motion blur', false, NB('Needs motion vectors.')),
       ] },

@@ -258,6 +258,59 @@
    "build": {}
   },
   {
+   "name": "lantern_isle",
+   "title": "The Lantern Isle",
+   "description": "",
+   "start": "isle_intro",
+   "scenes": [
+    {
+     "name": "isle_intro",
+     "title": "The Lantern Isle",
+     "still": false
+    },
+    {
+     "name": "isle",
+     "title": "The Lantern Isle: the island",
+     "still": false
+    },
+    {
+     "name": "isle_home",
+     "title": "The Lantern Isle: homeward",
+     "still": false
+    }
+   ],
+   "library": [
+    "isle_common"
+   ],
+   "order": 100,
+   "settings": {
+    "audio.footsteps": 1,
+    "audio.master": 1,
+    "audio.music": 0.9,
+    "cam.adaptSpeed": 1,
+    "cam.shake": 0,
+    "cam.smoothing": 18,
+    "physics.bounce": 0.2,
+    "physics.charStep": 0.3,
+    "physics.friction": 0.6,
+    "physics.gravity": [
+     0,
+     -9.81,
+     0
+    ],
+    "player.bob": 0.025,
+    "player.eye": 1.6,
+    "player.run": 5.5,
+    "player.walk": 2.2,
+    "world.drawDistance": 4000,
+    "world.lodBias": 0
+   },
+   "build": {
+    "scenesDir": "places",
+    "libraryDir": "places"
+   }
+  },
+  {
    "name": "template",
    "title": "New Project",
    "description": "",
@@ -294,7 +347,8 @@
     "world.lodBias": 0
    },
    "build": {
-    "scenesDir": "places"
+    "scenesDir": "places",
+    "libraryDir": "places"
    }
   }
  ]

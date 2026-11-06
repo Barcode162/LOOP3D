@@ -1,0 +1,128 @@
+# The Lantern Isle, 2 of 3: the game. Light the five lanterns before night
+# falls: walk up to one and it lights. Each one lit wakes another voice of the
+# island's music. All five, and the boat comes for you.
+use "isle_common"
+title "The Lantern Isle: the island"
+mode "game"
+sky "physical", haze: 0.35
+fog density: 0.0014, top: 25, color: rgb(0.92, 0.8, 0.78)
+camera at: on_land(0.6, dock_z0 - 8, 1.6), look_at: vec(0, 1.6, dock_z0 + 14), lens: 30 mm
+
+let dusk_seconds = 300
+let start = time()
+let done = no
+let night = no
+let last_lit = time()
+set_sky(0)
+
+# where each lantern is, in words the keeper would use
+let where = {"the dock": "at the end of the dock", "the grove": "in the grove to the west, among the trees",
+  "the hilltop": "up on top of the hill", "the ruins": "in the old ruins, to the north-east",
+  "the stones": "in the ring of standing stones, to the east"}
+
+# the nearest lantern still dark
+to next_lantern()
+  let best = nothing
+  for each l in lanterns
+    if not l.lit and (best == nothing or distance(player(), l.at) < distance(player(), best.at))
+      best = l
+  return best
+
+# ---- the sun goes down
+every 2 s
+  if not done
+    let p = clamp((time() - start) / dusk_seconds, 0, 1)
+    set_sky(p)
+    birds.volume = 0.6 * (1 - smoothstep(0.3, 0.7, p))
+    crickets.volume = 0.5 * smoothstep(0.4, 0.8, p)
+    if p > 0.45
+      flies.visible = yes
+    if p >= 1 and not night
+      night = yes
+      emit "night"
+
+# ---- walk up to a lantern and it lights
+every 0.2 s
+  if not done
+    for each l in lanterns
+      if not l.lit and near(l.at, within: 2.6)
+        light_lantern(l)
+        last_lit = time()
+        emit "lit"
+
+when "lit"
+  let n = lit_count()
+  music_layer(n)
+  if n == 5
+    done = yes
+    finale()
+    return
+  line "", "Lanterns lit: {n} of 5", seconds: 3
+  wait 1 s
+  let next = next_lantern()
+  if n == 1
+    say "Keeper", "That's one. Hear that? The island remembers."
+  else if n == 2
+    say "Keeper", "Two. Keep going."
+  else if n == 3
+    say "Keeper", "Three! More than half way."
+  else
+    say "Keeper", "One left. Quick, the stars are coming out."
+  if next != nothing
+    say "Keeper", "The nearest is {where[next.name]}."
+
+# ---- the keeper helps when you've been looking a while
+every 35 s
+  if not done and not night and time() - last_lit > 30
+    let next = next_lantern()
+    if next != nothing
+      line "Keeper", "Try {where[next.name]}. You'll see its ember glowing.", seconds: 5
+
+# pressing Use near the keeper asks the way
+when "use"
+  if not done and near(keeper.position, within: 3)
+    let next = next_lantern()
+    if next != nothing
+      say "Keeper", "The nearest one is {where[next.name]}."
+
+# ---- the start
+task
+  wait 1 s
+  keeper.look_at = player()
+  say "Keeper", "The sun's going down fast."
+  say "Keeper", "Light the five lanterns before dark, and the boat will find this shore."
+  say "Keeper", "Just walk up to one. The first is at the end of the dock."
+  line "", "Left thumb walks, right thumb looks", seconds: 5
+  wait 4 s
+  keeper.look_at = nothing
+
+# ---- all five: the boat comes in
+to finale()
+  let took = time() - start
+  remember("isle_seconds", round(took))
+  let best = recall("isle_best", 0)
+  if best == 0 or took < best
+    remember("isle_best", round(took))
+  keeper.look_at = vec(0, 1, dock_z0 + 40)
+  say "Keeper", "All five! Look, out on the water."
+  let out_at_sea = vec(0, 0, dock_z0 + 80)
+  let by_the_dock = vec(2.7, 0, dock_z0 + dock_len - 3.5)
+  let t0 = time()
+  while time() - t0 < 14
+    let k = ease((time() - t0) / 14, "out")
+    place_boat(out_at_sea + (by_the_dock - out_at_sea) * k)
+    wait 1 / 30 s
+  for each c in crates
+    push c, vec(-1.2, 2, -1.5)
+  say "Keeper", "Off you go. I'll keep them burning."
+  wait 1.5 s
+  go_to("isle_home")
+
+# ---- night came first
+when "night"
+  if done
+    return
+  say "Keeper", "Night's here. The boat won't find us in the dark."
+  let a = choose("Try again from sunset?", ["Yes, again", "Walk the island in the dark"])
+  if a == 0
+    go_to("isle")
