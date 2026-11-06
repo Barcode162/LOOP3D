@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "For work I want to go super slow … start with a super simple tiny goal … progress myself at the
+  same time … it's about growth and progressiveness": the pace is in `CLAUDE.md` (one tiny goal at a time, its idea
+  explained first, the user's go, then only that goal).
 - **2026-11-06** · A fresh approach (the user guides; the skeleton before the visuals): the bar built from empty,
   one piece at a time; the engine kept whole but split in two sides, core (behind the scenes: fast, small) and
   visual (what you see: extras that cost nothing unless used); `.looped` names a project, scripts stay `.loop`;

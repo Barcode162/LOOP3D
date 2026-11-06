@@ -9,6 +9,12 @@ never knows about a project.
 and graphics. They say what they want in any words; you plan, build, check and explain in plain words, saying
 what to look at on the phone. Never make them learn a file, a tool or a command.
 
+## The pace (the user's word, 2026-11-06)
+**Super slow, one tiny goal at a time; the user grows with the project.** It's about growth and progress, not
+speed. Each goal is one sentence the user can see on the phone. Before building: the one idea it teaches, in a few
+plain sentences. Then wait for the user's go. Build only that goal, show it, say in two or three lines what changed
+and what they learned, and add it to the dashboard (Loop3D Workshop). Never run ahead to the next goal.
+
 ## Working
 1. **Start:** read `PLAN.md` (the order of work) and the top of `LOG.md` (what happened last). That's all.
 2. **The user asks, you do it.** Ask only when the choice is really theirs (money, making something public,
