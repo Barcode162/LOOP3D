@@ -50,6 +50,8 @@ struct FrameView {
   bool cullBackFaces = false;      // the backs of closed shapes are skipped
   bool prepass = false;            // depth first: each pixel is lit once
   float lodBias = 0;               // world.lodBias
+  bool lightGrid = false;          // render.lightGrid: each pixel works out its cell's lamps
+  int lampsPerCell = 8;            // render.lampsPerPixel
 };
 
 struct FrameCost {
@@ -74,7 +76,7 @@ struct FrameCost {
   float frontLayers = 0;         // of them facing the camera
   float shadedPerPixel = 0;      // fragments shaded per covered pixel (expected, with no depth pre-pass)
   float shadedFrontsOnly = 0;    // the same with the backs of shapes skipped
-  int lampsComputed = 0;         // lamps the shader loops over for every shaded fragment
+  float lampsComputed = 0;       // lamps the shader works out per shaded fragment (on average: the light grid's cells)
   float lampsThatMatter = 0;     // lamps giving 95% of a visible point's direct light (average)
   int lampsThatMatterMost = 0;   // and at the worst point
   float lampsFor99 = 0;          // lamps giving 99% of it (average)
@@ -82,7 +84,14 @@ struct FrameCost {
   uint64_t triangles() const { return sceneTriangles + shadowTriangles + prepassTriangles; }
   size_t draws() const { return sceneDraws + shadowDraws + prepassDraws; }
   // per-pixel work today: fragments shaded x lamps each works out
-  float lampWorkPerPixel() const { return shadedPerPixel * static_cast<float>(lampsComputed); }
+  float lampWorkPerPixel() const { return shadedPerPixel * lampsComputed; }
+  // About how long this frame takes the user's iPhone 15 Pro Max (GPU, ms) at a
+  // number of pixels drawn: fitted to its 12 benchmark runs of 2026-11-05
+  // (perf/segments.json): 5 ms per million triangles, 1.2 ms per lamp worked
+  // out on 100,000 pixels. Measure on the phone again after big changes.
+  float phoneMs(double pixels) const {
+    return 5.0f * static_cast<float>(triangles()) / 1e6f + 1.24f * lampWorkPerPixel() * static_cast<float>(pixels / 1e5) + 1.5f;
+  }
 };
 
 // The view's camera matrices, exactly as the renderer builds them.
@@ -101,6 +110,7 @@ struct FrameBudget {
   size_t draws = 0;            // all passes
   float shadedPerPixel = 0;
   float lampWorkPerPixel = 0;  // fragments x lamps each works out
+  float phoneMs = 14;          // the phone's estimated GPU time a frame (60 a second, with room to spare)
 };
 FrameBudget budgetFor(const std::string& quality);  // "phone" or "high"
 // The budget's lines a frame goes over, in plain words (empty: it fits).

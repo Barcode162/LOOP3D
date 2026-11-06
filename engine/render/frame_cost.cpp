@@ -5,6 +5,7 @@
 #include <set>
 #include <utility>
 
+#include "engine/render/light_grid.h"
 #include "engine/render/scene_bvh.h"
 
 namespace loop {
@@ -81,7 +82,11 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   }
   c.sun = sun != nullptr;
   Vec3 towardSun = sun ? normalize(-sun->direction) : Vec3(0, 1, 0);
-  c.lampsComputed = std::min({lamps, kMaxGpuLights, std::max(view.maxLights, 1)});
+  const int allLamps = std::min({lamps, kMaxGpuLights, std::max(view.maxLights, 1)});
+  c.lampsComputed = static_cast<float>(allLamps);
+  // the light grid: a pixel works out only the lamps listed in its cell
+  LightGrid grid = view.lightGrid ? buildLightGrid(gridLamps(scene, kMaxGpuLights), view.lampsPerCell) : LightGrid();
+  double gridLamps = 0;
 
   // ---- the passes: what each draws, and what skipping off-screen copies leaves
   Frustum eye = Frustum::fromViewProj(frameViewProj(view));
@@ -189,6 +194,10 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
         }
       }
       matter += need, matter99 += need99;
+      if (grid.on) {
+        int cell = grid.cellOf(p);
+        gridLamps += cell < 0 ? 0 : grid.start[static_cast<size_t>(cell) + 1] - grid.start[static_cast<size_t>(cell)];
+      }
       c.lampsThatMatterMost = std::max(c.lampsThatMatterMost, need);
     }
   if (c.samples) c.coverage = static_cast<float>(covered) / static_cast<float>(c.samples);
@@ -198,6 +207,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
     c.shadedFrontsOnly = static_cast<float>(shadedFronts / covered);
     c.lampsThatMatter = static_cast<float>(matter / covered);
     c.lampsFor99 = static_cast<float>(matter99 / covered);
+    if (grid.on) c.lampsComputed = static_cast<float>(gridLamps / covered);
     c.patternShare = static_cast<float>(patterned) / static_cast<float>(covered);
   }
   return c;
@@ -228,6 +238,11 @@ std::vector<std::string> overBudget(const FrameCost& c, const FrameBudget& b) {
   }
   if (c.shadedPerPixel > b.shadedPerPixel) {
     std::snprintf(line, sizeof line, "surfaces shaded per pixel %.2f (budget %.2f)", static_cast<double>(c.shadedPerPixel), static_cast<double>(b.shadedPerPixel));
+    out.push_back(line);
+  }
+  float ms = c.phoneMs(static_cast<double>(b.width) * b.height);
+  if (ms > b.phoneMs) {
+    std::snprintf(line, sizeof line, "about %.0f ms a frame on the iPhone at full size (budget %.0f ms)", static_cast<double>(ms), static_cast<double>(b.phoneMs));
     out.push_back(line);
   }
   if (c.lampWorkPerPixel() > b.lampWorkPerPixel) {

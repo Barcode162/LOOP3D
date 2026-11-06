@@ -28,7 +28,9 @@ struct Config {
     int msaa = 4;
     bool fxaa = false;
     bool filmGrain = false;
-    bool cull = true;  // skip what a pass can't see  // live film grain (stills always keep a scene's grain)
+    bool cull = true;  // skip what a pass can't see
+    bool lightGrid = true;   // near lamps exactly, far lamps from a soft grid
+    int lampsPerPixel = 8;   // the light grid's aim: lamps listed per cell  // live film grain (stills always keep a scene's grain)
     bool sunShadows = true;
     int sunMapPhone = 1024, sunMapHigh = 2048;
     float shadowDistance = 0;  // m half-width; 0 = the quality's own (25 / 40)

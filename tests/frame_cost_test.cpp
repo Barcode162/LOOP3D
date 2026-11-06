@@ -78,7 +78,8 @@ TEST(frame_cost_budget_names_what_is_over) {
   c.sceneTriangles = 900000;
   c.lampsComputed = 50, c.shadedPerPixel = 2;
   auto over = overBudget(c, b);
-  CHECK(over.size() == 2);
+  CHECK(over.size() == 3);  // triangles, the phone's time, lamp work
+  CHECK(over[1].find("iPhone") != std::string::npos);
   CHECK(budgetFor("high").triangles > b.triangles);
 }
 

@@ -1,0 +1,65 @@
+{
+ "kind": "loop3d-bench",
+ "v": 1,
+ "when": "2026-11-05T11:35:05.070Z",
+ "build": "5e2c345 2026-11-05",
+ "bench": "scene",
+ "start": "the_woods",
+ "quality": "Phone",
+ "msaa": 4,
+ "device": {
+  "gpu": {
+   "vendor": "apple",
+   "architecture": "apple",
+   "device": "apple",
+   "description": "apple"
+  },
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15",
+  "dpr": 3,
+  "screen": "430x932",
+  "cores": 4
+ },
+ "summary": {
+  "scenes": 1,
+  "seconds": 59.7,
+  "frames": 370,
+  "fps": 6.2,
+  "worstLow1Fps": 2.18,
+  "worstP99Ms": 232,
+  "maxMs": 752,
+  "hitches": 2,
+  "avgScale": 0.504,
+  "worstLoadMs": 741
+ },
+ "segments": [
+  {
+   "title": "The Woods",
+   "mode": "game",
+   "seconds": 59.71,
+   "frames": 370,
+   "fps": 6.2,
+   "avgMs": 161.37,
+   "p50Ms": 151,
+   "p95Ms": 200,
+   "p99Ms": 232,
+   "maxMs": 752,
+   "low1Fps": 2.18,
+   "low01Fps": 1.33,
+   "hitches": 2,
+   "hitchPct": 1.91,
+   "dropped": 3172,
+   "cpuMs": 0.98,
+   "cpuP99Ms": 2,
+   "gpuMs": 159.33,
+   "gpuP95Ms": 199,
+   "scaleAvg": 0.504,
+   "scaleMin": 0.5,
+   "loadMs": 741,
+   "things": 883,
+   "lights": 1,
+   "width": 932,
+   "height": 366,
+   "scene": "the_woods"
+  }
+ ]
+}
