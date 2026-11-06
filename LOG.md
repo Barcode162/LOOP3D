@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Restructure a plan": `PLAN.md` in phases (A smooth and clean, in progress; B projects: the
+  project file, the pack, the AI; C Bar3D on Loop3D; D free hosting), each with what you'll see and when it's
+  done; a "Needs you" list; the open problems brought up to date.
 - **2026-11-06** · Published `cb88328` (GitHub's build, pictured first): simpler distant trees.
 - **2026-11-06** · "Resume go": plan step 4, third part: simpler distant trees (levels of detail; the same
   trees, thinned; the shadow pass one version simpler): The Woods 10.7 M → 3.7 M triangles, 9 of 41 scenes over
