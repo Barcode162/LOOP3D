@@ -2,6 +2,8 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · `loop new "My Game"` makes a new project from the template (`projects/my_game/`: its cover page
+  named, its first room renamed `my_game_room` and titled; checked; nothing left behind on a problem). 85 tests.
 - **2026-11-06** · Perfecting the template (the user's 1, 2, 3, 4): a Sound group and plainer notes (16 settings);
   the first room opens on a grid floor (1-metre squares, soft even light) through a new `grid` pattern whose lines
   stay sharp at any distance (live and film renderers).

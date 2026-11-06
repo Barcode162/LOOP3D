@@ -8,6 +8,7 @@
 //               with the cinema renderer; with none asked, one still of its camera
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
 //   loop project <name.looped>                a project's cover page as JSON (its name and first scene)
+//   loop new "My Game"                        a new project in projects/, copied from projects/template
 //   Every command that takes a scene also takes a project's cover page (.looped):
 //   it opens the project's first scene.
 //   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
@@ -48,6 +49,7 @@ int usage() {
       "loop settings list    every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
+      "loop new \"My Game\"         a new project in projects/, copied from projects/template\n"
       "(a project's cover page, name.looped, can stand in for a scene: its first scene opens)");
   return 1;
 }
@@ -479,6 +481,16 @@ int main(int argc, char** argv) {
       o.sets.push_back({kv.substr(0, eq), kv.substr(eq + 1)});
     }
     else return usage();
+  }
+  if (cmd == "new") {
+    std::string folder, why;
+    if (!makeProject("projects/template", "projects", target, folder, why)) {
+      std::fprintf(stderr, "problem: %s\n", why.c_str());
+      return 1;
+    }
+    std::string f = projectFolderName(target);
+    std::printf("made %s (\"%s\"): its cover page %s/%s.looped opens %s_room\n", folder.c_str(), target.c_str(), folder.c_str(), f.c_str(), f.c_str());
+    return 0;
   }
   // a project's cover page: read it, then work on its first scene
   if (target.size() > 7 && target.compare(target.size() - 7, 7, ".looped") == 0) {

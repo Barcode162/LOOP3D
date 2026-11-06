@@ -1,4 +1,9 @@
 // A project's cover page (engine/project): the .looped file beside its scenes.
+#include <unistd.h>
+
+#include <filesystem>
+
+#include "engine/core/file.h"
 #include "engine/project/project.h"
 #include "tests/test.h"
 
@@ -74,4 +79,32 @@ TEST(project_template_reads_cleanly) {
   CHECK(p.name == "New Project");
   CHECK(p.settings.size() == 16);
   CHECK(p.scenePath(p.start).find("places/first_room.loop") != std::string::npos);
+}
+
+// A new project from the template: named, its first room renamed and titled,
+// reading cleanly; a second with the same name, or a bad name, is refused.
+TEST(project_new_from_template) {
+  namespace fs = std::filesystem;
+  CHECK(projectFolderName("My Game") == "my_game");
+  CHECK(projectFolderName("The  Bar - Two") == "the_bar_two");
+  CHECK(projectFolderName("9 lives").empty() && projectFolderName("bad\"name").empty() && projectFolderName("").empty());
+  std::string here = __FILE__;
+  std::string root = here.substr(0, here.rfind("tests/"));
+  fs::path dir = fs::temp_directory_path() / ("loop3d_new_" + std::to_string(::getpid()));
+  fs::remove_all(dir);
+  fs::create_directories(dir);
+  std::string folder, why;
+  CHECK(makeProject(root + "projects/template", dir.string(), "My Game", folder, why));
+  Project p;
+  std::vector<ProjectProblem> ps;
+  CHECK(readProject((dir / "my_game" / "my_game.looped").string(), p, ps));
+  CHECK(p.name == "My Game" && p.start == "my_game_room");
+  CHECK(p.settings.size() == 16);
+  std::string room;
+  CHECK(readText((dir / "my_game" / "places" / "my_game_room.loop").string(), room));
+  CHECK(room.find("title \"My Game\"") != std::string::npos);
+  CHECK(!makeProject(root + "projects/template", dir.string(), "My Game", folder, why));
+  CHECK(why.find("already") != std::string::npos);
+  CHECK(!makeProject(root + "projects/template", dir.string(), "9 lives", folder, why));
+  fs::remove_all(dir);
 }

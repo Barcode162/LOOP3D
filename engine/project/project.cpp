@@ -1,6 +1,8 @@
 #include "engine/project/project.h"
 
+#include <cctype>
 #include <cstdlib>
+#include <filesystem>
 #include <sys/stat.h>
 
 #include "engine/core/file.h"
@@ -162,6 +164,94 @@ bool readProject(const std::string& path, Project& out, std::vector<ProjectProbl
   }
   out.folder = directoryOf(path);
   return parseProject(text, out, problems);
+}
+
+std::string projectFolderName(const std::string& name) {
+  std::string out;
+  for (char ch : name) {
+    unsigned char u = static_cast<unsigned char>(ch);
+    if (std::isalnum(u)) out += static_cast<char>(std::tolower(u));
+    else if (ch == ' ' || ch == '-') out += out.empty() || out.back() == '_' ? "" : "_";
+    else return {};
+  }
+  while (!out.empty() && out.back() == '_') out.pop_back();
+  if (out.empty() || !std::isalpha(static_cast<unsigned char>(out[0]))) return {};
+  return out;
+}
+
+namespace {
+// Each line starting with `word ` becomes `word "value"`.
+std::string withValue(const std::string& text, const std::string& word, const std::string& value) {
+  std::string out, line;
+  size_t i = 0;
+  while (i < text.size()) {
+    size_t e = text.find('\n', i);
+    if (e == std::string::npos) e = text.size();
+    line = text.substr(i, e - i);
+    if (line.compare(0, word.size() + 1, word + " ") == 0) line = word + " \"" + value + "\"";
+    out += line + "\n";
+    i = e + 1;
+  }
+  return out;
+}
+}  // namespace
+
+bool makeProject(const std::string& templateDir, const std::string& projectsDir, const std::string& name, std::string& folderOut, std::string& error) {
+  namespace fs = std::filesystem;
+  std::string folder = projectFolderName(name);
+  if (folder.empty()) {
+    error = "a project's name is letters, numbers, spaces and hyphens, starting with a letter, like \"My Game\"";
+    return false;
+  }
+  fs::path src(templateDir), dst = fs::path(projectsDir) / folder;
+  std::error_code ec;
+  if (fs::exists(dst, ec)) {
+    error = "there's already a project folder " + dst.string();
+    return false;
+  }
+  std::string tname = src.filename().string();
+  if (tname.empty()) tname = src.parent_path().filename().string();
+  Project t;
+  std::vector<ProjectProblem> ps;
+  if (!readProject((src / (tname + ".looped")).string(), t, ps)) {
+    error = "the template doesn't read: " + (ps.empty() ? std::string("no cover page") : ps[0].message(tname + ".looped"));
+    return false;
+  }
+  std::string firstRoom = t.scenePath(t.start);
+  if (firstRoom.empty()) {
+    error = "the template's first room \"" + t.start + "\" has no file";
+    return false;
+  }
+  auto undo = [&](const std::string& why) {
+    fs::remove_all(dst, ec);
+    error = why;
+    return false;
+  };
+  fs::copy(src, dst, fs::copy_options::recursive, ec);
+  if (ec) return undo("couldn't copy the template: " + ec.message());
+  // the cover page: renamed, naming the project and its renamed first room
+  std::string room = folder + "_room", text;
+  fs::path cover = dst / (folder + ".looped");
+  fs::rename(dst / (tname + ".looped"), cover, ec);
+  if (ec || !readText(cover.string(), text)) return undo("couldn't rename the cover page");
+  size_t firstLine = text.find('\n');
+  if (text.rfind("# ", 0) == 0 && firstLine != std::string::npos) text = "# " + name + ", made from the template." + text.substr(firstLine);
+  text = withValue(withValue(text, "project", name), "start", room);
+  if (!writeText(cover.string(), text)) return undo("couldn't write the cover page");
+  // the first room: renamed, titled with the name
+  fs::path oldRoom = dst / fs::relative(fs::path(firstRoom), src, ec);
+  fs::path newRoom = oldRoom.parent_path() / (room + ".loop");
+  fs::rename(oldRoom, newRoom, ec);
+  std::string roomText;
+  if (ec || !readText(newRoom.string(), roomText)) return undo("couldn't rename the first room");
+  if (!writeText(newRoom.string(), withValue(roomText, "title", name))) return undo("couldn't write the first room");
+  // read back
+  Project made;
+  ps.clear();
+  if (!readProject(cover.string(), made, ps) || made.scenePath(made.start).empty())
+    return undo("the new project doesn't read: " + (ps.empty() ? std::string("its first room is missing") : ps[0].message(folder + ".looped")));
+  folderOut = dst.string();
+  return true;
 }
 
 }  // namespace loop

@@ -45,4 +45,16 @@ bool parseProject(const std::string& text, Project& out, std::vector<ProjectProb
 // The same from a file; `out.folder` is the file's folder.
 bool readProject(const std::string& path, Project& out, std::vector<ProjectProblem>& problems);
 
+// A project's folder name from its name: lowercase, _ for spaces and hyphens
+// ("My Game" -> "my_game"); empty if the name has other characters or doesn't
+// start with a letter.
+std::string projectFolderName(const std::string& name);
+
+// A new project from the template folder: a copy at <projectsDir>/<folder>,
+// its cover page renamed <folder>.looped and naming the project, its first
+// room renamed <folder>_room (scene names differ across projects) and titled
+// with the name; then read back to check it. False, with the reason, and
+// nothing left behind, if anything is wrong.
+bool makeProject(const std::string& templateDir, const std::string& projectsDir, const std::string& name, std::string& folderOut, std::string& error);
+
 }  // namespace loop
