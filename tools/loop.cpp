@@ -92,13 +92,20 @@ std::string expandUses(const std::string& src, const std::string& dir, std::vect
 // A scene's project (project.json in its folder) brings its settings:
 // "settings": {"cinema.quality": "cinema", "physics.iterations": 24, …}
 void loadProjectSettings(const std::string& scenePath) {
-  // a project with a cover page (<folder>/<folder>.looped): its settings
-  std::string folder = directoryOf(scenePath), name = folder;
-  while (!name.empty() && name.back() == '/') name.pop_back();
-  name = name.substr(name.find_last_of('/') + 1);
-  std::string cover = joinPath(folder, name + ".looped");
-  struct stat sb;
-  if (!name.empty() && stat(cover.c_str(), &sb) == 0) {
+  // a project with a cover page (<folder>/<folder>.looped, the scene beside it
+  // or in its places/): its settings
+  std::string folder = directoryOf(scenePath);
+  auto coverIn = [](std::string dir) {
+    std::string name = dir;
+    while (!name.empty() && name.back() == '/') name.pop_back();
+    name = name.substr(name.find_last_of('/') + 1);
+    std::string cover = joinPath(dir, name + ".looped");
+    struct stat sb;
+    return !name.empty() && stat(cover.c_str(), &sb) == 0 ? cover : std::string();
+  };
+  std::string cover = coverIn(folder);
+  if (cover.empty() && folder.size() >= 7 && folder.compare(folder.size() - 7, 7, "places/") == 0) cover = coverIn(folder.substr(0, folder.size() - 7));
+  if (!cover.empty()) {
     Project pr;
     std::vector<ProjectProblem> ps;
     Settings::get().clear(Settings::kProject);
@@ -480,10 +487,10 @@ int main(int argc, char** argv) {
     bool ok = readProject(target, pr, ps);
     for (const ProjectProblem& p : ps) std::fprintf(stderr, "problem: %s\n", p.message(target).c_str());
     if (!ok) return 1;
-    std::string first = joinPath(pr.folder, pr.start + ".loop");
-    struct stat sb;
-    if (stat(first.c_str(), &sb) != 0) {
-      std::fprintf(stderr, "problem: %s: its first scene \"%s\" has no file %s\n", target.c_str(), pr.start.c_str(), first.c_str());
+    std::string first = pr.scenePath(pr.start);
+    if (first.empty()) {
+      std::fprintf(stderr, "problem: %s: its first scene \"%s\" has no file (looked for places/%s.loop and %s.loop)\n", target.c_str(), pr.start.c_str(),
+                   pr.start.c_str(), pr.start.c_str());
       return 1;
     }
     if (cmd == "project") {

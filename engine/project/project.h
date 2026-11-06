@@ -28,6 +28,9 @@ struct Project {
     int line = 0;
   };
   std::vector<Setting> settings;  // in the order written
+  // Where a scene's file is: places/<name>.loop, else <name>.loop beside the
+  // cover page; empty if neither exists.
+  std::string scenePath(const std::string& scene) const;
 };
 
 struct ProjectProblem {

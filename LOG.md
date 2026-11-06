@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · Step 2 of 3, the template (kept to the minimum, the user's word): `projects/template/` is the
+  folder every new project is copied from: `template.looped` (a name, its first room, 13 starting settings for the
+  camera, things and you, each with its range) and `places/first_room.loop` (empty). Rooms are found in `places/`,
+  else beside the cover page. A test keeps the template reading cleanly. 84 tests.
 - **2026-11-06** · "Let's get a base template with the settings first", step 1 of 3: cover pages take
   `setting "name", value` lines, each checked as it's read (name, kind, safe range; the problem names its line);
   settings anywhere now refuse a number outside their safe range instead of quietly capping it (the old test of

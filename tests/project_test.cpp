@@ -61,3 +61,17 @@ TEST(project_cover_page_settings_are_checked) {
   CHECK(ps[4].text.find("double quotes") != std::string::npos);
   CHECK(q.settings.empty());  // nothing wrong is kept
 }
+
+// The template every new project is copied from always reads cleanly, every
+// setting valid, its first room in places/.
+TEST(project_template_reads_cleanly) {
+  std::string here = __FILE__;
+  std::string root = here.substr(0, here.rfind("tests/"));
+  Project p;
+  std::vector<ProjectProblem> ps;
+  CHECK(readProject(root + "projects/template/template.looped", p, ps));
+  for (const ProjectProblem& q : ps) std::printf("    %s\n", q.message("template.looped").c_str());
+  CHECK(p.name == "New Project");
+  CHECK(p.settings.size() == 13);
+  CHECK(p.scenePath(p.start).find("places/first_room.loop") != std::string::npos);
+}

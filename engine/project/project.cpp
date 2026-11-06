@@ -1,6 +1,7 @@
 #include "engine/project/project.h"
 
 #include <cstdlib>
+#include <sys/stat.h>
 
 #include "engine/core/file.h"
 #include "engine/core/settings.h"
@@ -144,6 +145,13 @@ bool parseProject(const std::string& text, Project& out, std::vector<ProjectProb
   if (!triedProject) problems.push_back({0, "no name: add a line like project \"The Bar\""});
   if (!triedStart) problems.push_back({0, "no first scene: add a line like start \"bar_room\""});
   return problems.size() == before;
+}
+
+std::string Project::scenePath(const std::string& scene) const {
+  struct stat sb;
+  for (const std::string& p : {joinPath(folder, "places/" + scene + ".loop"), joinPath(folder, scene + ".loop")})
+    if (stat(p.c_str(), &sb) == 0) return p;
+  return {};
 }
 
 bool readProject(const std::string& path, Project& out, std::vector<ProjectProblem>& problems) {

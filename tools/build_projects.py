@@ -31,9 +31,12 @@ def cover_page(looped):
     if out.returncode:
         sys.exit(out.stderr.strip())
     cover = json.loads(out.stdout)
-    others = sorted(f.stem for f in looped.parent.glob("*.loop") if f.stem != cover["start"])
+    # the scenes: places/*.loop, else the .loop files beside the cover page
+    places = looped.parent / "places"
+    where = places if places.is_dir() and any(places.glob("*.loop")) else looped.parent
+    others = sorted(f.stem for f in where.glob("*.loop") if f.stem != cover["start"])
     return {"name": looped.parent.name, "title": cover["name"], "start": cover["start"], "scenes": [cover["start"]] + others,
-            "settings": cover.get("settings", {})}
+            "settings": cover.get("settings", {}), "build": {"scenesDir": "places"} if where == places else {}}
 
 
 projects, owner = [], {}
