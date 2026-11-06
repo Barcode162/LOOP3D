@@ -2,6 +2,14 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · The rebuild, **step 0 (the safety net)**, done: **the meter** (tap the stats: each frame's
+  CPU time by part (scripts, physics, people, sending, drawing), the GPU, memory, against the 16.7 ms line;
+  5dafe42); **the sameness test** (a scene run twice gives the same world, bit for bit; it found that every
+  script shared one stream of random numbers, so a scene changed with whatever ran before it: fixed, 79a74b0);
+  **picture tests** (`tools/picture_check.js`: 12 scenes held still and compared with `tests/pictures/`; two runs
+  match exactly; 71f9616). First reading on this machine's software GPU: the bar's CPU needs 4.4 ms a frame, the
+  graphics chip is the slow side.
+
 - **2026-11-06** · "Lighting, a full skeleton, physics, universal animations, performance, a library that grows
   … Nanite, water, world generation … play chess … a ragdoll as real as possible that tries to stand up and
   grabs hold … new ways to calculate": **the rebuild**, planned with you and written into `PLAN.md`: ten moves

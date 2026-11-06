@@ -45,9 +45,10 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
     real rail.
 
 **The steps, in order:**
-0. **The safety net:** a meter on the phone (where each frame's time goes: scripts, physics, people, the
-   graphics chip, memory), picture tests (each room compared with its reference after every step), a sameness
-   test (the same scene twice, the same world).
+0. **The safety net** (done 2026-11-06): a meter on the phone (tap the stats: where each frame's time goes,
+   scripts, physics, people, sending, drawing, the graphics chip, memory), picture tests
+   (`tools/picture_check.js`, 12 scenes against `tests/pictures/`), a sameness test (the same scene twice, the
+   same world; each script now has its own random numbers).
 1. **The one clock and the flat world:** things kept once, not twice; drawing blends between steps.
 2. **More than one core:** the work shared by the phone's cores (with a one-core fallback); faster maths.
 3. **The cook and the library:** `library/` for every project, each entry a recipe with its credit and
