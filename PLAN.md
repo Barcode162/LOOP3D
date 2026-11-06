@@ -49,7 +49,8 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
    scripts, physics, people, sending, drawing, the graphics chip, memory), picture tests
    (`tools/picture_check.js`, 12 scenes against `tests/pictures/`), a sameness test (the same scene twice, the
    same world; each script now has its own random numbers).
-1. **The one clock and the flat world:** things kept once, not twice; drawing blends between steps.
+1. **The one clock and the flat world** (done 2026-11-06): the day, the film and the world on one clock;
+   drawing blends between steps and gets only what moved (the Glade's sending 1.71 → 0.26 ms).
 2. **More than one core:** the work shared by the phone's cores (with a one-core fallback); faster maths.
 3. **The cook and the library:** `library/` for every project, each entry a recipe with its credit and
    licence, found by `use`, listed in the editor; meshes cooked into clusters; the rule that every goal adds to

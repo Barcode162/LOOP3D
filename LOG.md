@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · The rebuild, **step 1 (the one clock)**: the day, the film's time and the world all step on
+  the fixed clock (not the frame rate); each thing keeps where it was and where it is, and the drawing blends
+  between the two steps (smooth at any screen rate) and is sent only what moved: the Glade's sending 1.71 →
+  0.26 ms a frame, its CPU frame 4.1 → 2.6 ms (this machine); the walking body moves in fixed steps, the eye
+  drawn between them. The things stay one list (`Stage::placed`) the drawing is made from; handles that
+  survive removal wait until things can be removed. Pictures, sameness and the editor unchanged (f7b4852).
+
 - **2026-11-06** · The rebuild, **step 0 (the safety net)**, done: **the meter** (tap the stats: each frame's
   CPU time by part (scripts, physics, people, sending, drawing), the GPU, memory, against the 16.7 ms line;
   5dafe42); **the sameness test** (a scene run twice gives the same world, bit for bit; it found that every
