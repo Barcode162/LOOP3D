@@ -1,0 +1,26 @@
+# room_shell · a plain room: a floor, four walls with a doorway, a ceiling with a soft panel light
+# room_shell(size, floor, walls, lumens) builds it round the middle of the
+# world: `size` is its inside width, height and depth; the doorway (2 m wide,
+# 2.6 m high) is in the wall toward +z; it sounds like a small room.
+#
+# kind: room
+# place: room_shell(size: vec(12, 4.5, 12))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the Showcase (2026-11-06)
+
+to room_shell(size: vec(12, 4.5, 12), floor: "tiles", walls: "plaster", lumens: 6000)
+  let w = size.x
+  let h = size.y
+  let d = size.z
+  box size: vec(w, 0.2, d), at: vec(0, -0.1, 0), material: floor
+  box size: vec(w, h, 0.3), at: vec(0, h / 2, -d / 2 - 0.15), material: walls
+  box size: vec(0.3, h, d), at: vec(-w / 2 - 0.15, h / 2, 0), material: walls
+  box size: vec(0.3, h, d), at: vec(w / 2 + 0.15, h / 2, 0), material: walls
+  # the front wall, with a doorway 2 m wide
+  box size: vec(w / 2 - 1, h, 0.3), at: vec(-(w / 4 + 0.5), h / 2, d / 2 + 0.15), material: walls
+  box size: vec(w / 2 - 1, h, 0.3), at: vec(w / 4 + 0.5, h / 2, d / 2 + 0.15), material: walls
+  box size: vec(2, h - 2.6, 0.3), at: vec(0, 2.6 + (h - 2.6) / 2, d / 2 + 0.15), material: walls
+  box size: vec(w, 0.2, d), at: vec(0, h + 0.1, 0), material: walls
+  panel_light at: vec(0, h - 0.02, 0), facing: vec(0, -1, 0), size: vec(w * 0.4, d * 0.4, 0), lumens: lumens, kelvin: 4500
+  room size: 0.25, echo: 0.12

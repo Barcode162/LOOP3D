@@ -1,0 +1,52 @@
+[
+ {
+  "about": "lantern(name, at) places one, dark (a faint ember inside); light_lantern(l) lights it: its flame, a warm light that breathes like fire, a crackle, a bell (quiet: yes leaves the bell out). Every lantern placed is in `lanterns`; lit_count() says how many are lit.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Lantern Isle (2026-11-06)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "lantern",
+  "place": "lantern(\"a lantern\", AT)",
+  "what": "a stone post with an iron cage of frosted glass, and a flame you light"
+ },
+ {
+  "about": "sailing_boat(at, turn) places one and gives it back; move_boat(boat, at, turn) moves the whole boat (its hull, deck, mast, sail and lamp together), rocking gently on the water.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Lantern Isle (2026-11-06)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "sailing_boat",
+  "place": "sailing_boat(at: AT)",
+  "what": "a small wooden boat with a mast, a sail and a lamp at its bow"
+ },
+ {
+  "about": "lintel(a, b, height, depth, material) lays it between a and b (along x, level, at their middle height) and gives it back.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the Showcase (2026-11-06)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "lintel",
+  "place": "lintel(AT + vec(-1.2, 2.6, 0), AT + vec(1.2, 2.6, 0))",
+  "what": "a stone beam laid across from one point to another, like the top of a doorway or a ruin"
+ },
+ {
+  "about": "plinth(at, height, material) stands it on the floor at `at` and gives it back; what it shows goes at at + vec(0, height, 0).",
+  "credit": "J Production, made in Loop3D",
+  "from": "the Showcase (2026-11-06)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "plinth",
+  "place": "plinth(AT)",
+  "what": "a square stand with softened edges, to show something on"
+ },
+ {
+  "about": "room_shell(size, floor, walls, lumens) builds it round the middle of the world: `size` is its inside width, height and depth; the doorway (2 m wide, 2.6 m high) is in the wall toward +z; it sounds like a small room.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the Showcase (2026-11-06)",
+  "kind": "room",
+  "licence": "our own work, free for every J Production project",
+  "name": "room_shell",
+  "place": "room_shell(size: vec(12, 4.5, 12))",
+  "what": "a plain room: a floor, four walls with a doorway, a ceiling with a soft panel light"
+ }
+]

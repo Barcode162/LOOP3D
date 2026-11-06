@@ -1,0 +1,12 @@
+# plinth · a square stand with softened edges, to show something on
+# plinth(at, height, material) stands it on the floor at `at` and gives it
+# back; what it shows goes at at + vec(0, height, 0).
+#
+# kind: piece
+# place: plinth(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the Showcase (2026-11-06)
+
+to plinth(at, height: 1.0, material: "marble")
+  return box(size: vec(0.6, height, 0.6), at: at + vec(0, height / 2, 0), material: material, round: 0.02)

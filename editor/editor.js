@@ -327,5 +327,5 @@
     $('#speed').textContent = Math.round(s.fps || 0) + ' fps · ' + (s.gpu || 0).toFixed(1) + ' ms · ' + QN[E.quality];
   }, 500);
 
-  E.boot();
+  E.boot();  // async: picks one core or many first
 })();

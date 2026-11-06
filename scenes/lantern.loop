@@ -1,0 +1,52 @@
+# lantern · a stone post with an iron cage of frosted glass, and a flame you light
+# lantern(name, at) places one, dark (a faint ember inside); light_lantern(l)
+# lights it: its flame, a warm light that breathes like fire, a crackle, a
+# bell (quiet: yes leaves the bell out). Every lantern placed is in
+# `lanterns`; lit_count() says how many are lit.
+#
+# kind: model
+# place: lantern("a lantern", AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Lantern Isle (2026-11-06)
+
+let lantern_stone = material(like: "stone", color: rgb(0.48, 0.46, 0.43))
+let lantern_iron = material(like: "iron", color: rgb(0.12, 0.12, 0.13), roughness: 0.6)
+let lantern_glass = material(like: "frosted glass", color: rgb(0.95, 0.9, 0.8))
+let lantern_ember = material(color: rgb(0.05, 0.03, 0.02), glow: rgb(1.0, 0.45, 0.15) * 40)
+let lantern_flame = material(color: rgb(1, 0.6, 0.25), glow: rgb(1.0, 0.62, 0.28) * 9000)
+
+let lanterns = []
+to lantern(name, at)
+  cylinder 0.12, 1.5, at: at + vec(0, 0.75, 0), material: lantern_stone
+  box size: vec(0.34, 0.04, 0.34), at: at + vec(0, 1.52, 0), material: lantern_iron
+  box size: vec(0.3, 0.42, 0.3), at: at + vec(0, 1.75, 0), material: lantern_glass, collide: no
+  cone 0.26, 0.2, at: at + vec(0, 2.06, 0), material: lantern_iron
+  let dim = sphere(0.05, at: at + vec(0, 1.72, 0), material: lantern_ember, collide: no)
+  let flame = sphere(0.07, at: at + vec(0, 1.74, 0), material: lantern_flame, collide: no)
+  flame.scale = vec(1, 1.6, 1)
+  flame.visible = no
+  let l = {name: name, at: at, lit: no, flame: flame, dim: dim, light: nothing, fire: nothing}
+  lanterns.push(l)
+  return l
+
+# lights a lantern: its flame, its light, its crackle, a bell
+to light_lantern(l, quiet: no)
+  if l.lit
+    return
+  l.lit = yes
+  l.flame.visible = yes
+  l.dim.visible = no
+  l.light = light(l.at + vec(0, 1.75, 0), lumens: 700, kelvin: 1900, radius: 0.06)
+  l.fire = sound("fire", at: l.at + vec(0, 1.7, 0), volume: 0.35)
+  if not quiet
+    sound "bell", at: l.at + vec(0, 1.8, 0), strength: 0.8
+
+# lit lanterns breathe
+every 1 / 20 s
+  for each l in lanterns
+    if l.lit
+      l.light.lumens = 700 * (1 + 0.18 * flicker(time(), 6, l.at.x))
+
+to lit_count()
+  return lanterns.filter(fn(l): l.lit).length

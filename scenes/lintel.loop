@@ -1,0 +1,14 @@
+# lintel · a stone beam laid across from one point to another, like the top of a doorway or a ruin
+# lintel(a, b, height, depth, material) lays it between a and b (along x,
+# level, at their middle height) and gives it back.
+#
+# kind: piece
+# place: lintel(AT + vec(-1.2, 2.6, 0), AT + vec(1.2, 2.6, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the Showcase (2026-11-06)
+
+to lintel(a, b, height: 0.42, depth: 0.7, material: "ruin stone")
+  let mid = (a + b) / 2
+  let len = distance(vec(a.x, 0, a.z), vec(b.x, 0, b.z))
+  return box(size: vec(len, height, depth), at: mid, material: material, round: 0.04)

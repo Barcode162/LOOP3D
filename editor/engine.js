@@ -120,11 +120,13 @@ window.LE = window.LE || {};
   // the player starts on Phone on phones and High elsewhere (web/player.cpp main)
   window.loopReady = () => { E.ready = true; E.quality = /iPhone|iPad|Android/i.test(navigator.userAgent) ? 0 : 1; E.emit('ready'); };
 
-  E.boot = () => {
+  E.boot = async () => {
     window.Module = { onRuntimeInitialized() { E.M = window.Module; }, print: (t) => E.emit('log', 'info', t), printErr: (t) => E.emit('log', 'warn', t) };
+    // every core when the page may share memory between them (isolate.js), else one
+    const many = window.LoopIsolate && await LoopIsolate.ready() && typeof SharedArrayBuffer !== 'undefined';
     const s = document.createElement('script');
-    s.src = 'player.js';
-    s.onerror = () => E.emit('log', 'error', 'Couldn\'t load player.js. Build the site with tools/build_site.sh.');
+    s.src = many ? 'player_mt.js' : 'player.js';
+    s.onerror = () => E.emit('log', 'error', 'Couldn\'t load ' + s.src.split('/').pop() + '. Build the site with tools/build_site.sh.');
     document.body.appendChild(s);
   };
 })();

@@ -1,0 +1,33 @@
+# sailing_boat · a small wooden boat with a mast, a sail and a lamp at its bow
+# sailing_boat(at, turn) places one and gives it back; move_boat(boat, at,
+# turn) moves the whole boat (its hull, deck, mast, sail and lamp together),
+# rocking gently on the water.
+#
+# kind: model
+# place: sailing_boat(at: AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Lantern Isle (2026-11-06)
+
+let boat_hull = material(like: "old wood", color: rgb(0.3, 0.2, 0.13))
+let boat_deck = material(like: "floorboards", color: rgb(0.42, 0.32, 0.22), roughness: 0.85)
+let boat_sail = material(like: "fabric", color: rgb(0.86, 0.82, 0.74))
+let boat_lamp = material(color: rgb(1, 0.6, 0.25), glow: rgb(1.0, 0.62, 0.28) * 9000)
+
+to sailing_boat(at: vec(0, 0, 0), turn: 0)
+  let parts = []
+  parts.push({shape: box(size: vec(1.8, 0.7, 5), at: vec(0, 0, 0), material: boat_hull, round: 0.2, collide: no), offset: vec(0, 0.2, 0)})
+  parts.push({shape: box(size: vec(1.4, 0.08, 4.2), at: vec(0, 0, 0), material: boat_deck, collide: no), offset: vec(0, 0.56, 0)})
+  parts.push({shape: cylinder(0.07, 4.5, at: vec(0, 0, 0), material: boat_hull, collide: no), offset: vec(0, 2.8, 0.4)})
+  parts.push({shape: box(size: vec(0.04, 3.2, 2.2), at: vec(0, 0, 0), material: boat_sail, collide: no), offset: vec(0, 3.0, -0.7)})
+  let lamp = sphere(0.06, at: vec(0, 0, 0), material: boat_lamp, collide: no)
+  parts.push({shape: lamp, offset: vec(0, 1.0, 2.4)})
+  let boat = {parts: parts, lamp: lamp}
+  move_boat(boat, at, turn: turn)
+  return boat
+
+to move_boat(boat, at, turn: 0)
+  for each p in boat.parts
+    let o = p.offset
+    p.shape.position = at + vec(o.x * cos(turn) + o.z * sin(turn), o.y + 0.08 * sin(time() * 1.3), o.z * cos(turn) - o.x * sin(turn))
+    p.shape.turn = turn

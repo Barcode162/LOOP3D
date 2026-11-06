@@ -37,12 +37,6 @@ blocker size: vec(4, 3, 0.3), at: vec(3.7, 1.5, dock_z0 - 1)
 
 # ---- materials
 let planks = material(like: "floorboards", color: rgb(0.42, 0.32, 0.22), roughness: 0.85)
-let post_stone = material(like: "stone", color: rgb(0.48, 0.46, 0.43))
-let iron = material(like: "iron", color: rgb(0.12, 0.12, 0.13), roughness: 0.6)
-let lantern_glass = material(like: "frosted glass", color: rgb(0.95, 0.9, 0.8))
-let ember_dim = material(color: rgb(0.05, 0.03, 0.02), glow: rgb(1.0, 0.45, 0.15) * 40)
-let flame_hot = material(color: rgb(1, 0.6, 0.25), glow: rgb(1.0, 0.62, 0.28) * 9000)
-let sail_cloth = material(like: "fabric", color: rgb(0.86, 0.82, 0.74))
 let hull_wood = material(like: "old wood", color: rgb(0.3, 0.2, 0.13))
 
 # ---- the dock, in the south: planks on posts, out over the water, a rope rail
@@ -91,47 +85,13 @@ for i from 0 to 5
   let a = i * 60 deg + 20 deg
   rock 0.9 + (i % 3) * 0.4, seed: i + 20, at: on_land(hilltop.x + cos(a) * 7, hilltop.z + sin(a) * 7, 0.2), material: "stone"
 
-# ---- the lanterns: a stone post, an iron cage of frosted glass, a flame when lit
-let lanterns = []
-to lantern(name, at)
-  cylinder 0.12, 1.5, at: at + vec(0, 0.75, 0), material: post_stone
-  box size: vec(0.34, 0.04, 0.34), at: at + vec(0, 1.52, 0), material: iron
-  box size: vec(0.3, 0.42, 0.3), at: at + vec(0, 1.75, 0), material: lantern_glass, collide: no
-  cone 0.26, 0.2, at: at + vec(0, 2.06, 0), material: iron
-  let dim = sphere(0.05, at: at + vec(0, 1.72, 0), material: ember_dim, collide: no)
-  let flame = sphere(0.07, at: at + vec(0, 1.74, 0), material: flame_hot, collide: no)
-  flame.scale = vec(1, 1.6, 1)
-  flame.visible = no
-  let l = {name: name, at: at, lit: no, flame: flame, dim: dim, light: nothing, fire: nothing}
-  lanterns.push(l)
-  return l
-
+# ---- the lanterns (the library's lantern), one in each place
+use "lantern"
 lantern("the dock", vec(-0.7, dock_top, dock_z0 + dock_len - 1.2))
 lantern("the grove", on_land(grove.x, grove.z))
 lantern("the hilltop", on_land(hilltop.x, hilltop.z))
 lantern("the ruins", on_land(ruins.x, ruins.z, 0.2))
 lantern("the stones", on_land(stones.x, stones.z))
-
-# lights a lantern: its flame, its light, its crackle, a bell
-to light_lantern(l, quiet: no)
-  if l.lit
-    return
-  l.lit = yes
-  l.flame.visible = yes
-  l.dim.visible = no
-  l.light = light(l.at + vec(0, 1.75, 0), lumens: 700, kelvin: 1900, radius: 0.06)
-  l.fire = sound("fire", at: l.at + vec(0, 1.7, 0), volume: 0.35)
-  if not quiet
-    sound "bell", at: l.at + vec(0, 1.8, 0), strength: 0.8
-
-# lit lanterns breathe
-every 1 / 20 s
-  for each l in lanterns
-    if l.lit
-      l.light.lumens = 700 * (1 + 0.18 * flicker(time(), 6, l.at.x))
-
-to lit_count()
-  return lanterns.filter(fn(l): l.lit).length
 
 # ---- the sky: 0 the start of sunset .. 1 night. The sun goes down, the light
 # warms then turns blue, and the picture dims, so night looks like night while
@@ -148,22 +108,11 @@ let keeper = person(at: on_land(-2.4, dock_z0 - 4), height: 1.68, facing: 180 de
   skin: material(like: "skin", color: rgb(0.62, 0.45, 0.34)),
   shirt: material(like: "wool", color: rgb(0.25, 0.3, 0.26)), trousers: material(like: "fabric", color: rgb(0.2, 0.18, 0.16)))
 
-# ---- the boat that takes you home: a hull, a mast and a sail, moved together
-let boat_parts = []
-to boat_part(shape, offset)
-  boat_parts.push({shape: shape, offset: offset})
-boat_part(box(size: vec(1.8, 0.7, 5), at: vec(0, 0, 0), material: hull_wood, round: 0.2, collide: no), vec(0, 0.2, 0))
-boat_part(box(size: vec(1.4, 0.08, 4.2), at: vec(0, 0, 0), material: planks, collide: no), vec(0, 0.56, 0))
-boat_part(cylinder(0.07, 4.5, at: vec(0, 0, 0), material: hull_wood, collide: no), vec(0, 2.8, 0.4))
-boat_part(box(size: vec(0.04, 3.2, 2.2), at: vec(0, 0, 0), material: sail_cloth, collide: no), vec(0, 3.0, -0.7))
-let boat_light = sphere(0.06, at: vec(0, 0, 0), material: flame_hot, collide: no)
-boat_part(boat_light, vec(0, 1.0, 2.4))
+# ---- the boat that takes you home (the library's sailing boat), out at sea
+use "sailing_boat"
+let boat = sailing_boat(at: vec(0, 0, 400))
 to place_boat(at, turn: 0)
-  for each p in boat_parts
-    let o = p.offset
-    p.shape.position = at + vec(o.x * cos(turn) + o.z * sin(turn), o.y + 0.08 * sin(time() * 1.3), o.z * cos(turn) - o.x * sin(turn))
-    p.shape.turn = turn
-place_boat(vec(0, 0, 400))
+  move_boat(boat, at, turn: turn)
 
 # ---- the sounds of the island
 sound "wind", volume: 0.35
