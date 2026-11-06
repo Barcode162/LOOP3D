@@ -1,0 +1,65 @@
+{
+ "kind": "loop3d-bench",
+ "v": 1,
+ "when": "2026-11-05T11:10:12.425Z",
+ "build": "5e2c345 2026-11-05",
+ "bench": "scene",
+ "start": "ardane_13_roots",
+ "quality": "Phone",
+ "msaa": 4,
+ "device": {
+  "gpu": {
+   "vendor": "apple",
+   "architecture": "apple",
+   "device": "apple",
+   "description": "apple"
+  },
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15",
+  "dpr": 3,
+  "screen": "430x932",
+  "cores": 4
+ },
+ "summary": {
+  "scenes": 1,
+  "seconds": 59.9,
+  "frames": 3336,
+  "fps": 55.72,
+  "worstLow1Fps": 24.43,
+  "worstP99Ms": 34,
+  "maxMs": 95,
+  "hitches": 30,
+  "avgScale": 0.525,
+  "worstLoadMs": 87
+ },
+ "segments": [
+  {
+   "title": "13 \u00b7 The Root Warrens",
+   "mode": "game",
+   "seconds": 59.87,
+   "frames": 3336,
+   "fps": 55.72,
+   "avgMs": 17.95,
+   "p50Ms": 17,
+   "p95Ms": 33,
+   "p99Ms": 34,
+   "maxMs": 95,
+   "low1Fps": 24.43,
+   "low01Fps": 15.23,
+   "hitches": 30,
+   "hitchPct": 2.09,
+   "dropped": 249,
+   "cpuMs": 1.15,
+   "cpuP99Ms": 2,
+   "gpuMs": 15.57,
+   "gpuP95Ms": 26,
+   "scaleAvg": 0.525,
+   "scaleMin": 0.5,
+   "loadMs": 87,
+   "things": 303,
+   "lights": 10,
+   "width": 932,
+   "height": 366,
+   "scene": "ardane_13_roots"
+  }
+ ]
+}

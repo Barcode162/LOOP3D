@@ -1,0 +1,65 @@
+{
+ "kind": "loop3d-bench",
+ "v": 1,
+ "when": "2026-11-05T11:26:28.314Z",
+ "build": "5e2c345 2026-11-05",
+ "bench": "scene",
+ "start": "ardane_22_mind",
+ "quality": "Phone",
+ "msaa": 4,
+ "device": {
+  "gpu": {
+   "vendor": "apple",
+   "architecture": "apple",
+   "device": "apple",
+   "description": "apple"
+  },
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15",
+  "dpr": 3,
+  "screen": "430x932",
+  "cores": 4
+ },
+ "summary": {
+  "scenes": 1,
+  "seconds": 59.8,
+  "frames": 3149,
+  "fps": 52.62,
+  "worstLow1Fps": 25.39,
+  "worstP99Ms": 34,
+  "maxMs": 50,
+  "hitches": 14,
+  "avgScale": 0.503,
+  "worstLoadMs": 42
+ },
+ "segments": [
+  {
+   "title": "22 \u00b7 Inside Veyl",
+   "mode": "movie",
+   "seconds": 59.84,
+   "frames": 3149,
+   "fps": 52.62,
+   "avgMs": 19,
+   "p50Ms": 17,
+   "p95Ms": 34,
+   "p99Ms": 34,
+   "maxMs": 50,
+   "low1Fps": 25.39,
+   "low01Fps": 20,
+   "hitches": 14,
+   "hitchPct": 1.07,
+   "dropped": 438,
+   "cpuMs": 1.03,
+   "cpuP99Ms": 2,
+   "gpuMs": 18.98,
+   "gpuP95Ms": 25,
+   "scaleAvg": 0.503,
+   "scaleMin": 0.5,
+   "loadMs": 42,
+   "things": 355,
+   "lights": 22,
+   "width": 932,
+   "height": 366,
+   "scene": "ardane_22_mind"
+  }
+ ]
+}

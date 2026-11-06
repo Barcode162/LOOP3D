@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · A fresh approach (the user guides; the skeleton before the visuals): the bar built from empty,
+  one piece at a time; the engine kept whole but split in two sides, core (behind the scenes: fast, small) and
+  visual (what you see: extras that cost nothing unless used); `.looped` names a project, scripts stay `.loop`;
+  one constant dashboard, **Loop3D Workshop** (https://claude.ai/artifact/AQiT7gWc7teeNhNLt71T5s), fed by
+  `tools/dashboard.py` from `engine/modules.json` (the map of sides), `projects/bar/pieces.json`,
+  `engine/gaps.json`, git, `perf/`. The light-grid work parked on `parked/light-grid`. The 12 phone runs of
+  2026-11-05 kept in `perf/`.
 - **2026-11-06** · "Restructure a plan": `PLAN.md` in phases (A smooth and clean, in progress; B projects: the
   project file, the pack, the AI; C Bar3D on Loop3D; D free hosting), each with what you'll see and when it's
   done; a "Needs you" list; the open problems brought up to date.

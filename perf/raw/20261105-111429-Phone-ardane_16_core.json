@@ -1,0 +1,65 @@
+{
+ "kind": "loop3d-bench",
+ "v": 1,
+ "when": "2026-11-05T11:14:29.937Z",
+ "build": "5e2c345 2026-11-05",
+ "bench": "scene",
+ "start": "ardane_16_core",
+ "quality": "Phone",
+ "msaa": 4,
+ "device": {
+  "gpu": {
+   "vendor": "apple",
+   "architecture": "apple",
+   "device": "apple",
+   "description": "apple"
+  },
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15",
+  "dpr": 3,
+  "screen": "430x932",
+  "cores": 4
+ },
+ "summary": {
+  "scenes": 1,
+  "seconds": 59.9,
+  "frames": 3507,
+  "fps": 58.57,
+  "worstLow1Fps": 28.36,
+  "worstP99Ms": 33,
+  "maxMs": 47,
+  "hitches": 9,
+  "avgScale": 0.515,
+  "worstLoadMs": 29
+ },
+ "segments": [
+  {
+   "title": "16 \u00b7 The Archive Core",
+   "mode": "movie",
+   "seconds": 59.88,
+   "frames": 3507,
+   "fps": 58.56,
+   "avgMs": 17.08,
+   "p50Ms": 17,
+   "p95Ms": 17,
+   "p99Ms": 33,
+   "maxMs": 47,
+   "low1Fps": 28.36,
+   "low01Fps": 23.62,
+   "hitches": 9,
+   "hitchPct": 0.59,
+   "dropped": 82,
+   "cpuMs": 0.72,
+   "cpuP99Ms": 2,
+   "gpuMs": 14.76,
+   "gpuP95Ms": 20,
+   "scaleAvg": 0.515,
+   "scaleMin": 0.5,
+   "loadMs": 29,
+   "things": 159,
+   "lights": 20,
+   "width": 932,
+   "height": 366,
+   "scene": "ardane_16_core"
+  }
+ ]
+}

@@ -1,0 +1,65 @@
+{
+ "kind": "loop3d-bench",
+ "v": 1,
+ "when": "2026-11-05T11:18:17.105Z",
+ "build": "5e2c345 2026-11-05",
+ "bench": "scene",
+ "start": "ardane_18_hollow",
+ "quality": "Phone",
+ "msaa": 4,
+ "device": {
+  "gpu": {
+   "vendor": "apple",
+   "architecture": "apple",
+   "device": "apple",
+   "description": "apple"
+  },
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Safari/605.1.15",
+  "dpr": 3,
+  "screen": "430x932",
+  "cores": 4
+ },
+ "summary": {
+  "scenes": 1,
+  "seconds": 59.9,
+  "frames": 3461,
+  "fps": 57.83,
+  "worstLow1Fps": 17.62,
+  "worstP99Ms": 33,
+  "maxMs": 796,
+  "hitches": 5,
+  "avgScale": 0.52,
+  "worstLoadMs": 788
+ },
+ "segments": [
+  {
+   "title": "18 \u00b7 The Hollow",
+   "mode": "movie",
+   "seconds": 59.85,
+   "frames": 3461,
+   "fps": 57.83,
+   "avgMs": 17.29,
+   "p50Ms": 17,
+   "p95Ms": 17,
+   "p99Ms": 33,
+   "maxMs": 796,
+   "low1Fps": 17.62,
+   "low01Fps": 3.4,
+   "hitches": 5,
+   "hitchPct": 1.59,
+   "dropped": 80,
+   "cpuMs": 1.53,
+   "cpuP99Ms": 3,
+   "gpuMs": 15.62,
+   "gpuP95Ms": 20,
+   "scaleAvg": 0.52,
+   "scaleMin": 0.5,
+   "loadMs": 788,
+   "things": 715,
+   "lights": 1,
+   "width": 932,
+   "height": 366,
+   "scene": "ardane_18_hollow"
+  }
+ ]
+}
