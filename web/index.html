@@ -277,7 +277,7 @@
       meter.innerHTML = parts.map((k) => meterRow(k, m[k], scale)).join('') + meterRow('the rest', other, scale) +
         `<div class="sum">${meterRow('CPU', m.cpu, scale)}${meterRow('GPU', m.gpu, scale)}</div>` +
         `<div class="row"><span>memory</span><span style="grid-column: span 2">${m.memUsed.toFixed(0)} MB used of ${m.memReserved.toFixed(0)} · GPU ${m.gpuMem.toFixed(0)} MB</span></div>` +
-        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'}</div>`;
+        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.clustered ? 'Drawn in clusters.' : 'Clusters cooking…'}</div>`;
     } catch (e) {}
     setTimeout(drawMeter, 500);
   }

@@ -48,8 +48,9 @@ struct ClusterTree {
 // at most `maxTriangles` each: each cluster's indices.
 std::vector<std::vector<uint32_t>> cutIntoClusters(const std::vector<Vec3>& positions, const std::vector<uint32_t>& indices, int maxTriangles = 128);
 
-// The whole tree for a mesh.
-ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles = 128);
+// The whole tree for a mesh. `parallel`: its groups shared over every core
+// (the same tree; not from inside another job of the shared job system).
+ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles = 128, bool parallel = false);
 
 // How big an error of `error` looks, in pixels, from `eye` for something
 // inside `sphere`: `perPixel` is the screen's pixels per metre at 1 m

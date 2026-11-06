@@ -7,6 +7,8 @@
 #include <webgpu/webgpu_cpp.h>
 
 #include <algorithm>
+#include <atomic>
+#include <thread>
 #include <cstddef>
 #include <cstring>
 #include <string>
@@ -259,7 +261,7 @@ class GpuRenderer final : public Renderer {
     }
     // multisampling: every scene pipeline and target is made for it
     int samples = r.msaa > 1 && !r.clusters ? 4 : 1;  // clusters: frame blending's job (rebuild step 4)
-    if (lastScene_ && r.clusters && pooledMeshes_ != lastScene_->meshes.size()) uploadClusters(*lastScene_);
+    if (lastScene_) wantClusters(*lastScene_);
     if (r.clusters != !!visView_) outW_ = 0, bindGroupsDirty_ = true;  // the visibility picture made or dropped
     if (samples != g_samples) {
       g_samples = samples;
@@ -285,7 +287,7 @@ class GpuRenderer final : public Renderer {
     if (geometryChanged || meshes_.size() != scene.meshes.size()) {
       for (size_t i = meshes_.size(); i < scene.meshes.size(); ++i) meshes_.push_back(upload(scene.meshes[i]));
     }
-    if (config().render.clusters && pooledMeshes_ != scene.meshes.size()) uploadClusters(scene);
+    wantClusters(scene);
     // materials
     std::vector<MaterialU> mats(std::max<size_t>(1, scene.materials.size()));
     for (size_t i = 0; i < scene.materials.size(); ++i) {
@@ -523,6 +525,7 @@ class GpuRenderer final : public Renderer {
         return false;
       }
     }
+    if (lastScene_ && cookJob_ && cookJob_->done) wantClusters(*lastScene_);  // the background cook finished: switch over
     if (bindGroupsDirty_) makeBindGroups();
     uploadLights(cam.position);
     drawCalls_ = 0;
@@ -1156,6 +1159,40 @@ class GpuRenderer final : public Renderer {
     bindGroupsDirty_ = true;
   }
 
+  // ---- the background cook: a new scene is drawn at once the old way while
+  // one core cooks its clusters from copies of its shapes; the drawing switches
+  // over the frame after (the cook keeps the trees, so the switch is quick).
+  // A page on one core cooks at once instead.
+  struct CookJob {
+    std::vector<Mesh> meshes;  // positions and triangles: all the cook reads
+    std::atomic<bool> done{false};
+  };
+  std::shared_ptr<CookJob> cookJob_;
+  void wantClusters(const Scene& scene) {
+    if (!config().render.clusters || pooledMeshes_ == scene.meshes.size()) return;
+#if defined(__EMSCRIPTEN_PTHREADS__)
+    if (cookJob_ && !cookJob_->done) return;  // still cooking
+    if (cookJob_ && cookJob_->meshes.size() == scene.meshes.size()) {
+      cookJob_.reset();
+      uploadClusters(scene);
+      return;
+    }
+    auto job = std::make_shared<CookJob>();
+    for (const Mesh& m : scene.meshes) {
+      Mesh c;
+      c.positions = m.positions, c.indices = m.indices;
+      job->meshes.push_back(std::move(c));
+    }
+    cookJob_ = job;
+    std::thread([job] {
+      Cook::shared().cookAll(job->meshes);
+      job->done = true;
+    }).detach();
+#else
+    uploadClusters(scene);
+#endif
+  }
+  bool clustered() const override { return clustersReady(); }
   bool clustersReady() const {
     return config().render.clusters && quality_ != Quality::kUltra && poolClusters_ && visView_ && pooledMeshes_ == meshes_.size() && pooledMeshes_ > 0;
   }

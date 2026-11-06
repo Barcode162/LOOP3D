@@ -1058,19 +1058,19 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
   const double mb = 1.0 / (1024 * 1024);
   std::snprintf(buf, sizeof buf,
                 "{\"scripts\":%.2f,\"physics\":%.2f,\"people\":%.2f,\"sending\":%.2f,\"drawing\":%.2f,\"cpu\":%.2f,\"gpu\":%.2f,"
-                "\"memUsed\":%.1f,\"memReserved\":%.1f,\"gpuMem\":%.1f,\"cores\":%d}",
+                "\"memUsed\":%.1f,\"memReserved\":%.1f,\"gpuMem\":%.1f,\"cores\":%d,\"clustered\":%d}",
                 m.ms(Part::kScript), m.ms(Part::kPhysics), m.ms(Part::kPeople), m.ms(Part::kSend), m.ms(Part::kDraw), g.cpuMs,
                 g.renderer ? g.renderer->gpuMs() : 0.0f, mi.uordblks * mb, emscripten_get_heap_size() * mb, g.renderer ? g.renderer->gpuBytes() * mb : 0.0,
-                JobSystem::shared().threads());
+                JobSystem::shared().threads(), g.renderer && g.renderer->clustered() ? 1 : 0);
   return buf;
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];
   if (!g.stage) return "{}";
-  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f,\"frames\":%llu,\"exposure\":%.6g}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
+  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f,\"frames\":%llu,\"exposure\":%.6g,\"clustered\":%d}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
                 g.renderer ? g.renderer->renderScale() : 1.0f, g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
                 g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime, g.renderer ? g.renderer->framesInFlight() : 0, g.renderer ? g.renderer->lastGpuMs() : 0.0f,
-                static_cast<unsigned long long>(g.renderer ? g.renderer->presentedFrames() : 0), g.renderer ? g.renderer->currentExposure() : 0.0f);
+                static_cast<unsigned long long>(g.renderer ? g.renderer->presentedFrames() : 0), g.renderer ? g.renderer->currentExposure() : 0.0f, g.renderer && g.renderer->clustered() ? 1 : 0);
   return buf;
 }
 }

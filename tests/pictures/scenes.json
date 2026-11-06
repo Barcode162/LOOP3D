@@ -3,6 +3,7 @@
   "size": [288, 512],
   "quality": 0,
   "msaa": 1,
+  "clusters": true,
   "mean": 2.0,
   "share": 0.01,
   "scenes": [

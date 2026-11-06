@@ -59,6 +59,9 @@ class Renderer {
   // Bytes the GPU holds for this renderer now (buffers and pictures; the
   // screen's own pictures not counted), for the meter.
   virtual size_t gpuBytes() const = 0;
+  // Drawing in clusters now (false while a new scene's clusters are cooked,
+  // or with render.clusters off).
+  virtual bool clustered() const = 0;
   virtual float currentExposure() const = 0;
   // Reads the next frame back (for tests and screenshots): RGBA8, top row first.
   virtual void capture(std::function<void(int w, int h, const uint8_t* rgba)> done) = 0;

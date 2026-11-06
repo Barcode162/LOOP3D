@@ -73,7 +73,8 @@ else()
   target_link_libraries(player_mt PRIVATE loop3d_mt)
   target_compile_options(player_mt PRIVATE -Wall -Wextra -Werror)
   # the cores' workers start with the page (one fewer than the cores, at most
-  # 7: engine/core/jobs.cpp asks for no more), each with room for a deep job
+  # 7: engine/core/jobs.cpp asks for no more; and one more for the background
+  # cook), each with room for a deep job
   target_link_options(player_mt PRIVATE ${PLAYER_LINK} -pthread -sENVIRONMENT=web,worker -sMAXIMUM_MEMORY=1GB
-    "-sPTHREAD_POOL_SIZE=Math.max(1,Math.min(navigator.hardwareConcurrency||2,8)-1)" -sDEFAULT_PTHREAD_STACK_SIZE=1MB -Wno-pthreads-mem-growth)
+    "-sPTHREAD_POOL_SIZE=Math.max(1,Math.min(navigator.hardwareConcurrency||2,8)-1)+1" -sDEFAULT_PTHREAD_STACK_SIZE=1MB -Wno-pthreads-mem-growth)
 endif()

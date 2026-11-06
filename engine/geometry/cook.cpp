@@ -25,14 +25,16 @@ uint64_t Cook::fingerprint(const Mesh& m) {
   return h;
 }
 
-std::shared_ptr<const ClusterTree> Cook::clusters(const Mesh& m) {
+std::shared_ptr<const ClusterTree> Cook::clusters(const Mesh& m) { return clusters(m, false); }
+
+std::shared_ptr<const ClusterTree> Cook::clusters(const Mesh& m, bool parallel) {
   uint64_t key = fingerprint(m);
   {
     std::lock_guard<std::mutex> l(m_);
     auto it = trees_.find(key);
     if (it != trees_.end()) return it->second;
   }
-  auto tree = std::make_shared<const ClusterTree>(buildClusterTree(m));
+  auto tree = std::make_shared<const ClusterTree>(buildClusterTree(m, 128, parallel));
   std::lock_guard<std::mutex> l(m_);
   return trees_.emplace(key, std::move(tree)).first->second;  // another thread may have kept one first: the same
 }
@@ -44,10 +46,17 @@ void Cook::cookAll(const std::vector<Mesh>& meshes) {
 }
 
 void Cook::cookAll(const std::vector<const Mesh*>& meshes) {
-  // the biggest first, so no core is left with a big one at the end
+  // a big mesh (the land, a meadow) alone, its groups over every core; the
+  // many small ones side by side, one core each, the biggest first so no
+  // core is left with a big one at the end
   std::vector<const Mesh*> order(meshes);
   std::sort(order.begin(), order.end(), [](const Mesh* a, const Mesh* b) { return a->indices.size() > b->indices.size(); });
-  JobSystem::shared().parallelFor(static_cast<int>(order.size()), [&](int k) { clusters(*order[k]); });
+  size_t total = 0, big = 0;
+  for (const Mesh* m : order) total += m->triangleCount();
+  // big: a tenth of the scene or more (and 50,000 triangles): it would hold
+  // up the others' cores if one core cooked it
+  while (big < order.size() && order[big]->triangleCount() >= std::max<size_t>(50000, total / 10)) clusters(*order[big++], true);
+  JobSystem::shared().parallelFor(static_cast<int>(order.size() - big), [&](int k) { clusters(*order[big + k], false); });
 }
 
 size_t Cook::kept() const {

@@ -63,7 +63,8 @@ void JobSystem::workerLoop() {
 
 void JobSystem::parallelFor(int count, const std::function<void(int)>& fn, int grain) {
   if (count <= 0) return;
-  if (workers_.empty() || count <= grain) {
+  std::unique_lock<std::mutex> mine(caller_, std::try_to_lock);  // the workers are someone else's now: alone, then
+  if (workers_.empty() || count <= grain || !mine.owns_lock()) {
     for (int i = 0; i < count; ++i) fn(i);
     return;
   }

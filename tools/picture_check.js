@@ -92,7 +92,9 @@ function serve() {
       const st = await page.evaluate(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())));
       if (frames0 < 0) frames0 = st.frames;
       const moved = Math.abs(st.exposure - last) / Math.max(1e-9, Math.abs(last));
-      steady = st.frames - frames0 >= 8 && moved < 0.002 ? steady + 1 : 0;
+      // and, drawing in clusters, until the background cook has switched over
+      const switched = !config.clusters || st.clustered || (process.env.PARAMS || '').includes('clusters=0');
+      steady = st.frames - frames0 >= 8 && moved < 0.002 && switched ? steady + 1 : 0;
       last = st.exposure;
     }
     // the frame itself, read back from the GPU (no page buttons on it)

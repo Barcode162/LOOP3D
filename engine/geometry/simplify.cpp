@@ -143,15 +143,27 @@ SimplifyResult simplifyCompact(const std::vector<Vec3>& positions, const std::ve
     else if (firstOrig[c] != orig[k]) fixed[c] = 1;
     if (!lockedIn.empty() && lockedIn[orig[k]]) fixed[c] = 1;
   }
-  std::unordered_map<uint64_t, int> edgeUses;
+  // every edge, sorted: an edge not shared by exactly two triangles is open
+  // (or crowded), and its ends stay
   auto edgeKey = [](uint32_t a, uint32_t b) { return a < b ? (static_cast<uint64_t>(a) << 32 | b) : (static_cast<uint64_t>(b) << 32 | a); };
+  std::vector<uint64_t> edges(T * 3);
   for (size_t t = 0; t < T; ++t)
-    for (int e = 0; e < 3; ++e) ++edgeUses[edgeKey(tri[t * 3 + e], tri[t * 3 + (e + 1) % 3])];
-  for (size_t t = 0; t < T; ++t)
-    for (int e = 0; e < 3; ++e) {
-      uint32_t a = tri[t * 3 + e], b = tri[t * 3 + (e + 1) % 3];
-      if (edgeUses[edgeKey(a, b)] != 2) fixed[a] = fixed[b] = 1;  // an open (or crowded) edge stays
-    }
+    for (int e = 0; e < 3; ++e) edges[t * 3 + e] = edgeKey(tri[t * 3 + e], tri[t * 3 + (e + 1) % 3]);
+  std::sort(edges.begin(), edges.end());
+  for (size_t i = 0; i < edges.size();) {
+    size_t j = i;
+    while (j < edges.size() && edges[j] == edges[i]) ++j;
+    if (j - i != 2) fixed[static_cast<uint32_t>(edges[i] >> 32)] = fixed[static_cast<uint32_t>(edges[i])] = 1;
+    i = j;
+  }
+  // nothing much can move (separate pieces: grass blades, leaf cards): done
+  size_t free = 0, used = 0;
+  for (size_t v = 0; v < n; ++v)
+    if (firstOrig[v] != ~0u) ++used, free += !fixed[v];  // the places in use
+  if (free * 4 < used) {
+    res.indices = orig;
+    return res;
+  }
   // each place's triangles, and its quadric (the planes of its triangles, by area)
   std::vector<std::vector<uint32_t>> around(n);
   std::vector<Quadric> quad(n);
@@ -246,24 +258,14 @@ SimplifyResult simplifyCompact(const std::vector<Vec3>& positions, const std::ve
     worst = std::max(worst, e);
     ++stamp[a], ++stamp[b];
     fixed[a] = 1;  // gone
-    // b's edges again, at their new costs
+    // only b's quadric changed: just its edges again, at their new costs
+    // (the stamps of a and b retire every older offer that involves them)
     std::vector<uint32_t>& ab = around[b];
     ab.erase(std::remove_if(ab.begin(), ab.end(), [&](uint32_t t) { return !alive[t]; }), ab.end());
     for (uint32_t t : ab)
       for (int k = 0; k < 3; ++k) {
         uint32_t x = tri[t * 3 + k];
-        if (x != b) ++stamp[x], offer(x, b), offer(b, x);
-      }
-    for (uint32_t t : ab)
-      for (int k = 0; k < 3; ++k) {
-        uint32_t x = tri[t * 3 + k];
-        if (x == b) continue;
-        for (uint32_t t2 : around[x])
-          if (alive[t2])
-            for (int k2 = 0; k2 < 3; ++k2) {
-              uint32_t y = tri[t2 * 3 + k2];
-              if (y != x && y != b) offer(x, y);
-            }
+        if (x != b) offer(x, b), offer(b, x);
       }
   }
   res.indices.reserve(aliveCount * 3);

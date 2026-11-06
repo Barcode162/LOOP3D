@@ -7,6 +7,7 @@
 #include <map>
 #include <unordered_map>
 
+#include "engine/core/jobs.h"
 #include "engine/geometry/simplify.h"
 
 namespace loop {
@@ -216,7 +217,7 @@ std::vector<std::vector<uint32_t>> cutIntoClusters(const std::vector<Vec3>& posi
   return out;
 }
 
-ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles) {
+ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) {
   ClusterTree tree;
   const std::vector<Vec3>& pos = mesh.positions;
   const std::vector<uint32_t> weld = weldMap(pos);
@@ -235,6 +236,7 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles) {
   };
   std::vector<int> roots;
   for (const auto& c : cutIntoClusters(pos, mesh.indices, maxTriangles)) roots.push_back(addCluster(c, 0, 0, Vec4()));
+  std::map<int, int> retries;  // how often a cluster went up without simplifying
   for (int level = 0; roots.size() > 1 && level < 32; ++level) {
     // which clusters touch (share edges), and how much
     std::unordered_map<uint64_t, std::vector<int>> edgeClusters;
@@ -285,11 +287,19 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles) {
       if (best < 0) continue;
       groups[best].push_back(c), groupOf[c] = best, groups[gi].clear();
     }
-    // each group simplified to half, its outer edges locked, cut again
-    std::vector<int> next;
-    bool simplified = false;
-    for (const std::vector<int>& g : groups) {
-      if (g.empty()) continue;
+    // each group simplified to half, its outer edges locked, cut again; the
+    // groups don't touch each other's work, so with `parallel` they share the
+    // cores, and the results are added in group order (the same tree either way)
+    struct Done {
+      bool ok = false;
+      float error = 0;
+      Vec4 sphere;
+      std::vector<std::vector<uint32_t>> parts;
+    };
+    std::vector<Done> done(groups.size());
+    auto work = [&](int gi) {
+      const std::vector<int>& g = groups[gi];
+      if (g.empty()) return;
       std::vector<uint32_t> tris;
       float childError = 0;
       Vec4 sphere = tree.clusters[g[0]].lodSphere;
@@ -303,16 +313,31 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles) {
       // simplify never moves: the new pieces meet their neighbours exactly
       size_t have = tris.size() / 3;
       SimplifyResult r = simplify(pos, tris, have / 2);
-      if (r.indices.size() / 3 > have * 85 / 100) {
-        // it won't go simpler now: its clusters go up as they are, to be
-        // grouped with others next time
-        next.insert(next.end(), g.begin(), g.end());
+      if (r.indices.size() / 3 > have * 85 / 100) return;  // it won't go simpler now
+      Done& d = done[gi];
+      d.ok = true, d.error = std::max(childError, r.error), d.sphere = sphere;
+      d.parts = cutIntoClusters(pos, r.indices, maxTriangles);
+    };
+    if (parallel) JobSystem::shared().parallelFor(static_cast<int>(groups.size()), work);
+    else
+      for (int gi = 0; gi < static_cast<int>(groups.size()); ++gi) work(gi);
+    std::vector<int> next;
+    bool simplified = false;
+    for (size_t gi = 0; gi < groups.size(); ++gi) {
+      const std::vector<int>& g = groups[gi];
+      if (g.empty()) continue;
+      const Done& d = done[gi];
+      if (!d.ok) {
+        // its clusters go up as they are, to be grouped with others next time
+        // (twice at most: separate pieces like grass blades never simplify,
+        // and trying them again at every level only costs time)
+        for (int c : g)
+          if (++retries[c] <= 2) next.push_back(c);
         continue;
       }
       simplified = true;
-      float error = std::max(childError, r.error);
-      for (int c : g) tree.clusters[c].parentError = error, tree.clusters[c].parentSphere = sphere;
-      for (const auto& sub : cutIntoClusters(pos, r.indices, maxTriangles)) next.push_back(addCluster(sub, level + 1, error, sphere));
+      for (int c : g) tree.clusters[c].parentError = d.error, tree.clusters[c].parentSphere = d.sphere;
+      for (const auto& sub : d.parts) next.push_back(addCluster(sub, level + 1, d.error, d.sphere));
     }
     if (!simplified) break;  // nothing goes simpler: the coarsest of every part is reached
     roots = std::move(next);

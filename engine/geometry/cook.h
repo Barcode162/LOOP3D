@@ -23,6 +23,8 @@ class Cook {
   static uint64_t fingerprint(const Mesh& m);
   // The mesh's cluster tree: made the first time, kept after. Safe from any thread.
   std::shared_ptr<const ClusterTree> clusters(const Mesh& m);
+  // `parallel`: its groups over every core (not from inside another job)
+  std::shared_ptr<const ClusterTree> clusters(const Mesh& m, bool parallel);
   // Cooks many meshes at once, spread over every core (those already kept cost nothing).
   void cookAll(const std::vector<Mesh>& meshes);
   void cookAll(const std::vector<const Mesh*>& meshes);
