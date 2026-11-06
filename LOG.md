@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Lighting, a full skeleton, physics, universal animations, performance, a library that grows
+  … Nanite, water, world generation … play chess … a ragdoll as real as possible that tries to stand up and
+  grabs hold … new ways to calculate": **the rebuild**, planned with you and written into `PLAN.md`: ten moves
+  ahead decided first (one clock, a flat world, clusters, recipes cooked once, smart light, one skeleton, water
+  in two layers, people always physical with human data, worlds calculated like nature, what things offer),
+  then 14 steps from the safety net to memory; Phase A folded in.
+
 - **2026-11-06** · "Try making a full game of your choosing to try the capabilities of our engine": **The Lantern
   Isle** (`projects/lantern_isle/`, made with `loop new`): an opening film, the island you play (light five
   lanterns before the sun goes down; each one lit wakes another voice of the music; the keeper guides you), and

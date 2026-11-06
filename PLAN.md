@@ -13,7 +13,69 @@ phase is done when its "done when" is true on the phone.
   GitHub settings (only you can).
 - **"Switch"**, when you want the live bar to run on Loop3D (phase C).
 
-## Phase A · Smooth and clean (the foundations) · in progress
+## The rebuild (your reins, 2026-11-06) · in progress
+*Your words:* take the engine apart piece by piece and rebuild it, thinking moves ahead like chess; Nanite,
+water, world generation, smart light, a full skeleton, universal animation, films with scenes, physics that fit,
+real speed, a library that grows; a ragdoll as real as possible, in layers, that tries to stand up and grabs
+hold of things; new, more accurate ways to calculate. The bare minimum of each, smooth and right, then see
+where to go. Every step keeps every scene playing and is no slower; what a step replaces goes in that step.
+
+**The moves ahead** (decided once, first, because everything hangs on them):
+1. **One clock for everything:** scripts, physics, people, water, film and the world step together; drawing
+   blends between steps. The same start always gives the same result, so films scrub by replaying, multiplayer
+   stays in sync and picture tests are exact.
+2. **The world as flat lists:** one record per thing, with where it was and where it is: safe for many cores,
+   the graphics chip gets only what changed, frame blending gets motion for free.
+3. **One shape format, clusters** (Nanite's idea): every mesh cut into small pieces, each with simpler
+   versions; drawing, shadows, culling, streaming, rays and collisions all use it. No hand-made simpler
+   versions ever again.
+4. **Recipe, cooked once:** every asset is a text recipe; the engine cooks it (pieces, collision shapes,
+   pictures, what it offers) and keeps the result. The library, world generation, the pack and Nanite share it.
+5. **Smart light:** worked out once and kept; each frame does only what changed; noisy effects blended over
+   frames.
+6. **One standard skeleton** with names that match common rigs: any clip plays on anyone, Blender rigs fit.
+7. **Water you play is simulated with the world; water you only see is added by the graphics chip;** big waves
+   are one formula both use, so what floats matches what you see.
+8. **People are always physical bodies; animation is what their muscles aim for:** walking, falling and
+   getting up are one body, with numbers from measured human data (masses, lengths, joint ranges, strength,
+   reflex delays). One physics solver for everything (bodies, joints, muscles, cloth).
+9. **Worlds calculated the way nature makes them** (moving plates, rivers carving, climate, rain, growth), and
+   tested against nature's laws (river networks, resting slopes).
+10. **The cook finds what each thing offers** (stand on, hold, sit, climb): a falling person reaches for a
+    real rail.
+
+**The steps, in order:**
+0. **The safety net:** a meter on the phone (where each frame's time goes: scripts, physics, people, the
+   graphics chip, memory), picture tests (each room compared with its reference after every step), a sameness
+   test (the same scene twice, the same world).
+1. **The one clock and the flat world:** things kept once, not twice; drawing blends between steps.
+2. **More than one core:** the work shared by the phone's cores (with a one-core fallback); faster maths.
+3. **The cook and the library:** `library/` for every project, each entry a recipe with its credit and
+   licence, found by `use`, listed in the editor; meshes cooked into clusters; the rule that every goal adds to
+   the library.
+4. **Drawing rebuilt (Nanite for WebGPU):** the graphics chip culls and picks the detail of every piece
+   itself, one draw a pass, each pixel shaded once; frame blending replaces 4x multisampling.
+5. **Smart light:** lamps only where they reach (the bar: 103 a pixel to about 10), kept shadows in steps for
+   the sun and for the main lamps on Phone too, bounce light baked by our own path tracer, soft contact
+   shadows, upscaling.
+6. **The full skeleton and a real body:** about 65 bones (hands, fingers, feet, toes, jaw, eyes), a smooth
+   skin that bends, sizes and masses from human measurement tables.
+7. **One physics solver for everything:** joints with real limits and muscles, shapes fitted to every model,
+   hits in scripts, nothing passing through walls.
+8. **Universal animation:** clips as text that play on anyone, layered (wave while walking), the editor's
+   Animation hand.
+9. **The living body (an active ragdoll in layers):** bones as bodies, muscles with human strength, reflexes
+   with a human delay (protect the head, brace, grab a rail), balance the way people keep it (ankle, hip, a
+   step), getting up (roll, push, pull up on something); a "falls" room in the Showcase.
+10. **Films with scenes:** a timeline of shots, people, lines, music and sounds, scrubbed back and forth.
+11. **Water:** waves, splashes, floating, wading; see-through, refraction, foam.
+12. **World generation like nature:** plates, rivers carving, climate and rain shadows, lakes, ground
+    materials, forests that grew; streamed around you.
+13. **Memory that fits:** the iPhone's own compressed pictures, pieces paged in and out.
+
+*Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
+
+## Phase A · Smooth and clean (the foundations) · folded into the rebuild
 *You see:* every scene moves smoothly on the phone, with a clean, still picture.
 
 Done:
@@ -27,16 +89,9 @@ Done:
   33 M → 3.7 M triangles a frame (2026-11-06).
 - Scenes over the Phone budget: **18 of 41 → 9 of 41**.
 
-Next, in order:
-1. **The bar's lamps:** it lights each pixel with 103 lamps, and half of them really light it (many small
-   bulbs). Each pixel adds only the lamps that reach it (clustered lights), and the many small bulbs are grouped
-   or a few are sampled each frame and blended (with step 2).
-2. **Frame blending** (TAA, then temporal upscaling): fewer pixels drawn, averaged over frames: sharp, steady,
-   no shimmer; replaces 4x multisampling (`render.taa`, `render.upscaler` wait for it).
-3. **The rest of the forests:** grass, flowers, ferns and rocks get simpler versions or leave the shadow pass;
-   the farthest trees become flat cut-outs.
-4. **Patterns made once:** wood, stone and brick into textures instead of being worked out every pixel, every
-   frame; the sun's shadow kept until something moves.
+Its next steps are now rebuild steps: the bar's lamps (step 5), frame blending (step 4), the rest of the
+forests (step 4: clusters give every shape its simpler versions), patterns made once and the sun's shadow kept
+(step 5).
 
 *Done when:* every scene fits the Phone budget, and your benchmark says smooth (steady 60, no hitches).
 
@@ -98,17 +153,15 @@ Cloudflare's free tier for the bar's files, the room, accounts and big files; mo
 works.
 
 ## Later (the gaps)
-- **Content:** the rest of model import (normal maps, glowing pictures, skins and clips); a picture word for a
-  loose image; load-once assets by name.
-- **Look:** light shafts in the live fog; wind sway; cascaded sun shadows; contact shadows, ambient occlusion,
-  reflections; Ultra with reprojection.
-- **Worlds:** streaming big worlds; building scenes off the main thread; threads and SIMD in the browser.
-- **Characters:** paths around obstacles; skinned meshes (3D has them); clips for scripts; faces, hair.
-- **Physics:** no tunnelling; collision events to scripts; convex shapes; ragdolls, vehicles (3D has a tyre
-  model).
+(The rebuild now covers skins and clips, cascades, contact shadows, streaming big worlds, threads and SIMD,
+skinned people, clips for scripts, convex shapes, hit events, no tunnelling, ragdolls, picture tests and the
+meter.)
+- **Content:** the rest of model import (normal maps, glowing pictures); a picture word for a loose image.
+- **Look:** light shafts in the live fog; wind sway; reflections; Ultra with reprojection.
+- **Characters:** paths around obstacles; faces, hair.
+- **Physics:** vehicles (3D has a tyre model).
 - **Sound:** the mixer on its own thread.
-- **Engine:** picture tests (before/after, automatic); gamepad; save games; profiler markers; script warnings and
-  a debugger.
+- **Engine:** gamepad; save games; script warnings and a debugger.
 - **Your idea from 3D:** a shared world clock with loops on things.
 - **Every new feature** gets a before/after room in the Showcase.
 
@@ -119,6 +172,8 @@ works.
   Showcase and the bar's transfer joined `main`; the other session's knowledge base stays on its branch, its
   `legends` skill kept.
 - 2026-11-06: the plan in phases (A smooth and clean, B projects, C the bar, D hosting).
+- 2026-11-06: **the rebuild** (your reins): the engine rebuilt from its foundations in 14 steps, the ten moves
+  ahead above; Phase A folded into it.
 
 ## Open problems
 - **Never measured on the phone** (needs you, above).
