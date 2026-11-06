@@ -11,7 +11,8 @@ One line per request, newest first: the date, what the user asked, what was done
   that never moves a vertex, cluster trees the Nanite way (groups simplified with their edges kept: any view
   meets without cracks, tested; a sphere draws 19,064 triangles at 2 m, 80 at 200 m), each mesh cooked once by
   its fingerprint on every core; `loop cook`: the bar in 0.46 s, the Glade in 1.6 s (1f3cf84). Left for step
-  4: leaf cards and hard-edged models don't simplify yet (two thirds stay at the coarsest).
+  4: leaf cards and hard-edged models don't simplify yet (two thirds stay at the coarsest). Published (gh-pages
+  d43f5af): GitHub's Pages service timed out deploying it, so it went out again from the next commit.
 
 - **2026-11-06** · The rebuild, **step 2 (more than one core)**: a scene's model pictures wait packed while its
   script runs, then are decoded together on every core (the bar's load was nearly all JPEG decoding: 4.2 →
