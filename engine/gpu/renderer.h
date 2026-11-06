@@ -27,8 +27,11 @@ class Renderer {
   virtual void sync(const Scene& scene, bool geometryChanged, bool skyChanged) = 0;
   // A new scene: forget the old one's shapes.
   virtual void reset() = 0;
-  // Only placements moved (cheap).
+  // Placements moved: the whole list again (the copies, their order).
   virtual void syncTransforms(const Scene& scene) = 0;
+  // Only these copies moved (scene instance indices), to these transforms
+  // (which may be between two steps of the clock): cheap, sends only them.
+  virtual void moveInstances(const Scene& scene, const std::vector<int>& ids, const std::vector<Mat4>& xfs) = 0;
   // Only lamps changed (brightness, colour, place): cheap.
   virtual void syncLights(const Scene& scene) = 0;
   // Draws one frame with this camera and look; fade 0..1 (black..clear).

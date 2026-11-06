@@ -189,3 +189,36 @@ TEST(things_know_their_line_and_can_be_picked) {
   st.updateTransform(1);
   CHECK(st.pick(Ray{Vec3(0, 0.5f, 5), Vec3(0, 0, -1)}) == 0);
 }
+
+// The one clock: a thing moved in a step is drawn part-way between where it
+// was and where it is, by how far the clock is into the next step; next time
+// it comes back once more, exactly where it is; things that didn't move
+// aren't sent at all.
+TEST(scene_api_moves_blend_between_steps) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  CHECK(vm.load("let b = box(size: 1, at: vec(0, 0, 0))\nlet still = box(size: 1, at: vec(5, 0, 0))\n", "t.loop"));
+  std::vector<int> ids;
+  std::vector<Mat4> xfs;
+  st.takeMoves(1, ids, xfs);  // what loading placed
+  // a step that moves the box 1 m
+  vm.load("b.position = vec(1, 0, 0)\n", "t2.loop");
+  st.update(1.0f / 120);
+  st.takeMoves(0.25f, ids, xfs);
+  CHECK(ids.size() == 1);
+  CHECK(ids.size() == 1 && ids[0] == st.placed[0].instance);
+  if (!xfs.empty()) CHECK_NEAR(xfs[0].translationPart().x, 0.25, 1e-5);
+  CHECK_NEAR(st.scene.instances[0].transform.translationPart().x, 1, 1e-6);  // the world itself is where it is
+  // nothing moved since: the box comes back once, at its place
+  st.takeMoves(0.6f, ids, xfs);
+  CHECK(ids.size() == 1);
+  if (!xfs.empty()) CHECK_NEAR(xfs[0].translationPart().x, 0.6, 1e-5);  // still the latest step's move
+  st.update(1.0f / 120);  // a step where nothing moves
+  st.takeMoves(0.3f, ids, xfs);
+  CHECK(ids.size() == 1);
+  if (!xfs.empty()) CHECK_NEAR(xfs[0].translationPart().x, 1, 1e-6);
+  st.takeMoves(0.5f, ids, xfs);
+  CHECK(ids.empty());
+}

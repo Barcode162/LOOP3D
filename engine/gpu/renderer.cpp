@@ -384,13 +384,16 @@ class GpuRenderer final : public Renderer {
       if (gx != gy) return gy;
       return x.mesh < y.mesh;
     });
-    std::vector<InstanceU> data;
+    std::vector<InstanceU>& data = instData_;
+    data.clear();
     data.reserve(order.size());
     batches_.clear();
     instBox_.clear(), instHidden_.clear();
+    slotOf_.assign(scene.instances.size(), -1);
     for (uint32_t idx : order) {
       const MeshInstance& in = scene.instances[idx];
       if (in.mesh < 0 || in.mesh >= static_cast<int>(meshes_.size())) continue;
+      slotOf_[idx] = static_cast<int>(data.size());
       InstanceU u;
       u.model = in.transform;
       Mat3 nm = in.transform.linear().inverse().transposed();
@@ -407,6 +410,56 @@ class GpuRenderer final : public Renderer {
     }
     if (ensureStorage(instancesBuf_, instancesCap_, sizeof(InstanceU), std::max<size_t>(1, data.size()))) bindGroupsDirty_ = true;
     if (!data.empty()) queue_.WriteBuffer(instancesBuf_, 0, data.data(), data.size() * sizeof(InstanceU));
+  }
+
+  // Only some copies moved: each new transform goes into its own place in the
+  // instance buffer (the order and the batches stay as they are), and only
+  // those places are sent, in a few runs.
+  void moveInstances(const Scene& scene, const std::vector<int>& ids, const std::vector<Mat4>& xfs) override {
+    if (ids.empty()) return;
+    lastScene_ = &scene;
+    if (slotOf_.size() != scene.instances.size()) {  // the copies changed: the whole list again
+      syncTransforms(scene);
+      return;
+    }
+    float moved = 0;
+    touched_.clear();
+    for (size_t k = 0; k < ids.size() && k < xfs.size(); ++k) {
+      int id = ids[k];
+      if (id < 0 || id >= static_cast<int>(slotOf_.size()) || slotOf_[id] < 0) continue;
+      int slot = slotOf_[id];
+      const Mat4& xf = xfs[k];
+      InstanceU& u = instData_[slot];
+      if (moved < 0.002f)
+        for (int c = 0; c < 4; ++c)
+          for (int r = 0; r < 3; ++r) moved = std::max(moved, std::fabs(u.model.m[c][r] - xf.m[c][r]));
+      u.model = xf;
+      Mat3 nm = xf.linear().inverse().transposed();
+      u.n0 = {nm.c[0], 0}, u.n1 = {nm.c[1], 0}, u.n2 = {nm.c[2], 0};
+      instBox_[slot] = meshes_[scene.instances[id].mesh].box.transformed(xf);
+      instHidden_[slot] = std::fabs(xf.linear().determinant()) < 1e-12f ? 1 : 0;
+      touched_.push_back(slot);
+    }
+    // something moved more than a couple of millimetres (not just breathing):
+    // Ultra lets the old picture fade quickly instead of smearing
+    if (moved >= 0.002f && ultraFrame_ > 8) ultraFrame_ = 8;
+    if (needRays()) {
+      buildRayMeshes(scene);
+      buildRayInstances(scene);
+      raysBuiltFor_ = static_cast<int>(quality_);
+    } else {
+      raysBuiltFor_ = -1;
+    }
+    // runs of places close together go as one write
+    std::sort(touched_.begin(), touched_.end());
+    touched_.erase(std::unique(touched_.begin(), touched_.end()), touched_.end());
+    for (size_t a = 0; a < touched_.size();) {
+      size_t b = a;
+      while (b + 1 < touched_.size() && touched_[b + 1] <= touched_[b] + 16) ++b;
+      int first = touched_[a], last = touched_[b];
+      queue_.WriteBuffer(instancesBuf_, static_cast<uint64_t>(first) * sizeof(InstanceU), &instData_[first], static_cast<size_t>(last - first + 1) * sizeof(InstanceU));
+      a = b + 1;
+    }
   }
 
   // The passes the settings turn off, as the old skip bits (plus the tests' own).
@@ -1550,6 +1603,9 @@ class GpuRenderer final : public Renderer {
   std::vector<Batch> batches_;
   std::vector<LightU> lights_, sortedLights_;
   std::vector<AABB> instBox_;          // each copy's box, in the instance buffer's order
+  std::vector<InstanceU> instData_;    // the instance buffer's contents, kept to send only what moved
+  std::vector<int> slotOf_;            // scene instance -> its place in the instance buffer (-1: not drawn)
+  std::vector<int> touched_;
   std::vector<uint8_t> instHidden_;    // scaled to nothing
   std::vector<uint32_t> visible_;      // this frame's draw lists (indices into the instance buffer)
   std::vector<Batch> sceneDraws_, shadowDraws_;

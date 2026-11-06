@@ -59,6 +59,13 @@ struct Stage {
     bool collide = false;
     std::vector<int> moreInstances;  // a model's other parts, moved with it
     int line = 0;  // the script line that placed it (0: the engine made it, like a person's limbs)
+    // The one clock: where it is drawn now (its last placement) and where it
+    // was at the end of the step before it last moved, so the drawing can
+    // blend between the two; the step it last moved in.
+    Vec3 drawnPos{0}, drawnScale{1}, prevPos{0}, prevScale{1};
+    Quat drawnQuat, prevQuat;
+    uint64_t movedAt = ~0ull;
+    bool queued = false;  // in `moved`, waiting for the drawing to take it
   };
   // People: a skeleton, its animator and the shapes that make the body.
   struct Person {
@@ -113,11 +120,21 @@ struct Stage {
   // Invisible things to bump into (blocker): a box mesh and where it stands.
   std::vector<std::pair<int, Mat4>> blockers;  // the same picture in two models is kept once
   std::string folder;  // where the scene's own files are (models): set by the host, "" = here
-  // Moves the living world on: physics, people, sounds. Call each frame
-  // with the script's update.
+  // Moves the living world on by one step of the fixed clock: physics,
+  // people, critters, sounds. Call after the script's update for the same
+  // step; `steps` counts them.
   void update(float dt);
+  uint64_t steps = 0;
+  // What moved since the drawing last asked, and where to draw it: every
+  // instance of those things with its transform, blended `alpha` (0..1) of
+  // the way from where it was at the step before the last to where it is
+  // (alpha = how far the clock is into the next step). Things still blending
+  // come back next time with their final place. Clears the list.
+  void takeMoves(float alpha, std::vector<int>& instances, std::vector<Mat4>& transforms);
   void setListener(const Camera& cam);
   std::vector<Placed> placed;   // shape things → instances
+  std::vector<int> moved;       // placed things moved since the drawing took them (see takeMoves)
+  std::vector<int> blending_;   // placed things drawn part-way last time
   uint64_t version = 0;         // bumps on any change (the live renderer re-reads)
   uint64_t transformsVersion = 0;  // only placements moved
   uint64_t lightsVersion = 0;      // only lamps changed

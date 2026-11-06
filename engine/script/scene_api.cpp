@@ -21,10 +21,39 @@ void Stage::updateTransform(int i) {
   Placed& p = placed[i];
   Quat q = p.useQuat ? p.quat : Quat::euler(p.rotation.x, p.rotation.y, p.rotation.z);
   Vec3 s = p.visible ? p.scale : Vec3(0);
+  // the first move in this step: where it was is where it was last drawn
+  // (before its first move ever, there's nothing to blend from)
+  if (p.movedAt != steps) {
+    if (p.movedAt == ~0ull) p.prevPos = p.position, p.prevQuat = q, p.prevScale = s;
+    else p.prevPos = p.drawnPos, p.prevQuat = p.drawnQuat, p.prevScale = p.drawnScale;
+    p.movedAt = steps;
+  }
+  p.drawnPos = p.position, p.drawnQuat = q, p.drawnScale = s;
+  if (!p.queued) p.queued = true, moved.push_back(i);
   Mat4 xf = Mat4::trs(p.position, q, s);
   scene.instances[p.instance].transform = xf;
-  for (int i : p.moreInstances) scene.instances[i].transform = xf;
+  for (int k : p.moreInstances) scene.instances[k].transform = xf;
   ++transformsVersion;
+}
+
+void Stage::takeMoves(float alpha, std::vector<int>& instances, std::vector<Mat4>& transforms) {
+  instances.clear(), transforms.clear();
+  for (int i : blending_)
+    if (!placed[i].queued) placed[i].queued = true, moved.push_back(i);
+  blending_.clear();
+  alpha = clamp(alpha, 0.0f, 1.0f);
+  for (int i : moved) {
+    Placed& p = placed[i];
+    p.queued = false;
+    // moved in the latest step: part-way from where it was
+    bool blend = p.movedAt + 1 == steps && alpha < 1;
+    Mat4 xf = blend ? Mat4::trs(vlerp(p.prevPos, p.drawnPos, alpha), slerp(p.prevQuat, p.drawnQuat, alpha), vlerp(p.prevScale, p.drawnScale, alpha))
+                    : scene.instances[p.instance].transform;
+    if (blend) blending_.push_back(i);
+    instances.push_back(p.instance), transforms.push_back(xf);
+    for (int k : p.moreInstances) instances.push_back(k), transforms.push_back(xf);
+  }
+  moved.clear();
 }
 
 int Stage::pick(const Ray& ray, float* distance) const {
@@ -157,6 +186,7 @@ void Stage::update(float dt) {
       updateTransform(pi);
     }
   }
+  ++steps;  // this step is done: what moved in it blends from here
 }
 
 // Butterflies wander from flower to flower, pausing to sit with wings open;

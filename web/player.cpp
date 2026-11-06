@@ -42,6 +42,11 @@ struct Player {
   bool movie = true;
   // walking
   Vec3 pos{0, 1.6f, 5}, vel{0};
+  Vec3 prevPos{0, 1.6f, 5};  // the walking body's eye one step ago (the eye is drawn between)
+  double walkAcc = 0;        // the walking body's own fixed clock (real time, also while paused)
+  float alpha = 1;           // how far the world's clock is into its next step (drawing blends)
+  std::vector<int> movedIds;
+  std::vector<Mat4> movedXfs;
   float yaw = 0, pitch = 0, yawTarget = 0, pitchTarget = 0;
   Vec2 move{0};  // -1..1 from keys or the thumb
   bool keys[8] = {};
@@ -332,7 +337,7 @@ void startScript(const std::string& src) {
   g.movie = g.stage->mode == "movie" && !g.stage->film.shots.empty();
   g.filmTime = 0;
   const Camera& c = g.stage->scene.camera;
-  g.pos = c.position;
+  g.pos = g.prevPos = c.position;
   Vec3 f = normalize(c.target - c.position);
   g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
   g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
@@ -357,26 +362,28 @@ void syncScene() {
     g.seenVersion = s.version;
     g.seenTransforms = s.transformsVersion;
     g.seenLights = s.lightsVersion;
+    s.takeMoves(1, g.movedIds, g.movedXfs);  // the whole world was just read, as it is
     return;
   }
   if (s.lightsVersion != g.seenLights) {
     g.renderer->syncLights(s.scene);
     g.seenLights = s.lightsVersion;
   }
-  if (s.transformsVersion != g.seenTransforms) {
-    g.renderer->syncTransforms(s.scene);
-    g.seenTransforms = s.transformsVersion;
-  }
+  // only what moved, drawn between the clock's last two steps
+  s.takeMoves(g.alpha, g.movedIds, g.movedXfs);
+  if (!g.movedIds.empty()) g.renderer->moveInstances(s.scene, g.movedIds, g.movedXfs);
+  g.seenTransforms = s.transformsVersion;
 }
 
-Camera walkCamera(float dt) {
-  // ease the look toward where the controls point, and the body toward the
-  // speed asked for: starting and stopping feel like a person, not a robot
+// The walking body moves in fixed steps (the same at any frame rate); the eye
+// is drawn between its last two places, and the look follows every frame.
+void stepWalker(float dt) {
+  // ease the body toward the speed asked for: starting and stopping feel like
+  // a person, not a robot
   const Config::Player& pc = config().player;
   const Config::Physics& body = config().physics;
-  float kLook = 1 - std::exp(-config().camera.smoothing * dt), kMove = 1 - std::exp(-pc.accel * dt);
-  g.yaw += (g.yawTarget - g.yaw) * kLook;
-  g.pitch += (g.pitchTarget - g.pitch) * kLook;
+  float kMove = 1 - std::exp(-pc.accel * dt);
+  g.prevPos = g.pos;
   Vec2 m = g.move;
   if (g.keys[0]) m.y += 1;
   if (g.keys[1]) m.y -= 1;
@@ -407,14 +414,21 @@ Camera walkCamera(float dt) {
   float bob = std::sin(bobPhase * kTwoPi) * pc.bob * std::min(1.0f, sp / 1.6f);
   float eye = ground + pc.eye + bob;
   g.pos.y += (eye - g.pos.y) * (1 - std::exp(-12 * dt));
+}
+Camera walkCamera(float dt, float alpha) {
+  // ease the look toward where the controls point
+  float kLook = 1 - std::exp(-config().camera.smoothing * dt);
+  g.yaw += (g.yawTarget - g.yaw) * kLook;
+  g.pitch += (g.pitchTarget - g.pitch) * kLook;
+  Vec3 eyeAt = vlerp(g.prevPos, g.pos, alpha);
   Camera c = g.stage->scene.camera;
-  c.position = g.pos;
+  c.position = eyeAt;
   // cam.shake: a little handheld drift
   float sh = config().camera.shake;
   float t = static_cast<float>(emscripten_get_now() / 1000.0);
   float sy = sh * 0.02f * (std::sin(t * 1.3f) + 0.5f * std::sin(t * 3.1f)), sp2 = sh * 0.015f * (std::sin(t * 1.7f + 1) + 0.5f * std::sin(t * 2.3f));
   Vec3 dir{std::sin(g.yaw + sy) * std::cos(g.pitch + sp2), std::sin(g.pitch + sp2), -std::cos(g.yaw + sy) * std::cos(g.pitch + sp2)};
-  c.target = g.pos + dir;
+  c.target = eyeAt + dir;
   return c;
 }
 
@@ -486,12 +500,22 @@ bool frameBody(double now) {
       g.vm->update(tick);
     }
     g.stage->update(static_cast<float>(tick));
+    // the day and the film move with the world, step by step
+    dayCycle(tick);
+    if (g.movie) g.filmTime += tick;  // the camera keeps step with the script (lines, cues)
     g.accumulator -= tick;
     ++steps;
   }
-  double dropped = 0;
-  if (g.accumulator >= tick) dropped = g.accumulator, g.accumulator = 0;
-  dayCycle(sdt);
+  if (g.accumulator >= tick) g.accumulator = 0;  // too far behind: the world runs a little slower instead
+  // how far into the next step: the drawing blends between the last two
+  // (paused, things are drawn exactly where they are, as the editor moves them)
+  g.alpha = g.paused ? 1.0f : static_cast<float>(g.accumulator / tick);
+  // the walking body, on its own fixed steps (real time: it walks while the
+  // world is paused or slowed)
+  if (!g.movie) {
+    g.walkAcc = std::min(g.walkAcc + dt, 0.25);
+    while (g.walkAcc >= tick) stepWalker(static_cast<float>(tick)), g.walkAcc -= tick;
+  }
   // a problem while running: script.onError says what happens
   if (g.vm->problems().size() > g.problemsSeen) {
     std::string fresh;
@@ -523,7 +547,6 @@ bool frameBody(double now) {
   float fade = 1;
   Look look = s.scene.look;
   if (g.movie) {
-    g.filmTime = std::max(0.0, g.filmTime + sdt - dropped);  // the camera keeps step with the script (lines, cues)
     float len = s.film.length();
     if (len > 0 && g.filmTime > len) {
       // a story scene holds its last shot (just before it fades) until the
@@ -532,18 +555,21 @@ bool frameBody(double now) {
       else g.filmTime = 0;
     }
     int shot = 0;
-    cam = s.film.at(static_cast<float>(g.filmTime), s.scene.camera, &shot, &fade);
+    // between steps, as the things it films
+    double at = g.filmTime + (g.paused ? 0.0 : g.alpha * tick);
+    if (len > 0) at = std::min<double>(at, len);
+    cam = s.film.at(static_cast<float>(at), s.scene.camera, &shot, &fade);
     if (!s.film.shots[shot].look.empty()) lookByName(s.film.shots[shot].look, look);
   } else {
     if (s.teleport) {
-      g.pos = s.teleportTo + Vec3(0, 1.6f, 0);
+      g.pos = g.prevPos = s.teleportTo + Vec3(0, 1.6f, 0);
       Vec3 f = normalize(s.teleportLook - g.pos);
       g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
       g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
       g.vel = Vec3(0);
       s.teleport = false;
     }
-    cam = walkCamera(static_cast<float>(dt));
+    cam = walkCamera(static_cast<float>(dt), static_cast<float>(g.walkAcc / tick));
   }
   if (g.editCam) {
     cam = s.scene.camera;
@@ -614,7 +640,7 @@ EMSCRIPTEN_KEEPALIVE void loop_set_mode(int movie) {
   if (!g.movie && g.stage) {
     // carry on walking from where the film's camera was
     Camera c = g.stage->film.shots.empty() ? g.stage->scene.camera : g.stage->film.at(static_cast<float>(g.filmTime), g.stage->scene.camera);
-    g.pos = c.position;
+    g.pos = g.prevPos = c.position;
     Vec3 f = normalize(c.target - c.position);
     g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
     g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
@@ -886,7 +912,7 @@ EMSCRIPTEN_KEEPALIVE int loop_edit_camera(const char* json) {
   if (g.editCam) g.move = Vec2(0);
   if (wasOn && !g.editCam && g.stage && !g.movie) {
     // walking carries on from where the editor camera was
-    g.pos = g.editAt;
+    g.pos = g.prevPos = g.editAt;
     Vec3 f = normalize(g.editLook - g.editAt);
     g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
     g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
