@@ -72,6 +72,6 @@ TEST(project_template_reads_cleanly) {
   CHECK(readProject(root + "projects/template/template.looped", p, ps));
   for (const ProjectProblem& q : ps) std::printf("    %s\n", q.message("template.looped").c_str());
   CHECK(p.name == "New Project");
-  CHECK(p.settings.size() == 13);
+  CHECK(p.settings.size() == 16);
   CHECK(p.scenePath(p.start).find("places/first_room.loop") != std::string::npos);
 }

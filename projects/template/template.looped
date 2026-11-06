@@ -4,20 +4,25 @@ project "New Project"
 start "first_room"
 
 # ---- Camera: what you see and how the view moves
-setting "world.drawDistance", 4000   # how far the camera sees, in metres (50 to 50,000)
-setting "cam.smoothing", 18          # how quickly the view follows your finger (1 slow to 60 instant)
-setting "cam.adaptSpeed", 1          # how fast your eyes adjust to light and dark (0.1 to 10)
-setting "cam.shake", 0               # handheld wobble (0 none to 1 strong)
+setting "world.drawDistance", 4000   # how far you can see, in metres (50 to 50,000)
+setting "cam.smoothing", 18          # how fast the view turns when you swipe (1 slow, 60 instant)
+setting "cam.adaptSpeed", 1          # how fast your eyes adjust from dark to bright (0.1 slow, 10 fast)
+setting "cam.shake", 0               # camera wobble, like holding a phone by hand (0 none, 1 a lot)
 
 # ---- Things: how objects behave
-setting "physics.gravity", [0, -9.81, 0]   # gravity, in metres a second squared (Earth: -9.81 down)
-setting "physics.friction", 0.6      # how much things grip (0 ice to 2 rubber)
-setting "physics.bounce", 0.2        # how much things bounce (0 none to 1 a lot)
-setting "world.lodBias", 0           # detail far away (-2 simpler and faster, to 2 sharper and slower)
+setting "physics.gravity", [0, -9.81, 0]   # which way things fall, and how hard (Earth: 0, -9.81, 0)
+setting "physics.friction", 0.6      # how grippy surfaces are (0 like ice, 2 like rubber)
+setting "physics.bounce", 0.2        # how bouncy things are (0 not at all, 1 very)
+setting "world.lodBias", 0           # how detailed far-away things are (-2 simpler and faster, 2 sharper and slower)
 
 # ---- You: how you move
 setting "player.walk", 1.6           # walking speed, in metres a second (0.1 to 20)
-setting "player.run", 4.5            # running speed (0.1 to 40)
-setting "player.eye", 1.6            # eye height, in metres (0.3 to 3)
-setting "player.bob", 0.025          # head bob while walking, in metres (0 to 0.2)
-setting "physics.charStep", 0.3      # highest step you can climb, in metres (0 to 1)
+setting "player.run", 4.5            # running speed, in metres a second (0.1 to 40)
+setting "player.eye", 1.6            # how high your eyes are, in metres (0.3 to 3)
+setting "player.bob", 0.025          # how much your view bounces as you walk, in metres (0 to 0.2)
+setting "physics.charStep", 0.3      # the tallest step you can walk up, in metres (0 to 1)
+
+# ---- Sound: how loud things are
+setting "audio.master", 1            # overall volume (0 silent, 1 normal, 2 loud)
+setting "audio.music", 1             # music (0 silent, 1 normal, 2 loud)
+setting "audio.footsteps", 1         # footsteps (0 silent, 1 normal, 2 loud)
