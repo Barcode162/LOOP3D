@@ -553,7 +553,7 @@ Kept per browser; they change the editor, not the game.
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
-| Accent | `ed.accent` | #ffb35c |  | editor |  | The colour of picked things, handles and buttons. |
+| Accent | `ed.accent` | #ffffff |  | editor |  | The colour of picked things, handles and buttons. |
 | Text size | `ed.fontSize` | 15 | 12 … 20 px | editor |  |  |
 | Show the speed | `vp.stats` | true |  | editor |  | Frames a second and the time each takes, in the corner of the view. |
 

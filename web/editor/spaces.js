@@ -638,7 +638,7 @@ window.LE = window.LE || {};
       for (const d of DRUMS.slice(0, 5)) {
         const t = m.tracks.find((x) => x.instrument === d);
         const steps = Array.from({ length: 16 }, (_, i) => !!(t && /[xX]/.test(t.pattern.replace(/\s+/g, '')[i] || '')));
-        const row = h('div', { class: 'seqrow' }, h('span', { class: 'seqlbl' }, d.replace('_', ' ')));
+        const row = h('div', { class: 'seqrow' }, h('span', { class: 'seqlbl', title: d.replace('_', ' ') }, d === 'open_hat' ? 'open' : d));
         steps.forEach((x, i) => row.append(h('button', { class: 'cell' + (x ? ' on' : '') + (i % 4 === 0 ? ' beat' : ''), 'data-step': i, 'aria-label': d + ' step ' + (i + 1), onclick: () => { steps[i] = !steps[i]; this.setTrack(d, steps, true); } })));
         drumGrid.append(row);
       }
@@ -714,11 +714,11 @@ window.LE = window.LE || {};
       if (c.word === 'light' || c.word === 'panel_light') {
         const at = S.vecLiteral(S.getArg(l, 'at'));
         const pos = at || S.vecLiteral((l.slice(c.argsAt).match(/^\s*(vec\([^()]*\))/) || [])[1]);
-        if (pos) out.push({ at: pos, glyph: '☀', label: c.name || 'lamp', color: '#ffd166', line: i + 1, kind: 'lamp', movable: !!at, why: at ? '' : 'its place is written first in its line: change it in Logic' });
+        if (pos) out.push({ at: pos, glyph: '☀', label: c.name || 'lamp', color: '#ffffff', line: i + 1, kind: 'lamp', movable: !!at, why: at ? '' : 'its place is written first in its line: change it in Logic' });
       } else if (c.word === 'sound') {
         const at = S.vecLiteral(S.getArg(l, 'at'));
         const kind = (l.slice(c.argsAt).match(/^\s*"([^"]+)"/) || [])[1] || 'sound';
-        if (at) out.push({ at, glyph: '♪', label: kind, color: '#7fc8ff', line: i + 1, kind: 'sound', movable: true });
+        if (at) out.push({ at, glyph: '♪', label: kind, color: '#a8a8a8', line: i + 1, kind: 'sound', movable: true });
       }
     });
     if (V.selMark) V.selMark = out.find((m) => m.line === V.selMark.line) || null;

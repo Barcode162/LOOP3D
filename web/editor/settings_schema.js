@@ -426,7 +426,7 @@ window.LE = window.LE || {};
   const editor = [
     { id: 'appearance', title: 'Appearance', icon: '◑', groups: [
       { title: 'Look', items: [
-        col('ed.accent', 'Accent', '#ffb35c', { help: 'The colour of picked things, handles and buttons.', ...ED }),
+        col('ed.accent', 'Accent', '#ffffff', { help: 'The colour of picked things, handles and buttons.', ...ED }),
         sl('ed.fontSize', 'Text size', 15, 12, 20, 1, { unit: 'px', ...ED }),
         tog('vp.stats', 'Show the speed', true, { help: 'Frames a second and the time each takes, in the corner of the view.', ...ED }),
       ] },

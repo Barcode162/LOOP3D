@@ -486,11 +486,19 @@ window.LE = window.LE || {};
   }
 
   // ---------------------------------------------------------------- the overlay: outline, handles, marks
+  // the light the overlay draws with: the editor's accent (white unless chosen otherwise)
+  let LIGHT = '#ffffff', lightAt = 0;
+  function light(now) {
+    if (now - lightAt > 1000) { lightAt = now; LIGHT = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ffffff'; }
+    return LIGHT;
+  }
   function circleHandle(x, y, kind, hot) {
     ctx.beginPath(); ctx.arc(x, y, HANDLE_R, 0, Math.PI * 2);
-    ctx.fillStyle = hot ? 'rgba(255,179,92,0.95)' : 'rgba(24,18,14,0.88)'; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,179,92,0.95)'; ctx.stroke();
-    ctx.strokeStyle = hot ? '#1a0f09' : '#ffcf8a'; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(255,255,255,0.55)'; ctx.shadowBlur = hot ? 18 : 10;
+    ctx.fillStyle = hot ? LIGHT : 'rgba(0,0,0,0.82)'; ctx.fill();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = LIGHT; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = hot ? '#000' : LIGHT; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath();
     if (kind === 'lift') { ctx.moveTo(x, y - 10); ctx.lineTo(x, y + 10); ctx.moveTo(x - 5, y - 5); ctx.lineTo(x, y - 10); ctx.lineTo(x + 5, y - 5); ctx.moveTo(x - 5, y + 5); ctx.lineTo(x, y + 10); ctx.lineTo(x + 5, y + 5); }
     else if (kind === 'turn') { ctx.arc(x, y, 8, -Math.PI * 0.9, Math.PI * 0.55); ctx.moveTo(x + 4.5, y + 9.5); ctx.lineTo(x - 0.5, y + 6.6); ctx.lineTo(x + 3.5, y + 2.5); }
@@ -500,6 +508,7 @@ window.LE = window.LE || {};
   const EDGES = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
   function draw(now) {
     fly(now);
+    light(now);
     const dpr = Math.min(2, devicePixelRatio || 1);
     const cw = ov.clientWidth, ch = ov.clientHeight;
     if (ov.width !== Math.round(cw * dpr) || ov.height !== Math.round(ch * dpr)) { ov.width = Math.round(cw * dpr); ov.height = Math.round(ch * dpr); }
@@ -516,18 +525,18 @@ window.LE = window.LE || {};
       m._p = p;
       if (!p) continue;
       ctx.beginPath(); ctx.arc(p[0], p[1], 15, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(24,18,14,0.82)'; ctx.fill();
-      ctx.strokeStyle = m.color || '#7fc8ff'; ctx.lineWidth = 2; ctx.stroke();
-      if (m === V.selMark) { ctx.beginPath(); ctx.arc(p[0], p[1], 21, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,179,92,0.95)'; ctx.lineWidth = 2.5; ctx.stroke(); }
-      ctx.fillStyle = m.color || '#7fc8ff'; ctx.font = '600 11px -apple-system, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fill();
+      ctx.strokeStyle = m.color || '#bdbdbd'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (m === V.selMark) { ctx.beginPath(); ctx.arc(p[0], p[1], 21, 0, Math.PI * 2); ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = 12; ctx.strokeStyle = LIGHT; ctx.lineWidth = 2; ctx.stroke(); ctx.shadowBlur = 0; }
+      ctx.fillStyle = m.color || '#bdbdbd'; ctx.font = '600 11px -apple-system, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(m.glyph || '♪', p[0], p[1] + 0.5);
-      if (m.label) { ctx.fillStyle = 'rgba(244,239,230,0.9)'; ctx.font = '600 11px -apple-system, system-ui, sans-serif'; ctx.fillText(m.label, p[0], p[1] + 27); }
+      if (m.label) { ctx.fillStyle = 'rgba(242,242,242,0.9)'; ctx.font = '600 11px -apple-system, system-ui, sans-serif'; ctx.fillText(m.label, p[0], p[1] + 27); }
     }
     if (V.sel && V.mode === 'edit') {
       const t = E.thing(V.sel.index);
       if (t && t.visible) {
         const cs = corners(t).map(project);
-        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,179,92,0.95)'; ctx.shadowColor = 'rgba(255,160,60,0.8)'; ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.6; ctx.strokeStyle = LIGHT; ctx.shadowColor = 'rgba(255,255,255,0.85)'; ctx.shadowBlur = 10;
         ctx.beginPath();
         for (const [a, b] of EDGES) if (cs[a] && cs[b]) { ctx.moveTo(cs[a][0], cs[a][1]); ctx.lineTo(cs[b][0], cs[b][1]); }
         ctx.stroke();

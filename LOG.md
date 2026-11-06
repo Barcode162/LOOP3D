@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "I don't like that theme … black and grey … black and white with sort of glow and round,
+  diagonal and sharp edges": the editor and the player restyled: black, greys and white light; round for what a
+  thumb presses, diagonal cuts for tools, panels and shots, sharp for the frame, fields and grids; what's on or
+  picked glows white (the 3D selection and handles too). The editor check passes on phone and computer.
 - **2026-11-06** · "Better than Blender … game dev, music and movie development together … I give you the reins":
   creators' long-running complaints researched (Blender, Unity, Unreal, Godot, music and video apps, Roblox
   Studio, Dreams, Nomad Sculpt) and answered rule by rule (`docs/EDITOR.md`); the editor rebuilt phone-first:

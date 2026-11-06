@@ -72,8 +72,12 @@ animation and games in one place, but locked to one console and
 ## Built so far (2026-11-06)
 
 - **The frame:** the world, the four spaces and their sheet (phone: at the bottom, its height dragged and kept;
-  computer: spaces at the left, the sheet at the right), undo and redo, Play, the menu, Ember's colours, the old
-  UI editor's line icons (51, drawn for J Production) and new ones.
+  computer: spaces at the left, the sheet at the right), undo and redo, Play, the menu, the old UI editor's line
+  icons (51, drawn for J Production) and new ones.
+- **The look** (the user's word, 2026-11-06: "black and grey … black and white with sort of glow and round,
+  diagonal and sharp edges"): black, greys and white light. Round for what a thumb presses (Play, pills,
+  handles), diagonal cuts for tools and panels (and the shots' slanted blocks), sharp for the frame, fields and
+  grids; what's on or picked glows white. The player wears it too.
 - **The engine's hands:** `loop_edit_camera` (the editor camera, the world keeps running), `loop_pick` (what a
   point of the view meets, by the things' real triangles), `loop_view` (where things land on screen),
   `loop_thing` and `loop_thing_set` (a thing in full, and moving it at once); each placed thing knows its
