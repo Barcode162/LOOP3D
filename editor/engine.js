@@ -42,6 +42,14 @@ window.LE = window.LE || {};
   E.perfGraph = () => { const p = E.M._loop_perf_graph() >> 2; return Array.from(E.M.HEAPF32.subarray(p, p + 240)); };
   E.perfBegin = () => E.M._loop_perf_begin();
   E.perfEnd = () => JSON.parse(read(E.M._loop_perf_end()));
+  // the editor's hands on the world (web/player.cpp: loop_edit_camera, loop_pick, loop_view, loop_thing, loop_thing_set)
+  E.editCamera = (o) => (has('loop_edit_camera') ? withStr(JSON.stringify(o), (p) => E.M._loop_edit_camera(p)) : 0);
+  E.pick = (x, y) => (has('loop_pick') ? E.M._loop_pick(x, y) : -1);
+  E.view = () => { if (!has('loop_view')) return null; try { return JSON.parse(read(E.M._loop_view())); } catch (e) { return null; } };
+  E.thing = (i) => { if (!has('loop_thing') || i < 0) return null; try { return JSON.parse(read(E.M._loop_thing(i))); } catch (e) { return null; } };
+  E.thingSet = (i, o) => (has('loop_thing_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_thing_set(i, p)) : 0);
+  E.musicSet = (o) => (has('loop_music_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_music_set(p)) : 0);
+  E.musicStep = () => (has('loop_music_step') ? E.M._loop_music_step() : -1);
   E.capture = () => new Promise((resolve) => {
     window.loopCaptured = (w, h, ptr) => {
       const px = new Uint8ClampedArray(E.M.HEAPU8.buffer, ptr, w * h * 4).slice();

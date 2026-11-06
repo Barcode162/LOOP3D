@@ -115,8 +115,7 @@ window.LE = window.LE || {};
       ] },
       { title: 'Debug', items: [
         en('render.view', 'Debug view', 0, opts([0, 'Final picture'], [1, 'Raw light'], [2, 'Exposure'], [3, 'Bloom'], [4, 'Ray work (blue little, red 200+ steps)']), E()),
-        tog('render.showLights', 'Light icons', false, { bind: 'editor', help: 'Drawn over the viewport by the editor.' }),
-        tog('render.showBounds', 'Bounding boxes', false, { bind: 'editor', help: 'Drawn over the viewport by the editor.' }),
+        tog('render.showLights', 'Lamp and sound marks', true, { bind: 'editor', help: 'The editor marks where lamps and sounds are, so they can be picked and moved.' }),
         tog('render.wireframe', 'Wireframe', false, NB('WebGPU has no line mode: needs its own pipeline.')),
       ] },
     ] },
@@ -423,79 +422,32 @@ window.LE = window.LE || {};
 
   // ---------------------------------------------------------------- editor
   const ED = { bind: 'editor' };
+  // What the editor itself does (docs/EDITOR.md); kept on this phone or computer.
   const editor = [
     { id: 'appearance', title: 'Appearance', icon: '◑', groups: [
-      { title: 'Theme', items: [
-        en('ed.theme', 'Theme', 'dark', opts(['dark', 'Dark'], ['midnight', 'Midnight'], ['light', 'Light']), ED),
-        col('ed.accent', 'Accent', '#4c9dff', ED),
-        sl('ed.fontSize', 'Interface text size', 12, 10, 18, 1, { unit: 'px', ...ED }),
-        en('ed.density', 'Density', 'comfortable', opts('compact', 'comfortable', 'spacious'), ED),
-        tog('ed.tooltips', 'Tooltips', true, ED),
-        tog('ed.badges', 'Show status badges', true, ED),
+      { title: 'Look', items: [
+        col('ed.accent', 'Accent', '#ffffff', { help: 'The colour of picked things, handles and buttons.', ...ED }),
+        sl('ed.fontSize', 'Text size', 15, 12, 20, 1, { unit: 'px', ...ED }),
+        tog('vp.stats', 'Show the speed', true, { help: 'Frames a second and the time each takes, in the corner of the view.', ...ED }),
       ] },
     ] },
-    { id: 'layout', title: 'Layout', icon: '▤', groups: [
-      { title: 'Window', items: [
-        en('ed.layout', 'Layout', 'default', opts(['default', 'Default'], ['scripting', 'Scripting'], ['lighting', 'Look & lighting'], ['performance', 'Performance'], ['viewport', 'Viewport only']), ED),
-        tog('ed.toolbar', 'Toolbar', true, ED),
-        tog('ed.statusbar', 'Status bar', true, ED),
-        tog('ed.rememberLayout', 'Remember panel layout', true, ED),
-      ] },
-    ] },
-    { id: 'viewport', title: 'Viewport', icon: '▢', groups: [
-      { title: 'Overlays', items: [
-        tog('vp.stats', 'Stats overlay', true, ED),
-        tog('vp.grid', 'Grid', false, ED),
-        tog('vp.thirds', 'Rule of thirds', false, ED),
-        tog('vp.safe', 'Safe frames', false, ED),
-        tog('vp.crosshair', 'Centre mark', false, ED),
-        sl('vp.statsEvery', 'Refresh stats every', 500, 100, 2000, 50, { unit: 'ms', ...ED }),
-      ] },
-      { title: 'Navigation', items: [
-        en('vp.drag', 'Look with', 'any', opts(['any', 'Any mouse button'], ['right', 'Right button (Unreal style)']), ED),
-        tog('vp.keysNeedFocus', 'Keys move only when the viewport has focus', true, ED),
-        sl('vp.flySpeed', 'Free camera speed', 5, 0.5, 50, 0.5, { unit: 'm/s', ...NB('Comes with object editing.') }),
-      ] },
-    ] },
-    { id: 'gizmos', title: 'Gizmos & snapping', icon: '✣', groups: [
+    { id: 'building', title: 'Building', icon: '✣', groups: [
       { title: 'Snapping', items: [
-        tog('snap.move', 'Snap moves', true, NB('Comes with object editing.')),
-        en('snap.moveStep', 'Move step', 0.25, opts(0.01, 0.05, 0.1, 0.25, 0.5, 1, 5, 10), { unit: 'm', ...NB('Comes with object editing.') }),
-        tog('snap.rotate', 'Snap turns', true, NB('Comes with object editing.')),
-        en('snap.rotateStep', 'Turn step', 15, opts(1, 5, 10, 15, 30, 45, 90), { unit: '°', ...NB('Comes with object editing.') }),
-        tog('snap.scale', 'Snap scale', false, NB('Comes with object editing.')),
-        en('snap.scaleStep', 'Scale step', 0.1, opts(0.01, 0.05, 0.1, 0.25, 0.5, 1), NB('Comes with object editing.')),
+        tog('snap.move', 'Snap', true, { help: 'Moves land on even steps and turns on even angles (Build → Snap turns it off for a moment).', ...ED }),
+        en('snap.moveStep', 'Move step', 0.05, opts(0.01, 0.05, 0.1, 0.25, 0.5, 1), { unit: 'm', ...ED }),
+        en('snap.rotateStep', 'Turn step', 15, opts(5, 10, 15, 30, 45, 90), { unit: '°', ...ED }),
       ] },
-      { title: 'Gizmo', items: [
-        sl('gizmo.size', 'Size', 1, 0.5, 3, 0.1, { unit: 'x', ...NB('Comes with object editing.') }),
-        en('gizmo.space', 'Space', 'world', opts('world', 'local'), NB('Comes with object editing.')),
+      { title: 'The view', items: [
+        en('ed.workLight', 'Work light', 'auto', opts(['auto', 'In dark worlds'], ['on', 'Always'], ['off', 'Never']), { help: 'A lamp at your view while building, never part of the world. "In dark worlds": on when a world has no lamp and no sun.', ...ED }),
+        sl('vp.lens', 'Editor camera lens', 24, 12, 85, 1, { unit: 'mm', help: 'Wider (smaller numbers) shows more of the world while building; the film keeps its own lenses.', ...ED }),
+        sl('vp.flySpeed', 'Key flying speed', 1, 0.25, 4, 0.25, { unit: 'x', help: 'W A S D Q E on a computer.', ...ED }),
       ] },
     ] },
-    { id: 'code', title: 'Script editor', icon: '✎', groups: [
-      { title: 'Editing', items: [
+    { id: 'code', title: 'Script', icon: '✎', groups: [
+      { title: 'Writing', items: [
         sl('code.fontSize', 'Text size', 13, 10, 22, 1, { unit: 'px', ...ED }),
-        en('code.tab', 'Tab width', 2, opts(2, 4), ED),
-        tog('code.wrap', 'Wrap long lines', false, ED),
-        tog('code.lineNumbers', 'Line numbers', true, ED),
-        tog('code.runOnSave', 'Run on Ctrl+S', true, ED),
-        tog('code.autoIndent', 'Keep indentation on Enter', true, ED),
-        tog('code.autocomplete', 'Word suggestions', true, ED),
-        tog('code.minimap', 'Minimap', false, ED),
-      ] },
-    ] },
-    { id: 'console', title: 'Console', icon: '›_', groups: [
-      { title: 'Messages', items: [
-        sl('con.max', 'Keep at most', 1000, 100, 10000, 100, { unit: 'lines', ...ED }),
-        tog('con.time', 'Timestamps', true, ED),
-        tog('con.clearOnLoad', 'Clear when a scene loads', false, ED),
-        tog('con.engine', 'Engine messages', true, ED),
-        tog('con.lines', 'Dialogue lines', true, ED),
-      ] },
-    ] },
-    { id: 'autosave', title: 'Autosave', icon: '⟳', groups: [
-      { title: 'Autosave', items: [
-        tog('save.auto', 'Keep script edits in this browser', true, ED),
-        sl('save.every', 'Every', 5, 1, 60, 1, { unit: 's', ...ED }),
+        tog('code.live', 'Live', true, { help: 'The world rebuilds a moment after you stop typing.', ...ED }),
+        tog('code.autocomplete', 'Word suggestions', true, { help: 'The language\'s words that fit what you\'re typing, one tap to finish.', ...ED }),
       ] },
     ] },
   ];

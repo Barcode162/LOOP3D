@@ -5,43 +5,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="cb88328 2026-11-06">
+<meta name="loop-build" content="447b6ce 2026-11-06">
 <style>
-  :root { --ink: #f4efe6; --dim: #b9ae9c; --glass: rgba(18, 14, 10, 0.55); --line: rgba(255, 220, 170, 0.18); --amber: #ffb35c; }
+  :root { --ink: #f2f2f2; --dim: #9a9a9a; --glass: rgba(0, 0, 0, 0.6); --line: rgba(255, 255, 255, 0.18); --amber: #ffffff; --glow: 0 0 16px rgba(255, 255, 255, 0.32); }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
   #view, #trailer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   #trailer { object-fit: cover; display: none; background: #000; }
   .bar { position: fixed; left: 0; right: 0; display: flex; gap: 8px; align-items: center; padding: 10px max(12px, env(safe-area-inset-left)); pointer-events: none; }
   .top { top: env(safe-area-inset-top); justify-content: space-between; }
-  .bottom { bottom: max(10px, env(safe-area-inset-bottom)); justify-content: center; flex-wrap: wrap; }
+  /* the buttons wait behind the menu button: a tap on it shows them beside it, ✕ hides them */
+  .bottom { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 12px); right: calc(76px + max(18px, env(safe-area-inset-right))); padding-top: 0; padding-bottom: 0; justify-content: flex-end; flex-wrap: wrap;
+    opacity: 0; visibility: hidden; transform: translateX(18px); transition: opacity 0.18s, transform 0.25s, visibility 0s 0.25s; }
+  body.menu-open .bottom { opacity: 1; visibility: visible; transform: none; transition: opacity 0.18s, transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1); }
+  #menuBtn { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); width: 62px; height: 62px; padding: 0; border: 0; border-radius: 50%;
+    background: #ffffff; color: #000; font: 800 10px/1 -apple-system, system-ui, sans-serif; letter-spacing: 0.08em;
+    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.1), 0 0 22px rgba(255, 255, 255, 0.35), 0 10px 26px rgba(0, 0, 0, 0.5); -webkit-backdrop-filter: none; backdrop-filter: none; transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1); }
+  #menuBtn:active { transform: scale(0.92); }
+  body.menu-open #menuBtn { font-size: 20px; font-weight: 600; letter-spacing: 0; }
+  body.menu-open .stick { visibility: hidden; }
   .chip, button, select { pointer-events: auto; background: var(--glass); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font: inherit; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-  button.on { border-color: var(--amber); color: var(--amber); }
+  button.on { border-color: var(--amber); color: var(--amber); box-shadow: var(--glow); text-shadow: 0 0 10px rgba(255, 255, 255, 0.55); }
   #title { font-weight: 650; letter-spacing: 0.02em; }
   #stats { font: 12px ui-monospace, monospace; color: var(--dim); }
   #note.loading::after { content: ''; display: block; width: 28px; height: 28px; margin: 12px auto 0; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--amber); animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #note { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: min(520px, 86vw); text-align: center; background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 18px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   #lines { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); width: min(680px, 90vw); text-align: center; pointer-events: none; }
-  #lines .line { display: inline-block; margin: 4px auto; padding: 8px 14px; border-radius: 12px; background: rgba(10, 8, 6, 0.6); font-size: 17px; line-height: 1.4; transition: opacity 0.6s; }
+  #lines .line { display: inline-block; margin: 4px auto; padding: 8px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.7); font-size: 17px; line-height: 1.4; transition: opacity 0.6s; }
   #lines .who { color: var(--amber); font-weight: 650; margin-right: 6px; }
   #ask { position: fixed; inset: auto 0 calc(80px + env(safe-area-inset-bottom)) 0; display: none; flex-direction: column; align-items: center; gap: 8px; }
   #ask .q { background: var(--glass); padding: 10px 16px; border-radius: 14px; font-size: 17px; }
   #ask button { min-width: min(320px, 80vw); font-size: 16px; }
-  #problems { position: fixed; left: 12px; right: 12px; bottom: 70px; max-height: 30vh; overflow: auto; white-space: pre-wrap; font: 12px ui-monospace, monospace; background: rgba(60, 10, 10, 0.75); border-radius: 12px; padding: 10px; display: none; }
+  #problems { position: fixed; left: 12px; right: 12px; bottom: 70px; max-height: 30vh; overflow: auto; white-space: pre-wrap; font: 12px ui-monospace, monospace; background: rgba(70, 8, 8, 0.8); border-radius: 12px; padding: 10px; display: none; }
   .stick { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); width: 120px; height: 120px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,0.04); display: none; }
-  .stick i { position: absolute; left: 40px; top: 40px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 210, 160, 0.35); }
+  .stick i { position: absolute; left: 40px; top: 40px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, 0.3); box-shadow: var(--glow); }
   #ls { left: max(24px, env(safe-area-inset-left)); }
   #rs { right: max(24px, env(safe-area-inset-right)); }
   body.game.touch .stick { display: block; }
   #stats { cursor: pointer; pointer-events: auto; }
-  #graph { position: fixed; top: calc(56px + env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 240px; height: 90px; background: rgba(10, 8, 6, 0.6); border: 1px solid var(--line); border-radius: 10px; display: none; }
-  #bench { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 92vw); max-height: 80vh; overflow: auto; background: rgba(14, 11, 8, 0.92); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: none; font-size: 13px; }
+  #graph { position: fixed; top: calc(56px + env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 240px; height: 90px; background: rgba(0, 0, 0, 0.7); border: 1px solid var(--line); border-radius: 10px; display: none; }
+  #bench { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 92vw); max-height: 80vh; overflow: auto; background: rgba(0, 0, 0, 0.92); border: 1px solid var(--line); border-radius: 0; padding: 16px; display: none; font-size: 13px; }
   #bench h2 { margin: 0 0 8px; font-size: 17px; }
   #bench table { width: 100%; border-collapse: collapse; font: 12px ui-monospace, monospace; }
   #bench td, #bench th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
   #bench td:first-child, #bench th:first-child { text-align: left; white-space: normal; }
   #bench .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  #benchLive { position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); font: 12px ui-monospace, monospace; color: var(--amber); background: rgba(10, 8, 6, 0.6); padding: 6px 12px; border-radius: 999px; display: none; }
+  #benchLive { position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); font: 12px ui-monospace, monospace; color: var(--amber); background: rgba(0, 0, 0, 0.7); padding: 6px 12px; border-radius: 999px; display: none; }
 </style>
 </head>
 <body>
@@ -71,6 +80,7 @@
     <option value="2">Ultra</option>
   </select>
 </div>
+<button id="menuBtn" aria-label="Menu" aria-expanded="false">MENU</button>
 <div id="note" class="loading">Loading Loop3D…</div>
 <div id="problems"></div>
 <div id="lines"></div>
@@ -92,7 +102,15 @@
   const trailer = document.getElementById('trailer');
   const touch = matchMedia('(pointer: coarse)').matches;
   if (touch) document.body.classList.add('touch');
-  if (params.get('ui') === '0') document.querySelectorAll('.bar').forEach((b) => b.style.display = 'none');
+  if (params.get('ui') === '0') document.querySelectorAll('.bar, #menuBtn').forEach((b) => b.style.display = 'none');
+  // the menu button: a tap shows the buttons beside it, another (✕) hides them
+  const menuBtn = document.getElementById('menuBtn');
+  menuBtn.onclick = () => {
+    const open = document.body.classList.toggle('menu-open');
+    menuBtn.textContent = open ? '✕' : 'MENU';
+    menuBtn.setAttribute('aria-expanded', String(open));
+    menuBtn.blur();
+  };
   let movie = true, showTrailer = false, M = null;
   // ---- benchmark: plays by itself and measures every scene
   const bench = params.get('bench');            // 'scene' or 'story'
@@ -271,7 +289,7 @@
     if (fromEditor && fromEditor.scene === sceneName) document.getElementById('title').textContent = 'From the editor: ' + sceneName;
     LoopUI.gamepad(() => M, useIt, () => { if (movie) setMode(false); });
     LoopUI.pauseWhenHidden(() => M);
-    setInterval(() => LoopUI.applyPage(M, { hud: [...document.querySelectorAll('.bar')] }), 1000);
+    setInterval(() => LoopUI.applyPage(M, { hud: [...document.querySelectorAll('.bar, #menuBtn')] }), 1000);
     sc.value = sceneName;
     sc.onchange = () => { sc.blur(); location.hash = sc.value; window.loopGoTo(sc.value); };
     document.getElementById('benchSel').onchange = (e) => {
