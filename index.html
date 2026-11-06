@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="ad5db47 2026-11-06">
+<meta name="loop-build" content="408ffa3 2026-11-06">
 <style>
   :root { --ink: #f2f2f2; --dim: #9a9a9a; --glass: rgba(0, 0, 0, 0.6); --line: rgba(255, 255, 255, 0.18); --amber: #ffffff; --glow: 0 0 16px rgba(255, 255, 255, 0.32); }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -44,6 +44,16 @@
   body.game.touch .stick { display: block; }
   #stats { cursor: pointer; pointer-events: auto; }
   #graph { position: fixed; top: calc(56px + env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 240px; height: 90px; background: rgba(0, 0, 0, 0.7); border: 1px solid var(--line); border-radius: 10px; display: none; }
+  /* the meter: where each frame's time goes (under the graph, same tap) */
+  #meter { position: fixed; top: calc(152px + env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 240px; box-sizing: border-box; padding: 8px 10px; background: rgba(0, 0, 0, 0.7); border: 1px solid var(--line); border-radius: 10px; display: none; font: 11px/1.25 ui-monospace, monospace; color: var(--ink); pointer-events: none; }
+  #meter .row { display: grid; grid-template-columns: 62px 1fr 44px; gap: 6px; align-items: center; margin: 2px 0; }
+  #meter .mb { position: relative; height: 7px; background: rgba(255, 255, 255, 0.08); }
+  #meter .mb i { position: absolute; left: 0; top: 0; bottom: 0; background: #fff; box-shadow: var(--glow); }
+  #meter .mb i.over { background: repeating-linear-gradient(45deg, #fff 0 3px, #777 3px 6px); }
+  #meter .mb b { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--dim); }
+  #meter .n { text-align: right; color: var(--dim); }
+  #meter .sum { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+  #meter .note { color: var(--dim); margin-top: 4px; }
   #bench { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 92vw); max-height: 80vh; overflow: auto; background: rgba(0, 0, 0, 0.92); border: 1px solid var(--line); border-radius: 0; padding: 16px; display: none; font-size: 13px; }
   #bench h2 { margin: 0 0 8px; font-size: 17px; }
   #bench table { width: 100%; border-collapse: collapse; font: 12px ui-monospace, monospace; }
@@ -86,6 +96,7 @@
 <div id="lines"></div>
 <div id="ask"></div>
 <canvas id="graph" width="480" height="180"></canvas>
+<div id="meter"></div>
 <div id="benchLive"></div>
 <div id="bench"></div>
 <div class="stick" id="ls"><i></i></div>
@@ -245,7 +256,30 @@
   // the live graph: tap the stats to show the last 240 frames' times
   const graph = document.getElementById('graph'), gctx = graph.getContext('2d');
   let graphOn = false;
-  document.getElementById('stats').onclick = () => { graphOn = !graphOn; graph.style.display = graphOn ? 'block' : 'none'; if (graphOn) drawGraph(); };
+  const meter = document.getElementById('meter');
+  document.getElementById('stats').onclick = () => { graphOn = !graphOn; graph.style.display = meter.style.display = graphOn ? 'block' : 'none'; if (graphOn) drawGraph(), drawMeter(); };
+  // The meter: each part of a frame on the CPU, the GPU, and memory. A frame
+  // has 16.7 ms for 60 a second (the line on each bar); the CPU and the GPU
+  // work at the same time, so the slower of the two sets the speed.
+  const BUDGET = 16.7;
+  function meterRow(label, ms, scale) {
+    const w = Math.min(100, ms / scale * 100), line = Math.min(100, BUDGET / scale * 100);
+    return `<div class="row"><span>${label}</span><span class="mb"><i class="${ms > BUDGET ? 'over' : ''}" style="width:${w}%"></i><b style="left:${line}%"></b></span><span class="n">${ms.toFixed(1)}</span></div>`;
+  }
+  function drawMeter() {
+    if (!graphOn || !M || !M._loop_meter) return;
+    try {
+      const m = JSON.parse(M.UTF8ToString(M._loop_meter())), scale = BUDGET * 2;  // the line in the middle; longer bars are cut and striped
+      const parts = ['scripts', 'physics', 'people', 'sending', 'drawing'];
+      const named = parts.reduce((t, k) => t + m[k], 0), other = Math.max(0, m.cpu - named);
+      const slower = m.gpu > m.cpu ? 'The GPU' : 'The CPU', worst = Math.max(m.cpu, m.gpu);
+      meter.innerHTML = parts.map((k) => meterRow(k, m[k], scale)).join('') + meterRow('the rest', other, scale) +
+        `<div class="sum">${meterRow('CPU', m.cpu, scale)}${meterRow('GPU', m.gpu, scale)}</div>` +
+        `<div class="row"><span>memory</span><span style="grid-column: span 2">${m.memUsed.toFixed(0)} MB used of ${m.memReserved.toFixed(0)} · GPU ${m.gpuMem.toFixed(0)} MB</span></div>` +
+        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'}</div>`;
+    } catch (e) {}
+    setTimeout(drawMeter, 500);
+  }
   function drawGraph() {
     if (!graphOn) return;
     if (M) {
@@ -274,6 +308,8 @@
     q.value = params.get('quality') || (touch ? '0' : '1');
     q.onchange = () => { M._loop_set_quality(+q.value); q.blur(); };
     M._loop_set_quality(+q.value);
+    // ?pause=1: the world holds still from its very first moment (picture tests)
+    if (params.get('pause') === '1') { const n = M.lengthBytesUTF8('pause') + 1, p = M._malloc(n); M.stringToUTF8('pause', p, n); M._loop_set_option(p, 1); M._free(p); }
     const sc = document.getElementById('scene');
     // the scene picker lists every project's scenes (scenes/index.json, made by tools/build_projects.py)
     try {
