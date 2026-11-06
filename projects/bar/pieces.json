@@ -1,17 +1,78 @@
 {
-  "about": "The bar, built from empty one piece at a time; each piece shows what the engine is missing (engine/gaps.json). status: next, building, done, planned. Read by tools/dashboard.py for the Loop3D Workshop dashboard.",
+  "about": "The bar, built from empty one piece at a time; each piece shows what the engine is missing (engine/gaps.json). status: next, building, done, planned; learned: the idea a done piece taught. Read by tools/dashboard.py for the Loop3D Workshop dashboard.",
   "pieces": [
-    {"n": 1, "piece": "An empty bar that opens", "status": "next", "needs": "the .looped project file, read by the engine"},
-    {"n": 2, "piece": "The room: floor, walls, ceiling, doorway", "status": "planned", "needs": ""},
-    {"n": 3, "piece": "Walking in from the door", "status": "planned", "needs": ""},
-    {"n": 4, "piece": "The first lamp", "status": "planned", "needs": ""},
-    {"n": 5, "piece": "The counter", "status": "planned", "needs": ""},
-    {"n": 6, "piece": "A stool you can sit on", "status": "planned", "needs": ""},
-    {"n": 7, "piece": "The door opens and closes", "status": "planned", "needs": ""},
-    {"n": 8, "piece": "The room's sound: hum and footsteps", "status": "planned", "needs": ""},
-    {"n": 9, "piece": "Shelves and bottles", "status": "planned", "needs": ""},
-    {"n": 10, "piece": "The jukebox plays a song", "status": "planned", "needs": ""},
-    {"n": 11, "piece": "The lights come alive", "status": "planned", "needs": ""},
-    {"n": 12, "piece": "Someone else in the room", "status": "planned", "needs": ""}
+    {
+      "n": 1,
+      "piece": "An empty bar that opens",
+      "status": "done",
+      "needs": "",
+      "learned": "A project is a cover page (bar.looped: its name and first scene) and its scenes (.loop files); the engine reads the cover page and opens the first scene."
+    },
+    {
+      "n": 2,
+      "piece": "The room: floor, walls, ceiling, doorway",
+      "status": "next",
+      "needs": ""
+    },
+    {
+      "n": 3,
+      "piece": "Walking in from the door",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 4,
+      "piece": "The first lamp",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 5,
+      "piece": "The counter",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 6,
+      "piece": "A stool you can sit on",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 7,
+      "piece": "The door opens and closes",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 8,
+      "piece": "The room's sound: hum and footsteps",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 9,
+      "piece": "Shelves and bottles",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 10,
+      "piece": "The jukebox plays a song",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 11,
+      "piece": "The lights come alive",
+      "status": "planned",
+      "needs": ""
+    },
+    {
+      "n": 12,
+      "piece": "Someone else in the room",
+      "status": "planned",
+      "needs": ""
+    }
   ]
 }

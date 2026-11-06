@@ -1,0 +1,3 @@
+# The Bar: J Production's bar, built from empty, one piece at a time.
+project "The Bar"
+start "bar_room"

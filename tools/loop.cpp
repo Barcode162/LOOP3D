@@ -7,6 +7,9 @@
 //               makes the stills and films the script asks for (render / film)
 //               with the cinema renderer; with none asked, one still of its camera
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
+//   loop project <name.looped>                a project's cover page as JSON (its name and first scene)
+//   Every command that takes a scene also takes a project's cover page (.looped):
+//   it opens the project's first scene.
 //   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
 //               what one live frame costs (things, triangles, draw calls,
 //               surfaces and lamps per pixel) against that quality's budget
@@ -21,6 +24,7 @@
 #include "engine/core/json.h"
 #include "engine/core/settings.h"
 #include "engine/core/time.h"
+#include "engine/project/project.h"
 #include "engine/render/demo_scenes.h"
 #include "engine/render/film.h"
 #include "engine/render/frame_cost.h"
@@ -42,7 +46,9 @@ int usage() {
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
       "loop budget <script.loop or folder> [--quality phone|high] [--seconds 1] [--size 374x811] [--set name=value]\n"
       "loop settings list    every engine setting, its default and range (JSON)\n"
-      "loop words <json|js>  every word of the language and its help");
+      "loop words <json|js>  every word of the language and its help\n"
+      "loop project <name.looped>  a project's cover page as JSON\n"
+      "(a project's cover page, name.looped, can stand in for a scene: its first scene opens)");
   return 1;
 }
 
@@ -449,6 +455,31 @@ int main(int argc, char** argv) {
       o.sets.push_back({kv.substr(0, eq), kv.substr(eq + 1)});
     }
     else return usage();
+  }
+  // a project's cover page: read it, then work on its first scene
+  if (target.size() > 7 && target.compare(target.size() - 7, 7, ".looped") == 0) {
+    Project pr;
+    std::vector<ProjectProblem> ps;
+    bool ok = readProject(target, pr, ps);
+    for (const ProjectProblem& p : ps) std::fprintf(stderr, "problem: %s\n", p.message(target).c_str());
+    if (!ok) return 1;
+    std::string first = joinPath(pr.folder, pr.start + ".loop");
+    struct stat sb;
+    if (stat(first.c_str(), &sb) != 0) {
+      std::fprintf(stderr, "problem: %s: its first scene \"%s\" has no file %s\n", target.c_str(), pr.start.c_str(), first.c_str());
+      return 1;
+    }
+    if (cmd == "project") {
+      Json j = Json::object();
+      j.set("name", Json(pr.name)), j.set("start", Json(pr.start));
+      std::printf("%s\n", j.dump(1).c_str());
+      return 0;
+    }
+    if (cmd == "check") std::printf("%s: \"%s\", opens %s\n", target.c_str(), pr.name.c_str(), pr.start.c_str());
+    target = first;
+  } else if (cmd == "project") {
+    std::fprintf(stderr, "loop project takes a project's cover page (name.looped)\n");
+    return 1;
   }
   if (cmd == "demo") return demo(target, o);
   if (cmd == "budget") return budget(target, o);

@@ -3,7 +3,9 @@
 
     tools/build_projects.py <site dir>
 
-Each projects/<name>/project.json lists a project's scenes. Their .loop files
+Each projects/<name>/project.json lists a project's scenes; a project with a
+cover page instead (projects/<name>/<name>.looped, read by `loop project`)
+has the .loop files beside it as its scenes, its first scene first. Their .loop files
 (and trailer stills) go flat into <site>/scenes/, so `use` and `go_to` find
 each other by name, and <site>/scenes/index.json lists the projects for the
 player's scene picker and the editor. The engine never needs any project.
@@ -19,11 +21,30 @@ site = Path(sys.argv[1] if len(sys.argv) > 1 else root / "site")
 out = site / "scenes"
 out.mkdir(parents=True, exist_ok=True)
 
+def cover_page(looped):
+    """A .looped project as project.json's fields, read by the engine itself."""
+    import subprocess
+    loop = root / "build" / "loop"
+    if not loop.exists():
+        sys.exit(f"{looped}: build the engine first (build/loop reads cover pages)")
+    out = subprocess.run([str(loop), "project", str(looped)], capture_output=True, text=True)
+    if out.returncode:
+        sys.exit(out.stderr.strip())
+    cover = json.loads(out.stdout)
+    others = sorted(f.stem for f in looped.parent.glob("*.loop") if f.stem != cover["start"])
+    return {"name": looped.parent.name, "title": cover["name"], "start": cover["start"], "scenes": [cover["start"]] + others}
+
+
 projects, owner = [], {}
-manifests = sorted((root / "projects").glob("*/project.json"), key=lambda m: (json.loads(m.read_text()).get("order", 100), m.parent.name))
-for manifest in manifests:
+manifests = []
+for folder in sorted((root / "projects").iterdir()):
+    if (folder / "project.json").exists():
+        manifests.append((folder / "project.json", json.loads((folder / "project.json").read_text())))
+    elif (folder / f"{folder.name}.looped").exists():
+        manifests.append((folder / f"{folder.name}.looped", cover_page(folder / f"{folder.name}.looped")))
+manifests.sort(key=lambda m: (m[1].get("order", 100), m[0].parent.name))
+for manifest, p in manifests:
     folder = manifest.parent
-    p = json.loads(manifest.read_text())
     build = p.get("build", {})
     if not build.get("publish", True):
         continue  # Build → "Include this project on the site" is off

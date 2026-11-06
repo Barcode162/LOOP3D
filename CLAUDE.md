@@ -49,8 +49,10 @@ and what they learned, and add it to the dashboard (Loop3D Workshop). Never run 
 - Deleting or overwriting the user's things outside this repo (server data, accounts, the old repos) without asking.
 
 ## Where things are
-`engine/` (core, geometry, render, gpu, script, physics, anim, audio) · `web/` (the player, the editor) ·
-`tools/loop.cpp` (the `loop` command: check, run, play, render, words, settings) · `projects/` · `tests/` ·
+`engine/` (core, project, geometry, render, gpu, script, physics, anim, audio; which side each part is on:
+`engine/modules.json`) · `web/` (the player, the editor) ·
+`tools/loop.cpp` (the `loop` command: check, run, play, render, budget, project, words, settings) · `projects/`
+(each project's folder; a cover page `name.looped` names it and its first scene) · `tests/` ·
 `docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING) · `perf/` (benchmark runs from the phone).
 The public player: https://barcode162.github.io/LOOP3D/ (the editor: `editor.html`), published from `gh-pages`.
 Pictures of the live renderer: download the `site` artifact of GitHub's **Check**, serve it, and run

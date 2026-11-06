@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · Tiny goal 1 (the bar, piece 1): the bar's cover page. `projects/bar/bar.looped` names it
+  ("The Bar") and its first scene (`bar_room.loop`, empty and dark); the engine reads cover pages
+  (`engine/project/`, 2 tests, 82 in all); `loop check|run|play|render|budget` take a cover page; `loop project`
+  prints one as JSON for the site; the site picks up projects with a cover page. Found: scene names must differ
+  across projects; the other projects still use project.json.
 - **2026-11-06** · "For work I want to go super slow … start with a super simple tiny goal … progress myself at the
   same time … it's about growth and progressiveness": the pace is in `CLAUDE.md` (one tiny goal at a time, its idea
   explained first, the user's go, then only that goal).

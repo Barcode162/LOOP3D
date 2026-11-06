@@ -1,21 +1,132 @@
 {
   "about": "What the engine is missing, found while building (a piece of the bar) or in the review of 2026-11-05. side: core, visual, tools. status: open or closed (with the piece or commit that closed it). Read by tools/dashboard.py for the Loop3D Workshop dashboard.",
   "gaps": [
-    {"gap": "A project is a list of scenes in project.json, not a .looped project file", "side": "core", "found": "review", "status": "open", "piece": 1},
-    {"gap": "No loading once by name: models, pictures and sounds are found by file each time", "side": "core", "found": "review", "status": "open", "piece": 9},
-    {"gap": "Sound only from the synth: no music or voices from files", "side": "core", "found": "review", "status": "open", "piece": 10},
-    {"gap": "Collisions and touches don't reach scripts as events", "side": "core", "found": "review", "status": "open", "piece": 6},
-    {"gap": "No saving where you were", "side": "core", "found": "review", "status": "open", "piece": 0},
-    {"gap": "World words and visual words share one file", "side": "core", "found": "review", "status": "open", "piece": 0},
-    {"gap": "The world's description lives beside the film renderer", "side": "core", "found": "review", "status": "open", "piece": 0},
-    {"gap": "The live renderer mixes everyday drawing and the GPU path tracer", "side": "visual", "found": "review", "status": "open", "piece": 0},
-    {"gap": "Many lamps cost too much on the phone (the light grid is parked)", "side": "visual", "found": "review", "status": "open", "piece": 11},
-    {"gap": "No frame blending: soft edges and shimmer", "side": "visual", "found": "review", "status": "open", "piece": 0},
-    {"gap": "The editor can't save moved things back to the script", "side": "tools", "found": "review", "status": "open", "piece": 0},
-    {"gap": "Helpers in three languages (C++, Python, JavaScript)", "side": "tools", "found": "review", "status": "open", "piece": 0},
-    {"gap": "Film grain fizzed on the phone", "side": "visual", "found": "review", "status": "closed", "closed": "310e767"},
-    {"gap": "Everything drawn every frame, seen or not", "side": "visual", "found": "review", "status": "closed", "closed": "78bbc15"},
-    {"gap": "Each pixel lit once per surface over it", "side": "visual", "found": "review", "status": "closed", "closed": "935db67"},
-    {"gap": "Distant trees at full detail", "side": "visual", "found": "review", "status": "closed", "closed": "cb88328"}
+    {
+      "gap": "A project is a list of scenes in project.json, not a .looped project file",
+      "side": "core",
+      "found": "review",
+      "status": "closed",
+      "piece": 1,
+      "closed": "piece 1"
+    },
+    {
+      "gap": "Scene names must differ across every project (a link is #scene, not project and scene)",
+      "side": "core",
+      "found": "piece 1",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "Samples, Showcase and Ardane still use project.json, not a cover page",
+      "side": "tools",
+      "found": "piece 1",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "No loading once by name: models, pictures and sounds are found by file each time",
+      "side": "core",
+      "found": "review",
+      "status": "open",
+      "piece": 9
+    },
+    {
+      "gap": "Sound only from the synth: no music or voices from files",
+      "side": "core",
+      "found": "review",
+      "status": "open",
+      "piece": 10
+    },
+    {
+      "gap": "Collisions and touches don't reach scripts as events",
+      "side": "core",
+      "found": "review",
+      "status": "open",
+      "piece": 6
+    },
+    {
+      "gap": "No saving where you were",
+      "side": "core",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "World words and visual words share one file",
+      "side": "core",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "The world's description lives beside the film renderer",
+      "side": "core",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "The live renderer mixes everyday drawing and the GPU path tracer",
+      "side": "visual",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "Many lamps cost too much on the phone (the light grid is parked)",
+      "side": "visual",
+      "found": "review",
+      "status": "open",
+      "piece": 11
+    },
+    {
+      "gap": "No frame blending: soft edges and shimmer",
+      "side": "visual",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "The editor can't save moved things back to the script",
+      "side": "tools",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "Helpers in three languages (C++, Python, JavaScript)",
+      "side": "tools",
+      "found": "review",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "Film grain fizzed on the phone",
+      "side": "visual",
+      "found": "review",
+      "status": "closed",
+      "closed": "310e767"
+    },
+    {
+      "gap": "Everything drawn every frame, seen or not",
+      "side": "visual",
+      "found": "review",
+      "status": "closed",
+      "closed": "78bbc15"
+    },
+    {
+      "gap": "Each pixel lit once per surface over it",
+      "side": "visual",
+      "found": "review",
+      "status": "closed",
+      "closed": "935db67"
+    },
+    {
+      "gap": "Distant trees at full detail",
+      "side": "visual",
+      "found": "review",
+      "status": "closed",
+      "closed": "cb88328"
+    }
   ]
 }
