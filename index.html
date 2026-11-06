@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="be47050 2026-11-06">
+<meta name="loop-build" content="a816add 2026-11-06">
 <style>
   :root { --ink: #f2f2f2; --dim: #9a9a9a; --glass: rgba(0, 0, 0, 0.6); --line: rgba(255, 255, 255, 0.18); --amber: #ffffff; --glow: 0 0 16px rgba(255, 255, 255, 0.32); }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -277,7 +277,7 @@
       meter.innerHTML = parts.map((k) => meterRow(k, m[k], scale)).join('') + meterRow('the rest', other, scale) +
         `<div class="sum">${meterRow('CPU', m.cpu, scale)}${meterRow('GPU', m.gpu, scale)}</div>` +
         `<div class="row"><span>memory</span><span style="grid-column: span 2">${m.memUsed.toFixed(0)} MB used of ${m.memReserved.toFixed(0)} · GPU ${m.gpuMem.toFixed(0)} MB</span></div>` +
-        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'}</div>`;
+        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.clustered ? 'Drawn in clusters.' : 'Clusters cooking…'}</div>`;
     } catch (e) {}
     setTimeout(drawMeter, 500);
   }
