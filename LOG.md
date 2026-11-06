@@ -2,6 +2,15 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · The rebuild, **step 4 continued**: **frame blending** (`render.taa`): the view shifts a fraction
+  of a pixel each frame and every pixel is blended with its past (measured without the shifts, so a still view
+  stays sharp; kept within its neighbours, so nothing smears), smoothing edges in multisampling's place; the
+  **cluster drawing is on by default** (the old drawing stays where a GPU can't give it 9 storage buffers, and
+  as `render.clusters` off). New picture references (smoother edges); editor 38 of 38 (7114486). Still to come
+  in step 4: the sun's shadow through clusters, cooked trees kept between visits (the cook adds load time:
+  about 1.6 s for the Glade on this machine), leaf cards and hard edges simplifying, `loop budget` counting the
+  new way.
+
 - **2026-11-06** · The rebuild, **step 4 (drawing rebuilt), first half**: drawing in clusters, Nanite's way,
   behind `render.clusters` (`?clusters=1`; off until step 4 is done): the cook's trees in one pool on the GPU,
   a GPU cull that picks each cluster's level (`render.clusterError`, pixels) in a fixed order (no flicker), one
