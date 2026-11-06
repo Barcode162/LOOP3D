@@ -7,6 +7,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <string>
 #include <unordered_map>
@@ -91,6 +92,7 @@ struct FrameU {
   Vec4 camPos, sunDir, sunColor;
   Vec4 sh[9];
   Vec4 fog, fogColor, params, screen, fixedExposure;
+  Vec4 exposure;  // filled on the GPU from exposureBuf_ (the scene's passes may read only 8 storage buffers on an iPhone)
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -133,7 +135,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 464, "frame layout");
+static_assert(sizeof(FrameU) == 480, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -162,7 +164,6 @@ class GpuRenderer final : public Renderer {
       maxBufferSize_ = lim.maxBufferSize;
       maxTexture_ = lim.maxTextureDimension2D;
       maxLayers_ = lim.maxTextureArrayLayers;
-      storagePerStage_ = lim.maxStorageBuffersPerShaderStage;
     }
     wgpu::SurfaceCapabilities caps;
     surface_.GetCapabilities(adapter_, &caps);
@@ -172,7 +173,7 @@ class GpuRenderer final : public Renderer {
     postUbo_ = buffer(sizeof(PostU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     expUbo_ = buffer(sizeof(ExposureU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     lightsBuf_ = buffer(sizeof(LightU) * kMaxLights, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
-    exposureBuf_ = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
+    exposureBuf_ = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::CopySrc);
     float zero[4] = {0, 0, 0, 0};
     queue_.WriteBuffer(exposureBuf_, 0, zero, 16);
     ensureStorage(materialsBuf_, materialsCap_, sizeof(MaterialU), 16);
@@ -594,6 +595,8 @@ class GpuRenderer final : public Renderer {
     lastExposure_ = fixedExp;
 
     wgpu::CommandEncoder enc = device_.CreateCommandEncoder();
+    // the eyes' exposure from last frame into the frame's constants (on the GPU)
+    enc.CopyBufferToBuffer(exposureBuf_, 0, frameUbo_, offsetof(FrameU, exposure), 16);
     bool raster = quality_ != Quality::kUltra;
     bool ultra = !raster && rayTris_ && accumBuf_ && ultraGroup_;
     if (ultra) {
@@ -1144,7 +1147,7 @@ class GpuRenderer final : public Renderer {
   }
 
   bool clustersReady() const {
-    return config().render.clusters && storagePerStage_ >= 9 && quality_ != Quality::kUltra && poolClusters_ && visView_ && pooledMeshes_ == meshes_.size() && pooledMeshes_ > 0;
+    return config().render.clusters && quality_ != Quality::kUltra && poolClusters_ && visView_ && pooledMeshes_ == meshes_.size() && pooledMeshes_ > 0;
   }
   // The GPU's cull starts from the copies the CPU found in view (opaque ones:
   // glass is still drawn the old way), with room for every cluster they have.
@@ -1322,7 +1325,7 @@ class GpuRenderer final : public Renderer {
     const auto VF = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     const auto F = wgpu::ShaderStage::Fragment;
     const auto VFC = VF | wgpu::ShaderStage::Compute;
-    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VF), ssbo(4, F | wgpu::ShaderStage::Compute), ssbo(5, wgpu::ShaderStage::Vertex)});
+    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VF), ssbo(5, wgpu::ShaderStage::Vertex)});
     rayLayout_ = layout({ssbo(0, F | wgpu::ShaderStage::Compute), ssbo(1, F | wgpu::ShaderStage::Compute), ssbo(2, F | wgpu::ShaderStage::Compute),
                          ssbo(3, F | wgpu::ShaderStage::Compute)});
     {
@@ -1415,9 +1418,9 @@ class GpuRenderer final : public Renderer {
     }
     skyPipe_ = scenePipe("fsSky", false, false, true);
     // ---- the cluster drawing (render.clusters): the GPU's cull, one draw into
-    // the visibility picture, and lighting each pixel once from it (a GPU that
-    // can't give its lighting 9 storage buffers keeps the triangle drawing)
-    if (storagePerStage_ >= 9) {
+    // the visibility picture, and lighting each pixel once from it (at most 8
+    // storage buffers a stage: what every WebGPU device allows, an iPhone too)
+    {
       const auto C = wgpu::ShaderStage::Compute;
       clusterDrawLayout_ = layout({ssbo(0, VF), ssbo(1, wgpu::ShaderStage::Vertex)});
       wgpu::BindGroupLayoutEntry vt = tex(2, F);
@@ -1878,7 +1881,7 @@ class GpuRenderer final : public Renderer {
       cullGroup_ = group(cullLayout_, {bufE(0, cullUbo_), bufE(1, instancesBuf_), bufE(2, cullList_), bufE(3, poolMeshes_), bufE(4, poolVerts_), bufE(5, drawn_), bufE(6, args_),
                                        bufE(7, stretch_), bufE(8, counts_)});
     }
-    sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(4, exposureBuf_), bufE(5, visibleBuf_)});
+    sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
     if (!modelView_) uploadModelTextures(Scene());
     sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_)});
     // each pass reads one texture and writes another; the unused second slot
@@ -1952,7 +1955,6 @@ class GpuRenderer final : public Renderer {
   wgpu::Buffer cullUbo_, cullList_, drawn_, args_, stretch_, counts_;
   size_t cullListCap_ = 0, drawnCap_ = 0, stretchCap_ = 0, countsCap_ = 0;
   uint32_t cullCount_ = 0;
-  uint32_t storagePerStage_ = 8;  // the device's; the cluster drawing needs 9
   // frame blending (render.taa, with clusters): two pictures of the past, swapped each frame
   wgpu::Texture histTex_[2];
   wgpu::TextureView histView_[2];
@@ -2224,8 +2226,6 @@ void Renderer::create(const char* canvas, std::function<void(std::unique_ptr<Ren
       want.maxStorageBufferBindingSize = std::min<uint64_t>(have.maxStorageBufferBindingSize, 1ull << 30);
       want.maxBufferSize = std::min<uint64_t>(have.maxBufferSize, 1ull << 30);
       want.maxTextureArrayLayers = have.maxTextureArrayLayers;  // room for every model picture
-      // the cluster drawing's lighting reads 9 storage buffers (the defaults promise 8)
-      want.maxStorageBuffersPerShaderStage = std::min<uint32_t>(have.maxStorageBuffersPerShaderStage, 10);
       dd.requiredLimits = &want;
     }
     dd.SetUncapturedErrorCallback([](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView m) { reportGpuError(str(m)); });

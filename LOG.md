@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Here's the problems I found" (your iPhone: a black screen, "storageBufferCount(9) >
+  maxStorageBuffers(8)"): the new lighting pass read 9 data buffers and the iPhone allows 8 (Safari reported
+  more than it honours). The eyes' exposure now rides in the frame's constants (copied on the GPU each frame),
+  so every scene pass reads at most 8; the renderer no longer asks for more than the defaults, so the test
+  browser has the iPhone's limit and the picture tests would catch it. Pictures 12 of 12, editor 38 of 38.
+
 - **2026-11-06** · The rebuild, **step 4 continued**: **frame blending** (`render.taa`): the view shifts a fraction
   of a pixel each frame and every pixel is blended with its past (measured without the shifts, so a still view
   stays sharp; kept within its neighbours, so nothing smears), smoothing edges in multisampling's place; the

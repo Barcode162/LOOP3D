@@ -19,6 +19,7 @@ struct Frame {
   params : vec4f,        // light count, lamps with shadow rays, shadow map size, auto exposure
   screen : vec4f,        // width, height, 1/width, 1/height
   fixedExposure : vec4f, // x: exposure when not auto, y: rays per lamp, z: debug view, w: occlusion strength
+  exposure : vec4f,      // the eyes' last exposure (copied in on the GPU each frame: one storage buffer fewer)
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -45,7 +46,6 @@ struct Instance {
 @group(0) @binding(1) var<storage, read> lights : array<Light>;
 @group(0) @binding(2) var<storage, read> materials : array<Material>;
 @group(0) @binding(3) var<storage, read> instances : array<Instance>;
-@group(0) @binding(4) var<storage, read> exposureState : array<f32>;
 // the copies a pass draws this frame (the ones its view can see), as indices
 // into `instances`: a draw's instance_index runs through its stretch of it
 @group(0) @binding(5) var<storage, read> visibleIds : array<u32>;
@@ -53,7 +53,7 @@ struct Instance {
 // Light is stored already exposed (like a camera's sensor), so even the sun's
 // disk fits the half-float picture: last frame's exposure, or a first guess.
 fn preExposure() -> f32 {
-  let e = exposureState[0];
+  let e = frame.exposure.x;
   if (frame.params.w > 0.5 && e > 0.0) { return e; }
   return frame.fixedExposure.x;
 }
