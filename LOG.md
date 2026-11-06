@@ -2,6 +2,14 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · The rebuild, **step 4 (drawing rebuilt), first half**: drawing in clusters, Nanite's way,
+  behind `render.clusters` (`?clusters=1`; off until step 4 is done): the cook's trees in one pool on the GPU,
+  a GPU cull that picks each cluster's level (`render.clusterError`, pixels) in a fixed order (no flicker), one
+  draw for everything into a visibility picture, each pixel lit once from its exactly rebuilt triangle. Against
+  the old drawing 11 of 12 pictures within 1.4/255 (the bar 4.2: a light strip flush with a beam shows). On
+  this machine's software GPU: the bar 5.1 → 1.4 s a frame, the Glade 4.6 → 1.7, the Woods 4.6 → 2.7. Next:
+  frame blending (edges), shadows through clusters, then on by default (c20ce35).
+
 - **2026-11-06** · The rebuild, **step 3 (the library and the cook)**: **the library** (`library/`, every
   project's): each entry a text recipe with its card (what, how to place it, credit, licence, from where);
   `use "lantern"` finds it; the first five come out of the projects (the isle's lantern and sailing boat, the

@@ -58,8 +58,10 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
    `use`, placed from the editor, the rule that every goal adds to it; the cook makes each mesh's cluster tree
    once (Nanite's idea, crack-free, tested). Still to come with step 4: leaf cards dropped and enlarged far
    away, collapses along seams (hard-edged models), the cooked trees kept between visits.
-4. **Drawing rebuilt (Nanite for WebGPU):** the graphics chip culls and picks the detail of every piece
-   itself, one draw a pass, each pixel shaded once; frame blending replaces 4x multisampling.
+4. **Drawing rebuilt (Nanite for WebGPU)** (half done 2026-11-06, behind `render.clusters`): the graphics chip
+   culls and picks the detail of every piece itself, one draw, each pixel shaded once (done: the bar 3.7x
+   faster on the test machine); next: frame blending replaces 4x multisampling, the sun's shadow through
+   clusters, then on by default with the old way removed (depth pre-pass, hand-made tree versions).
 5. **Smart light:** lamps only where they reach (the bar: 103 a pixel to about 10), kept shadows in steps for
    the sun and for the main lamps on Phone too, bounce light baked by our own path tracer, soft contact
    shadows, upscaling.
