@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Okay yes publish so I can test": the green Check's site (447b6ce) put on `gh-pages` as one
+  commit (5e13602); the live editor checked in a browser on a phone and a computer screen (34 of 34). The
+  template room is public now too.
 - **2026-11-06** · "I don't like that theme … black and grey … black and white with sort of glow and round,
   diagonal and sharp edges": the editor and the player restyled: black, greys and white light; round for what a
   thumb presses, diagonal cuts for tools, panels and shots, sharp for the frame, fields and grids; what's on or
