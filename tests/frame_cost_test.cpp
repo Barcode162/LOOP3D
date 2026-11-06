@@ -81,3 +81,14 @@ TEST(frame_cost_budget_names_what_is_over) {
   CHECK(over.size() == 2);
   CHECK(budgetFor("high").triangles > b.triangles);
 }
+
+TEST(frame_cost_depth_prepass_lights_each_pixel_once) {
+  CHECK(!prepassOn(2, 5) && prepassOn(2, 6) && prepassOn(1, 0) && !prepassOn(0, 50));
+  Scene s = twoBoxes();
+  FrameView v = viewOf(s);
+  v.prepass = true;
+  FrameCost c = measureFrame(s, v);
+  CHECK_NEAR(c.shadedPerPixel, 1, 1e-3);      // lit once, however many surfaces stack up
+  CHECK(c.prepassTriangles == c.sceneTriangles);  // but the opaque ones are drawn twice
+  CHECK(c.triangles() == 48 && c.draws() == 2);
+}

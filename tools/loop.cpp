@@ -306,6 +306,11 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.width = o.sizeGiven ? o.w : m.budget.width, v.height = o.sizeGiven ? o.h : m.budget.height;
   v.drawDistance = C.world.drawDistance, v.maxLights = C.render.maxLights;
   v.cullOffscreen = C.render.cull;
+  {
+    int lamps = 0;
+    for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;
+    v.prepass = prepassOn(C.render.prepass, std::min(lamps, std::max(C.render.maxLights, 1)));
+  }
   v.shadowRadius = C.render.shadowDistance > 0 ? C.render.shadowDistance : m.budget.quality == "high" ? 40.0f : 25.0f;
   m.cost = measureFrame(stage.scene, v);
   m.title = stage.title;

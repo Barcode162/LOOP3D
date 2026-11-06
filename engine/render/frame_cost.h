@@ -14,6 +14,12 @@
 
 namespace loop {
 
+// The depth pre-pass (render.prepass: 0 off, 1 on, 2 automatic): it pays when
+// lighting each pixel is heavy (many lamps), and costs an extra pass over the
+// triangles, so automatic turns it on from 6 lamps. The renderer and
+// `loop budget` both ask this.
+inline bool prepassOn(int mode, int lamps) { return mode == 1 || (mode == 2 && lamps >= 6); }
+
 // The view a frame is drawn from, set up as the live renderer sets it up.
 struct FrameView {
   Camera camera;
@@ -23,6 +29,7 @@ struct FrameView {
   int maxLights = 256;             // render.maxLights
   bool cullOffscreen = false;      // things outside a pass's view are skipped
   bool cullBackFaces = false;      // the backs of closed shapes are skipped
+  bool prepass = false;            // depth first: each pixel is lit once
 };
 
 struct FrameCost {
@@ -31,6 +38,8 @@ struct FrameCost {
   size_t sceneThings = 0, shadowThings = 0;   // copies each pass draws
   uint64_t sceneTriangles = 0, shadowTriangles = 0;
   size_t sceneDraws = 0, shadowDraws = 0;     // draw calls (one per shape and kind of surface)
+  uint64_t prepassTriangles = 0;              // the depth pre-pass draws the opaque ones again
+  size_t prepassDraws = 0;
   bool sun = false;                           // a sun, so a shadow pass
   // what skipping off-screen copies would leave
   size_t inViewThings = 0, inShadowThings = 0;
@@ -48,8 +57,8 @@ struct FrameCost {
   int lampsThatMatterMost = 0;   // and at the worst point
   float lampsFor99 = 0;          // lamps giving 99% of it (average)
   float patternShare = 0;        // share of covered pixels with a computed pattern (wood, stone...)
-  uint64_t triangles() const { return sceneTriangles + shadowTriangles; }
-  size_t draws() const { return sceneDraws + shadowDraws; }
+  uint64_t triangles() const { return sceneTriangles + shadowTriangles + prepassTriangles; }
+  size_t draws() const { return sceneDraws + shadowDraws + prepassDraws; }
   // per-pixel work today: fragments shaded x lamps each works out
   float lampWorkPerPixel() const { return shadedPerPixel * static_cast<float>(lampsComputed); }
 };

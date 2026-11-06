@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "engine/gpu/shaders.h"
+#include "engine/render/frame_cost.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
 
@@ -622,10 +623,12 @@ class GpuRenderer final : public Renderer {
       pass.SetBindGroup(2, rayGroup_);
       if (!(skip & 2)) {
         int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
-        // the depth pre-pass (?prepass=1, off by default): hidden surfaces cost
+        // the depth pre-pass (render.prepass; automatic: when many lamps light
+        // each pixel, see prepassOn): every pixel is lit once, not once per
+        // surface drawn over it. Old note, before @invariant positions:
         // no shadow rays, but it needs both passes to land on exactly the same
         // depth, which Apple GPUs don't promise, and it measured no faster
-        if (rays && C.render.prepass) {
+        if (prepassOn(C.render.prepass, static_cast<int>(lightCount()))) {
           pass.SetPipeline(depthPipe_);
           drawBatches(pass, false, false);
           pass.SetPipeline(opaqueAfterDepthPipe_[rays]);

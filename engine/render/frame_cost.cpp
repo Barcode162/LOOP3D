@@ -105,6 +105,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
     if (!view.cullOffscreen || inView) {
       ++c.sceneThings, c.sceneTriangles += tris;
       sceneBatches.insert({in.mesh, glass});
+      if (view.prepass && !glass) c.prepassTriangles += tris;
     }
     if (c.sun && !glass && (!view.cullOffscreen || inShadow)) {
       ++c.shadowThings, c.shadowTriangles += tris;
@@ -112,6 +113,8 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
     }
   }
   c.sceneDraws = sceneBatches.size(), c.shadowDraws = shadowBatches.size();
+  if (view.prepass)
+    for (const auto& b : sceneBatches) c.prepassDraws += !b.second;
   c.inViewDraws = viewBatches.size(), c.inShadowDraws = shadowViewBatches.size();
 
   // ---- per pixel: rays through a grid of the frame's pixels
@@ -144,7 +147,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       if (!k) continue;
       ++covered;
       layers += k, fronts += front;
-      shaded += shadedOf(view.cullBackFaces ? std::max(front, 1) : k);
+      shaded += view.prepass ? 1.0f : shadedOf(view.cullBackFaces ? std::max(front, 1) : k);
       shadedFronts += shadedOf(std::max(front, 1));
       TriInfo tri = bvh.triangle(first.inst, first.prim);
       const int mat = bvh.materialOf(first.inst);

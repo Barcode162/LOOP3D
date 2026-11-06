@@ -2,6 +2,8 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · Plan step 4, second part: the depth pre-pass is safe (`@invariant`, holes cut in both passes)
+  and automatic from 6 lamps: each pixel lit once (the bar 213 → 103 lamp work); 10 of 41 scenes over budget.
 - **2026-11-06** · Plan step 4, first part: each pass draws only what its view can see (`render.cull`, on;
   `?cull=0` to compare); the same picture (0.00% of pixels differ, held at the same moment with the picture
   tool's new `AT="filmtime:10,pause:1"`), The Woods 28% less work on the test GPU; 17 of 41 scenes over the

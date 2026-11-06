@@ -111,7 +111,7 @@ window.LE = window.LE || {};
         tog('render.passFilm', 'Film (tone curve, grading, grain)', true, E()),
         tog('render.passShadow', 'Shadow pass', true, E()),
         tog('render.passDraw', 'Scene pass', true, E()),
-        tog('render.prepass', 'Depth pre-pass', false, E({ help: 'Shade each pixel once. Measured no gain yet; needs @invariant positions before it\'s safe on Apple GPUs.' })),
+        en('render.prepass', 'Depth pre-pass', 2, opts([0, 'Off'], [1, 'On'], [2, 'Automatic']), E({ help: 'Depth first, then light each pixel once instead of once per surface drawn over it. Automatic: on when 6 or more lamps light the scene (it pays where lighting is heavy, not in forests of triangles).' })),
       ] },
       { title: 'Debug', items: [
         en('render.view', 'Debug view', 0, opts([0, 'Final picture'], [1, 'Raw light'], [2, 'Exposure'], [3, 'Bloom'], [4, 'Ray work (blue little, red 200+ steps)']), E()),

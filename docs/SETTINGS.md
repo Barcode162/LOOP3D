@@ -125,7 +125,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Film (tone curve, grading, grain) | `render.passFilm` | true |  | live · script | `setting "render.passFilm", true` | debug: the film pass (tone curve, grading, grain) |
 | Shadow pass | `render.passShadow` | true |  | live · script | `setting "render.passShadow", true` | debug: the shadow pass |
 | Scene pass | `render.passDraw` | true |  | live · script | `setting "render.passDraw", true` | debug: the scene pass |
-| Depth pre-pass | `render.prepass` | false |  | live · script | `setting "render.prepass", false` | Shade each pixel once. Measured no gain yet; needs @invariant positions before it's safe on Apple GPUs. |
+| Depth pre-pass | `render.prepass` | 2 | 0 / 1 / 2 | live · script | `setting "render.prepass", 2` | Depth first, then light each pixel once instead of once per surface drawn over it. Automatic: on when 6 or more lamps light the scene (it pays where lighting is heavy, not in forests of triangles). |
 
 ### Debug
 

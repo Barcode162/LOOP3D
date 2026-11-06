@@ -218,7 +218,9 @@ struct VsIn {
   @location(2) uv : vec2f,
 };
 struct VsOut {
-  @builtin(position) clip : vec4f,
+  // invariant: the depth pre-pass and the lit pass must land on exactly the
+  // same depth (their test is "equal"), on every GPU
+  @builtin(position) @invariant clip : vec4f,
   @location(0) world : vec3f,
   @location(1) nrm : vec3f,
   @location(2) uv : vec2f,
@@ -533,6 +535,11 @@ struct ShadowOut {
     let y = 1.0 - i.uv.y;
     let x = (i.uv.x - 0.5) * 2.0;
     if (abs(x) > sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95) { discard; }
+  }
+  // a model picture with holes: the same holes as the lit pass cuts (shade)
+  if (m.tex.x >= 0.0 && m.tex2.x > 0.0) {
+    let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.x));
+    if (c.a < m.tex2.x) { discard; }
   }
 }
 @fragment fn fsShadow(i : ShadowOut) {

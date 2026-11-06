@@ -39,7 +39,7 @@ struct Config {
     int textureSize = 256;  // model pictures on the GPU, each this many pixels square
     float skyLight = 1, occlusion = 1;
     bool passScene = true, passExposure = true, passBloom = true, passFilm = true, passShadow = true, passDraw = true;
-    bool prepass = false;
+    int prepass = 2;  // depth pre-pass: 0 off, 1 on, 2 automatic (many lamps)
     int view = 0;
   } render;
   struct Ultra {

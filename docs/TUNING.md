@@ -30,7 +30,7 @@ The player has three live levels, picked from the menu or with `?quality=0|1|2`.
 | Sun shadow area | 25 m | 40 m | (traced) | how far around the camera sun shadows reach | wider area = blurrier shadow at the same map size | shadow map size |
 | Sun shadow softness | 12 taps | 12 taps | (traced) | soft, filtered edges | 12 texture reads per pixel | — |
 | Lamp shadows (ray-traced) | none | 2 lamps, 1 ray each | every lamp | real shadows from lamps, the brightest near the camera first; panels (windows, softboxes) never cast them live | **the most expensive live setting**: one ray per lamp per pixel costs about as much as all the other lighting (measured); 4 rays for soft edges cost 4 times that | `?lamps=N&rays=N`, resolution |
-| Depth pre-pass | off | off (`?prepass=1`) | — | depth first, then light only the nearest surface | one extra geometry pass | measured no faster; needs both passes to give exactly the same depth, which Apple GPUs don't promise |
+| Depth pre-pass | automatic | automatic | — | depth first, then light only the nearest surface | one extra geometry pass | automatic (`render.prepass` 2) turns it on from 6 lamps, where lighting each pixel is the heavy part (the bar: lamp work per pixel 213 → 103, `loop budget`); `@invariant` positions make both passes land on the same depth on every GPU; `?prepass=0` / `?prepass=1` to compare |
 | Lamps lit per pixel | up to 256 | up to 256 | 1 random lamp per bounce | every lamp lights every pixel it reaches | small per lamp, but adds up past ~30 | clustered lights (planned) |
 | Bounces | 1 (plus sky) | 1 (plus sky) | 5 | light bouncing off walls (Ultra is a path tracer) | Ultra: a full ray path per pixel per frame | denoiser, resolution |
 | Denoiser | — | — | 4 passes (à-trous) | turns Ultra's noise into a clean picture | 4 blur passes | history length |
@@ -127,7 +127,8 @@ The results also record the build, the GPU's name, the browser, the screen and t
 | `?quality=0\|1\|2` | Phone, High, Ultra |
 | `?msaa=1\|4` | anti-aliasing off or 4× |
 | `?skip=N` | skip passes (add up): 1 sun shadow, 2 scene, 4 exposure, 8 bloom, 16 film, 32 shadow pass, 64 scene pass, 128 depth, 256 draw off-screen, 512 no lamp shadows |
-| `?prepass=1` | the depth pre-pass on High |
+| `?prepass=0\|1\|2` | the depth pre-pass off, on, automatic (6 or more lamps) |
+| `?cull=0` | draw everything every frame (skipping what a pass can't see is on) |
 | `?res=0.2…1` | hold the resolution (no automatic changes), to compare costs fairly |
 | `?lamps=N&rays=N` | lamp shadows: how many lamps cast them, rays per big lamp (soft edges need 4) |
 | `?view=1\|2\|3\|4` | debug views: raw light, exposure, bloom, ray work (blue little, red 200+ steps per pixel) |
@@ -181,7 +182,8 @@ Ranked by how much they help smoothness. **Done** means it's in the engine now.
 | Ray trees built only when used (High's lamp shadows, Ultra) | **Done** | Phone loads scenes faster and does no ray work per frame |
 | Tree walk: test both children first, nearer first, read only needed fields, stacks made once | **Done** | same shadows, less work; helps Ultra most |
 | **Clustered lights** (a compute pass sorts lamps into screen tiles; each pixel loops only its tile's lamps) | Next | scenes with 30+ lamps (markets, the Undercity) cost little more than scenes with 3 |
-| Depth pre-pass (shade each pixel once, not once per overlapping thing) | Built, off (`?prepass=1`) | measured no gain yet; needs `@invariant` positions before it's safe on Apple GPUs |
+| Depth pre-pass (shade each pixel once, not once per overlapping thing) | Done, automatic (2026-11-06) | `@invariant` positions; on from 6 lamps; the software GPU can't show the gain (no early depth test): judged on the phone |
+| Skipping what a pass can't see (frustum culling, scene and sun shadow) | Done (2026-11-06) | `render.cull`; the same picture, The Woods 28% less work on the software GPU |
 | MSAA samples discarded after the resolve | **Done** | the 4 samples per pixel were being written to memory every frame (costly on phones) |
 | Cached sun shadows (redraw only what moved) | Later | the shadow pass nearly disappears in still scenes |
 
