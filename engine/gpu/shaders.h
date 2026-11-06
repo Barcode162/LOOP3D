@@ -692,6 +692,24 @@ struct VisOut {
   return i.id;
 }
 
+// The sun's shadow from clusters: the same one draw, in the sun's view, depth
+// only (leaves still cut to their outline by fsShadow).
+@vertex fn vsVisShadow(@builtin(vertex_index) vi : u32, @builtin(instance_index) k : u32) -> ShadowOut {
+  var o : ShadowOut;
+  let d = drawn[k];
+  let cl = poolCluster(d.y);
+  if (vi / 3u >= cl.count) {
+    o.clip = vec4f(2.0, 2.0, 2.0, 1.0);
+    return o;
+  }
+  let pv = poolVertex(poolCorner(cl.first + vi));
+  let inst = instances[d.x];
+  o.clip = frame.shadowViewProj * inst.model * vec4f(pv.pos, 1.0);
+  o.uv = pv.uv;
+  o.mat = inst.material.x;
+  return o;
+}
+
 // ---- lighting each pixel once: its triangle, rebuilt exactly
 @group(3) @binding(2) var visTex : texture_2d<u32>;
 struct ResolveOut { @builtin(position) clip : vec4f };

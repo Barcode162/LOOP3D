@@ -631,7 +631,11 @@ class GpuRenderer final : public Renderer {
     if (raster) {
       buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1), cam.position,
                      static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f)));
-      if (clustersReady()) prepareClusterCull(f.viewProj, cam.position, static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f)));
+      if (clustersReady()) {
+        float perPixel = static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f));
+        prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel);
+        if (sunOn_ && !(skip & 1)) prepareList(sunList_, shadowDraws_, f.shadowViewProj, cam.position, perPixel);
+      }
       if (bindGroupsDirty_) makeBindGroups();
     }
     // ---- 1. sun shadow
@@ -649,8 +653,18 @@ class GpuRenderer final : public Renderer {
       rp.colorAttachmentCount = 1;
       rp.colorAttachments = &dc;
       rp.depthStencilAttachment = &da;
+      const bool clusterShadow = sunOn_ && !(skip & 1) && clustersReady() && sunList_.cullGroup;
+      if (clusterShadow) runCull(enc, sunList_);
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
-      if (sunOn_ && !(skip & 1)) {
+      if (clusterShadow) {
+        pass.SetPipeline(shadowVisPipe_);
+        pass.SetBindGroup(0, sceneGroup0_);
+        pass.SetBindGroup(1, emptyGroup_);
+        pass.SetBindGroup(2, emptyGroup_);
+        pass.SetBindGroup(3, sunList_.drawGroup);
+        pass.DrawIndirect(sunList_.args, 0);
+        ++drawCalls_;
+      } else if (sunOn_ && !(skip & 1)) {
         pass.SetPipeline(shadowPipe_);
         pass.SetBindGroup(0, sceneGroup0_);
         drawBatches(pass, false, true);
@@ -682,21 +696,8 @@ class GpuRenderer final : public Renderer {
     // ---- 2. the scene, in light (HDR). With clusters: the GPU culls and picks
     // each cluster's level, one draw writes which triangle each pixel sees,
     // then every pixel is lit once; the sky and glass follow as before.
-    if (raster && !(skip & 64) && clustersReady() && cullGroup_) {
-      {
-        // choose (each copy its own list, in order), count up where each list
-        // starts, pack: the same order every frame
-        wgpu::ComputePassEncoder cp = enc.BeginComputePass();
-        cp.SetBindGroup(0, cullGroup_);
-        uint32_t n = std::max(cullCount_, 1u), x = std::min(n, 65535u);
-        cp.SetPipeline(cullPipe_);
-        cp.DispatchWorkgroups(x, (n + x - 1) / x);
-        cp.SetPipeline(countPipe_);
-        cp.DispatchWorkgroups(1);
-        cp.SetPipeline(packPipe_);
-        cp.DispatchWorkgroups(x, (n + x - 1) / x);
-        cp.End();
-      }
+    if (raster && !(skip & 64) && clustersReady() && eyeList_.cullGroup) {
+      runCull(enc, eyeList_);
       int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
       {
         wgpu::RenderPassColorAttachment ca;
@@ -718,9 +719,9 @@ class GpuRenderer final : public Renderer {
         pass.SetBindGroup(0, sceneGroup0_);
         pass.SetBindGroup(1, sceneGroup1_);
         pass.SetBindGroup(2, rayGroup_);
-        pass.SetBindGroup(3, clusterDrawGroup_);
+        pass.SetBindGroup(3, eyeList_.drawGroup);
         pass.SetPipeline(visPipe_);
-        pass.DrawIndirect(args_, 0);
+        pass.DrawIndirect(eyeList_.args, 0);
         ++drawCalls_;
         pass.End();
       }
@@ -904,7 +905,7 @@ class GpuRenderer final : public Renderer {
     size_t n = 0;
     for (const GpuMesh& m : meshes_) n += buf(m.vb) + buf(m.ib);
     for (const wgpu::Buffer* b : {&frameUbo_, &postUbo_, &expUbo_, &lightsBuf_, &materialsBuf_, &instancesBuf_, &exposureBuf_, &visibleBuf_, &ultraUbo_, &accumBuf_,
-                                  &denoiseA_, &denoiseB_, &rayTris_, &rayBlas_, &rayInst_, &rayTlas_, &poolVerts_, &poolMeshes_, &drawn_, &stretch_, &cullList_, &counts_})
+                                  &denoiseA_, &denoiseB_, &rayTris_, &rayBlas_, &rayInst_, &rayTlas_, &poolVerts_, &poolMeshes_, &eyeList_.drawn, &eyeList_.stretch, &eyeList_.cullList, &eyeList_.counts})
       n += buf(*b);
     for (const wgpu::Buffer& b : passUbo_) n += buf(b);
     for (const wgpu::Buffer& b : denoiseUbo_) n += buf(b);
@@ -1080,6 +1081,15 @@ class GpuRenderer final : public Renderer {
   // engine/geometry/cluster.h) in four pools the GPU culls and draws from in
   // one go: the vertices, the clusters' triangles (as vertex numbers in the
   // pool), the clusters, and per mesh where its clusters are.
+  // One view's clusters: the copies to look at, the chosen clusters, the draw.
+  // The eye has one, the sun's shadow another.
+  struct ClusterList {
+    wgpu::Buffer ubo, cullList, drawn, args, stretch, counts;
+    size_t cullListCap = 0, drawnCap = 0, stretchCap = 0, countsCap = 0;
+    uint32_t count = 0;
+    std::vector<uint32_t> cpu;  // per copy its instance and where its stretch starts
+    wgpu::BindGroup cullGroup, drawGroup;
+  };
   struct ClusterU {
     Vec4 bounds, lod, parent;            // spheres (centre, radius) in the mesh's space
     float error, parentError;            // the parent's is a huge number when nothing replaces it
@@ -1149,28 +1159,33 @@ class GpuRenderer final : public Renderer {
   bool clustersReady() const {
     return config().render.clusters && quality_ != Quality::kUltra && poolClusters_ && visView_ && pooledMeshes_ == meshes_.size() && pooledMeshes_ > 0;
   }
-  // The GPU's cull starts from the copies the CPU found in view (opaque ones:
-  // glass is still drawn the old way), with room for every cluster they have.
-  void prepareClusterCull(const Mat4& viewProj, Vec3 eye, float perPixel) {
-    cullCpu_.clear();
+  // The GPU's cull starts from the copies the CPU found in a view (opaque
+  // ones: glass is still drawn the old way), with room for every cluster they
+  // have. Detail is chosen from where the eye is, whatever the view (the sun's
+  // shadow keeps the detail you see).
+  void prepareList(ClusterList& L, const std::vector<Batch>& draws, const Mat4& viewProj, Vec3 eye, float perPixel) {
+    L.cpu.clear();
     size_t room = 0;
-    for (const Batch& b : sceneDraws_) {
+    for (const Batch& b : draws) {
       if (b.glass) continue;
       for (uint32_t i = b.first; i < b.first + b.count; ++i) {
         uint32_t slot = visible_[i];
         uint32_t mesh = slot < instData_.size() ? instData_[slot].material[1] : 0;
-        cullCpu_.push_back(slot);
-        cullCpu_.push_back(static_cast<uint32_t>(room));  // its stretch: room for every cluster it has
+        L.cpu.push_back(slot);
+        L.cpu.push_back(static_cast<uint32_t>(room));  // its stretch: room for every cluster it has
         room += mesh < meshClusterCount_.size() ? meshClusterCount_[mesh] : 0;
       }
     }
-    cullCount_ = static_cast<uint32_t>(cullCpu_.size() / 2);
-    if (cullCpu_.empty()) cullCpu_ = {0, 0};
-    if (ensureStorage(cullList_, cullListCap_, 8, cullCpu_.size() / 2)) bindGroupsDirty_ = true;
-    if (ensureStorage(drawn_, drawnCap_, 8, std::max<size_t>(room, 1))) bindGroupsDirty_ = true;
-    if (ensureStorage(stretch_, stretchCap_, 8, std::max<size_t>(room, 1))) bindGroupsDirty_ = true;
-    if (ensureStorage(counts_, countsCap_, 8, std::max<size_t>(cullCount_, 1))) bindGroupsDirty_ = true;
-    queue_.WriteBuffer(cullList_, 0, cullCpu_.data(), cullCpu_.size() * sizeof(uint32_t));
+    L.count = static_cast<uint32_t>(L.cpu.size() / 2);
+    if (L.cpu.empty()) L.cpu = {0, 0};
+    if (!L.ubo) L.ubo = buffer(128, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+    if (!L.args) L.args = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::Indirect | wgpu::BufferUsage::CopyDst);
+    if (ensureStorage(L.cullList, L.cullListCap, 8, L.cpu.size() / 2)) bindGroupsDirty_ = true;
+    if (ensureStorage(L.drawn, L.drawnCap, 8, std::max<size_t>(room, 1))) bindGroupsDirty_ = true;
+    if (ensureStorage(L.stretch, L.stretchCap, 8, std::max<size_t>(room, 1))) bindGroupsDirty_ = true;
+    if (ensureStorage(L.counts, L.countsCap, 8, std::max<size_t>(L.count, 1))) bindGroupsDirty_ = true;
+    if (!L.cullGroup) bindGroupsDirty_ = true;
+    queue_.WriteBuffer(L.cullList, 0, L.cpu.data(), L.cpu.size() * sizeof(uint32_t));
     struct {
       Vec4 planes[6];
       Vec4 eye, params;
@@ -1178,8 +1193,22 @@ class GpuRenderer final : public Renderer {
     Frustum fr = Frustum::fromViewProj(viewProj);
     for (int i = 0; i < 6; ++i) u.planes[i] = Vec4(fr.p[i].n, fr.p[i].d);
     u.eye = Vec4(eye, perPixel);
-    u.params = Vec4(config().render.clusterError, static_cast<float>(cullCount_), static_cast<float>(room), 0.0f);  // render.clusterError: pixels
-    queue_.WriteBuffer(cullUbo_, 0, &u, sizeof u);
+    u.params = Vec4(config().render.clusterError, static_cast<float>(L.count), static_cast<float>(room), 0.0f);  // render.clusterError: pixels
+    queue_.WriteBuffer(L.ubo, 0, &u, sizeof u);
+  }
+  // choose (each copy its own list, in order), count up where each list
+  // starts, pack: the same order every frame
+  void runCull(wgpu::CommandEncoder& enc, const ClusterList& L) {
+    wgpu::ComputePassEncoder cp = enc.BeginComputePass();
+    cp.SetBindGroup(0, L.cullGroup);
+    uint32_t n = std::max(L.count, 1u), x = std::min(n, 65535u);
+    cp.SetPipeline(cullPipe_);
+    cp.DispatchWorkgroups(x, (n + x - 1) / x);
+    cp.SetPipeline(countPipe_);
+    cp.DispatchWorkgroups(1);
+    cp.SetPipeline(packPipe_);
+    cp.DispatchWorkgroups(x, (n + x - 1) / x);
+    cp.End();
   }
 
   GpuMesh upload(const Mesh& m) {
@@ -1448,6 +1477,34 @@ class GpuRenderer final : public Renderer {
         d.depthStencil = &ds;
         visPipe_ = device_.CreateRenderPipeline(&d);
       }
+      {
+        // the sun's shadow from clusters (groups 1 and 2 empty: the shadow map
+        // it draws into is in group 1 of the scene's)
+        emptyLayout_ = layout({});
+        emptyGroup_ = group(emptyLayout_, {});
+        wgpu::RenderPipelineDescriptor d;
+        d.layout = pipeLayout({scene0Layout_, emptyLayout_, emptyLayout_, clusterDrawLayout_});
+        d.vertex.module = sm;
+        d.vertex.entryPoint = "vsVisShadow";
+        static wgpu::ColorTargetState dummy;
+        dummy.format = wgpu::TextureFormat::R8Unorm;
+        dummy.writeMask = wgpu::ColorWriteMask::None;
+        wgpu::FragmentState fst;
+        fst.module = sm;
+        fst.entryPoint = "fsShadow";
+        fst.targetCount = 1;
+        fst.targets = &dummy;
+        d.fragment = &fst;
+        d.primitive.cullMode = wgpu::CullMode::None;
+        wgpu::DepthStencilState ds;
+        ds.format = wgpu::TextureFormat::Depth24Plus;
+        ds.depthWriteEnabled = true;
+        ds.depthCompare = wgpu::CompareFunction::Less;
+        ds.depthBias = 2;
+        ds.depthBiasSlopeScale = 2.0f;
+        d.depthStencil = &ds;
+        shadowVisPipe_ = device_.CreateRenderPipeline(&d);
+      }
       for (int r = 0; r < 2; ++r) {
         wgpu::RenderPipelineDescriptor d;
         d.layout = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, clusterResolveLayout_});
@@ -1483,7 +1540,6 @@ class GpuRenderer final : public Renderer {
       countPipe_ = device_.CreateComputePipeline(&cd);
       cd.compute.entryPoint = "pack";
       packPipe_ = device_.CreateComputePipeline(&cd);
-      if (!cullUbo_) cullUbo_ = buffer(128, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
       // frame blending
       taaLayout_ = layout({ubo(0, F), tex(1, F, false, true), tex(2, F), tex(3, F, true), samp(4, F)});
       {
@@ -1503,7 +1559,6 @@ class GpuRenderer final : public Renderer {
         taaPipe_ = device_.CreateRenderPipeline(&d);
       }
       if (!taaUbo_) taaUbo_ = buffer(sizeof(Mat4) * 3 + 32, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
-      if (!args_) args_ = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::Indirect | wgpu::BufferUsage::CopyDst);
     }
     {
       wgpu::RenderPipelineDescriptor d;
@@ -1872,14 +1927,17 @@ class GpuRenderer final : public Renderer {
 
   void makeBindGroups() {
     if (!hdrView_) return;
-    if (poolVerts_ && visView_ && drawn_ && cullList_ && stretch_ && counts_) {
-      clusterDrawGroup_ = group(clusterDrawLayout_, {bufE(0, poolVerts_), bufE(1, drawn_)});
+    for (ClusterList* L : {&eyeList_, &sunList_})
+      if (poolVerts_ && L->drawn && L->cullList && L->stretch && L->counts) {
+        L->drawGroup = group(clusterDrawLayout_, {bufE(0, poolVerts_), bufE(1, L->drawn)});
+        L->cullGroup = group(cullLayout_, {bufE(0, L->ubo), bufE(1, instancesBuf_), bufE(2, L->cullList), bufE(3, poolMeshes_), bufE(4, poolVerts_), bufE(5, L->drawn),
+                                           bufE(6, L->args), bufE(7, L->stretch), bufE(8, L->counts)});
+      }
+    if (poolVerts_ && visView_ && eyeList_.drawn) {
       clusterResolveGroup_ = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_)});
       if (histView_[0])
         for (int i = 0; i < 2; ++i)
           taaGroup_[i] = group(taaLayout_, {bufE(0, taaUbo_), texE(1, hdrView_), texE(2, histView_[i]), texE(3, depthView_), sampE(4, linear_)});
-      cullGroup_ = group(cullLayout_, {bufE(0, cullUbo_), bufE(1, instancesBuf_), bufE(2, cullList_), bufE(3, poolMeshes_), bufE(4, poolVerts_), bufE(5, drawn_), bufE(6, args_),
-                                       bufE(7, stretch_), bufE(8, counts_)});
     }
     sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
     if (!modelView_) uploadModelTextures(Scene());
@@ -1949,12 +2007,12 @@ class GpuRenderer final : public Renderer {
   wgpu::Texture visTex_;
   wgpu::TextureView visView_;
   wgpu::BindGroupLayout clusterDrawLayout_, clusterResolveLayout_, cullLayout_;
-  wgpu::RenderPipeline visPipe_, resolvePipe_[2];
+  wgpu::RenderPipeline visPipe_, resolvePipe_[2], shadowVisPipe_;
+  wgpu::BindGroupLayout emptyLayout_;  // groups a pipeline has room for but doesn't use
+  wgpu::BindGroup emptyGroup_;
   wgpu::ComputePipeline cullPipe_, countPipe_, packPipe_;
-  wgpu::BindGroup clusterDrawGroup_, clusterResolveGroup_, cullGroup_;
-  wgpu::Buffer cullUbo_, cullList_, drawn_, args_, stretch_, counts_;
-  size_t cullListCap_ = 0, drawnCap_ = 0, stretchCap_ = 0, countsCap_ = 0;
-  uint32_t cullCount_ = 0;
+  wgpu::BindGroup clusterResolveGroup_;
+  ClusterList eyeList_, sunList_;
   // frame blending (render.taa, with clusters): two pictures of the past, swapped each frame
   wgpu::Texture histTex_[2];
   wgpu::TextureView histView_[2];
@@ -1967,7 +2025,7 @@ class GpuRenderer final : public Renderer {
   Mat4 prevViewProj_;
   uint32_t jitterFrame_ = 0;
   bool blending() const { return clustersReady() && config().render.taa && histView_[0]; }
-  std::vector<uint32_t> cullCpu_, meshClusterCount_;  // cullCpu_: per copy its instance and where its stretch starts
+  std::vector<uint32_t> meshClusterCount_;
   bool bindGroupsDirty_ = true, skyBuilt_ = false;
 
   std::vector<GpuMesh> meshes_;
