@@ -13,10 +13,7 @@ namespace loop::script {
 
 namespace {
 
-Rng& rng() {
-  static Rng r(12345);
-  return r;
-}
+Rng& rng(Vm& vm) { return vm.random(); }
 
 Value num(double d) { return Value::number(d); }
 double arg(Args& a, int i, const char* name) { return a.needNum(i, name); }
@@ -167,17 +164,17 @@ void installStandardLibrary(Vm& vm) {
   }, "approach(current, target, speed, dt): eases toward a target, never overshooting");
 
   // ---- randomness and noise
-  vm.native("seed", [](Args& a) { rng() = Rng(static_cast<uint64_t>(arg(a, 0, "seed"))); return Value(); });
+  vm.native("seed", [](Args& a) { rng(a.vm) = Rng(static_cast<uint64_t>(arg(a, 0, "seed"))); return Value(); });
   vm.native("random", [](Args& a) {
-    if (a.count == 0) return num(rng().uniform());
-    if (a.count == 1) return num(rng().uniform() * arg(a, 0, "high"));
-    return num(a.num(0, "low", 0) + rng().uniform() * (a.num(1, "high", 1) - a.num(0, "low", 0)));
+    if (a.count == 0) return num(rng(a.vm).uniform());
+    if (a.count == 1) return num(rng(a.vm).uniform() * arg(a, 0, "high"));
+    return num(a.num(0, "low", 0) + rng(a.vm).uniform() * (a.num(1, "high", 1) - a.num(0, "low", 0)));
   }, "random(), random(high), random(low, high)");
   vm.native("random_int", [](Args& a) {
     int lo = static_cast<int>(a.num(0, "low", 0)), hi = static_cast<int>(a.num(1, "high", 1));
-    return num(lo + rng().below(hi - lo + 1));
+    return num(lo + rng(a.vm).below(hi - lo + 1));
   }, "random_int(low, high): both ends included");
-  vm.native("chance", [](Args& a) { return Value::boolean(rng().uniform() < arg(a, 0, "probability")); }, "chance(30%): true 30% of the time");
+  vm.native("chance", [](Args& a) { return Value::boolean(rng(a.vm).uniform() < arg(a, 0, "probability")); }, "chance(30%): true 30% of the time");
   vm.native("noise", [](Args& a) {
     Vec3 p{static_cast<float>(a.num(0, "x", 0)), static_cast<float>(a.num(1, "y", 0)), static_cast<float>(a.num(2, "z", 0))};
     if (a.count == 1 && a.pos[0].isVec()) p = a.pos[0].asVec();
@@ -344,11 +341,11 @@ void installStandardLibrary(Vm& vm) {
   });
   vm.method("list", "pick", [](Args& a) {
     auto& it = selfList(a)->items;
-    return it.empty() ? Value() : it[rng().below(static_cast<int>(it.size()))];
+    return it.empty() ? Value() : it[rng(a.vm).below(static_cast<int>(it.size()))];
   }, "list.pick(): one item at random");
   vm.method("list", "shuffle", [](Args& a) {
     auto& it = selfList(a)->items;
-    for (size_t i = it.size(); i > 1; --i) std::swap(it[i - 1], it[rng().below(static_cast<int>(i))]);
+    for (size_t i = it.size(); i > 1; --i) std::swap(it[i - 1], it[rng(a.vm).below(static_cast<int>(i))]);
     return a.self;
   });
   vm.method("list", "slice", [](Args& a) {

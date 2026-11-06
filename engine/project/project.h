@@ -57,4 +57,12 @@ std::string projectFolderName(const std::string& name);
 // nothing left behind, if anything is wrong.
 bool makeProject(const std::string& templateDir, const std::string& projectsDir, const std::string& name, std::string& folderOut, std::string& error);
 
+// A scene's text with each `use "common"` line replaced by that script (from
+// the same folder, once each, its own `use` lines brought in too); a missing
+// one becomes a line that says so.
+std::string expandUses(const std::string& src, const std::string& dir, std::vector<std::string>& seen);
+// A scene file's whole text, its shared scripts brought in. False if the file
+// can't be read.
+bool readSceneSource(const std::string& path, std::string& out);
+
 }  // namespace loop

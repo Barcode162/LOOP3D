@@ -1,5 +1,6 @@
 #include "engine/project/project.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
@@ -251,6 +252,38 @@ bool makeProject(const std::string& templateDir, const std::string& projectsDir,
   if (!readProject(cover.string(), made, ps) || made.scenePath(made.start).empty())
     return undo("the new project doesn't read: " + (ps.empty() ? std::string("its first room is missing") : ps[0].message(folder + ".looped")));
   folderOut = dst.string();
+  return true;
+}
+
+std::string expandUses(const std::string& src, const std::string& dir, std::vector<std::string>& seen) {
+  std::string out, line;
+  size_t i = 0;
+  while (i <= src.size()) {
+    size_t e = src.find('\n', i);
+    if (e == std::string::npos) e = src.size();
+    line = src.substr(i, e - i);
+    size_t a = line.find_first_not_of(" \t");
+    if (a != std::string::npos && line.compare(a, 5, "use \"") == 0) {
+      size_t q = line.find('"', a + 5);
+      std::string name = line.substr(a + 5, q - a - 5);
+      std::string file = joinPath(dir, name + ".loop"), text;
+      if (std::find(seen.begin(), seen.end(), file) == seen.end()) {
+        seen.push_back(file);
+        if (readText(file, text)) out += expandUses(text, dir, seen) + "\n";
+        else out += "say \"can't find " + name + ".loop\"\n";
+      }
+      out += "\n";
+    } else out += line + "\n";
+    i = e + 1;
+  }
+  return out;
+}
+
+bool readSceneSource(const std::string& path, std::string& out) {
+  std::string src;
+  if (!readText(path, src)) return false;
+  std::vector<std::string> seen{path};
+  out = expandUses(src, directoryOf(path), seen);
   return true;
 }
 

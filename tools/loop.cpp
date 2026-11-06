@@ -66,30 +66,6 @@ void printProblems(const std::vector<Problem>& ps) {
   for (const Problem& p : ps) std::fprintf(stderr, "problem: %s\n", p.text().c_str());
 }
 
-// `use "common"` lines bring in another script from the same folder (once).
-std::string expandUses(const std::string& src, const std::string& dir, std::vector<std::string>& seen) {
-  std::string out, line;
-  size_t i = 0;
-  while (i <= src.size()) {
-    size_t e = src.find('\n', i);
-    if (e == std::string::npos) e = src.size();
-    line = src.substr(i, e - i);
-    size_t a = line.find_first_not_of(" \t");
-    if (a != std::string::npos && line.compare(a, 5, "use \"") == 0) {
-      size_t q = line.find('"', a + 5);
-      std::string name = line.substr(a + 5, q - a - 5);
-      std::string file = joinPath(dir, name + ".loop"), text;
-      if (std::find(seen.begin(), seen.end(), file) == seen.end()) {
-        seen.push_back(file);
-        if (readText(file, text)) out += expandUses(text, dir, seen) + "\n";
-        else out += "say \"can't find " + name + ".loop\"\n";
-      }
-      out += "\n";
-    } else out += line + "\n";
-    i = e + 1;
-  }
-  return out;
-}
 
 // A scene's project (project.json in its folder) brings its settings:
 // "settings": {"cinema.quality": "cinema", "physics.iterations": 24, …}

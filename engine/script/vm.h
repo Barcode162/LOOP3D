@@ -17,6 +17,7 @@
 
 #include "engine/script/lexer.h"
 #include "engine/script/value.h"
+#include "engine/core/random.h"
 
 namespace loop::script {
 
@@ -71,6 +72,11 @@ class Vm {
   std::function<void(const std::string&)> onSay;    // `say` output
   std::function<void(const Problem&)> onProblem;    // run-time problems as they happen
 
+  // This script's own random numbers (`random`, `chance`, `seed`): every
+  // script starts from the same seed, so a scene is the same each time it
+  // runs, whatever ran before it.
+  Rng& random() { return random_; }
+
   // Settings and statistics.
   size_t budget = 2000000;  // steps one fiber may take per update before it's stopped
   size_t steps() const { return steps_; }
@@ -120,6 +126,7 @@ class Vm {
   Obj* heap_ = nullptr;
   size_t objects_ = 0, nextCollect_ = 20000, steps_ = 0;
   double time_ = 0;
+  Rng random_{12345};
   Fiber* current_ = nullptr;
   int depth_ = 0;  // nested C++ → script calls
 };
