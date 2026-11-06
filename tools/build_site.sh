@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds the web player and editor and puts the site together in site/:
-#   index.html (player), editor.html + editor/ (the editor), player.js, player.wasm,
+#   index.html (player), editor.html + editor/ (the editor), player.js, player.wasm (one core),
+#   player_mt.js, player_mt.wasm (every core, when the page is isolated: isolate.js),
 #   scenes/<name>.loop (+ <name>.png trailer stills) and scenes/index.json from projects/*/
 # Needs Emscripten (emcmake). Trailer stills come from `loop render`.
 # PLAYER_PREBUILT=<dir> skips the build and uses that folder's player.js/.wasm.
@@ -9,14 +10,15 @@ cd "$(dirname "$0")/.."
 rm -rf site && mkdir -p site
 if [ -n "${PLAYER_PREBUILT:-}" ]; then
   cp "$PLAYER_PREBUILT/player.js" "$PLAYER_PREBUILT/player.wasm" site/
+  if [ -f "$PLAYER_PREBUILT/player_mt.js" ]; then cp "$PLAYER_PREBUILT/player_mt.js" "$PLAYER_PREBUILT/player_mt.wasm" site/; fi
 else
   # build.opt from the projects' project.json (the first that says), else O3
   opt=$(python3 -c 'import json,glob;print(next((json.load(open(f)).get("build",{}).get("opt") for f in sorted(glob.glob("projects/*/project.json")) if json.load(open(f)).get("build",{}).get("opt")),"O3"))')
   emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release "-DLOOP_OPT=-$opt" >/dev/null
   cmake --build build-web -j4
-  cp build-web/player.js build-web/player.wasm site/
+  cp build-web/player.js build-web/player.wasm build-web/player_mt.js build-web/player_mt.wasm site/
 fi
-cp web/index.html web/loop_ui.js site/
+cp web/index.html web/loop_ui.js web/isolate.js site/
 cp web/editor/editor.html site/editor.html
 mkdir -p site/editor && cp web/editor/*.js web/editor/*.css site/editor/
 # stamp the build (benchmarks record which build they ran) and the tracker's link

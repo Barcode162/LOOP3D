@@ -17,6 +17,7 @@ struct Reader {
   const uint8_t* bin;
   size_t binSize;
   std::string err;
+  bool decode = true;
 
   bool fail(const std::string& why) {
     if (err.empty()) err = why;
@@ -193,10 +194,14 @@ struct Reader {
         const uint8_t* data;
         size_t size, stride;
         if (!view(static_cast<int>(im["bufferView"].number()), data, size, stride)) return false;
-        std::string why;
-        bool ok = size > 3 && data[0] == 0xFF && data[1] == 0xD8 ? decodeJpeg(data, size, t.rgba, t.width, t.height, &why)
-                                                                 : decodePng(data, size, t.rgba, t.width, t.height);
-        if (!ok) return fail("a model's picture can't be read" + (why.empty() ? std::string() : ": " + why));
+        if (!decode) {
+          t.packed.assign(data, data + size);  // decoded later, with the scene's others
+        } else {
+          std::string why;
+          bool ok = size > 3 && data[0] == 0xFF && data[1] == 0xD8 ? decodeJpeg(data, size, t.rgba, t.width, t.height, &why)
+                                                                   : decodePng(data, size, t.rgba, t.width, t.height);
+          if (!ok) return fail("a model's picture can't be read" + (why.empty() ? std::string() : ": " + why));
+        }
       } else {
         return fail("a model's picture is a separate file (only pictures inside the .glb are read)");
       }
@@ -247,7 +252,7 @@ AABB GltfModel::bounds() const {
   return b;
 }
 
-bool loadGlb(const std::vector<uint8_t>& bytes, GltfModel& out, std::string* error) {
+bool loadGlb(const std::vector<uint8_t>& bytes, GltfModel& out, std::string* error, bool decodePictures) {
   auto fail = [&](const std::string& why) {
     if (error) *error = why;
     return false;
@@ -273,7 +278,7 @@ bool loadGlb(const std::vector<uint8_t>& bytes, GltfModel& out, std::string* err
   if (!Json::parse(jsonText, j, &why)) return fail("a .glb whose description can't be read: " + why);
   for (const Json& e : j["extensionsRequired"].items())
     if (e.string() != "KHR_materials_emissive_strength") return fail("a model needs the glTF extension " + e.string() + ", which we don't read yet");
-  Reader r{j, bin, binSize, {}};
+  Reader r{j, bin, binSize, {}, decodePictures};
   if (!r.read(out)) return fail(r.err);
   return true;
 }

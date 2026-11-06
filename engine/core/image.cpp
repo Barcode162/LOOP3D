@@ -1,9 +1,12 @@
 #include "engine/core/image.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
 #include "engine/core/file.h"
+#include "engine/core/jobs.h"
+#include "engine/core/jpeg.h"
 
 namespace loop {
 
@@ -483,6 +486,31 @@ bool writePfm(const std::string& path, const Image& img) {
         out.insert(out.end(), b, b + 4);
       }
   return writeFile(path, out.data(), out.size());
+}
+
+int decodeTextures(std::vector<Texture>& textures, std::string* error) {
+  std::vector<int> waiting;
+  for (size_t i = 0; i < textures.size(); ++i)
+    if (textures[i].pending()) waiting.push_back(static_cast<int>(i));
+  if (waiting.empty()) return 0;
+  std::vector<std::string> why(waiting.size());
+  std::vector<uint8_t> failed(waiting.size(), 0);
+  // the biggest first, so no core is left with a big one at the end
+  std::sort(waiting.begin(), waiting.end(), [&](int a, int b) { return textures[a].packed.size() > textures[b].packed.size(); });
+  JobSystem::shared().parallelFor(static_cast<int>(waiting.size()), [&](int k) {
+    Texture& t = textures[waiting[k]];
+    const std::vector<uint8_t>& d = t.packed;
+    bool ok = d.size() > 3 && d[0] == 0xFF && d[1] == 0xD8 ? decodeJpeg(d.data(), d.size(), t.rgba, t.width, t.height, &why[k])
+                                                           : decodePng(d.data(), d.size(), t.rgba, t.width, t.height);
+    if (!ok) t.rgba.clear(), t.width = t.height = 0, failed[k] = 1;
+    std::vector<uint8_t>().swap(t.packed);
+  });
+  int bad = 0;
+  for (size_t k = 0; k < waiting.size(); ++k)
+    if (failed[k]) {
+      if (bad++ == 0 && error) *error = why[k].empty() ? "a picture can't be read" : why[k];
+    }
+  return bad;
 }
 
 }  // namespace loop

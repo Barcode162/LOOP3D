@@ -132,6 +132,10 @@ struct Stage {
   // come back next time with their final place. Clears the list.
   void takeMoves(float alpha, std::vector<int>& instances, std::vector<Mat4>& transforms);
   void setListener(const Camera& cam);
+  // Decodes the models' pictures still waiting, all at once on every core
+  // (a scene's script places its models first). Call before the scene is
+  // drawn or rendered; cheap when none wait. Returns how many couldn't be read.
+  int decodePictures(std::string* error = nullptr) { return decodeTextures(scene.textures, error); }
   std::vector<Placed> placed;   // shape things → instances
   std::vector<int> moved;       // placed things moved since the drawing took them (see takeMoves)
   std::vector<int> blending_;   // placed things drawn part-way last time

@@ -26,11 +26,20 @@ struct Image {
 struct Texture {
   int width = 0, height = 0;
   std::vector<uint8_t> rgba;  // row 0 at the top
+  // The picture's file (JPEG or PNG) while it waits to be decoded: a scene's
+  // pictures are decoded all together, on every core (decodeTextures).
+  std::vector<uint8_t> packed;
+  bool pending() const { return !packed.empty(); }
   bool empty() const { return rgba.empty(); }
   // Bilinear sample with wrap (u, v in 0..1, v down). `srgb`: the colour
   // channels are sRGB-encoded and come back linear; alpha is always plain.
   Vec4 sample(float u, float v, bool srgb) const;
 };
+
+// Decodes every waiting picture (Texture::packed) at once, spread over every
+// core; each is left empty (and counted) if it can't be read. Returns how many
+// couldn't be; `error` gets the first reason.
+int decodeTextures(std::vector<Texture>& textures, std::string* error = nullptr);
 
 // sRGB transfer.
 float linearToSrgb(float v);

@@ -1,5 +1,7 @@
 #include "engine/core/jobs.h"
 
+#include <algorithm>
+
 #include "engine/core/settings.h"
 
 namespace loop {
@@ -9,6 +11,12 @@ JobSystem::JobSystem(int threads) {
   (void)threads;
 #else
   if (threads <= 0) threads = static_cast<int>(std::thread::hardware_concurrency());
+#if defined(__EMSCRIPTEN_PTHREADS__)
+  // the web player's workers are started with the page (PTHREAD_POOL_SIZE in
+  // CMakeLists.txt: one fewer than the cores, at most 7): never ask for more,
+  // or the page would wait for a worker that can't start
+  threads = std::clamp(threads, 1, 8);
+#endif
   for (int i = 1; i < threads; ++i) workers_.emplace_back([this] { workerLoop(); });
 #endif
 }

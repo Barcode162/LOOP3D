@@ -35,12 +35,14 @@ struct GltfModel {
   };
   std::vector<Part> parts;
   std::vector<GltfMaterial> materials;
-  std::vector<Texture> textures;  // one per glTF texture, decoded
+  std::vector<Texture> textures;  // one per glTF texture (decoded, or packed: see loadGlb)
   AABB bounds() const;
 };
 
-// Reads a .glb from bytes. False with a plain reason.
-bool loadGlb(const std::vector<uint8_t>& bytes, GltfModel& out, std::string* error = nullptr);
+// Reads a .glb from bytes. False with a plain reason. `decodePictures` false
+// leaves each picture packed (Texture::packed) for decodeTextures to decode
+// with a scene's others, on every core.
+bool loadGlb(const std::vector<uint8_t>& bytes, GltfModel& out, std::string* error = nullptr, bool decodePictures = true);
 bool loadGlbFile(const std::string& path, GltfModel& out, std::string* error = nullptr);
 
 }  // namespace loop

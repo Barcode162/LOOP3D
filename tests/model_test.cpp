@@ -125,6 +125,11 @@ TEST(model_word_places_every_part_and_makes_glass) {
   if (!ok || st.placed.size() < 2) return;
   CHECK(st.modelCache.size() == 1);   // read once, placed twice
   CHECK(st.scene.textures.size() == 1);
+  // its picture waits, packed, until the scene decodes them all at once
+  CHECK(st.scene.textures[0].pending() && st.scene.textures[0].empty());
+  CHECK(st.decodePictures() == 0);
+  CHECK(!st.scene.textures[0].pending() && st.scene.textures[0].width == 16);
+  CHECK(st.decodePictures() == 0);  // nothing left to do
   const MeshInstance& inst = st.scene.instances[st.placed[0].instance];
   CHECK_NEAR(inst.transform.point(Vec3(0)).x, 3.0f, 1e-5f);
   const Material& mat = st.scene.materials[inst.material];

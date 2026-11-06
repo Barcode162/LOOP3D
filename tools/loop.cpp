@@ -122,6 +122,8 @@ bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
   vm.onSay = [](const std::string& s) { std::printf("%s\n", s.c_str()); };
   bool ok = vm.load(src, path);
   printProblems(vm.problems());
+  std::string why;
+  if (stage.decodePictures(&why)) std::fprintf(stderr, "problem: %s\n", why.c_str());
   return ok;
 }
 

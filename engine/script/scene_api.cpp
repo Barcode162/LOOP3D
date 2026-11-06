@@ -724,7 +724,7 @@ const std::vector<std::pair<int, int>>& modelParts(Args& a, const std::string& f
     std::vector<uint8_t> bytes;
     if (!readFile(path, bytes)) continue;
     used = path;
-    ok = loadGlb(bytes, g, &err);
+    ok = loadGlb(bytes, g, &err, false);  // its pictures wait, to be decoded with the scene's others
     break;
   }
   if (used.empty()) a.vm.fail("there's no model called \"" + file + "\"", "put the .glb next to the scene or in its models/ folder");
@@ -751,7 +751,7 @@ const std::vector<std::pair<int, int>>& modelParts(Args& a, const std::string& f
   std::vector<int> texIndex;
   for (Texture& t : g.textures) {
     uint64_t h = 1469598103934665603ull ^ (static_cast<uint64_t>(t.width) << 32 | static_cast<uint32_t>(t.height));
-    for (uint8_t b : t.rgba) h = (h ^ b) * 1099511628211ull;
+    for (uint8_t b : t.pending() ? t.packed : t.rgba) h = (h ^ b) * 1099511628211ull;
     auto found = s.textureByContent.find(h);
     if (found != s.textureByContent.end()) {
       texIndex.push_back(found->second);

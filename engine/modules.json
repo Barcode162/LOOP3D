@@ -28,7 +28,7 @@
     {"name": "Nature makers", "side": "visual", "status": "in place", "what": "noise, terrain, trees, rocks, grass",
      "files": ["engine/geometry/noise.*", "engine/geometry/terrain.*", "engine/geometry/plants.*"]},
     {"name": "Player", "side": "core", "status": "to separate", "what": "the page that runs a project: the frame loop and controls, with drawing and menus mixed in",
-     "files": ["web/player.cpp", "web/index.html", "web/loop_ui.js"]},
+     "files": ["web/player.cpp", "web/index.html", "web/loop_ui.js", "web/isolate.js"]},
     {"name": "Editor", "side": "visual", "status": "in place", "what": "the editor's page",
      "files": ["web/editor/*"]},
     {"name": "Work budget", "side": "tools", "status": "in place", "what": "what a frame costs, counted without a phone",

@@ -19,6 +19,7 @@
 #include <string>
 
 #include "engine/core/json.h"
+#include "engine/core/jobs.h"
 #include "engine/core/meter.h"
 #include "engine/core/settings.h"
 #include "engine/gpu/renderer.h"
@@ -351,6 +352,8 @@ void syncScene() {
   // new shapes, or anything else about the world: read it all again
   if (s.version != g.seenVersion || s.scene.meshes.size() != g.seenMeshes || s.scene.instances.size() != g.seenInstances || s.scene.materials.size() != g.seenMaterials ||
       s.scene.lights.size() != g.seenLightCount) {
+    std::string why;
+    if (s.decodePictures(&why)) logLine("a model's picture can't be read: " + why);  // the models' pictures, all at once
     uint64_t sk = skySignature(s.scene);
     bool geometry = s.scene.meshes.size() != g.seenMeshes;
     g.renderer->sync(s.scene, geometry, sk != g.skyKey);
@@ -1055,9 +1058,10 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
   const double mb = 1.0 / (1024 * 1024);
   std::snprintf(buf, sizeof buf,
                 "{\"scripts\":%.2f,\"physics\":%.2f,\"people\":%.2f,\"sending\":%.2f,\"drawing\":%.2f,\"cpu\":%.2f,\"gpu\":%.2f,"
-                "\"memUsed\":%.1f,\"memReserved\":%.1f,\"gpuMem\":%.1f}",
+                "\"memUsed\":%.1f,\"memReserved\":%.1f,\"gpuMem\":%.1f,\"cores\":%d}",
                 m.ms(Part::kScript), m.ms(Part::kPhysics), m.ms(Part::kPeople), m.ms(Part::kSend), m.ms(Part::kDraw), g.cpuMs,
-                g.renderer ? g.renderer->gpuMs() : 0.0f, mi.uordblks * mb, emscripten_get_heap_size() * mb, g.renderer ? g.renderer->gpuBytes() * mb : 0.0);
+                g.renderer ? g.renderer->gpuMs() : 0.0f, mi.uordblks * mb, emscripten_get_heap_size() * mb, g.renderer ? g.renderer->gpuBytes() * mb : 0.0,
+                JobSystem::shared().threads());
   return buf;
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
