@@ -305,6 +305,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   if (stage.mode == "movie" && !stage.film.shots.empty()) v.camera = stage.film.at(static_cast<float>(secs), stage.scene.camera);
   v.width = o.sizeGiven ? o.w : m.budget.width, v.height = o.sizeGiven ? o.h : m.budget.height;
   v.drawDistance = C.world.drawDistance, v.maxLights = C.render.maxLights;
+  v.cullOffscreen = C.render.cull;
   v.shadowRadius = C.render.shadowDistance > 0 ? C.render.shadowDistance : m.budget.quality == "high" ? 40.0f : 25.0f;
   m.cost = measureFrame(stage.scene, v);
   m.title = stage.title;

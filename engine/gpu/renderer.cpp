@@ -142,6 +142,7 @@ int g_samples = 4;  // multisampling of the scene pass (1 = off)
 struct GpuMesh {
   wgpu::Buffer vb, ib;
   uint32_t indexCount = 0;
+  AABB box;  // in the mesh's own space
 };
 struct Batch {
   int mesh;
@@ -173,6 +174,7 @@ class GpuRenderer final : public Renderer {
     queue_.WriteBuffer(exposureBuf_, 0, zero, 16);
     ensureStorage(materialsBuf_, materialsCap_, sizeof(MaterialU), 16);
     ensureStorage(instancesBuf_, instancesCap_, sizeof(InstanceU), 16);
+    ensureStorage(visibleBuf_, visibleCap_, sizeof(uint32_t), 64);
     wgpu::SamplerDescriptor sd;
     sd.magFilter = sd.minFilter = wgpu::FilterMode::Linear;
     sd.mipmapFilter = wgpu::MipmapFilterMode::Linear;
@@ -383,6 +385,7 @@ class GpuRenderer final : public Renderer {
     std::vector<InstanceU> data;
     data.reserve(order.size());
     batches_.clear();
+    instBox_.clear(), instHidden_.clear();
     for (uint32_t idx : order) {
       const MeshInstance& in = scene.instances[idx];
       if (in.mesh < 0 || in.mesh >= static_cast<int>(meshes_.size())) continue;
@@ -396,6 +399,9 @@ class GpuRenderer final : public Renderer {
       if (!batches_.empty() && batches_.back().mesh == in.mesh && batches_.back().glass == g) ++batches_.back().count;
       else batches_.push_back({in.mesh, static_cast<uint32_t>(data.size()), 1, g});
       data.push_back(u);
+      // where it is, for skipping what a pass can't see; scaled to nothing = hidden
+      instBox_.push_back(meshes_[in.mesh].box.transformed(in.transform));
+      instHidden_.push_back(std::fabs(in.transform.linear().determinant()) < 1e-12f ? 1 : 0);
     }
     if (ensureStorage(instancesBuf_, instancesCap_, sizeof(InstanceU), std::max<size_t>(1, data.size()))) bindGroupsDirty_ = true;
     if (!data.empty()) queue_.WriteBuffer(instancesBuf_, 0, data.data(), data.size() * sizeof(InstanceU));
@@ -539,6 +545,11 @@ class GpuRenderer final : public Renderer {
                    (static_cast<uint32_t>(std::clamp(U.spp, 1, 16)) << 8);
       queue_.WriteBuffer(ultraUbo_, 0, &u, sizeof u);
       ++ultraFrame_;
+    }
+    // ---- what each pass draws: the copies its view can see
+    if (raster) {
+      buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1));
+      if (bindGroupsDirty_) makeBindGroups();
     }
     // ---- 1. sun shadow
     if (raster && !(skip & 32)) {
@@ -864,13 +875,37 @@ class GpuRenderer final : public Renderer {
     g.ib = buffer(std::max<size_t>(idx.size() * 4, 16), wgpu::BufferUsage::Index | wgpu::BufferUsage::CopyDst);
     if (!idx.empty()) queue_.WriteBuffer(g.ib, 0, idx.data(), idx.size() * 4);
     g.indexCount = static_cast<uint32_t>(m.indices.size());
+    g.box = m.bounds();
     return g;
   }
 
+  // What each pass draws this frame: only the copies its view can see
+  // (render.cull), in the batches' order; `first` of a draw is where its
+  // stretch starts in visibleIds. The sun's pass never draws glass.
+  void buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn) {
+    const bool cull = config().render.cull;
+    visible_.clear(), sceneDraws_.clear(), shadowDraws_.clear();
+    auto list = [&](std::vector<Batch>& out, const Frustum& view, bool shadow) {
+      for (const Batch& b : batches_) {
+        if (shadow && b.glass) continue;
+        if (b.mesh < 0 || b.mesh >= static_cast<int>(meshes_.size()) || !meshes_[b.mesh].indexCount) continue;
+        uint32_t start = static_cast<uint32_t>(visible_.size());
+        for (uint32_t i = b.first; i < b.first + b.count; ++i)
+          if (!cull || (i < instHidden_.size() && !instHidden_[i] && view.visible(instBox_[i]))) visible_.push_back(i);
+        uint32_t n = static_cast<uint32_t>(visible_.size()) - start;
+        if (n) out.push_back({b.mesh, start, n, b.glass});
+      }
+    };
+    list(sceneDraws_, eye, false);
+    if (sunOn) list(shadowDraws_, sun, true);
+    if (visible_.empty()) visible_.push_back(0);
+    ensureStorage(visibleBuf_, visibleCap_, sizeof(uint32_t), visible_.size());
+    queue_.WriteBuffer(visibleBuf_, 0, visible_.data(), visible_.size() * sizeof(uint32_t));
+  }
+
   void drawBatches(wgpu::RenderPassEncoder& pass, bool glass, bool shadow) {
-    for (const Batch& b : batches_) {
+    for (const Batch& b : shadow ? shadowDraws_ : sceneDraws_) {
       if (b.glass != glass && !shadow) continue;
-      if (shadow && b.glass) continue;
       const GpuMesh& m = meshes_[b.mesh];
       if (!m.indexCount) continue;
       pass.SetVertexBuffer(0, m.vb);
@@ -940,7 +975,7 @@ class GpuRenderer final : public Renderer {
     const auto VF = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     const auto F = wgpu::ShaderStage::Fragment;
     const auto VFC = VF | wgpu::ShaderStage::Compute;
-    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VF), ssbo(4, F | wgpu::ShaderStage::Compute)});
+    scene0Layout_ = layout({ubo(0, VFC), ssbo(1, VFC), ssbo(2, VFC), ssbo(3, VF), ssbo(4, F | wgpu::ShaderStage::Compute), ssbo(5, wgpu::ShaderStage::Vertex)});
     rayLayout_ = layout({ssbo(0, F | wgpu::ShaderStage::Compute), ssbo(1, F | wgpu::ShaderStage::Compute), ssbo(2, F | wgpu::ShaderStage::Compute),
                          ssbo(3, F | wgpu::ShaderStage::Compute)});
     {
@@ -1388,7 +1423,7 @@ class GpuRenderer final : public Renderer {
 
   void makeBindGroups() {
     if (!hdrView_) return;
-    sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(4, exposureBuf_)});
+    sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(4, exposureBuf_), bufE(5, visibleBuf_)});
     if (!modelView_) uploadModelTextures(Scene());
     sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_)});
     // each pass reads one texture and writes another; the unused second slot
@@ -1457,6 +1492,12 @@ class GpuRenderer final : public Renderer {
   std::vector<GpuMesh> meshes_;
   std::vector<Batch> batches_;
   std::vector<LightU> lights_, sortedLights_;
+  std::vector<AABB> instBox_;          // each copy's box, in the instance buffer's order
+  std::vector<uint8_t> instHidden_;    // scaled to nothing
+  std::vector<uint32_t> visible_;      // this frame's draw lists (indices into the instance buffer)
+  std::vector<Batch> sceneDraws_, shadowDraws_;
+  wgpu::Buffer visibleBuf_;
+  size_t visibleCap_ = 0;
   bool lightsDirty_ = true;
   Vec3 lightsEye_{1e9f};
   Fog fog_;

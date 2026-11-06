@@ -46,6 +46,9 @@ struct Instance {
 @group(0) @binding(2) var<storage, read> materials : array<Material>;
 @group(0) @binding(3) var<storage, read> instances : array<Instance>;
 @group(0) @binding(4) var<storage, read> exposureState : array<f32>;
+// the copies a pass draws this frame (the ones its view can see), as indices
+// into `instances`: a draw's instance_index runs through its stretch of it
+@group(0) @binding(5) var<storage, read> visibleIds : array<u32>;
 
 // Light is stored already exposed (like a camera's sensor), so even the sun's
 // disk fits the half-float picture: last frame's exposure, or a first guess.
@@ -223,7 +226,7 @@ struct VsOut {
 };
 
 @vertex fn vs(v : VsIn, @builtin(instance_index) ii : u32) -> VsOut {
-  let inst = instances[ii];
+  let inst = instances[visibleIds[ii]];
   var o : VsOut;
   let w = inst.model * vec4f(v.pos, 1.0);
   o.world = w.xyz;
@@ -515,7 +518,7 @@ struct ShadowOut {
   @location(1) @interpolate(flat) mat : u32,
 };
 @vertex fn vsShadow(v : VsIn, @builtin(instance_index) ii : u32) -> ShadowOut {
-  let inst = instances[ii];
+  let inst = instances[visibleIds[ii]];
   var o : ShadowOut;
   o.clip = frame.shadowViewProj * inst.model * vec4f(v.pos, 1.0);
   o.uv = v.uv;

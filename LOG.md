@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · Plan step 4, first part: each pass draws only what its view can see (`render.cull`, on;
+  `?cull=0` to compare); the same picture (0.00% of pixels differ, held at the same moment with the picture
+  tool's new `AT="filmtime:10,pause:1"`), The Woods 28% less work on the test GPU; 17 of 41 scenes over the
+  Phone budget (`perf/budget.md`).
 - **2026-11-05** · "Didn't you have more stuff to do before optimization? And go": yes, step 2 first. Built the
   work budget (`loop budget`, `engine/render/frame_cost.*`, 4 tests, 77 in all) and measured every scene:
   `perf/budget.md` (18 of 41 over the Phone budget: forests by triangles, the bar by lamps).

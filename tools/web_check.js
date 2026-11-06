@@ -8,6 +8,11 @@
 // number measured that way (fps, GPU ms, hitches) is the watchdog's, not the
 // engine's. SwiftShader also runs the whole pixel shader once per MSAA sample,
 // so add &msaa=1 to judge shader costs the way a real GPU pays them.
+//
+// Before/after pictures of a film (a scene that plays itself) must be taken at
+// the same moment: AT="filmtime:20,pause:1" sets the player's own controls
+// (loop_set_option, as the editor's play bar does) once it has started, so
+// the camera holds still and the eyes settle before the picture.
 const { chromium } = require('playwright');
 const fs = require('fs');
 (async () => {
@@ -25,6 +30,19 @@ const fs = require('fs');
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('crash', () => errors.push('the page crashed'));
   await page.goto(url);
+  if (process.env.AT) {
+    await page.waitForFunction(() => window.Module && window.Module._loop_set_option, null, { timeout: 120000 }).catch(() => errors.push('AT: the player never started'));
+    await page.waitForTimeout(3000);
+    for (const pair of process.env.AT.split(',')) {
+      const [name, value] = pair.split(':');
+      await page.evaluate(([n, v]) => {
+        const M = window.Module, len = M.lengthBytesUTF8(n) + 1, ptr = M._malloc(len);
+        M.stringToUTF8(n, ptr, len);
+        M._loop_set_option(ptr, +v);
+        M._free(ptr);
+      }, [name, value]);
+    }
+  }
   await page.waitForTimeout(parseFloat(wait) * 1000);
   let data = null;
   if (process.env.DISPLAY) {

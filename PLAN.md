@@ -11,8 +11,10 @@ The order of work, top first. A step is done when it works on the user's phone.
    2026-11-05; the "before": `perf/budget.md`, 18 of 41 scenes over the Phone budget.)*
 3. **Measured on the phone:** the user runs the Benchmark (toolbar ⏱, or `?bench=scene`) on `showcase_glade`,
    `showcase_hall`, an Ardane scene and the bar: the baseline.
-4. **Draw less:** skip what's off screen (scene and sun shadows); back faces off for closed shapes; levels of
-   detail and clusters (3D's `looped/draw/clusters.*` can come over).
+4. **Draw less:** skip what's off screen (scene and sun shadows) *(built 2026-11-06: `render.cull`, the same
+   picture, 28% less work in The Woods)*; shade each pixel once (a depth pre-pass that both passes agree on, or
+   the backs of closed shapes skipped: the bar shades 2.06 surfaces per pixel); levels of detail and clusters for
+   the forests (The Woods still 10.7 M triangles; 3D's `looped/draw/clusters.*` can come over).
 5. **Light less:** each pixel adds only the lamps that reach it (clustered lights); for the bar's many small bulbs
    (51 of its 103 lamps give 95% of a pixel's light) that's not enough: group them, or sample a few per frame and
    blend over frames (with step 6); wood, stone and brick made once into textures; the sun's shadow cached until
