@@ -74,6 +74,8 @@ window.LE = window.LE || {};
         en('render.msaa', 'MSAA', 4, opts([1, 'Off'], [4, '4x']), E({ help: 'Multisampling of the scene pass. Changes live (the pipelines are rebuilt).' })),
         tog('render.fxaa', 'Edge smoothing (FXAA)', false, E({ help: 'Cheap smoothing of hard edges in the film pass; most useful with MSAA off.' })),
         tog('render.cull', 'Skip what can\'t be seen', true, E({ help: 'Each pass draws only the things its view can see: off screen or outside the sun\'s shadow area is skipped. Off: everything, every frame (for comparing).' })),
+        num('render.clusterError', 'Cluster detail (pixels)', 1, E({ min: 0.01, max: 16, step: 0.1, help: 'With clusters: the most a simpler version of a shape may look different from its full detail, in pixels. Smaller: more detail, more work.' })),
+        tog('render.clusters', 'Draw in clusters', false, E({ help: 'Every shape in small pieces, each at the detail its size on screen needs, chosen and drawn by the graphics chip in one go (Nanite\'s way). Being built: off until it\'s done.' })),
         tog('render.filmGrain', 'Film grain while playing', false, E({ help: 'Off: the live picture never fizzes. Stills and film frames always keep a scene\'s grain.' })),
         tog('render.taa', 'Temporal anti-aliasing', false, NB('Comes with temporal upscaling.')),
       ] },

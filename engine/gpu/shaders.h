@@ -93,6 +93,15 @@ fn fbm(p0 : vec3f) -> f32 {
   }
   return s / n;
 }
+// Screen slopes: how a surface's place and picture coordinates change from
+// one pixel to the next. Patterns fade the detail a pixel can't hold, pictures
+// pick their size, bumps tilt the surface, all from these. A pass that draws
+// triangles takes them from the GPU (takeSlopes); the cluster drawing works
+// them out exactly from each triangle (rebuild step 4).
+var<private> slopeWorldX : vec3f;
+var<private> slopeWorldY : vec3f;
+var<private> slopeUvX : vec2f;
+var<private> slopeUvY : vec2f;
 fn planar(p : vec3f, n : vec3f) -> vec2f {
   let a = abs(n);
   if (a.y >= a.x && a.y >= a.z) { return p.xz; }
@@ -106,7 +115,7 @@ fn cellHash(v : vec2f) -> f32 { return hash3(vec3f(v, 7.0)); }
 // lines. `scale` is squares per metre.
 fn gridLine(world : vec3f, n : vec3f, scale : f32) -> f32 {
   let g = planar(world * scale, n);
-  let w = max(fwidth(g), vec2f(1e-5)) * 1.5;
+  let w = max(abs(planar(slopeWorldX * scale, n)) + abs(planar(slopeWorldY * scale, n)), vec2f(1e-5)) * 1.5;
   let d = abs(fract(g - 0.5) - 0.5) / w;
   let line = 1.0 - clamp(min(d.x, d.y), 0.0, 1.0);
   let far = clamp(max(w.x, w.y) * 3.0 - 0.5, 0.0, 1.0);
@@ -367,12 +376,12 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   var metalScale = 1.0;
   // a model's own pictures: colour (sRGB) with its alpha, roughness (G) and metal (B)
   if (m.tex.x >= 0.0) {
-    let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.x));
+    let c = textureSampleGrad(modelTex, modelSampler, i.uv, i32(m.tex.x), slopeUvX, slopeUvY);
     base *= srgbToLinear(c.rgb);
     if (m.tex2.x > 0.0 && c.a < m.tex2.x) { discard; }
   }
   if (m.tex.y >= 0.0) {
-    let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.y));
+    let c = textureSampleGrad(modelTex, modelSampler, i.uv, i32(m.tex.y), slopeUvX, slopeUvY);
     rough = clamp(rough * c.g, 0.02, 1.0);
     metalScale = c.b;
   }
@@ -403,7 +412,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       case 8: { feature = 0.003 / sc; avg = 0.3; }
       default: {}
     }
-    let lod = length(fwidth(i.world));
+    let lod = length(abs(slopeWorldX) + abs(slopeWorldY));
     let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
     pv = vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
     if (kind == 10) {
@@ -421,8 +430,8 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       let h = pv.y * m.pattern.z * 0.001;
       let dhx = dpdx(h);
       let dhy = dpdy(h);
-      let dpx = dpdx(i.world);
-      let dpy = dpdy(i.world);
+      let dpx = slopeWorldX;
+      let dpy = slopeWorldY;
       let r1 = cross(dpy, n);
       let r2 = cross(n, dpx);
       let det = dot(dpx, r1);
@@ -526,7 +535,15 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   return Shaded(lo, outA);
 }
 
+// the screen slopes of a drawn triangle, from the GPU
+fn takeSlopes(i : VsOut) {
+  slopeWorldX = dpdx(i.world);
+  slopeWorldY = dpdy(i.world);
+  slopeUvX = dpdx(i.uv);
+  slopeUvY = dpdy(i.uv);
+}
 @fragment fn fsOpaque(i : VsOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
+  takeSlopes(i);
   let s = shade(i, front);
   if (frame.fixedExposure.z > 3.5) {  // ?view=4: ray work, blue (little) to red (200+ steps)
     let k = clamp(f32(rayWork) / 200.0, 0.0, 1.0);
@@ -535,6 +552,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   return vec4f(exposed(s.color), 1.0);
 }
 @fragment fn fsGlass(i : VsOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
+  takeSlopes(i);
   let s = shade(i, front);
   return vec4f(exposed(s.color) * s.alpha, s.alpha);  // premultiplied
 }
@@ -555,20 +573,24 @@ struct ShadowOut {
 }
 // The depth pre-pass: only where surfaces are (leaves cut to shape), so the
 // expensive lighting runs once per pixel, not once per surface behind it.
-@fragment fn fsDepth(i : VsOut) {
+// Where a surface has holes, the same holes as the lit pass cuts (shade):
+// leaves cut to their outline, model pictures with holes, see-through grids.
+fn holes(i : VsOut) -> bool {
   let m = materials[i.mat];
   if (m.extra.z > 0.5) {
     let y = 1.0 - i.uv.y;
     let x = (i.uv.x - 0.5) * 2.0;
-    if (abs(x) > sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95) { discard; }
+    if (abs(x) > sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95) { return true; }
   }
-  // a model picture with holes: the same holes as the lit pass cuts (shade)
   if (m.tex.x >= 0.0 && m.tex2.x > 0.0) {
-    let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.x));
-    if (c.a < m.tex2.x) { discard; }
+    let c = textureSampleGrad(modelTex, modelSampler, i.uv, i32(m.tex.x), slopeUvX, slopeUvY);
+    if (c.a < m.tex2.x) { return true; }
   }
-  // a see-through grid: the same holes as the lit pass cuts
-  if (i32(m.pattern.x) == 10 && m.emission.w < 0.5 && gridLine(i.world, normalize(i.nrm), max(m.pattern.y, 0.01)) < 0.5) { discard; }
+  return i32(m.pattern.x) == 10 && m.emission.w < 0.5 && gridLine(i.world, normalize(i.nrm), max(m.pattern.y, 0.01)) < 0.5;
+}
+@fragment fn fsDepth(i : VsOut) {
+  takeSlopes(i);
+  if (holes(i)) { discard; }
 }
 @fragment fn fsShadow(i : ShadowOut) {
   let m = materials[i.mat];
@@ -601,6 +623,257 @@ struct SkyOut {
     c += frame.sunColor.rgb * disk / 6.8e-5;
   }
   return vec4f(exposed(c), 1.0);
+}
+)";
+
+// ---- the cluster drawing (the rebuild's step 4): the cook's clusters, culled
+// and given their level by the GPU (kClusterCullWgsl), drawn in one go into a
+// visibility picture (which triangle each pixel sees), then lit once per pixel.
+inline const char* kClusterDrawWgsl = R"(
+// The cook's clusters in one pool (one buffer: WebGPU promises only 8 a
+// stage): pool[0] where the triangles' corners start, pool[1] where the
+// clusters start; vertices first, 8 numbers each (position, normal, picture
+// coordinates), clusters 16 numbers each.
+@group(3) @binding(0) var<storage, read> pool : array<u32>;
+struct Cluster { bounds : vec4f, lod : vec4f, parent : vec4f, err : vec2f, first : u32, count : u32 };
+fn poolF(i : u32) -> f32 { return bitcast<f32>(pool[i]); }
+fn poolV4(i : u32) -> vec4f { return vec4f(poolF(i), poolF(i + 1u), poolF(i + 2u), poolF(i + 3u)); }
+fn poolCluster(c : u32) -> Cluster {
+  let b = pool[1] + c * 16u;
+  return Cluster(poolV4(b), poolV4(b + 4u), poolV4(b + 8u), vec2f(poolF(b + 12u), poolF(b + 13u)), pool[b + 14u], pool[b + 15u]);
+}
+fn poolCorner(i : u32) -> u32 { return pool[pool[0] + i]; }
+struct PoolVertex { pos : vec3f, nrm : vec3f, uv : vec2f };
+fn poolVertex(v : u32) -> PoolVertex {
+  let b = 2u + v * 8u;
+  return PoolVertex(vec3f(poolF(b), poolF(b + 1u), poolF(b + 2u)), vec3f(poolF(b + 3u), poolF(b + 4u), poolF(b + 5u)), vec2f(poolF(b + 6u), poolF(b + 7u)));
+}
+@group(3) @binding(1) var<storage, read> drawn : array<vec2u>;  // this frame's clusters: (instance, cluster)
+
+struct VisOut {
+  @builtin(position) @invariant clip : vec4f,
+  @location(0) world : vec3f,
+  @location(1) nrm : vec3f,
+  @location(2) uv : vec2f,
+  @location(3) @interpolate(flat) mat : u32,
+  @location(4) @interpolate(flat) id : vec2u,
+};
+// One draw for every cluster: each instance of the draw is one drawn cluster,
+// its 384 corners are its (up to) 128 triangles; the rest fold to nothing.
+@vertex fn vsVis(@builtin(vertex_index) vi : u32, @builtin(instance_index) k : u32) -> VisOut {
+  var o : VisOut;
+  let d = drawn[k];
+  let cl = poolCluster(d.y);
+  let tri = vi / 3u;
+  if (tri >= cl.count) {
+    o.clip = vec4f(2.0, 2.0, 2.0, 1.0);  // outside the view: nothing drawn
+    return o;
+  }
+  let pv = poolVertex(poolCorner(cl.first + vi));
+  let inst = instances[d.x];
+  let w = inst.model * vec4f(pv.pos, 1.0);
+  o.clip = frame.viewProj * w;
+  o.world = w.xyz;
+  o.nrm = mat3x3f(inst.normal0.xyz, inst.normal1.xyz, inst.normal2.xyz) * pv.nrm;
+  o.uv = pv.uv;
+  o.mat = inst.material.x;
+  o.id = vec2u(d.x + 1u, (d.y << 7u) | tri);  // the copy (0: nothing here), its cluster and triangle
+  return o;
+}
+@fragment fn fsVis(i : VisOut) -> @location(0) vec2u {
+  var v : VsOut;
+  v.clip = i.clip;
+  v.world = i.world;
+  v.nrm = i.nrm;
+  v.uv = i.uv;
+  v.mat = i.mat;
+  takeSlopes(v);
+  if (holes(v)) { discard; }
+  return i.id;
+}
+
+// ---- lighting each pixel once: its triangle, rebuilt exactly
+@group(3) @binding(2) var visTex : texture_2d<u32>;
+struct ResolveOut { @builtin(position) clip : vec4f };
+@vertex fn vsResolve(@builtin(vertex_index) vi : u32) -> ResolveOut {
+  let p = vec2f(f32((vi << 1u) & 2u), f32(vi & 2u));
+  return ResolveOut(vec4f(p * 2.0 - 1.0, 0.0, 1.0));
+}
+// the point of the triangle's plane the camera sees through screen point `px`
+fn planeHit(px : vec2f, a : vec3f, n : vec3f) -> vec3f {
+  let ndc = vec2f(px.x * frame.screen.z * 2.0 - 1.0, 1.0 - px.y * frame.screen.w * 2.0);
+  let far = frame.invViewProj * vec4f(ndc, 1.0, 1.0);
+  let o = frame.camPos.xyz;
+  let d = far.xyz / far.w - o;
+  let t = dot(a - o, n) / dot(d, n);
+  return o + d * t;
+}
+// how much of each corner a point of the triangle has
+fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
+  let v0 = b - a;
+  let v1 = c - a;
+  let v2 = p - a;
+  let d00 = dot(v0, v0);
+  let d01 = dot(v0, v1);
+  let d11 = dot(v1, v1);
+  let d20 = dot(v2, v0);
+  let d21 = dot(v2, v1);
+  let den = d00 * d11 - d01 * d01;
+  let y = (d11 * d20 - d01 * d21) / den;
+  let z = (d00 * d21 - d01 * d20) / den;
+  // kept on the triangle: seen edge-on, the pixel's point can fall just
+  // outside it, and a normal stretched past its corners catches the light
+  let w = max(vec3f(1.0 - y - z, y, z), vec3f(0.0));
+  return w / max(w.x + w.y + w.z, 1e-12);
+}
+@fragment fn fsResolve(r : ResolveOut) -> @location(0) vec4f {
+  let id = textureLoad(visTex, vec2i(r.clip.xy), 0).rg;
+  if (id.x == 0u) { discard; }
+  let inst = instances[id.x - 1u];
+  let cl = poolCluster(id.y >> 7u);
+  let base = cl.first + (id.y & 127u) * 3u;
+  let A = poolVertex(poolCorner(base));
+  let B = poolVertex(poolCorner(base + 1u));
+  let C = poolVertex(poolCorner(base + 2u));
+  let wa = (inst.model * vec4f(A.pos, 1.0)).xyz;
+  let wb = (inst.model * vec4f(B.pos, 1.0)).xyz;
+  let wc = (inst.model * vec4f(C.pos, 1.0)).xyz;
+  let ng = cross(wb - wa, wc - wa);
+  // this pixel's point, and the points one pixel right and one down: the slopes
+  let p0 = planeHit(r.clip.xy, wa, ng);
+  let px = planeHit(r.clip.xy + vec2f(1.0, 0.0), wa, ng);
+  let py = planeHit(r.clip.xy + vec2f(0.0, 1.0), wa, ng);
+  let b0 = bary(p0, wa, wb, wc);
+  let bx = bary(px, wa, wb, wc);
+  let by = bary(py, wa, wb, wc);
+  var v : VsOut;
+  v.clip = r.clip;
+  v.world = wa * b0.x + wb * b0.y + wc * b0.z;
+  v.nrm = mat3x3f(inst.normal0.xyz, inst.normal1.xyz, inst.normal2.xyz) * (A.nrm * b0.x + B.nrm * b0.y + C.nrm * b0.z);
+  v.uv = A.uv * b0.x + B.uv * b0.y + C.uv * b0.z;
+  v.mat = inst.material.x;
+  slopeWorldX = px - v.world;
+  slopeWorldY = py - v.world;
+  slopeUvX = A.uv * bx.x + B.uv * bx.y + C.uv * bx.z - v.uv;
+  slopeUvY = A.uv * by.x + B.uv * by.y + C.uv * by.z - v.uv;
+  // which side the camera sees, as the GPU tells a drawn triangle (counter-
+  // clockwise on screen is its front): its corners' turn as seen from the eye,
+  // which stays right for big triangles reaching behind the camera
+  let front = dot(ng, frame.camPos.xyz - wa) > 0.0;
+  let s = shade(v, front);
+  return vec4f(exposed(s.color), 1.0);
+}
+)";
+
+// The cull, in a fixed order (the same picture every time, no flicker where
+// two surfaces touch): every copy the CPU kept (in view as a whole) looks at
+// its mesh's clusters; one is chosen when its own error looks smaller than the
+// limit in pixels while its parent's doesn't (all-or-nothing per group: no
+// cracks), and its sphere is in view. Each copy lists its chosen clusters in
+// its own stretch, in cluster order (cull); a count-up gives every copy where
+// its list starts (count); the lists are then packed in copy order (pack).
+inline const char* kClusterCullWgsl = R"(
+struct Instance {
+  model : mat4x4f,
+  normal0 : vec4f, normal1 : vec4f, normal2 : vec4f,
+  material : vec4u,  // x material, y mesh
+};
+struct MeshInfo { clusterFirst : u32, clusterCount : u32, vertexBase : u32, pad : u32 };
+struct CullU {
+  planes : array<vec4f, 6>,  // the view's sides (inside: dot >= 0)
+  eye : vec4f,               // xyz, w: pixels per metre at 1 m
+  params : vec4f,            // x: the error limit in pixels, y: how many copies
+};
+@group(0) @binding(0) var<uniform> cu : CullU;
+@group(0) @binding(1) var<storage, read> instances : array<Instance>;
+@group(0) @binding(2) var<storage, read> cullList : array<vec2u>;          // per copy: its instance, where its stretch starts
+@group(0) @binding(3) var<storage, read> meshes : array<MeshInfo>;
+@group(0) @binding(4) var<storage, read> pool : array<u32>;
+@group(0) @binding(5) var<storage, read_write> drawn : array<vec2u>;       // packed: (instance, cluster)
+@group(0) @binding(6) var<storage, read_write> args : array<u32, 4>;       // the draw's: corners, clusters, 0, 0
+@group(0) @binding(7) var<storage, read_write> stretch : array<vec2u>;     // each copy's chosen clusters
+@group(0) @binding(8) var<storage, read_write> counts : array<vec2u>;      // per copy: how many chosen, where its list starts when packed
+fn poolF(i : u32) -> f32 { return bitcast<f32>(pool[i]); }
+fn poolV4(i : u32) -> vec4f { return vec4f(poolF(i), poolF(i + 1u), poolF(i + 2u), poolF(i + 3u)); }
+fn looks(err : f32, c : vec3f, r : f32) -> f32 {
+  let d = length(c - cu.eye.xyz) - r;
+  if (d <= 1e-4) { return select(0.0, 3.0e38, err > 0.0); }
+  return err / d * cu.eye.w;
+}
+fn chosen(m : mat4x4f, scale : f32, id : u32) -> bool {
+  let b = pool[1] + id * 16u;
+  let bounds = poolV4(b);
+  let lod = poolV4(b + 4u);
+  let parent = poolV4(b + 8u);
+  let err = vec2f(poolF(b + 12u), poolF(b + 13u));
+  if (looks(err.x * scale, (m * vec4f(lod.xyz, 1.0)).xyz, lod.w * scale) > cu.params.x) { return false; }
+  if (err.y < 1.0e38 && looks(err.y * scale, (m * vec4f(parent.xyz, 1.0)).xyz, parent.w * scale) <= cu.params.x) { return false; }
+  let bc = (m * vec4f(bounds.xyz, 1.0)).xyz;
+  let br = bounds.w * scale;
+  for (var p = 0; p < 6; p++) {
+    if (dot(cu.planes[p].xyz, bc) + cu.planes[p].w < -br) { return false; }
+  }
+  return true;
+}
+var<workgroup> found : array<u32, 64>;
+@compute @workgroup_size(64) fn cull(@builtin(workgroup_id) wg : vec3u, @builtin(num_workgroups) nwg : vec3u, @builtin(local_invocation_index) li : u32) {
+  let k = wg.x + wg.y * nwg.x;
+  if (f32(k) >= cu.params.y) { return; }  // the same for the whole group
+  let c = cullList[k];
+  let inst = instances[c.x];
+  let mesh = meshes[inst.material.y];
+  let m = inst.model;
+  let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
+  // each of the 64 takes a run of clusters, in order
+  let run = (mesh.clusterCount + 63u) / 64u;
+  let first = min(li * run, mesh.clusterCount);
+  let last = min(first + run, mesh.clusterCount);
+  var mine = 0u;
+  for (var i = first; i < last; i++) {
+    if (chosen(m, scale, mesh.clusterFirst + i)) { mine++; }
+  }
+  found[li] = mine;
+  workgroupBarrier();
+  var at = 0u;
+  for (var j = 0u; j < li; j++) { at += found[j]; }
+  for (var i = first; i < last; i++) {
+    if (chosen(m, scale, mesh.clusterFirst + i)) {
+      stretch[c.y + at] = vec2u(c.x, mesh.clusterFirst + i);
+      at++;
+    }
+  }
+  if (li == 63u) { counts[k] = vec2u(at, 0u); }
+}
+// where every copy's list starts, in copy order (one group counts them all up)
+var<workgroup> sums : array<u32, 256>;
+@compute @workgroup_size(256) fn count(@builtin(local_invocation_index) li : u32) {
+  let n = u32(cu.params.y);
+  let run = (n + 255u) / 256u;
+  let first = min(li * run, n);
+  let last = min(first + run, n);
+  var mine = 0u;
+  for (var k = first; k < last; k++) { mine += counts[k].x; }
+  sums[li] = mine;
+  workgroupBarrier();
+  var at = 0u;
+  for (var j = 0u; j < li; j++) { at += sums[j]; }
+  for (var k = first; k < last; k++) {
+    counts[k].y = at;
+    at += counts[k].x;
+  }
+  if (li == 255u) {
+    args[0] = 128u * 3u;
+    args[1] = at;
+    args[2] = 0u;
+    args[3] = 0u;
+  }
+}
+@compute @workgroup_size(64) fn pack(@builtin(workgroup_id) wg : vec3u, @builtin(num_workgroups) nwg : vec3u, @builtin(local_invocation_index) li : u32) {
+  let k = wg.x + wg.y * nwg.x;
+  if (f32(k) >= cu.params.y) { return; }
+  let c = cullList[k];
+  let n = counts[k];
+  for (var i = li; i < n.x; i += 64u) { drawn[n.y + i] = stretch[c.y + i]; }
 }
 )";
 

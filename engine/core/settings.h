@@ -28,7 +28,9 @@ struct Config {
     int msaa = 4;
     bool fxaa = false;
     bool filmGrain = false;
-    bool cull = true;  // skip what a pass can't see  // live film grain (stills always keep a scene's grain)
+    bool cull = true;  // skip what a pass can't see
+    bool clusters = false;  // draw from the cook's cluster trees (the rebuild's step 4, off until it's done)
+    float clusterError = 1;  // pixels: the most a simpler cluster may look different from the full shape
     bool sunShadows = true;
     int sunMapPhone = 1024, sunMapHigh = 2048;
     float shadowDistance = 0;  // m half-width; 0 = the quality's own (25 / 40)

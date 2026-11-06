@@ -38,11 +38,16 @@ std::shared_ptr<const ClusterTree> Cook::clusters(const Mesh& m) {
 }
 
 void Cook::cookAll(const std::vector<Mesh>& meshes) {
+  std::vector<const Mesh*> all;
+  for (const Mesh& m : meshes) all.push_back(&m);
+  cookAll(all);
+}
+
+void Cook::cookAll(const std::vector<const Mesh*>& meshes) {
   // the biggest first, so no core is left with a big one at the end
-  std::vector<int> order(meshes.size());
-  for (size_t i = 0; i < order.size(); ++i) order[i] = static_cast<int>(i);
-  std::sort(order.begin(), order.end(), [&](int a, int b) { return meshes[a].indices.size() > meshes[b].indices.size(); });
-  JobSystem::shared().parallelFor(static_cast<int>(order.size()), [&](int k) { clusters(meshes[order[k]]); });
+  std::vector<const Mesh*> order(meshes);
+  std::sort(order.begin(), order.end(), [](const Mesh* a, const Mesh* b) { return a->indices.size() > b->indices.size(); });
+  JobSystem::shared().parallelFor(static_cast<int>(order.size()), [&](int k) { clusters(*order[k]); });
 }
 
 size_t Cook::kept() const {

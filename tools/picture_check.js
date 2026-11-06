@@ -3,6 +3,7 @@
 // A film is photographed at its "filmtime" (seconds into its shots).
 //
 //   xvfb-run -a node tools/picture_check.js [--update] [scene ...]
+//   PARAMS=clusters=1 ...   the same pictures with extra page switches (compare a new way of drawing)
 //
 // Needs the site built (tools/build_site.sh). The world is held still from its
 // first moment (?pause=1), the resolution held at full (?res=1), the eyes
@@ -22,7 +23,7 @@ const http = require('http');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SITE = path.join(ROOT, 'site');
+const SITE = process.env.SITE || path.join(ROOT, 'site');
 const REFS = path.join(ROOT, 'tests/pictures');
 const OUT = path.join(ROOT, 'build/pictures');
 const args = process.argv.slice(2);
@@ -68,7 +69,7 @@ function serve() {
       Object.defineProperty(window, 'loopShown', { configurable: true, get() { return shown && (() => { window.loopFirstFrame = true; shown(); }); }, set(f) { shown = f; } });
     });
     const started = Date.now();
-    await page.goto(`http://localhost:${port}/?quality=${config.quality}&res=1&msaa=${config.msaa}&pause=1&ui=0#${s.name}`);
+    await page.goto(`http://localhost:${port}/?quality=${config.quality}&res=1&msaa=${config.msaa}&pause=1&ui=0${process.env.PARAMS ? '&' + process.env.PARAMS : ''}#${s.name}`);
     const ok = await page.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 240000 }).then(() => true, () => false);
     if (!ok) { console.log(`FAIL ${s.name}: never showed a frame ${errors.slice(0, 2).join(' | ')}`); failed++; await page.close(); continue; }
     // the eyes settle fast, then wait until the exposure holds still

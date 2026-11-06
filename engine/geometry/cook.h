@@ -25,6 +25,7 @@ class Cook {
   std::shared_ptr<const ClusterTree> clusters(const Mesh& m);
   // Cooks many meshes at once, spread over every core (those already kept cost nothing).
   void cookAll(const std::vector<Mesh>& meshes);
+  void cookAll(const std::vector<const Mesh*>& meshes);
   size_t kept() const;
   void forget();  // everything kept is dropped (tests)
 
