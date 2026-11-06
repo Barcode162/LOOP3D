@@ -1,0 +1,22 @@
+{
+  "about": "Picture tests (tools/picture_check.js): each scene photographed by the live player at Phone quality, held still from its first moment, compared with its reference here; a film at its filmtime (seconds into its shots). mean: the most the pictures may differ on average (0..255 per channel); share: the most pixels that may differ by more than 24.",
+  "size": [288, 512],
+  "quality": 0,
+  "msaa": 1,
+  "mean": 2.0,
+  "share": 0.01,
+  "scenes": [
+    {"name": "showcase_hall"},
+    {"name": "showcase_materials"},
+    {"name": "showcase_light"},
+    {"name": "showcase_sky"},
+    {"name": "showcase_fog"},
+    {"name": "showcase_physics"},
+    {"name": "showcase_people"},
+    {"name": "showcase_glade", "filmtime": 5},
+    {"name": "courtyard", "filmtime": 3},
+    {"name": "cabin", "filmtime": 2},
+    {"name": "the_woods", "filmtime": 5},
+    {"name": "bar"}
+  ]
+}

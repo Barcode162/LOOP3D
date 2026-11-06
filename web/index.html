@@ -308,6 +308,8 @@
     q.value = params.get('quality') || (touch ? '0' : '1');
     q.onchange = () => { M._loop_set_quality(+q.value); q.blur(); };
     M._loop_set_quality(+q.value);
+    // ?pause=1: the world holds still from its very first moment (picture tests)
+    if (params.get('pause') === '1') { const n = M.lengthBytesUTF8('pause') + 1, p = M._malloc(n); M.stringToUTF8('pause', p, n); M._loop_set_option(p, 1); M._free(p); }
     const sc = document.getElementById('scene');
     // the scene picker lists every project's scenes (scenes/index.json, made by tools/build_projects.py)
     try {
