@@ -6,9 +6,15 @@
 //   project "The Bar"
 //   start "bar_room"
 //
-// One word and its value in quotes per line; lines starting with # are notes.
+//   setting "player.walk", 1.6     # an engine setting for this project
+//
+// One word and its value per line; lines starting with # are notes. A setting
+// is checked as it's read (its name, its kind, its safe range) and only ever
+// changes this project.
 #include <string>
 #include <vector>
+
+#include "engine/core/json.h"
 
 namespace loop {
 
@@ -16,6 +22,12 @@ struct Project {
   std::string name;    // project "…"
   std::string start;   // start "…": the scene opened first (its .loop file beside this one)
   std::string folder;  // where the cover page is (ends with /), when read from a file
+  struct Setting {
+    std::string name;
+    Json value;
+    int line = 0;
+  };
+  std::vector<Setting> settings;  // in the order written
 };
 
 struct ProjectProblem {

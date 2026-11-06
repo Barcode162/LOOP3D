@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Let's get a base template with the settings first", step 1 of 3: cover pages take
+  `setting "name", value` lines, each checked as it's read (name, kind, safe range; the problem names its line);
+  settings anywhere now refuse a number outside their safe range instead of quietly capping it (the old test of
+  the capping changed to the refusal); a project's settings take effect when it opens. 83 tests.
 - **2026-11-06** · Tiny goal 1 (the bar, piece 1): the bar's cover page. `projects/bar/bar.looped` names it
   ("The Bar") and its first scene (`bar_room.loop`, empty and dark); the engine reads cover pages
   (`engine/project/`, 2 tests, 82 in all); `loop check|run|play|render|budget` take a cover page; `loop project`

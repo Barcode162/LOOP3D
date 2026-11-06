@@ -276,10 +276,8 @@ void Settings::apply(Entry& e) {
     if (e.id.compare(0, w.prefix.size(), w.prefix) == 0) w.fn(e.id);
 }
 
-bool Settings::set(Layer layer, const std::string& id, const Json& value, std::string* error) {
-  Entry* e = nullptr;
-  for (Entry& x : entries_)
-    if (x.id == id) e = &x;
+bool Settings::check(const std::string& id, const Json& value, std::string* error) const {
+  const Entry* e = find(id);
   if (!e) {
     if (error) {
       std::string s = suggest(id);
@@ -287,13 +285,38 @@ bool Settings::set(Layer layer, const std::string& id, const Json& value, std::s
     }
     return false;
   }
-  if (!value.isNull() && !fitsType(e->type, value)) {
+  if (value.isNull()) return true;
+  if (!fitsType(e->type, value)) {
     if (error) {
       const char* kinds[] = {"yes or no", "a whole number", "a number", "three numbers (a vec)", "text"};
       *error = "the setting \"" + id + "\" takes " + kinds[static_cast<int>(e->type)];
     }
     return false;
   }
+  // numbers stay inside the setting's safe range
+  if (e->type == Type::kInt || e->type == Type::kFloat || e->type == Type::kVec3) {
+    std::vector<double> xs;
+    if (value.isNumber()) xs.push_back(value.number());
+    else
+      for (const Json& x : value.items()) xs.push_back(x.number());
+    for (double x : xs)
+      if (x < e->min || x > e->max) {
+        if (error) {
+          char buf[200];
+          std::snprintf(buf, sizeof buf, "the setting \"%s\" takes %g to %g (%g is too %s)", id.c_str(), e->min, e->max, x, x < e->min ? "low" : "high");
+          *error = buf;
+        }
+        return false;
+      }
+  }
+  return true;
+}
+
+bool Settings::set(Layer layer, const std::string& id, const Json& value, std::string* error) {
+  if (!check(id, value, error)) return false;
+  Entry* e = nullptr;
+  for (Entry& x : entries_)
+    if (x.id == id) e = &x;
   e->layers[layer] = value;
   apply(*e);
   return true;

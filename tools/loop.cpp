@@ -92,6 +92,23 @@ std::string expandUses(const std::string& src, const std::string& dir, std::vect
 // A scene's project (project.json in its folder) brings its settings:
 // "settings": {"cinema.quality": "cinema", "physics.iterations": 24, …}
 void loadProjectSettings(const std::string& scenePath) {
+  // a project with a cover page (<folder>/<folder>.looped): its settings
+  std::string folder = directoryOf(scenePath), name = folder;
+  while (!name.empty() && name.back() == '/') name.pop_back();
+  name = name.substr(name.find_last_of('/') + 1);
+  std::string cover = joinPath(folder, name + ".looped");
+  struct stat sb;
+  if (!name.empty() && stat(cover.c_str(), &sb) == 0) {
+    Project pr;
+    std::vector<ProjectProblem> ps;
+    Settings::get().clear(Settings::kProject);
+    if (!readProject(cover, pr, ps)) {
+      for (const ProjectProblem& p : ps) std::fprintf(stderr, "problem: %s\n", p.message(cover).c_str());
+      return;
+    }
+    for (const Project::Setting& s : pr.settings) Settings::get().set(Settings::kProject, s.name, s.value);
+    return;
+  }
   std::string text;
   if (!readText(joinPath(directoryOf(scenePath), "project.json"), text)) return;
   Json p;
@@ -470,12 +487,14 @@ int main(int argc, char** argv) {
       return 1;
     }
     if (cmd == "project") {
-      Json j = Json::object();
-      j.set("name", Json(pr.name)), j.set("start", Json(pr.start));
+      Json j = Json::object(), settings = Json::object();
+      for (const Project::Setting& s : pr.settings) settings.set(s.name, s.value);
+      j.set("name", Json(pr.name)), j.set("start", Json(pr.start)), j.set("settings", settings);
       std::printf("%s\n", j.dump(1).c_str());
       return 0;
     }
-    if (cmd == "check") std::printf("%s: \"%s\", opens %s\n", target.c_str(), pr.name.c_str(), pr.start.c_str());
+    if (cmd == "check")
+      std::printf("%s: \"%s\", opens %s, %zu setting%s\n", target.c_str(), pr.name.c_str(), pr.start.c_str(), pr.settings.size(), pr.settings.size() == 1 ? "" : "s");
     target = first;
   } else if (cmd == "project") {
     std::fprintf(stderr, "loop project takes a project's cover page (name.looped)\n");

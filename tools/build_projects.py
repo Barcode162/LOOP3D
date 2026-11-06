@@ -32,7 +32,8 @@ def cover_page(looped):
         sys.exit(out.stderr.strip())
     cover = json.loads(out.stdout)
     others = sorted(f.stem for f in looped.parent.glob("*.loop") if f.stem != cover["start"])
-    return {"name": looped.parent.name, "title": cover["name"], "start": cover["start"], "scenes": [cover["start"]] + others}
+    return {"name": looped.parent.name, "title": cover["name"], "start": cover["start"], "scenes": [cover["start"]] + others,
+            "settings": cover.get("settings", {})}
 
 
 projects, owner = [], {}

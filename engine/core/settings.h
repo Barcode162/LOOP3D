@@ -134,8 +134,11 @@ class Settings {
 
   static Settings& get();
   // Sets one setting in a layer (a null Json clears it there). False, with a
-  // reason (and "did you mean"), for an unknown name or a value of the wrong kind.
+  // reason, for an unknown name ("did you mean"), a value of the wrong kind, or
+  // a number outside the setting's safe range (nothing is changed then).
   bool set(Layer layer, const std::string& id, const Json& value, std::string* error = nullptr);
+  // The same checks without setting anything.
+  bool check(const std::string& id, const Json& value, std::string* error = nullptr) const;
   void clear(Layer layer);                      // every value in that layer
   bool setMany(Layer layer, const Json& object, std::string* error = nullptr);
   Json value(const std::string& id) const;      // in effect

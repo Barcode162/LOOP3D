@@ -40,8 +40,14 @@ TEST(settings_layers_and_precedence) {
   CHECK(config().physics.iterations == 24);
   s.clear(Settings::kScene);
   CHECK(config().physics.iterations == 20);
-  // out of range is held to the range
-  CHECK(s.set(Settings::kEditor, "physics.iterations", Json(9999)));
+  // out of range is refused, saying the range, and nothing changes (2026-11-06:
+  // before, it was quietly held to the range)
+  std::string why;
+  CHECK(!s.set(Settings::kEditor, "physics.iterations", Json(9999), &why));
+  CHECK(why.find("takes 1 to 64") != std::string::npos && why.find("too high") != std::string::npos);
+  CHECK(config().physics.iterations == 20);
+  CHECK(!s.set(Settings::kEditor, "physics.gravity", Json(-500)));
+  CHECK(s.set(Settings::kEditor, "physics.iterations", Json(64)));
   CHECK(config().physics.iterations == 64);
   // kinds
   CHECK(s.set(Settings::kEditor, "physics.gravity", Json::array()) == false);
