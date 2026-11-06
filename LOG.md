@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "I want the floor to be transparent and darker": the template's first room is a dark space with
+  a see-through grid floor: a grid whose material has opacity 0 keeps only its lines (live and film), which glow
+  softly and fade at their edges and into the distance; the camera's exposure is fixed so the dark stays dark.
 - **2026-11-06** · `loop new "My Game"` makes a new project from the template (`projects/my_game/`: its cover page
   named, its first room renamed `my_game_room` and titled; checked; nothing left behind on a problem). 85 tests.
 - **2026-11-06** · Perfecting the template (the user's 1, 2, 3, 4): a Sound group and plainer notes (16 settings);

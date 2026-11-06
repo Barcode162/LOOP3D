@@ -101,6 +101,18 @@ fn planar(p : vec3f, n : vec3f) -> vec2f {
 }
 fn cellHash(v : vec2f) -> f32 { return hash3(vec3f(v, 7.0)); }
 
+// The grid pattern live: 1 on its lines (a pixel and a half wide at any
+// distance), 0 between them, fading where the squares get no bigger than the
+// lines. `scale` is squares per metre.
+fn gridLine(world : vec3f, n : vec3f, scale : f32) -> f32 {
+  let g = planar(world * scale, n);
+  let w = max(fwidth(g), vec2f(1e-5)) * 1.5;
+  let d = abs(fract(g - 0.5) - 0.5) / w;
+  let line = 1.0 - clamp(min(d.x, d.y), 0.0, 1.0);
+  let far = clamp(max(w.x, w.y) * 3.0 - 0.5, 0.0, 1.0);
+  return mix(line, 0.25, far);
+}
+
 // The pattern with detail finer than `lod` (metres per pixel) faded to its
 // average: no shimmer when a pixel covers many bricks or grains.
 fn patternLod(m : Material, p : vec3f, n : vec3f, lod : f32) -> vec3f {
@@ -372,6 +384,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let width = sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95;
     if (abs(x) > width) { discard; }
   }
+  var glowScale = 1.0;  // a see-through grid's lines fade at their edges and far away
   if (m.pattern.x > 0.5) {
     var pv = pattern(m, i.world, n);
     // detail smaller than a pixel fades to its average (no shimmer, no moire)
@@ -394,14 +407,12 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
     pv = vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
     if (kind == 10) {
-      // grid: lines a pixel and a half wide at any distance, fading where the
-      // squares get no bigger than the lines
-      let g = planar(i.world * sc, n);
-      let w = max(fwidth(g), vec2f(1e-5)) * 1.5;
-      let d = abs(fract(g - 0.5) - 0.5) / w;
-      let line = 1.0 - clamp(min(d.x, d.y), 0.0, 1.0);
-      let far = clamp(max(w.x, w.y) * 3.0 - 0.5, 0.0, 1.0);
-      pv = vec3f(mix(line, 0.25, far), 0.5, 1.0);
+      pv = vec3f(gridLine(i.world, n, sc), 0.5, 1.0);
+      // a see-through grid (opacity under a half): only its lines are drawn
+      if (m.emission.w < 0.5) {
+        if (pv.x < 0.5) { discard; }
+        glowScale = smoothstep(0.5, 1.0, pv.x);
+      }
     }
     base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
     rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
@@ -492,7 +503,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   if (m.props.w > 0.0) {  // sheen: a soft rim
     lo += base * m.props.w * pow(1.0 - nv, 4.0) * shIrradiance(n) / PI;
   }
-  lo += m.emission.rgb;
+  lo += m.emission.rgb * glowScale;
   var outA = m.emission.w;
   if (glass > 0.0) {
     // glass: what's reflected, plus the tint of what's behind (blended)
@@ -556,6 +567,8 @@ struct ShadowOut {
     let c = textureSample(modelTex, modelSampler, i.uv, i32(m.tex.x));
     if (c.a < m.tex2.x) { discard; }
   }
+  // a see-through grid: the same holes as the lit pass cuts
+  if (i32(m.pattern.x) == 10 && m.emission.w < 0.5 && gridLine(i.world, normalize(i.nrm), max(m.pattern.y, 0.01)) < 0.5) { discard; }
 }
 @fragment fn fsShadow(i : ShadowOut) {
   let m = materials[i.mat];

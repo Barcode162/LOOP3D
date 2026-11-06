@@ -255,6 +255,13 @@ bool PathTracer::Impl::surfaceAlphaCut(int inst, uint32_t prim, float u, float v
     float width = std::sin(kPi * std::pow(saturate(y), 0.75f)) * 0.95f;
     if (std::fabs(x) > width) return true;
   }
+  if (m.opacity < 0.5f && m.pattern.kind == Pattern::Kind::kGrid) {
+    // a see-through grid: only its lines are there
+    float mix, height;
+    Vec3 tint;
+    patternValue(m.pattern, scene->images, p, td.ng, uv, mix, height, tint);
+    return mix < 0.5f;
+  }
   if (m.opacity < 1) {
     // dithered opacity: deterministic per point so it's a stable pattern
     uint32_t h = hash32(static_cast<uint32_t>(p.x * 4096) ^ hash32(static_cast<uint32_t>(p.y * 4096)) ^ hash32(static_cast<uint32_t>(p.z * 4096) + 17));
