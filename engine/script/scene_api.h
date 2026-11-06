@@ -20,6 +20,7 @@
 #include "engine/anim/anim.h"
 #include "engine/core/json.h"
 #include "engine/audio/audio.h"
+#include "engine/audio/music.h"
 #include "engine/geometry/terrain.h"
 #include "engine/physics/physics.h"
 #include "engine/render/scene.h"
@@ -99,6 +100,8 @@ struct Stage {
   std::vector<SoundRef> sounds;
   physics::World world;
   audio::Mixer mixer;
+  audio::Sequencer music;   // tempo and tracks (engine/audio/music.h), in time with the world
+  uint32_t musicSeed = 1;
   std::string groundSurface = "stone";
   bool collidersDirty = false;
   std::map<std::string, int> meshCache;  // shapes already made (shared between copies)

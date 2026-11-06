@@ -89,7 +89,10 @@ animation and games in one place, but locked to one console and
   its thing; Copy and Save .loop; the engine's messages.
 - **Film:** shots on a timeline (tap to pick, drag to scrub, Watch); Shot from here, Retake, Ends here, Remove,
   length; the film's look (12 looks). The film's black bars show only here.
-- **Sound:** listen; 15 sounds placed in the middle of the view, their volume; the room's size and echo.
+- **Sound:** music first: tempo and swing, a drum grid (kick, snare, hat, open hat, clap) and a melody grid
+  (bass, keys, pluck, lead, pad, bell; a scale that always sounds right), written as `track` lines and played at
+  once without building the world again, the step playing lit; then 15 sounds placed in the middle of the view,
+  their volume; the room's size and echo. The engine's instruments are its own (`engine/audio/music.*`).
 - **Nothing lost:** the text kept at once (`localStorage`), undo and redo and 200 versions per scene
   (IndexedDB) through reloads; Menu → Versions.
 - **Checks:** `tests/editor_source_test.js` (every script edit, and the engine reads them; in the quick checks)
@@ -97,7 +100,7 @@ animation and games in one place, but locked to one console and
 
 ## Next
 
-- **Music:** the engine's own instruments (from scratch) and notes on the same timeline as the film.
+- **Music on the film's timeline:** songs that start with a shot, more bars than one, chords.
 - **More hands:** pick lamps by their light, sun and sky by dragging, materials made and named, models from the
   project's folder, groups (a table and its chairs move together), people's walks drawn on the floor.
 - **Logic as cards:** each line of a script shown as a card you can read and change with taps (still the same

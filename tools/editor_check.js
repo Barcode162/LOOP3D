@@ -1,6 +1,6 @@
 // Checks the editor in a real browser, on a phone screen and a computer screen:
 // adds a box, taps it, drags it (its line is rewritten), undoes and redoes,
-// opens Logic, adds a shot in Film and a sound in Sound, and reloads (nothing
+// opens Logic, adds a shot in Film, a sound and music in Sound, and reloads (nothing
 // lost). Pictures go to <out dir>; it fails if any step goes wrong.
 //   (cd site && python3 -m http.server 8123 &)
 //   xvfb-run -a node tools/editor_check.js http://localhost:8123 <out dir>
@@ -67,12 +67,20 @@ async function run(browser, name, viewport, touch) {
   await tap('fire'); await p.waitForTimeout(2500);
   check((await lines('^sound "fire"')).length === 1, name + ': a sound is added');
   check(await p.evaluate(() => LE.view.extra.some((m) => m.kind === 'sound')), name + ': the sound shows in the world');
+  // music: a kick on the first beat and a bass note, written as tracks, playing in time
+  await p.evaluate(() => { document.querySelector('.seqrow .cell[data-step="0"]').click(); });
+  await p.waitForTimeout(400);
+  await p.evaluate(() => { const rows = document.querySelectorAll('.seq')[1].querySelectorAll('.seqrow'); rows[rows.length - 1].querySelector('.cell[data-step="0"]').click(); });
+  await p.waitForTimeout(1500);
+  const tracks = await lines('^track');
+  check(tracks.length === 2 && /"kick", "x\.{15}"/.test(tracks[0]) && /"bass", "C2( \.){15}"/.test(tracks[1]), name + ': the music grid writes tracks (' + tracks.join(' | ') + ')');
+  check(await p.evaluate(() => LE.engine.musicStep() > 0), name + ': the music plays in time with the world');
   await p.screenshot({ path: `${OUT}/${name}_sound.png` });
   check(await p.evaluate(() => LE.logic.problems.length === 0), name + ': the edited script has no problems');
   await p.reload();
   await ready();
   await p.waitForTimeout(1500);
-  check((await lines('^(box|shot|sound)')).length === 3, name + ': a reload keeps every change');
+  check((await lines('^(box|shot|sound|track)')).length === 5, name + ': a reload keeps every change');
   check(await p.evaluate(() => LE.history.undo.length >= 4), name + ': and undo still knows them');
   check(!errs.length, name + ': no page errors' + (errs.length ? '\n' + errs.join('\n') : ''));
   await ctx.close();

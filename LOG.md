@@ -9,7 +9,10 @@ One line per request, newest first: the date, what the user asked, what was done
   into the scene's script line; Build, Logic, Film (shots from the view, a timeline) and Sound; undo, redo and
   200 versions kept through reloads; Play keeps changes; a work light for dark worlds. The engine learnt each
   thing's script line and picking (tested); `tests/editor_source_test.js` joins the quick checks;
-  `tools/editor_check.js` passes 30 of 30 on a phone and a computer screen. Music is next.
+  `tools/editor_check.js` passes on a phone and a computer screen. Then music: the engine's own instruments
+  (6 drums, 6 with notes: oscillators, noise, filters, a plucked string, FM bells; tested for pitch), `tempo`
+  and `track` in the language, a step sequencer in time with the world, and the Sound space's drum and melody
+  grids that change the song live; one-off sounds no longer pile up while sound is off.
 - **2026-11-06** · "1 yup" (the menu, step 1 of 5): the player's row of buttons waits behind one round menu
   button in the bottom-right corner (after 3D's J106.4); a tap shows the buttons beside it and the thumb sticks
   step aside, ✕ hides them; `story.hud` and `?ui=0` hide it too. Your next steps (own icons, hold on the phone

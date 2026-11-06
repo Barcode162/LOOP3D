@@ -963,6 +963,31 @@ EMSCRIPTEN_KEEPALIVE int loop_thing_set(int index, const char* json) {
   return 1;
 }
 
+// The music changed by the editor without running the script again (the
+// song keeps its place): {"tempo": 100, "swing": 0, "tracks": [{"instrument":
+// "kick", "pattern": "x...", "volume": 1}]}. 0, and nothing changed, if a
+// track can't be read.
+EMSCRIPTEN_KEEPALIVE int loop_music_set(const char* json) {
+  if (!g.stage) return 0;
+  Json o;
+  if (!Json::parse(json ? json : "{}", o) || !o.isObject()) return 0;
+  std::vector<audio::Track> tracks;
+  if (o.has("tracks"))
+    for (const Json& t : o["tracks"].items()) {
+      audio::Track tr;
+      if (!audio::parseTrack(t["instrument"].string(), t["pattern"].string(), tr)) return 0;
+      tr.volume = std::clamp(static_cast<float>(t.has("volume") ? t["volume"].number(1) : 1), 0.0f, 2.0f);
+      tracks.push_back(std::move(tr));
+    }
+  audio::Sequencer& m = g.stage->music;
+  if (o.has("tempo")) m.tempo = std::clamp(static_cast<float>(o["tempo"].number(100)), 20.0f, 300.0f);
+  if (o.has("swing")) m.swing = std::clamp(static_cast<float>(o["swing"].number(0)), 0.0f, 0.5f);
+  m.tracks = std::move(tracks);
+  return 1;
+}
+// The music's step playing now (for the editor's grid), or -1.
+EMSCRIPTEN_KEEPALIVE int loop_music_step() { return g.stage ? static_cast<int>(g.stage->music.step() % 1000000) : -1; }
+
 // The engine's messages since the last call (scene starts, problems, settings).
 EMSCRIPTEN_KEEPALIVE const char* loop_log() {
   static std::string out;

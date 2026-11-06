@@ -556,7 +556,8 @@ window.LE = window.LE || {};
       const list = S.soundLines(H.text);
       const add = h('div', { class: 'tools' });
       for (const k of ENDLESS) add.append(h('button', { class: 'tool', onclick: () => addLine('sound "' + k + '", at: ' + S.vec(spotAhead(1)) + ', volume: 1', 'added the sound of ' + k) }, I('wave'), k));
-      body.append(h('div', { class: 'note', style: 'margin-top:0' }, 'Tap a sound to place it in the middle of the view. You hear it from where it is, louder as you get closer.'), add);
+      body.append(this.musicCard());
+      body.append(h('h3', { style: 'margin:14px 0 4px;font-size:14px;color:var(--dim);font-weight:600' }, 'Sounds of the world'), h('div', { class: 'note', style: 'margin-top:0' }, 'Tap a sound to place it in the middle of the view. You hear it from where it is, louder as you get closer.'), add);
       const card = h('div', { class: 'card' }, h('h3', {}, 'Sounds in this world'));
       if (!list.length) card.append(h('div', { class: 'empty' }, 'Silence so far.'));
       for (const s of list) {
@@ -568,12 +569,109 @@ window.LE = window.LE || {};
       body.append(card);
       // the room's echo
       const roomLine = (H.text.match(/^room\b.*$/m) || [''])[0];
-      const echo = +(S.getArg(roomLine, 'echo') ?? 0.3), size = +(S.getArg(roomLine, 'size') ?? 10);
-      const room = h('div', { class: 'card' }, h('h3', {}, 'The room'));
-      room.append(slider('Size', size, 2, 60, 1, 'm', (v) => SP.apply(S.setStatement(H.text, 'room', 'size: ' + S.num(v) + ', echo: ' + S.num(echo)), 'the room\'s size')));
+      const echo = +(S.getArg(roomLine, 'echo') ?? 0.15), size = +(S.getArg(roomLine, 'size') ?? 0.3);
+      const room = h('div', { class: 'card' }, h('h3', {}, 'The room'), h('div', { class: 'note', style: 'margin-top:0' }, 'How big the space sounds: 0 outdoors, 1 a cathedral.'));
+      room.append(slider('Size', size, 0, 1, 0.05, '', (v) => SP.apply(S.setStatement(H.text, 'room', 'size: ' + S.num(v) + ', echo: ' + S.num(echo)), 'the room\'s size')));
       room.append(slider('Echo', echo, 0, 1, 0.05, '', (v) => SP.apply(S.setStatement(H.text, 'room', 'size: ' + S.num(size) + ', echo: ' + S.num(v)), 'the room\'s echo')));
       body.append(room);
-      body.append(h('div', { class: 'card' }, h('h3', {}, 'Music'), h('div', { class: 'note', style: 'margin:0' }, 'Music on the same timeline as the film is next: the engine gets its own instruments first, so every note is made here, from scratch.')));
+    },
+    // ---- music: a drum grid and a melody grid, each row a `track` line
+    music() {
+      const out = { tempo: 100, swing: 0, tracks: [] };
+      H.text.split('\n').forEach((l, i) => {
+        const c = S.callOf(l);
+        if (!c || /^\s/.test(l)) return;
+        if (c.word === 'tempo') { out.tempo = +((l.slice(c.argsAt).match(/^\s*([\d.]+)/) || [])[1] || 100); out.swing = +(S.getArg(l, 'swing') ?? 0); out.tempoLine = i + 1; }
+        if (c.word === 'track') {
+          const m = l.slice(c.argsAt).match(/^\s*"([^"]+)"\s*,\s*"([^"]*)"/);
+          if (m) out.tracks.push({ line: i + 1, instrument: m[1], pattern: m[2], volume: +(S.getArg(l, 'volume') ?? 1) });
+        }
+      });
+      return out;
+    },
+    // a changed song: written into the script, and played at once without building the world again
+    async setMusic(text, label) {
+      if (!H.commit(text, label)) return;
+      const m = this.music();
+      if (!E.musicSet({ tempo: m.tempo, swing: m.swing, tracks: m.tracks.map((t) => ({ instrument: t.instrument, pattern: t.pattern, volume: t.volume })) })) await SP.rerun();
+      SP.marks();
+      this.draw();
+    },
+    // where music lines go: after the last one, else at the end under a heading
+    musicText(line) {
+      const m = this.music(), lines = [m.tempoLine || 0, ...m.tracks.map((t) => t.line)];
+      const last = Math.max(...lines);
+      if (last > 0) return S.insertAfter(H.text, last, line);
+      const L = H.text.split('\n');
+      let end = L.length;
+      while (end > 0 && L[end - 1].trim() === '') end--;
+      return S.insertAfter(H.text, end, ['', '# ---- the music (16 steps a bar: 4 steps a beat)', 'tempo 100', line]);
+    },
+    setTrack(instrument, steps, isDrum) {
+      const m = this.music();
+      const t = m.tracks.find((x) => x.instrument === instrument);
+      const pattern = isDrum ? steps.map((x) => (x ? 'x' : '.')).join('') : steps.map((x) => x || '.').join(' ');
+      const empty = steps.every((x) => !x);
+      if (t && empty) return this.setMusic(S.removeLine(H.text, t.line).text, 'cleared the ' + instrument);
+      if (t) {
+        const old = S.lineAt(H.text, t.line), line = old.replace(/^(track\s+"[^"]+"\s*,\s*)"[^"]*"/, '$1"' + pattern + '"');
+        return this.setMusic(S.replaceLine(H.text, t.line, line), 'the ' + instrument);
+      }
+      return this.setMusic(this.musicText('track "' + instrument + '", "' + pattern + '"'), 'added the ' + instrument);
+    },
+    musicCard() {
+      const m = this.music(), on = LE.soundOn && LE.soundOn();
+      const card = h('div', { class: 'card' });
+      card.append(h('div', { class: 'row', style: 'margin-bottom:6px' }, h('h3', { style: 'margin:0' }, 'Music'), h('span', { class: 'spacer' }),
+        h('span', { class: 'dim', style: 'font-size:12px' }, on ? 'playing with the world' : 'tap Listen to hear it')));
+      card.append(slider('Tempo', m.tempo, 60, 180, 1, 'bpm', (v) => {
+        const line = 'tempo ' + S.num(v) + (m.swing ? ', swing: ' + S.num(m.swing) : '');
+        this.setMusic(m.tempoLine ? S.replaceLine(H.text, m.tempoLine, line) : this.musicText(line), 'the tempo');
+      }));
+      card.append(slider('Swing', m.swing, 0, 0.5, 0.05, '', (v) => {
+        const line = 'tempo ' + S.num(m.tempo) + (v ? ', swing: ' + S.num(v) : '');
+        this.setMusic(m.tempoLine ? S.replaceLine(H.text, m.tempoLine, line) : this.musicText(line), 'the swing');
+      }));
+      // drums: one row a drum, one cell a step
+      const DRUMS = ['kick', 'snare', 'hat', 'open_hat', 'clap', 'tom'];
+      const drumGrid = h('div', { class: 'seq' });
+      for (const d of DRUMS.slice(0, 5)) {
+        const t = m.tracks.find((x) => x.instrument === d);
+        const steps = Array.from({ length: 16 }, (_, i) => !!(t && /[xX]/.test(t.pattern.replace(/\s+/g, '')[i] || '')));
+        const row = h('div', { class: 'seqrow' }, h('span', { class: 'seqlbl' }, d.replace('_', ' ')));
+        steps.forEach((x, i) => row.append(h('button', { class: 'cell' + (x ? ' on' : '') + (i % 4 === 0 ? ' beat' : ''), 'data-step': i, 'aria-label': d + ' step ' + (i + 1), onclick: () => { steps[i] = !steps[i]; this.setTrack(d, steps, true); } })));
+        drumGrid.append(row);
+      }
+      card.append(h('div', { class: 'note', style: 'margin:8px 0 4px' }, 'Drums: tap a step to hit it. Each row loops every bar.'), drumGrid);
+      // a melody: pick an instrument, then one note per step from a scale that always sounds right
+      const MELODIC = ['bass', 'keys', 'pluck', 'lead', 'pad', 'bell'];
+      const OCT = { bass: 2, pluck: 3, keys: 4, pad: 4, lead: 5, bell: 5 };
+      this.melodic = this.melodic || (m.tracks.find((t) => MELODIC.includes(t.instrument)) || {}).instrument || 'bass';
+      const ins = this.melodic, o = OCT[ins];
+      const chips = h('div', { class: 'chips', style: 'margin:12px 0 6px' });
+      for (const k of MELODIC) chips.append(h('button', { class: 'pill' + (k === ins ? ' on' : '') + (m.tracks.some((t) => t.instrument === k) ? ' has' : ''), onclick: () => { this.melodic = k; this.draw(); } }, k));
+      card.append(chips);
+      const scale = ['C' + o, 'Eb' + o, 'F' + o, 'G' + o, 'Bb' + o, 'C' + (o + 1), 'Eb' + (o + 1), 'F' + (o + 1)].reverse();
+      const t = m.tracks.find((x) => x.instrument === ins);
+      const words = t ? t.pattern.trim().split(/\s+/) : [];
+      const steps = Array.from({ length: 16 }, (_, i) => (words[i] && words[i] !== '.' && words[i] !== '-' ? words[i] : null));
+      const mel = h('div', { class: 'seq' });
+      for (const n of scale) {
+        const row = h('div', { class: 'seqrow' }, h('span', { class: 'seqlbl mono' }, n));
+        steps.forEach((x, i) => row.append(h('button', { class: 'cell' + (x === n ? ' on note' : '') + (i % 4 === 0 ? ' beat' : ''), 'data-step': i, 'aria-label': n + ' step ' + (i + 1), onclick: () => { steps[i] = steps[i] === n ? null : n; this.setTrack(ins, steps, false); } })));
+        mel.append(row);
+      }
+      card.append(h('div', { class: 'note', style: 'margin:4px 0' }, 'Melody: one note a step from a scale that always sounds right; tap it again for silence.'), mel);
+      this.grids = [drumGrid, mel];
+      return card;
+    },
+    tick() {
+      if (!this.grids || !this.grids[0].isConnected) return;
+      const st = E.musicStep();
+      const col = st < 0 ? -1 : st % 16;
+      if (col === this.lastCol) return;
+      this.lastCol = col;
+      for (const g of this.grids) g.querySelectorAll('.cell').forEach((c) => c.classList.toggle('now', +c.dataset.step === col));
     },
   };
 
@@ -633,5 +731,5 @@ window.LE = window.LE || {};
     if (kind === 'filmLeft') { film.playing = false; if (SP.current === 'film') film.draw(); }
   });
   V.on((kind, d) => { if (kind === 'changed' && d && d.rerun) SP.rerun(); });
-  setInterval(() => { if (SP.current === 'film') film.tick(); }, 100);
+  setInterval(() => { if (SP.current === 'film') film.tick(); else if (SP.current === 'sound') sound.tick(); }, 60);
 })();

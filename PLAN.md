@@ -59,8 +59,9 @@ One editor for building, logic, film and sound, made for the phone first, answer
 Blender, Unity, Unreal, Godot, music and video apps (`docs/EDITOR.md`: each complaint and its rule).
 Built: the world view with its own camera, tap to pick, drag to move, handles to lift, turn and size, every
 change written into the script; Build, Logic, Film and Sound; undo, redo and versions through reloads; Play
-without losing changes; the work light. Next, in order:
-1. **Music:** the engine's own instruments and notes on the film's timeline.
+without losing changes; the work light; music with the engine's own instruments (a drum grid, a melody grid).
+Next, in order:
+1. **Music on the film's timeline:** songs that start with a shot, longer songs, chords.
 2. **More hands:** lamps, sun and sky, materials, models, groups, people's walks.
 3. **Logic as cards**, the same text underneath.
 4. **Saving to the repo from the phone** (needs you).

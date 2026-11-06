@@ -192,6 +192,12 @@ Every setting has a sensible default; give only what matters.
   - Endless sounds play at the volume `audio.ambience`, one-offs and knocks at `audio.effects`, footsteps at `audio.footsteps`
   - Fields: `.volume .position .playing`
   - `room(size, echo)` sets how big the space sounds.
+- **Music** (the engine's own instruments, made from scratch; it plays in time with the world, at the volume `audio.music`):
+  - `tempo 100, swing: 0.1`: beats a minute (4 steps a beat, 16 a bar) and a shuffle (0 straight .. 0.5)
+  - `track "kick", "x...x...x...x..."`: a line of music that loops over its own length; drums take one character a step (`x` a hit, `X` a loud one, `.` nothing)
+  - `track "bass", "C2 . . Eb2 - - G1 .", volume: 0.8`: notes take one word a step (a note like `C4`, `Eb3`, `F#2`, `G2!` loud; `.` a rest; `-` holds the note before)
+  - Instruments: drums `kick snare hat open_hat clap tom`; with notes `bass lead pad pluck keys bell`
+  - The editor's Sound space writes these lines with a drum grid and a melody grid
 - **Story** (see [`STORY_GUIDE.md`](STORY_GUIDE.md)):
   - `line(speaker, text, seconds)` shows a line and gives back its seconds (by default long enough to read at `story.textSpeed`, at least `story.lineMin`); `clear_lines()` takes them away; `ask(question, [options])` sends `"choice"` with `event` = the option picked
   - `go_to("next scene")`; `remember(key, value)`, `recall(key, otherwise)` and `forget_story()` for what the story keeps between scenes

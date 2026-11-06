@@ -446,6 +446,16 @@ int Mixer::play(std::unique_ptr<Voice> v, Vec3 at, float volume, bool spatial, b
   s.at = at, s.volume = volume, s.spatial = spatial, s.loop = loop, s.category = category;
   s.lastAt = at;
   s.air.set('l', 20000, 0.7f);
+  // one-off sounds wait to be heard; with nobody listening (sound off) they'd
+  // pile up and all play at once later: past kMaxOneShots the oldest gives way
+  if (!loop) {
+    constexpr size_t kMaxOneShots = 96;
+    size_t oneShots = 0;
+    for (auto& o : impl_->srcs) oneShots += o.loop ? 0 : 1;
+    if (oneShots >= kMaxOneShots)
+      for (auto it = impl_->srcs.begin(); it != impl_->srcs.end(); ++it)
+        if (!it->loop) { impl_->srcs.erase(it); break; }
+  }
   impl_->srcs.push_back(std::move(s));
   return impl_->srcs.back().id;
 }
