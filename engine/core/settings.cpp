@@ -74,7 +74,8 @@ Settings::Settings() {
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
   B("render.cull", r.cull, "skip what a pass can't see: off screen, or outside the sun's shadow area (off: draw everything)");
   F("render.clusterError", r.clusterError, 0.01, 16, "with clusters: the most, in pixels, a simpler version of a shape may look different from its full detail (smaller: more detail, more work)");
-  B("render.clusters", r.clusters, "draw every shape in clusters, each at the detail its size on screen needs, chosen and drawn by the GPU (Nanite's way; being built: off until it's done)");
+  B("render.taa", r.taa, "frame blending: the view shifts a fraction of a pixel each frame and each pixel is blended with the frames before (smooth edges, no shimmer); with clusters, in place of multisampling");
+  B("render.clusters", r.clusters, "draw every shape in clusters, each at the detail its size on screen needs, chosen and drawn by the GPU in one go (Nanite's way; off: one draw per kind of shape, with multisampling)");
   B("render.filmGrain", r.filmGrain, "film grain in the live picture (off: no fizz; stills keep a scene's grain)");
   B("render.sunShadows", r.sunShadows, "the sun casts shadows");
   I("render.sunMapPhone", r.sunMapPhone, 256, 4096, "sun shadow map size on Phone");

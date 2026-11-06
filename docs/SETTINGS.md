@@ -77,9 +77,9 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Edge smoothing (FXAA) | `render.fxaa` | false |  | live · script | `setting "render.fxaa", false` | Cheap smoothing of hard edges in the film pass; most useful with MSAA off. |
 | Skip what can't be seen | `render.cull` | true |  | live · script | `setting "render.cull", true` | Each pass draws only the things its view can see: off screen or outside the sun's shadow area is skipped. Off: everything, every frame (for comparing). |
 | Cluster detail (pixels) | `render.clusterError` | 1 | 0.01 … 16 | live · script | `setting "render.clusterError", 1` | With clusters: the most a simpler version of a shape may look different from its full detail, in pixels. Smaller: more detail, more work. |
-| Draw in clusters | `render.clusters` | false |  | live · script | `setting "render.clusters", false` | Every shape in small pieces, each at the detail its size on screen needs, chosen and drawn by the graphics chip in one go (Nanite's way). Being built: off until it's done. |
+| Draw in clusters | `render.clusters` | true |  | live · script | `setting "render.clusters", true` | Every shape in small pieces, each at the detail its size on screen needs, chosen and drawn by the graphics chip in one go (Nanite's way). Off: one draw per kind of shape, with multisampling (for comparing). |
 | Film grain while playing | `render.filmGrain` | false |  | live · script | `setting "render.filmGrain", false` | Off: the live picture never fizzes. Stills and film frames always keep a scene's grain. |
-| Temporal anti-aliasing | `render.taa` | false |  | not built yet |  | Comes with temporal upscaling. |
+| Frame blending (TAA) | `render.taa` | true |  | live · script | `setting "render.taa", true` | The view shifts a fraction of a pixel each frame and every pixel is blended with the frames before it: smooth edges, no shimmer. With clusters, in place of multisampling. |
 
 ### Sun shadows
 
@@ -590,4 +590,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 137 live · script · 49 live · 29 not built yet · 15 editor · 6 needs you
+11 project.json · 138 live · script · 49 live · 28 not built yet · 15 editor · 6 needs you

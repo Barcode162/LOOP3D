@@ -29,8 +29,9 @@ struct Config {
     bool fxaa = false;
     bool filmGrain = false;
     bool cull = true;  // skip what a pass can't see
-    bool clusters = false;  // draw from the cook's cluster trees (the rebuild's step 4, off until it's done)
+    bool clusters = true;  // draw from the cook's cluster trees (Nanite's way; off: the triangle drawing)
     float clusterError = 1;  // pixels: the most a simpler cluster may look different from the full shape
+    bool taa = true;  // frame blending (with clusters, where it takes multisampling's place)
     bool sunShadows = true;
     int sunMapPhone = 1024, sunMapHigh = 2048;
     float shadowDistance = 0;  // m half-width; 0 = the quality's own (25 / 40)

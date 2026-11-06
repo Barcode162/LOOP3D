@@ -326,6 +326,7 @@ class GpuRenderer final : public Renderer {
       if (*b) b->Destroy(), *b = nullptr;
     poolIdx_ = poolClusters_ = nullptr;
     pooledMeshes_ = 0, poolClusterCount_ = 0;
+    histValid_ = false;  // a new scene: no past to blend with
     // free the old scene's GPU memory now, not whenever the browser collects it
     for (GpuMesh& m : meshes_) {
       if (m.vb) m.vb.Destroy();
@@ -531,6 +532,18 @@ class GpuRenderer final : public Renderer {
     Mat4 view = Mat4::lookAt(cam.position, cam.target, cam.up);
     float fovY = cam.fovY();
     Mat4 proj = Mat4::perspective(fovY, aspect, 0.05f, std::max(C.world.drawDistance, 1.0f));
+    const Mat4 steadyViewProj = proj * view;  // without frame blending's shift
+    if (blending()) {
+      // frame blending: this frame's fraction-of-a-pixel shift (Halton 2, 3: 8 spots)
+      auto halton = [](uint32_t i, uint32_t b) {
+        float f = 1, r = 0;
+        for (; i > 0; i /= b) f /= b, r += f * (i % b);
+        return r;
+      };
+      uint32_t k = jitterFrame_++ % 8 + 1;
+      proj.m[2][0] += (halton(k, 2) - 0.5f) * 2.0f / width_;
+      proj.m[2][1] += (halton(k, 3) - 0.5f) * 2.0f / height_;
+    }
     f.viewProj = proj * view;
     f.invViewProj = f.viewProj.inverse();
     // the sun's shadow: a box round what the camera sees nearby, snapped to texels
@@ -717,7 +730,7 @@ class GpuRenderer final : public Renderer {
         wgpu::RenderPassDepthStencilAttachment da;
         da.view = depthView_;
         da.depthLoadOp = wgpu::LoadOp::Load;
-        da.depthStoreOp = wgpu::StoreOp::Discard;
+        da.depthStoreOp = wgpu::StoreOp::Store;  // frame blending reads it
         da.depthClearValue = 1;
         wgpu::RenderPassDescriptor rp;
         rp.colorAttachmentCount = 1;
@@ -736,6 +749,40 @@ class GpuRenderer final : public Renderer {
         pass.SetPipeline(glassPipe_[rays]);
         drawBatches(pass, true, false);
         pass.End();
+      }
+      // frame blending: this frame with the past, into the other picture of
+      // the past, which then becomes the frame
+      if (blending() && taaGroup_[histIndex_]) {
+        struct {
+          Mat4 prev, cur, inv;
+          Vec4 screen, full;
+        } u;
+        u.prev = histValid_ ? prevViewProj_ : steadyViewProj, u.cur = steadyViewProj, u.inv = f.invViewProj;
+        u.screen = Vec4(static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_);
+        u.full = Vec4(static_cast<float>(hdrTex_.GetWidth()), static_cast<float>(hdrTex_.GetHeight()), 0.1f, histValid_ ? 0.0f : 1.0f);
+        queue_.WriteBuffer(taaUbo_, 0, &u, sizeof u);
+        int next = 1 - histIndex_;
+        wgpu::RenderPassColorAttachment ca;
+        ca.view = histView_[next];
+        ca.loadOp = wgpu::LoadOp::Clear;
+        ca.storeOp = wgpu::StoreOp::Store;
+        ca.clearValue = {0, 0, 0, 1};
+        wgpu::RenderPassDescriptor rp;
+        rp.colorAttachmentCount = 1;
+        rp.colorAttachments = &ca;
+        wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+        pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
+        pass.SetPipeline(taaPipe_);
+        pass.SetBindGroup(0, taaGroup_[histIndex_]);
+        pass.Draw(3);
+        pass.End();
+        wgpu::TexelCopyTextureInfo from, to;
+        from.texture = histTex_[next], to.texture = hdrTex_;
+        wgpu::Extent3D size{width_, height_, 1};
+        enc.CopyTextureToTexture(&from, &to, &size);
+        histIndex_ = next;
+        histValid_ = true;
+        prevViewProj_ = steadyViewProj;
       }
     } else if (raster && !(skip & 64)) {
       wgpu::RenderPassColorAttachment ca;
@@ -858,7 +905,7 @@ class GpuRenderer final : public Renderer {
       n += buf(*b);
     for (const wgpu::Buffer& b : passUbo_) n += buf(b);
     for (const wgpu::Buffer& b : denoiseUbo_) n += buf(b);
-    for (const wgpu::Texture* t : {&modelTex_, &shadowTex_, &shadowDummyTex_, &skyTex_, &msaaTex_, &depthTex_, &hdrTex_}) n += tex(*t);
+    for (const wgpu::Texture* t : {&modelTex_, &shadowTex_, &shadowDummyTex_, &skyTex_, &msaaTex_, &depthTex_, &hdrTex_, &visTex_, &histTex_[0], &histTex_[1]}) n += tex(*t);
     for (const wgpu::Texture& t : bloomTex_) n += tex(t);
     return n;
   }
@@ -1434,6 +1481,25 @@ class GpuRenderer final : public Renderer {
       cd.compute.entryPoint = "pack";
       packPipe_ = device_.CreateComputePipeline(&cd);
       if (!cullUbo_) cullUbo_ = buffer(128, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+      // frame blending
+      taaLayout_ = layout({ubo(0, F), tex(1, F, false, true), tex(2, F), tex(3, F, true), samp(4, F)});
+      {
+        wgpu::ShaderModule tm = module(kTaaWgsl, "frame blending");
+        wgpu::RenderPipelineDescriptor d;
+        d.layout = pipeLayout({taaLayout_});
+        d.vertex.module = tm;
+        d.vertex.entryPoint = "vsTaa";
+        wgpu::ColorTargetState ct;
+        ct.format = wgpu::TextureFormat::RGBA16Float;
+        wgpu::FragmentState fst;
+        fst.module = tm;
+        fst.entryPoint = "fsTaa";
+        fst.targetCount = 1;
+        fst.targets = &ct;
+        d.fragment = &fst;
+        taaPipe_ = device_.CreateRenderPipeline(&d);
+      }
+      if (!taaUbo_) taaUbo_ = buffer(sizeof(Mat4) * 3 + 32, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
       if (!args_) args_ = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::Indirect | wgpu::BufferUsage::CopyDst);
     }
     {
@@ -1718,10 +1784,19 @@ class GpuRenderer final : public Renderer {
     if (quality_ != Quality::kUltra) {  // Ultra draws with rays: no triangles, no depth
       if (g_samples > 1) msaaView_ = target(ow, oh, wgpu::TextureFormat::RGBA16Float, static_cast<uint32_t>(g_samples), attach, msaaTex_);
       depthView_ = target(ow, oh, wgpu::TextureFormat::Depth32Float, static_cast<uint32_t>(g_samples), attach, depthTex_);
-      if (config().render.clusters) visView_ = target(ow, oh, wgpu::TextureFormat::RG32Uint, 1, attach | wgpu::TextureUsage::TextureBinding, visTex_);
-      else visView_ = nullptr, visTex_ = nullptr;
+      if (config().render.clusters) {
+        visView_ = target(ow, oh, wgpu::TextureFormat::RG32Uint, 1, attach | wgpu::TextureUsage::TextureBinding, visTex_);
+        // frame blending reads the depth, and two pictures of the past
+        depthView_ = target(ow, oh, wgpu::TextureFormat::Depth32Float, 1, attach | wgpu::TextureUsage::TextureBinding, depthTex_);
+        for (int i = 0; i < 2; ++i)
+          histView_[i] = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopySrc, histTex_[i]);
+        histValid_ = false;
+      } else {
+        visView_ = nullptr, visTex_ = nullptr;
+        histView_[0] = histView_[1] = nullptr, histTex_[0] = histTex_[1] = nullptr;
+      }
     }
-    hdrView_ = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding, hdrTex_);
+    hdrView_ = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding | wgpu::TextureUsage::CopyDst, hdrTex_);
     if (quality_ == Quality::kUltra) {
       // Ultra's running averages: one path per pixel, or per 2x2 block when
       // the screen is too big for what this GPU lets one buffer hold
@@ -1797,6 +1872,9 @@ class GpuRenderer final : public Renderer {
     if (poolVerts_ && visView_ && drawn_ && cullList_ && stretch_ && counts_) {
       clusterDrawGroup_ = group(clusterDrawLayout_, {bufE(0, poolVerts_), bufE(1, drawn_)});
       clusterResolveGroup_ = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_)});
+      if (histView_[0])
+        for (int i = 0; i < 2; ++i)
+          taaGroup_[i] = group(taaLayout_, {bufE(0, taaUbo_), texE(1, hdrView_), texE(2, histView_[i]), texE(3, depthView_), sampE(4, linear_)});
       cullGroup_ = group(cullLayout_, {bufE(0, cullUbo_), bufE(1, instancesBuf_), bufE(2, cullList_), bufE(3, poolMeshes_), bufE(4, poolVerts_), bufE(5, drawn_), bufE(6, args_),
                                        bufE(7, stretch_), bufE(8, counts_)});
     }
@@ -1875,6 +1953,18 @@ class GpuRenderer final : public Renderer {
   size_t cullListCap_ = 0, drawnCap_ = 0, stretchCap_ = 0, countsCap_ = 0;
   uint32_t cullCount_ = 0;
   uint32_t storagePerStage_ = 8;  // the device's; the cluster drawing needs 9
+  // frame blending (render.taa, with clusters): two pictures of the past, swapped each frame
+  wgpu::Texture histTex_[2];
+  wgpu::TextureView histView_[2];
+  wgpu::BindGroupLayout taaLayout_;
+  wgpu::RenderPipeline taaPipe_;
+  wgpu::BindGroup taaGroup_[2];
+  wgpu::Buffer taaUbo_;
+  int histIndex_ = 0;
+  bool histValid_ = false;
+  Mat4 prevViewProj_;
+  uint32_t jitterFrame_ = 0;
+  bool blending() const { return clustersReady() && config().render.taa && histView_[0]; }
   std::vector<uint32_t> cullCpu_, meshClusterCount_;  // cullCpu_: per copy its instance and where its stretch starts
   bool bindGroupsDirty_ = true, skyBuilt_ = false;
 

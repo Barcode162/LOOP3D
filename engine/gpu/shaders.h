@@ -1563,6 +1563,66 @@ fn lum(c : vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
 )";
 
 // Auto exposure: the frame's average log brightness, eased over time like eyes.
+// Frame blending (TAA): every frame the view moves a fraction of a pixel (a
+// fixed pattern of 8), and each pixel is blended with where its point was in
+// the frames before, so edges come out smooth and fine detail stops
+// shimmering. The past is kept within the range of this pixel's neighbours
+// (so moving things don't smear), and bright pixels count less (so one hot
+// pixel doesn't flicker).
+inline const char* kTaaWgsl = R"(
+struct TaaU {
+  prevViewProj : mat4x4f,  // last frame's, without its shift
+  curViewProj : mat4x4f,   // this frame's, without its shift
+  invViewProj : mat4x4f,   // this frame's, shifted (to find this pixel's point)
+  screen : vec4f,          // drawn width, height, 1/width, 1/height
+  full : vec4f,            // the targets' full width, height; this frame's weight; 1: start afresh
+};
+@group(0) @binding(0) var<uniform> tu : TaaU;
+@group(0) @binding(1) var cur : texture_2d<f32>;
+@group(0) @binding(2) var hist : texture_2d<f32>;
+@group(0) @binding(3) var depthTex : texture_depth_2d;
+@group(0) @binding(4) var lin : sampler;
+struct Out { @builtin(position) pos : vec4f };
+@vertex fn vsTaa(@builtin(vertex_index) vi : u32) -> Out {
+  let p = vec2f(f32((vi << 1u) & 2u), f32(vi & 2u));
+  return Out(vec4f(p * 2.0 - 1.0, 0.0, 1.0));
+}
+fn toYCoCg(c : vec3f) -> vec3f { return vec3f(dot(c, vec3f(0.25, 0.5, 0.25)), dot(c, vec3f(0.5, 0.0, -0.5)), dot(c, vec3f(-0.25, 0.5, -0.25))); }
+fn fromYCoCg(c : vec3f) -> vec3f { return vec3f(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z); }
+fn tame(c : vec3f) -> vec3f { return c / (1.0 + max(c.r, max(c.g, c.b)) * 0.001); }       // brightness counts less (light is stored pre-exposed)
+fn untame(c : vec3f) -> vec3f { return c / max(1.0 - max(c.r, max(c.g, c.b)) * 0.001, 1e-4); }
+@fragment fn fsTaa(o : Out) -> @location(0) vec4f {
+  let p = vec2i(o.pos.xy);
+  let hi = vec2i(tu.screen.xy) - 1;
+  let c = tame(textureLoad(cur, p, 0).rgb);
+  var lo3 = toYCoCg(c);
+  var hi3 = lo3;
+  for (var y = -1; y <= 1; y++) {
+    for (var x = -1; x <= 1; x++) {
+      let n = toYCoCg(tame(textureLoad(cur, clamp(p + vec2i(x, y), vec2i(0), hi), 0).rgb));
+      lo3 = min(lo3, n);
+      hi3 = max(hi3, n);
+    }
+  }
+  if (tu.full.w > 0.5) { return vec4f(untame(c), 1.0); }
+  // where this pixel's point was last frame
+  let d = textureLoad(depthTex, p, 0);
+  let ndc = vec2f(o.pos.x * tu.screen.z * 2.0 - 1.0, 1.0 - o.pos.y * tu.screen.w * 2.0);
+  let w4 = tu.invViewProj * vec4f(ndc, d, 1.0);
+  // how far the point moved on screen, measured without the shifts: a still
+  // view reads its past exactly in place (no blur that builds up)
+  let wp = vec4f(w4.xyz / w4.w, 1.0);
+  let prev = tu.prevViewProj * wp;
+  let now = tu.curViewProj * wp;
+  let motion = vec2f(prev.x / prev.w - now.x / now.w, now.y / now.w - prev.y / prev.w) * 0.5;
+  let puv = o.pos.xy * tu.screen.zw + motion;
+  if (prev.w <= 0.0 || any(puv < vec2f(0.0)) || any(puv > vec2f(1.0))) { return vec4f(untame(c), 1.0); }
+  let h = tame(textureSampleLevel(hist, lin, puv * tu.screen.xy / tu.full.xy, 0.0).rgb);
+  let kept = fromYCoCg(clamp(toYCoCg(h), lo3, hi3));
+  return vec4f(untame(mix(kept, c, tu.full.z)), 1.0);
+}
+)";
+
 inline const char* kExposureWgsl = R"(
 struct Params {
   size : vec4f,  // w, h, dt, first-guess exposure
