@@ -193,7 +193,8 @@ Ranked by how much they help smoothness. **Done** means it's in the engine now.
 |---|---|---|
 | Instancing (same shape drawn at once) | **Done** | few draw calls |
 | GPU culling (skip what's off screen or hidden, in a compute pass) | Next | big outdoor scenes and crowds |
-| Level of detail for people and trees; flat cut-outs far away | Later | crowds and forests at distance |
+| Level of detail for trees (2026-11-06): each tree has a simpler and a simplest version of itself (the same branches thinner, fewer and bigger leaf cards; the farthest leaves out the twigs' bark), picked per copy by its size on screen (`world.lodBias`, `?lod=`); the sun's shadow draws one version simpler | Done | The Woods 10.7 M → 3.7 M triangles a frame, the same picture (0.35% of pixels differ) |
+| Level of detail for people and other shapes; flat cut-outs far away | Later | crowds, rocks and grass at distance |
 | Ray tree refit instead of rebuild when things move | Later | cheaper movement for Ultra and lamp shadows |
 
 ### Ultra (cleaner, faster path tracing)

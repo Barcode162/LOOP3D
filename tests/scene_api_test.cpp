@@ -1,3 +1,4 @@
+#include "engine/render/frame_cost.h"
 #include "engine/script/scene_api.h"
 #include "tests/test.h"
 
@@ -133,4 +134,28 @@ let start = b.position
   CHECK(vm.load("g.visible = no\nt.visible = no\n", "t2.loop"));
   CHECK(!st.placed[st.groups[0].parts[0]].visible);
   CHECK(st.scene.instances[st.placed[st.groups[4].parts[1]].instance].transform.m[0][0] == 0);
+}
+
+// Trees come with simpler versions for far away, and a frame far from them
+// draws those (loop budget counts what the renderer draws).
+TEST(scene_api_trees_have_far_versions) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  CHECK(vm.load("ground 400\nlet t = tree(\"pine\", at: vec(0, 0, 0))\ncamera at: vec(0, 7, 12), look_at: vec(0, 7, 0), lens: 35 mm\n", "t.loop"));
+  int bark = st.scene.instances[1].mesh;
+  CHECK(static_cast<size_t>(bark) < st.scene.lods.size());
+  int simpler = st.scene.lodMesh(bark, 1), simplest = st.scene.lodMesh(bark, 2);
+  CHECK(simpler != bark && simplest != simpler);
+  CHECK(st.scene.meshes[simplest].triangleCount() * 10 < st.scene.meshes[bark].triangleCount());
+  FrameView near;
+  near.camera = st.scene.camera, near.width = 374, near.height = 811;
+  FrameCost close = measureFrame(st.scene, near, 500);
+  FrameView away = near;
+  away.camera.position = {0, 7, 400}, away.camera.target = {0, 7, 0};
+  FrameCost distant = measureFrame(st.scene, away, 500);
+  CHECK(close.lodCopies[0] >= 1);
+  CHECK(distant.lodCopies[2] >= 1);
+  CHECK(distant.sceneTriangles * 5 < close.sceneTriangles);
 }

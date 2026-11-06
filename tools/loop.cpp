@@ -40,7 +40,7 @@ int usage() {
       "loop play   <first scene.loop> [--choices 0,1,0]\n"
       "loop render <script.loop> [--quality draft|good|cinema|ultra] [--width 1920] [--samples N] [--look name]\n"
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
-      "loop budget <script.loop> [--quality phone|high] [--seconds 1] [--size 374x811]\n"
+      "loop budget <script.loop or folder> [--quality phone|high] [--seconds 1] [--size 374x811] [--set name=value]\n"
       "loop settings list    every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help");
   return 1;
@@ -51,6 +51,7 @@ struct Options {
   int width = 0, samples = 0, w = 960, h = 540;
   double seconds = 10;
   bool secondsGiven = false, sizeGiven = false;
+  std::vector<std::pair<std::string, std::string>> sets;  // --set name=value (engine settings)
 };
 
 void printProblems(const std::vector<Problem>& ps) {
@@ -290,12 +291,24 @@ struct Measured {
   FrameBudget budget;
   FrameView view;
   size_t lamps = 0;
+  // the shapes with the most triangles in the whole scene (triangles x copies)
+  struct Heavy {
+    std::string material;
+    size_t triangles = 0, copies = 0;
+  };
+  std::vector<Heavy> heaviest;
 };
 
 bool measureScene(const std::string& path, const Options& o, Measured& m) {
   Vm vm;
   Stage stage;
   if (!loadScript(path, vm, stage)) return false;
+  // --set: engine settings over the project's and the scene's (as the editor's are)
+  for (auto& [name, value] : o.sets) {
+    Json v;
+    if (!Json::parse(value, v)) v = Json(value);
+    if (!Settings::get().set(Settings::kEditor, name, v)) std::fprintf(stderr, "--set: no setting %s, or a value it can't take\n", name.c_str());
+  }
   double secs = o.secondsGiven ? o.seconds : 1;
   for (double t = 0; t < secs; t += 1.0 / 60) vm.update(1.0 / 60), stage.update(1.0f / 60);
   m.budget = budgetFor(o.quality == "high" ? "high" : "phone");
@@ -306,6 +319,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.width = o.sizeGiven ? o.w : m.budget.width, v.height = o.sizeGiven ? o.h : m.budget.height;
   v.drawDistance = C.world.drawDistance, v.maxLights = C.render.maxLights;
   v.cullOffscreen = C.render.cull;
+  v.lodBias = C.world.lodBias;
   {
     int lamps = 0;
     for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;
@@ -314,6 +328,18 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.shadowRadius = C.render.shadowDistance > 0 ? C.render.shadowDistance : m.budget.quality == "high" ? 40.0f : 25.0f;
   m.cost = measureFrame(stage.scene, v);
   m.title = stage.title;
+  {
+    const Scene& sc = stage.scene;
+    std::vector<Measured::Heavy> per(sc.meshes.size());
+    for (const MeshInstance& in : sc.instances) {
+      if (in.mesh < 0 || in.mesh >= static_cast<int>(sc.meshes.size())) continue;
+      Measured::Heavy& h = per[in.mesh];
+      h.triangles = sc.meshes[in.mesh].triangleCount(), ++h.copies;
+      if (h.material.empty() && in.material >= 0 && in.material < static_cast<int>(sc.materials.size())) h.material = sc.materials[in.material].name;
+    }
+    std::sort(per.begin(), per.end(), [](auto& a, auto& b) { return a.triangles * a.copies > b.triangles * b.copies; });
+    for (size_t i = 0; i < per.size() && i < 5 && per[i].copies; ++i) m.heaviest.push_back(per[i]);
+  }
   for (const Light& l : stage.scene.lights) m.lamps += l.kind != Light::Kind::kSun;
   return true;
 }
@@ -337,8 +363,15 @@ int budgetScene(const std::string& path, const Options& o) {
               c.lampsComputed, static_cast<double>(c.lampsThatMatter), c.lampsThatMatterMost, static_cast<double>(c.lampsFor99));
   std::printf("  lamp work per pixel           %8.0f        %8.0f if each pixel added only the lamps that matter\n",
               static_cast<double>(c.lampWorkPerPixel()), static_cast<double>(c.shadedFrontsOnly * c.lampsThatMatter));
+  if (c.lodCopies[0] + c.lodCopies[1] + c.lodCopies[2])
+    std::printf("  copies with simpler versions  full %zu (%.2f M) · simpler %zu (%.2f M) · simplest %zu (%.2f M)\n", c.lodCopies[0],
+                static_cast<double>(c.lodTriangles[0]) / 1e6, c.lodCopies[1], static_cast<double>(c.lodTriangles[1]) / 1e6, c.lodCopies[2],
+                static_cast<double>(c.lodTriangles[2]) / 1e6);
   std::printf("  sky                           %7.0f%%\n", static_cast<double>(1 - c.coverage) * 100);
   std::printf("  computed patterns (wood...)   %7.0f%% of the surfaces seen\n", static_cast<double>(c.patternShare) * 100);
+  std::printf("  heaviest shapes in the scene (triangles x copies):\n");
+  for (const auto& h : m.heaviest)
+    std::printf("    %-24s %8zu x %-5zu = %6.2f M\n", h.material.c_str(), h.triangles, h.copies, static_cast<double>(h.triangles * h.copies) / 1e6);
   std::vector<std::string> over = overBudget(c, m.budget);
   if (over.empty()) {
     std::printf("fits the %s budget\n", q.c_str());
@@ -409,6 +442,12 @@ int main(int argc, char** argv) {
     else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h), o.sizeGiven = true;
     else if (a == "-o") o.out = val();
     else if (a == "--choices") o.choices = val();
+    else if (a == "--set") {
+      std::string kv = val();
+      size_t eq = kv.find('=');
+      if (eq == std::string::npos) return usage();
+      o.sets.push_back({kv.substr(0, eq), kv.substr(eq + 1)});
+    }
     else return usage();
   }
   if (cmd == "demo") return demo(target, o);

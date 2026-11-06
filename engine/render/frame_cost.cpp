@@ -86,30 +86,37 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   // ---- the passes: what each draws, and what skipping off-screen copies leaves
   Frustum eye = Frustum::fromViewProj(frameViewProj(view));
   Frustum shadow = Frustum::fromViewProj(frameShadowViewProj(view, towardSun, 1024));
+  const float pixelsPerRadian = static_cast<float>(std::max(view.height, 1)) / (2 * std::tan(view.camera.fovY() * 0.5f));
   std::vector<AABB> meshBox(scene.meshes.size());
   for (size_t i = 0; i < scene.meshes.size(); ++i) meshBox[i] = scene.meshes[i].bounds();
   std::set<std::pair<int, bool>> sceneBatches, shadowBatches, viewBatches, shadowViewBatches;
   for (const MeshInstance& in : scene.instances) {
     if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size())) continue;
-    uint64_t tris = scene.meshes[in.mesh].triangleCount();
-    if (!tris) continue;
+    if (!scene.meshes[in.mesh].triangleCount()) continue;
     ++c.things;
     bool hidden = std::fabs(in.transform.linear().determinant()) < 1e-12f;
     if (hidden) ++c.hidden;
     bool glass = isGlass(scene, in.material);
     AABB box = meshBox[in.mesh].transformed(in.transform);
+    // the version drawn, by its size on screen (both passes use the camera's)
+    int level = lodLevel(radiusPixels(box, view.camera.position, pixelsPerRadian), view.lodBias);
+    int drawn = scene.lodMesh(in.mesh, level);
+    int shadowDrawn = scene.lodMesh(in.mesh, shadowLodLevel(level));
+    uint64_t tris = scene.meshes[drawn].triangleCount(), shadowTris = scene.meshes[shadowDrawn].triangleCount();
+    bool hasLods = static_cast<size_t>(in.mesh) < scene.lods.size() && scene.lods[static_cast<size_t>(in.mesh)][0] >= 0;
     bool inView = !hidden && eye.visible(box);
     bool inShadow = c.sun && !glass && !hidden && shadow.visible(box);
-    if (inView) ++c.inViewThings, c.inViewTriangles += tris, viewBatches.insert({in.mesh, glass});
-    if (inShadow) ++c.inShadowThings, c.inShadowTriangles += tris, shadowViewBatches.insert({in.mesh, false});
+    if (inView) ++c.inViewThings, c.inViewTriangles += tris, viewBatches.insert({drawn, glass});
+    if (inShadow) ++c.inShadowThings, c.inShadowTriangles += shadowTris, shadowViewBatches.insert({shadowDrawn, false});
     if (!view.cullOffscreen || inView) {
       ++c.sceneThings, c.sceneTriangles += tris;
-      sceneBatches.insert({in.mesh, glass});
+      if (hasLods) ++c.lodCopies[level], c.lodTriangles[level] += tris;
+      sceneBatches.insert({drawn, glass});
       if (view.prepass && !glass) c.prepassTriangles += tris;
     }
     if (c.sun && !glass && (!view.cullOffscreen || inShadow)) {
-      ++c.shadowThings, c.shadowTriangles += tris;
-      shadowBatches.insert({in.mesh, false});
+      ++c.shadowThings, c.shadowTriangles += shadowTris;
+      shadowBatches.insert({shadowDrawn, false});
     }
   }
   c.sceneDraws = sceneBatches.size(), c.shadowDraws = shadowBatches.size();

@@ -11,9 +11,15 @@ struct Grower {
   Rng rng;
   TreeMeshes out;
 
+  // Every detail grows the full set of leaves (the same random numbers, so
+  // the rest of the tree comes out the same) and keeps an even share of them,
+  // bigger, so the crown stays as full: the same leaf area with fewer cards.
   void leafCluster(Vec3 at, Vec3 dir, float scale) {
-    const int leaves = std::max(2, static_cast<int>(std::lround(s.leavesPerTip * std::sqrt(std::min(s.detail, 1.0f)))));
-    for (int i = 0; i < leaves; ++i) {
+    const int full = std::max(2, s.leavesPerTip);
+    const float share = s.leafShare > 0 ? std::min(s.leafShare, 1.0f) : std::sqrt(std::min(s.detail, 1.0f));
+    const int keep = std::min(full, std::max(1, static_cast<int>(std::lround(s.leavesPerTip * share))));
+    const float grow = std::sqrt(static_cast<float>(full) / static_cast<float>(keep));
+    for (int i = 0; i < full; ++i) {
       Vec3 off = uniformSphere(rng.uniform2()) * (s.leafSize * 3 * scale);
       Vec3 c = at + off + dir * (s.leafSize * rng.uniform());
       Vec3 n = normalize(off + Vec3(0, 0.6f, 0));
@@ -21,7 +27,8 @@ struct Grower {
       orthonormalBasis(n, t, b);
       float a = rng.uniform() * kTwoPi;
       Vec3 u = t * std::cos(a) + b * std::sin(a), v = cross(n, u);
-      float w = s.leafSize * (0.7f + 0.6f * rng.uniform()), h = w * 1.6f;
+      float w = s.leafSize * (0.7f + 0.6f * rng.uniform()) * grow, h = w * 1.6f;
+      if ((i + 1) * keep / full == i * keep / full) continue;  // not one of the kept share
       uint32_t base = static_cast<uint32_t>(out.leaves.positions.size());
       out.leaves.addVertex(c - u * (w / 2), n, {0, 1});
       out.leaves.addVertex(c + u * (w / 2), n, {1, 1});
@@ -31,18 +38,35 @@ struct Grower {
     }
   }
 
+  // The branch's path is always grown in full (the same random numbers at
+  // every detail, so the same tree); lower detail draws its tube through
+  // fewer of the path's points, with fewer sides.
   void branch(Vec3 start, Vec3 dir, float len, float radius, int level) {
-    const int steps = std::max(2, static_cast<int>(std::lround((8 - level) * s.detail)));
+    const int full = std::max(2, 8 - level);
     std::vector<Vec3> path = {start};
     std::vector<float> radii = {radius};
     Vec3 p = start, d = dir;
-    for (int i = 1; i <= steps; ++i) {
+    for (int i = 1; i <= full; ++i) {
       d = normalize(d + uniformSphere(rng.uniform2()) * (s.gnarl * 0.3f) + Vec3(0, s.upward * 0.15f, 0));
-      p = p + d * (len / steps);
+      p = p + d * (len / full);
       path.push_back(p);
-      radii.push_back(radius * (1 - 0.7f * i / steps));
+      radii.push_back(radius * (1 - 0.7f * i / full));
     }
-    out.bark.append(shapes::tube(path, radii, std::max(3, static_cast<int>(std::lround((12 - level * 2) * s.detail))), false));
+    const int steps = std::min(full, std::max(2, static_cast<int>(std::lround((8 - level) * std::min(s.detail, 1.0f)))));
+    const int sides = std::max(3, static_cast<int>(std::lround((12 - level * 2) * std::min(s.detail, 1.0f))));
+    if (level > s.barkLevels) {
+      // too thin to see from where this version is drawn: no bark, the leaves still grow
+    } else if (steps == full) {
+      out.bark.append(shapes::tube(path, radii, sides, false));
+    } else {
+      std::vector<Vec3> tp;
+      std::vector<float> tr;
+      for (int i = 0; i <= steps; ++i) {
+        size_t k = static_cast<size_t>(std::lround(static_cast<double>(i) * full / steps));
+        tp.push_back(path[k]), tr.push_back(radii[k]);
+      }
+      out.bark.append(shapes::tube(tp, tr, sides, false));
+    }
     if (level >= s.levels) {
       leafCluster(p, d, 1.0f);
       return;

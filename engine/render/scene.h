@@ -6,6 +6,7 @@
 //
 // Units: metres, seconds; lamps in lumens and kelvin; the sun in lux;
 // glowing surfaces in nits (cd/m²); the camera in mm, f-stops, seconds, ISO.
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -154,6 +155,13 @@ struct Scene {
   int addMaterial(Material m) { materials.push_back(std::move(m)); return static_cast<int>(materials.size() - 1); }
   void add(int mesh, int material, const Mat4& xf = Mat4()) { instances.push_back({mesh, material, xf}); }
   int findMaterial(const std::string& name) const;
+  // Simpler versions of a mesh, for when it's small on screen (levels of
+  // detail): lods[mesh] = {simpler, simplest}, -1 for none. The live renderer
+  // picks one per copy each frame (lodLevel in render/frame_cost.h); the
+  // cinema renderer always uses the full mesh.
+  std::vector<std::array<int, 2>> lods;
+  void setLods(int mesh, int simpler, int simplest);
+  int lodMesh(int mesh, int level) const;  // the mesh to draw at level 0, 1 or 2
 };
 
 // ---- Light helpers ----

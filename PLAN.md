@@ -13,8 +13,10 @@ The order of work, top first. A step is done when it works on the user's phone.
    `showcase_hall`, an Ardane scene and the bar: the baseline.
 4. **Draw less:** skip what's off screen (scene and sun shadows) *(built 2026-11-06: `render.cull`, the same
    picture, 28% less work in The Woods)*; shade each pixel once *(built 2026-11-06: the depth pre-pass, automatic
-   from 6 lamps; the bar's lamp work 213 → 103; 10 of 41 scenes over the Phone budget)*; levels of detail and clusters for
-   the forests (The Woods still 10.7 M triangles; 3D's `looped/draw/clusters.*` can come over).
+   from 6 lamps; the bar's lamp work 213 → 103; 10 of 41 scenes over the Phone budget)*; levels of detail for trees *(built
+   2026-11-06: The Woods 10.7 M → 3.7 M triangles; 9 of 41 scenes over the Phone budget)*; next for the forests:
+   small plants (grass, flowers, ferns) and rocks get simpler versions or leave the shadow pass, and the farthest
+   trees become flat cut-outs (3D's `looped/draw/clusters.*` can come over for models).
 5. **Light less:** each pixel adds only the lamps that reach it (clustered lights); for the bar's many small bulbs
    (51 of its 103 lamps give 95% of a pixel's light) that's not enough: group them, or sample a few per frame and
    blend over frames (with step 6); wood, stone and brick made once into textures; the sun's shadow cached until

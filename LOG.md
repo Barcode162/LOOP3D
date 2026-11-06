@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Resume go": plan step 4, third part: simpler distant trees (levels of detail; the same
+  trees, thinned; the shadow pass one version simpler): The Woods 10.7 M → 3.7 M triangles, 9 of 41 scenes over
+  budget. `loop budget --set name=value`, a "heaviest shapes" list and copies per level; the picture tool waits
+  for the scene's first frame before `AT` (it had paused one at its black fade-in); `?lod=` on links. 80 tests.
 - **2026-11-06** · Published `935db67` (GitHub's build, pictured first): skipping what can't be seen, each pixel
   lit once from 6 lamps. To compare on the phone: `?cull=0`, `?prepass=0`.
 - **2026-11-06** · Plan step 4, second part: the depth pre-pass is safe (`@invariant`, holes cut in both passes)

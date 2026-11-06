@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "engine/core/random.h"
 #include "engine/geometry/bvh.h"
 #include "engine/geometry/mesh.h"
@@ -172,4 +174,29 @@ TEST(geometry_glade_models) {
   // a wing has two faces; a mote is small and cheap
   CHECK(makeWing(0.05f).triangleCount() == 4);
   CHECK(makeMote(0.01f).triangleCount() < 100);
+}
+
+// Far-away versions of a tree are the same tree: the same size and crown, the
+// same leaf area (fewer, bigger cards), far fewer triangles.
+TEST(plants_far_versions_keep_the_tree) {
+  TreeShape s;
+  s.conifer = true, s.height = 14, s.levels = 2, s.branches = 10, s.leavesPerTip = 8, s.leafSize = 0.45f, s.seed = 13;
+  TreeMeshes full = growTree(s);
+  TreeShape mid = s;
+  mid.detail = 0.45f;
+  TreeShape far = s;
+  far.detail = 0.2f, far.barkLevels = 1, far.leafShare = 0.25f;
+  TreeMeshes m = growTree(mid), f = growTree(far);
+  CHECK(m.bark.triangleCount() * 3 < full.bark.triangleCount());
+  CHECK(f.bark.triangleCount() * 20 < full.bark.triangleCount());
+  CHECK(f.leaves.triangleCount() * 3 < full.leaves.triangleCount());
+  // the crown stands where it stood and is as big
+  AABB a = full.leaves.bounds(), b = f.leaves.bounds();
+  CHECK(length(a.center() - b.center()) < 0.05f * length(a.extent()));
+  CHECK(std::fabs(length(b.extent()) - length(a.extent())) < 0.1f * length(a.extent()));
+  // the same leaf area, in fewer cards
+  CHECK_NEAR(f.leaves.surfaceArea() / full.leaves.surfaceArea(), 1, 0.1);
+  CHECK_NEAR(m.leaves.surfaceArea() / full.leaves.surfaceArea(), 1, 0.1);
+  // the trunk is the same trunk
+  CHECK(std::fabs(f.bark.bounds().hi.y - full.bark.bounds().hi.y) < 0.05f * s.height);
 }

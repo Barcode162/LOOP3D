@@ -134,6 +134,7 @@ Settings::Settings() {
   F("world.patternFade", w.patternFade, 0.25, 4, "how early fine pattern detail fades with distance");
   F("world.foliageDensity", w.foliageDensity, 0, 3, "trees per area in forests (applies when a scene builds)");
   F("world.terrainRes", w.terrainRes, 0.25, 4, "detail of terrain meshes (applies when a scene builds)");
+  F("world.lodBias", w.lodBias, -2, 2, "levels of detail: +1 keeps full detail twice as far, -1 switches to simpler versions twice as soon");
 
   auto& p = c.physics;
   V("physics.gravity", p.gravity, -100, 100, "gravity (m/s²); `gravity(…)` in a script sets it for the scene");

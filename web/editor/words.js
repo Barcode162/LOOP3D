@@ -34,7 +34,7 @@ window.LOOP_WORDS = {
 "flower": "flower(\"daisy\" | \"violet\" | \"poppy\" | \"bluebell\", at, size, turn): one wild flower",
 "flowers": "flowers(around, radius, count, kinds: [\"daisy\", \"violet\"], size, seed): drifts of wild flowers (.visible)",
 "fog": "fog(density, top, glow, color, from, to)",
-"forest": "forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves, leaf_size, detail: 1): plants trees on the land (detail 0.4 for far-off trees: a fraction of the triangles)",
+"forest": "forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves, leaf_size, detail: 1): plants trees on the land; trees far from the camera are drawn as simpler versions of themselves on their own (world.lodBias), and detail below 1 lightens even the nearest",
 "forget_story": "forget_story(): start the story's memory afresh",
 "get_setting": "get_setting(\"player.walk\"): a setting's value in effect now",
 "go_to": "go_to(\"the woods\"): load the scene file scenes/the woods.loop next",
@@ -101,7 +101,7 @@ window.LOOP_WORDS = {
 "text": "text",
 "time": "time(): seconds since the start",
 "title": "title \"The Last Ember\"",
-"tree": "tree(kind: \"oak\" | \"pine\" | \"birch\" | \"bush\", at, height, turn, variant, leaves, leaf_size: 1): gives back the tree (.position, .visible)",
+"tree": "tree(kind: \"oak\" | \"pine\" | \"birch\" | \"bush\", at, height, turn, variant, leaves, leaf_size: 1, detail: 1): gives back the tree (.position, .visible); far away it is drawn as a simpler version of itself on its own",
 "type": "type",
 "vec": "vec(x, y, z)",
 "wave": "wave(t, period): a smooth -1..1 swing"

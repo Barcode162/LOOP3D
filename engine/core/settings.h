@@ -61,6 +61,7 @@ struct Config {
   } camera;
   struct World {
     float drawDistance = 4000, patternFade = 1, foliageDensity = 1, terrainRes = 1;
+    float lodBias = 0;  // levels of detail: + full detail farther, - simpler sooner
   } world;
   struct Physics {
     Vec3 gravity{0, -9.81f, 0};

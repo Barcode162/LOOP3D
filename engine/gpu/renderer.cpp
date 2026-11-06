@@ -348,6 +348,7 @@ class GpuRenderer final : public Renderer {
 
   void syncTransforms(const Scene& scene) override {
     lastScene_ = &scene;
+    meshLods_ = scene.lods;
     if (needRays()) {
       buildRayMeshes(scene);
       buildRayInstances(scene);
@@ -549,7 +550,8 @@ class GpuRenderer final : public Renderer {
     }
     // ---- what each pass draws: the copies its view can see
     if (raster) {
-      buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1));
+      buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1), cam.position,
+                     static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f)));
       if (bindGroupsDirty_) makeBindGroups();
     }
     // ---- 1. sun shadow
@@ -885,18 +887,45 @@ class GpuRenderer final : public Renderer {
   // What each pass draws this frame: only the copies its view can see
   // (render.cull), in the batches' order; `first` of a draw is where its
   // stretch starts in visibleIds. The sun's pass never draws glass.
-  void buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn) {
+  // A mesh with simpler versions (Scene::lods) is drawn as the version its
+  // size on screen asks for (lodLevel, shared with `loop budget`); the sun's
+  // pass draws one version simpler (shadowLodLevel).
+  int lodOf(int mesh, int level) const {
+    if (level <= 0 || mesh < 0 || mesh >= static_cast<int>(meshLods_.size())) return mesh;
+    const auto& l = meshLods_[mesh];
+    int m = level >= 2 && l[1] >= 0 ? l[1] : l[0];
+    return m >= 0 && m < static_cast<int>(meshes_.size()) && meshes_[m].indexCount ? m : mesh;
+  }
+
+  void buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn, Vec3 eyePos, float pixelsPerRadian) {
     const bool cull = config().render.cull;
+    const float bias = config().world.lodBias;
     visible_.clear(), sceneDraws_.clear(), shadowDraws_.clear();
     auto list = [&](std::vector<Batch>& out, const Frustum& view, bool shadow) {
       for (const Batch& b : batches_) {
         if (shadow && b.glass) continue;
         if (b.mesh < 0 || b.mesh >= static_cast<int>(meshes_.size()) || !meshes_[b.mesh].indexCount) continue;
-        uint32_t start = static_cast<uint32_t>(visible_.size());
+        auto sees = [&](uint32_t i) { return !cull || (i < instHidden_.size() && !instHidden_[i] && view.visible(instBox_[i])); };
+        if (b.mesh >= static_cast<int>(meshLods_.size()) || meshLods_[b.mesh][0] < 0) {
+          uint32_t start = static_cast<uint32_t>(visible_.size());
+          for (uint32_t i = b.first; i < b.first + b.count; ++i)
+            if (sees(i)) visible_.push_back(i);
+          uint32_t n = static_cast<uint32_t>(visible_.size()) - start;
+          if (n) out.push_back({b.mesh, start, n, b.glass});
+          continue;
+        }
+        for (auto& v : lodScratch_) v.clear();
         for (uint32_t i = b.first; i < b.first + b.count; ++i)
-          if (!cull || (i < instHidden_.size() && !instHidden_[i] && view.visible(instBox_[i]))) visible_.push_back(i);
-        uint32_t n = static_cast<uint32_t>(visible_.size()) - start;
-        if (n) out.push_back({b.mesh, start, n, b.glass});
+          if (sees(i) && i < instBox_.size()) {
+            int level = lodLevel(radiusPixels(instBox_[i], eyePos, pixelsPerRadian), bias);
+            lodScratch_[shadow ? shadowLodLevel(level) : level].push_back(i);
+          }
+        for (int level = 0; level < 3; ++level) {
+          if (lodScratch_[level].empty()) continue;
+          uint32_t start = static_cast<uint32_t>(visible_.size());
+          visible_.insert(visible_.end(), lodScratch_[level].begin(), lodScratch_[level].end());
+          out.push_back({lodOf(b.mesh, level), start, static_cast<uint32_t>(lodScratch_[level].size()), b.glass});
+        }
       }
     };
     list(sceneDraws_, eye, false);
@@ -1499,6 +1528,8 @@ class GpuRenderer final : public Renderer {
   std::vector<uint8_t> instHidden_;    // scaled to nothing
   std::vector<uint32_t> visible_;      // this frame's draw lists (indices into the instance buffer)
   std::vector<Batch> sceneDraws_, shadowDraws_;
+  std::vector<std::array<int, 2>> meshLods_;   // Scene::lods
+  std::vector<uint32_t> lodScratch_[3];
   wgpu::Buffer visibleBuf_;
   size_t visibleCap_ = 0;
   bool lightsDirty_ = true;

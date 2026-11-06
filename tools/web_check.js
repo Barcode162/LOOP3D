@@ -29,10 +29,21 @@ const fs = require('fs');
   page.on('console', (m) => { if (process.env.VERBOSE) console.log(m.type(), m.text().slice(0, 300)); if (m.type() === 'error' && !m.text().includes('Failed to load resource')) errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('crash', () => errors.push('the page crashed'));
+  // the scene's first frame on screen (the page's loopShown), counted once it's called
+  await page.addInitScript(() => {
+    let shown = null;
+    Object.defineProperty(window, 'loopShown', {
+      configurable: true,
+      get() { return shown && (() => { window.loopFirstFrame = true; shown(); }); },
+      set(f) { shown = f; },
+    });
+  });
   await page.goto(url);
   if (process.env.AT) {
-    await page.waitForFunction(() => window.Module && window.Module._loop_set_option, null, { timeout: 120000 }).catch(() => errors.push('AT: the player never started'));
-    await page.waitForTimeout(3000);
+    // only once the scene has started and drawn: a scene starting later would
+    // set its film back to 0 (and a paused one would hold its fade-in)
+    await page.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 180000 }).catch(() => errors.push('AT: the scene never showed a frame'));
+    await page.waitForTimeout(1000);
     for (const pair of process.env.AT.split(',')) {
       const [name, value] = pair.split(':');
       await page.evaluate(([n, v]) => {

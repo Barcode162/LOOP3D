@@ -5,6 +5,7 @@
 // light it. `loop budget` prints it against each quality's budget, so a speed
 // change is measured here before it reaches a phone. It follows the live
 // renderer (engine/gpu/renderer.cpp) pass by pass: change one, change both.
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -20,6 +21,24 @@ namespace loop {
 // `loop budget` both ask this.
 inline bool prepassOn(int mode, int lamps) { return mode == 1 || (mode == 2 && lamps >= 6); }
 
+// Which version of a mesh to draw (Scene::lods): 0 full, 1 simpler, 2
+// simplest, by how big a copy's bounding sphere looks on screen (its radius in
+// pixels), shifted by world.lodBias (+1: full detail twice as far; -1: simpler
+// twice as soon). The renderer and `loop budget` both ask this.
+inline int lodLevel(float radiusPixels, float bias) {
+  float px = radiusPixels * std::exp2(bias);
+  return px >= 220 ? 0 : px >= 70 ? 1 : 2;
+}
+// The sun's shadow picture can't show detail finer than its texels (5 cm on
+// Phone), so the shadow pass draws one version simpler than the camera would.
+inline int shadowLodLevel(int cameraLevel) { return cameraLevel < 2 ? cameraLevel + 1 : 2; }
+// A copy's bounding sphere radius in pixels, from its world box.
+inline float radiusPixels(const AABB& box, Vec3 eye, float pixelsPerRadian) {
+  float r = length(box.extent()) * 0.5f;
+  float d = std::max(length(box.center() - eye) - r, 0.05f);
+  return r / d * pixelsPerRadian;
+}
+
 // The view a frame is drawn from, set up as the live renderer sets it up.
 struct FrameView {
   Camera camera;
@@ -30,6 +49,7 @@ struct FrameView {
   bool cullOffscreen = false;      // things outside a pass's view are skipped
   bool cullBackFaces = false;      // the backs of closed shapes are skipped
   bool prepass = false;            // depth first: each pixel is lit once
+  float lodBias = 0;               // world.lodBias
 };
 
 struct FrameCost {
@@ -38,6 +58,8 @@ struct FrameCost {
   size_t sceneThings = 0, shadowThings = 0;   // copies each pass draws
   uint64_t sceneTriangles = 0, shadowTriangles = 0;
   size_t sceneDraws = 0, shadowDraws = 0;     // draw calls (one per shape and kind of surface)
+  size_t lodCopies[3] = {0, 0, 0};            // copies with simpler versions drawn full, simpler, simplest (scene pass)
+  uint64_t lodTriangles[3] = {0, 0, 0};       // and their triangles
   uint64_t prepassTriangles = 0;              // the depth pre-pass draws the opaque ones again
   size_t prepassDraws = 0;
   bool sun = false;                           // a sun, so a shadow pass

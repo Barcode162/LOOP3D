@@ -658,7 +658,7 @@ EMSCRIPTEN_KEEPALIVE int loop_set_option(const char* name, double value) {
   else if (n == "skip") gpu::g_skipPasses = i & ~256;  // 256 (no screen) is for tests only
   else {
     static const std::pair<const char*, const char*> alias[] = {{"view", "render.view"},  {"res", "render.res"},   {"lamps", "render.lamps"},
-                                                                {"rays", "render.rays"},  {"prepass", "render.prepass"}, {"cull", "render.cull"}, {"walk", "player.walk"},
+                                                                {"rays", "render.rays"},  {"prepass", "render.prepass"}, {"cull", "render.cull"}, {"lod", "world.lodBias"}, {"walk", "player.walk"},
                                                                 {"run", "player.run"},    {"look", "player.look"},   {"timescale", "script.timeScale"}};
     for (auto& [from, to] : alias)
       if (n == from) return Settings::get().set(Settings::kEditor, to, Json(value)) ? 1 : 0;
@@ -799,9 +799,9 @@ EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
 
 int main() {
   gpu::g_skipPasses = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('skip') || 0); });
-  // the page's testing switches (?view= ?res= ?msaa= ?lamps= ?rays= ?prepass= ?cull=) are settings too
+  // the page's testing switches (?view= ?res= ?msaa= ?lamps= ?rays= ?prepass= ?cull= ?lod=) are settings too
   for (auto [param, id] : {std::pair{"view", "render.view"}, {"res", "render.res"}, {"msaa", "render.msaa"}, {"lamps", "render.lamps"}, {"rays", "render.rays"},
-                           {"prepass", "render.prepass"}, {"cull", "render.cull"}}) {
+                           {"prepass", "render.prepass"}, {"cull", "render.cull"}, {"lod", "world.lodBias"}}) {
     double v = EM_ASM_DOUBLE({ const v = new URLSearchParams(location.search).get(UTF8ToString($0)); return v === null ? NaN : +v; }, param);
     if (!std::isnan(v)) Settings::get().set(Settings::kEditor, id, Json(v));
   }

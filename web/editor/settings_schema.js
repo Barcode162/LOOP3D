@@ -258,7 +258,7 @@ window.LE = window.LE || {};
         tog('world.streaming', 'Stream big worlds', false, NB('Load and unload cells as you move.')),
         tog('world.gpuCulling', 'GPU culling', false, NB('Skip what\'s off screen or hidden.')),
         tog('world.impostors', 'Flat cut-outs far away', false, NB('Trees and people as cards in the distance.')),
-        sl('world.lodBias', 'Level-of-detail bias', 0, -2, 2, 0.1, NB('Needs levels of detail first.')),
+        sl('world.lodBias', 'Level-of-detail bias', 0, -2, 2, 0.1, E({ help: 'Trees have simpler versions for far away. +1 keeps full detail twice as far (slower), -1 switches to the simpler ones twice as soon (faster).' })),
       ] },
     ] },
 

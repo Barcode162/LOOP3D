@@ -323,7 +323,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Stream big worlds | `world.streaming` | false |  | not built yet |  | Load and unload cells as you move. |
 | GPU culling | `world.gpuCulling` | false |  | not built yet |  | Skip what's off screen or hidden. |
 | Flat cut-outs far away | `world.impostors` | false |  | not built yet |  | Trees and people as cards in the distance. |
-| Level-of-detail bias | `world.lodBias` | 0 | -2 … 2 | not built yet |  | Needs levels of detail first. |
+| Level-of-detail bias | `world.lodBias` | 0 | -2 … 2 | live · script | `setting "world.lodBias", 0` | Trees have simpler versions for far away. +1 keeps full detail twice as far (slower), -1 switches to the simpler ones twice as soon (faster). |
 
 ## Physics
 
@@ -651,4 +651,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 133 live · script · 49 live · 39 not built yet · 37 editor · 6 needs you
+11 project.json · 134 live · script · 49 live · 38 not built yet · 37 editor · 6 needs you

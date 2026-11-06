@@ -15,6 +15,19 @@ Vec3 Scene::sunDirection() const {
   return {0, 1, 0};
 }
 
+void Scene::setLods(int mesh, int simpler, int simplest) {
+  if (mesh < 0) return;
+  if (lods.size() <= static_cast<size_t>(mesh)) lods.resize(static_cast<size_t>(mesh) + 1, {-1, -1});
+  lods[static_cast<size_t>(mesh)] = {simpler, simplest};
+}
+
+int Scene::lodMesh(int mesh, int level) const {
+  if (level <= 0 || mesh < 0 || static_cast<size_t>(mesh) >= lods.size()) return mesh;
+  const auto& l = lods[static_cast<size_t>(mesh)];
+  int m = level >= 2 && l[1] >= 0 ? l[1] : l[0];
+  return m >= 0 ? m : mesh;
+}
+
 int Scene::findMaterial(const std::string& name) const {
   for (size_t i = 0; i < materials.size(); ++i)
     if (materials[i].name == name) return static_cast<int>(i);

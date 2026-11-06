@@ -20,6 +20,8 @@ struct TreeShape {
   int leavesPerTip = 14;
   bool conifer = false;     // a straight trunk with whorls, getting shorter up top
   float detail = 1;         // < 1: fewer bark segments and sides, fewer leaf cards (trees far away)
+  int barkLevels = 99;      // bark only up to this branching level (far away the twigs' bark is left out; their leaves stay)
+  float leafShare = -1;     // share of the leaf cards kept, bigger so the crown stays as full (-1: from detail)
   uint32_t seed = 1;
 };
 struct TreeMeshes {

@@ -684,10 +684,12 @@ const std::vector<std::pair<int, int>>& modelParts(Args& a, const std::string& f
 }
 
 // Trees, kept as a few shapes per kind and placed many times.
-std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant, float leafScale = 1, float detail = 1) {
+// lod 0: the tree as asked; 1: simpler (for further away); 2: the farthest
+// (no twig bark, a quarter of the leaf cards, bigger).
+std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant, float leafScale = 1, float detail = 1, int lod = 0) {
   auto& c = meshCache(st);
   std::string key = "tree " + kind + " " + std::to_string(variant) + (leafScale == 1 ? "" : " leaves " + std::to_string(leafScale)) +
-                    (detail == 1 ? "" : " detail " + std::to_string(detail));
+                    (detail == 1 ? "" : " detail " + std::to_string(detail)) + (lod == 2 ? " far" : "");
   auto it = c.find(key + " bark");
   if (it != c.end()) return {it->second, c[key + " leaves"]};
   TreeShape ts;
@@ -707,10 +709,19 @@ std::pair<int, int> treeMeshes(Stage& st, const std::string& kind, int variant, 
     ts.leavesPerTip = std::min(48, static_cast<int>(std::lround(ts.leavesPerTip / std::max(leafScale, 0.2f))));
   }
   ts.detail = std::clamp(detail, 0.2f, 1.0f);
+  if (lod == 2) ts.barkLevels = 1, ts.leafShare = 0.25f;
   TreeMeshes t = growTree(ts);
   int b = st.scene.addMesh(std::move(t.bark)), l = st.scene.addMesh(std::move(t.leaves));
   c[key + " bark"] = b;
   c[key + " leaves"] = l;
+  // simpler versions of the same tree for far away (levels of detail): the same
+  // branches, thinner tubes, fewer and bigger leaf cards
+  if (lod == 0) {
+    float d1 = std::max(0.2f, ts.detail * 0.45f);
+    auto [b1, l1] = d1 < ts.detail - 1e-3f ? treeMeshes(st, kind, variant, leafScale, d1, 1) : std::pair<int, int>{-1, -1};
+    auto [b2, l2] = treeMeshes(st, kind, variant, leafScale, 0.2f, 2);
+    st.scene.setLods(b, b1, b2), st.scene.setLods(l, l1, l2);
+  }
   return {b, l};
 }
 
@@ -878,7 +889,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     std::vector<int> parts = {placePart(s, b, bark, at, turn, Vec3(scale)), placePart(s, l, leaf, at, turn, Vec3(scale))};
     ++s.version;
     return newGroup(a.vm, s, parts, at);
-  }, "tree(kind: \"oak\" | \"pine\" | \"birch\" | \"bush\", at, height, turn, variant, leaves, leaf_size: 1): gives back the tree (.position, .visible)");
+  }, "tree(kind: \"oak\" | \"pine\" | \"birch\" | \"bush\", at, height, turn, variant, leaves, leaf_size: 1, detail: 1): gives back the tree (.position, .visible); far away it is drawn as a simpler version of itself on its own");
 
   // ---- undergrowth, flowers, ruins and creatures (the model library)
   vm.native("grass", [](Args& a) {
@@ -1144,7 +1155,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     }
     ++s.version;
     return Value::number(count);
-  }, "forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves, leaf_size, detail: 1): plants trees on the land (detail 0.4 for far-off trees: a fraction of the triangles)");
+  }, "forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves, leaf_size, detail: 1): plants trees on the land; trees far from the camera are drawn as simpler versions of themselves on their own (world.lodBias), and detail below 1 lightens even the nearest");
 
   // ---- light
   vm.native("light", [](Args& a) {
