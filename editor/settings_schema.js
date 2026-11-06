@@ -73,6 +73,7 @@ window.LE = window.LE || {};
       { title: 'Anti-aliasing', items: [
         en('render.msaa', 'MSAA', 4, opts([1, 'Off'], [4, '4x']), E({ help: 'Multisampling of the scene pass. Changes live (the pipelines are rebuilt).' })),
         tog('render.fxaa', 'Edge smoothing (FXAA)', false, E({ help: 'Cheap smoothing of hard edges in the film pass; most useful with MSAA off.' })),
+        tog('render.cull', 'Skip what can\'t be seen', true, E({ help: 'Each pass draws only the things its view can see: off screen or outside the sun\'s shadow area is skipped. Off: everything, every frame (for comparing).' })),
         tog('render.filmGrain', 'Film grain while playing', false, E({ help: 'Off: the live picture never fizzes. Stills and film frames always keep a scene\'s grain.' })),
         tog('render.taa', 'Temporal anti-aliasing', false, NB('Comes with temporal upscaling.')),
       ] },
@@ -110,7 +111,7 @@ window.LE = window.LE || {};
         tog('render.passFilm', 'Film (tone curve, grading, grain)', true, E()),
         tog('render.passShadow', 'Shadow pass', true, E()),
         tog('render.passDraw', 'Scene pass', true, E()),
-        tog('render.prepass', 'Depth pre-pass', false, E({ help: 'Shade each pixel once. Measured no gain yet; needs @invariant positions before it\'s safe on Apple GPUs.' })),
+        en('render.prepass', 'Depth pre-pass', 2, opts([0, 'Off'], [1, 'On'], [2, 'Automatic']), E({ help: 'Depth first, then light each pixel once instead of once per surface drawn over it. Automatic: on when 6 or more lamps light the scene (it pays where lighting is heavy, not in forests of triangles).' })),
       ] },
       { title: 'Debug', items: [
         en('render.view', 'Debug view', 0, opts([0, 'Final picture'], [1, 'Raw light'], [2, 'Exposure'], [3, 'Bloom'], [4, 'Ray work (blue little, red 200+ steps)']), E()),
