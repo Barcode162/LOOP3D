@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "You know what you're doing go": step 4 continued. **The sun's shadow from clusters**
+  (its own cull from the sun's view, detail chosen from the eye; ee3a944). **Scenes open at once**: the cook had
+  made first loads slow in the browser (the Glade 4.6 → 19.5 s); now a scene is drawn the old way at once while
+  one core cooks its clusters in the background, then switches over (the Glade's first frame 4.7 s, clusters 9 s
+  later in the test browser); the meter says which; the cook itself faster (the Glade 5.8 → 3.5 s on one core).
+  Pictures (2 new references: grass and leaf edges), editor 38 of 38 (676d727).
+
 - **2026-11-06** · "Here's the problems I found" (your iPhone: a black screen, "storageBufferCount(9) >
   maxStorageBuffers(8)"): the new lighting pass read 9 data buffers and the iPhone allows 8 (Safari reported
   more than it honours). The eyes' exposure now rides in the frame's constants (copied on the GPU each frame),
