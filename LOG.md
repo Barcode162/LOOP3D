@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "1 yup" (the menu, step 1 of 5): the player's row of buttons waits behind one round menu
+  button in the bottom-right corner (after 3D's J106.4); a tap shows the buttons beside it and the thumb sticks
+  step aside, ✕ hides them; `story.hud` and `?ui=0` hide it too. Your next steps (own icons, hold on the phone
+  and another way on a computer, the crosshair, recycling 3D's UI editor) are in `PLAN.md`.
 - **2026-11-06** · "I want the floor to be transparent and darker": the template's first room is a dark space with
   a see-through grid floor: a grid whose material has opacity 0 keeps only its lines (live and film), which glow
   softly and fade at their edges and into the distance; the camera's exposure is fixed so the dark stays dark.

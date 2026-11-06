@@ -54,6 +54,18 @@ Next, in order:
 *Done when:* Samples and Ardane switch from the menu with memory staying flat, and a project made from a
 template by AI plays.
 
+## The player's menu (your steps, 2026-11-06)
+Inspired by 3D's menu button (branch `job/J106`, J106.4) and crosshair (J74.1); one step at a time, you choose.
+1. **Clean screen:** one round menu button in the corner; a tap shows the old buttons beside it (done
+   2026-11-06, not yet on the public player).
+2. **Tap to fan out:** round choices fan out from the button, with **our own icons** (3D's `ui/icons.svg`, 51
+   icons drawn for J Production, to recycle).
+3. **Hold for everything:** a ring fills, groups open, slide and let go to pick: **the phone's main way**; the
+   computer gets its own way (mouse and keys).
+4. **The crosshair** (optional).
+5. **Its settings** with a live preview; what to recycle from 3D's UI editor (`ui/`: themes like Ember, its
+   fonts under the SIL Open Font License, its screens) is looked at then.
+
 ## Phase C · Bar3D on Loop3D
 *You see:* joshuavelasco.com/bar runs on Loop3D, then the games come back one by one.
 Already done (2026-11-05): the bar's 167 models, their pictures, the bar as a project, its lights alive
