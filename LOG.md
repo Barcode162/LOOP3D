@@ -9,7 +9,8 @@ One line per request, newest first: the date, what the user asked, what was done
   as `render.clusters` off). New picture references (smoother edges); editor 38 of 38 (7114486). Still to come
   in step 4: the sun's shadow through clusters, cooked trees kept between visits (the cook adds load time:
   about 1.6 s for the Glade on this machine), leaf cards and hard edges simplifying, `loop budget` counting the
-  new way.
+  new way. Published (gh-pages a9e7bca) and checked live: the bar draws through clusters with no errors, on
+  4 cores.
 
 - **2026-11-06** · The rebuild, **step 4 (drawing rebuilt), first half**: drawing in clusters, Nanite's way,
   behind `render.clusters` (`?clusters=1`; off until step 4 is done): the cook's trees in one pool on the GPU,
