@@ -352,6 +352,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.drawDistance = C.world.drawDistance, v.maxLights = C.render.maxLights;
   v.cullOffscreen = C.render.cull;
   v.lodBias = C.world.lodBias;
+  v.portraitWide = C.camera.portraitWide;
   {
     int lamps = 0;
     for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;

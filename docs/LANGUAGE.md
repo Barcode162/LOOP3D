@@ -143,7 +143,7 @@ Every setting has a sensible default; give only what matters.
   - plain: white, black, grey
 - **Shapes** (all take `at`, `turn`, `tilt`, `rotation`, `scale`, `material` (or `made_of`), `name`, and `collide: no` to walk through):
   - `box(size: vec(w, h, d), round)`, `sphere(radius)`, `cylinder(radius, height)`, `cone(radius, height)`, `capsule(radius, height)`, `ring(radius, thickness)`
-  - `ground(size)` (its material also sets what footsteps sound like), `rock(size, seed)`
+  - `ground(size)` (its material also sets what footsteps sound like; `collide: no` is seen but never stood on, like water), `rock(size, seed)`
   - `tree(kind: "oak" | "pine" | "birch" | "bush", at, height, turn, variant, leaves)`
   - A shape's fields can be read and changed any time: `.position .turn .rotation .scale .visible .material`.
 - **Models** made in Blender or any tool that saves glTF binary (`.glb`):
@@ -153,7 +153,7 @@ Every setting has a sensible default; give only what matters.
   - its pictures show in both the live player and `loop render` (the live player keeps each picture at `render.textureSize`, 256 pixels square by default)
 - **Invisible walls:** `blocker size: vec(w, h, d), at: vec(…), turn: …` is a box you bump into that is never drawn (the walls of a room made as one model, furniture's footprint).
 - **Land:**
-  - `terrain(size, height, ridges, seed, erosion, rain, detail, feature, material)`: mountains and valleys carved by simulated rain (`detail` is scaled by the setting `world.terrainRes`)
+  - `terrain(size, height, ridges, seed, erosion, rain, detail, feature, island, material)`: mountains and valleys carved by simulated rain (`detail` is scaled by the setting `world.terrainRes`); `island: yes` sinks the edges into a sea at height 0, so the middle is an island (put `ground …, material: "water", collide: no` at 0 for the sea)
   - `forest(kind, around, radius, spacing, clearing, clear_around, steepest, seed, leaves)` (trees per area follow `world.foliageDensity`)
   - `height_at(vec(x, 0, z))`
 - **Nature, ruins and creatures** (the model library; every one is one handle with `.position` and `.visible`):
@@ -202,7 +202,8 @@ Every setting has a sensible default; give only what matters.
   - `line(speaker, text, seconds)` shows a line and gives back its seconds (by default long enough to read at `story.textSpeed`, at least `story.lineMin`); `clear_lines()` takes them away; `ask(question, [options])` sends `"choice"` with `event` = the option picked
   - `go_to("next scene")`; `remember(key, value)`, `recall(key, otherwise)` and `forget_story()` for what the story keeps between scenes
   - `player()`, `near(place, within)`, `move_player(at, look_at)`; pressing Use sends `"use"`
-  - `use "common"` at the start of a line brings in `common.loop` from the same folder
+  - The player stands on the land and on the top of any fixed thing underfoot (a dock, a bridge, a stair), stepping up as high as `physics.charStep`
+  - `use "common"` at the start of a line brings in `common.loop` from the same folder; in a project's `places/`, a script whose name ends in `_common` holds what the scenes share and is never listed as a scene
 - **Renders** (made by `loop render`):
   - `render(file, quality: "draft" | "good" | "cinema" | "ultra", width, height, samples, at)` for a still
   - `film(folder, quality, width, height, samples, fps)` for every frame of the shots

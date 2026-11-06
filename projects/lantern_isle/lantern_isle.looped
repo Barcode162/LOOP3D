@@ -1,0 +1,30 @@
+# The Lantern Isle: a short game made to try everything the engine can do.
+# Light the five lanterns of a small island before the sun goes down. Three
+# scenes: the opening (a film), the island (you play), homeward (a film).
+# Every setting below shows the engine's own value; delete a line to go back to it.
+project "The Lantern Isle"
+start "isle_intro"
+
+# ---- Camera: what you see and how the view moves
+setting "world.drawDistance", 4000   # how far you can see, in metres (50 to 50,000)
+setting "cam.smoothing", 18          # how fast the view turns when you swipe (1 slow, 60 instant)
+setting "cam.adaptSpeed", 1          # how fast your eyes adjust from dark to bright (0.1 slow, 10 fast)
+setting "cam.shake", 0               # camera wobble, like holding a phone by hand (0 none, 1 a lot)
+
+# ---- Things: how objects behave
+setting "physics.gravity", [0, -9.81, 0]   # which way things fall, and how hard (Earth: 0, -9.81, 0)
+setting "physics.friction", 0.6      # how grippy surfaces are (0 like ice, 2 like rubber)
+setting "physics.bounce", 0.2        # how bouncy things are (0 not at all, 1 very)
+setting "world.lodBias", 0           # how detailed far-away things are (-2 simpler and faster, 2 sharper and slower)
+
+# ---- You: how you move
+setting "player.walk", 2.2           # walking speed, in metres a second (0.1 to 20)
+setting "player.run", 5.5            # running speed, in metres a second (0.1 to 40)
+setting "player.eye", 1.6            # how high your eyes are, in metres (0.3 to 3)
+setting "player.bob", 0.025          # how much your view bounces as you walk, in metres (0 to 0.2)
+setting "physics.charStep", 0.3      # the tallest step you can walk up, in metres (0 to 1)
+
+# ---- Sound: how loud things are
+setting "audio.master", 1            # overall volume (0 silent, 1 normal, 2 loud)
+setting "audio.music", 0.9           # music (0 silent, 1 normal, 2 loud)
+setting "audio.footsteps", 1         # footsteps (0 silent, 1 normal, 2 loud)

@@ -130,6 +130,10 @@ class World {
   // what it touches and stepping up ledges up to `step` high. Returns
   // whether it ends standing on something.
   bool moveCharacter(Vec3& pos, Vec3 move, float radius, float halfHeight, float stepHeight = 0.3f) const;
+  // Where a walker's feet rest: the highest floor under (x, z) that's no more
+  // than `stepHeight` above `feetY` (land, the ground plane, the top of a fixed
+  // thing like a dock, a bridge or a stair) within `maxDrop` below; NaN if none.
+  float floorUnder(Vec3 feet, float stepHeight = 0.3f, float maxDrop = 50) const;
 
  private:
   void substep(float h);
@@ -145,8 +149,9 @@ class World {
   std::vector<Joint> joints_;
   std::vector<Cloth> cloths_;
   std::vector<Triangle> staticTris_;
-  Bvh staticBvh_;
-  bool staticDirty_ = false;
+  mutable Bvh staticBvh_;  // rebuilt when the fixed world changed, before it's next asked
+  void ensureStatic() const;
+  mutable bool staticDirty_ = false;
   const HeightMap* terrain_ = nullptr;
   float accumulator_ = 0;
 };

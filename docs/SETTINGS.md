@@ -268,6 +268,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Handheld shake (walking) | `cam.shake` | 0 | 0 … 1 | live · script | `setting "cam.shake", 0` | handheld shake of the walking camera |
+| Upright screens keep the width | `cam.portraitWide` | true |  | live · script | `setting "cam.portraitWide", true` | A phone held upright sees as much side to side as a square screen would, and more above and below, instead of a narrow slice. |
 | Look smoothing | `cam.smoothing` | 18 | 1 … 60 | live · script | `setting "cam.smoothing", 18` | How quickly the view eases to where you point it (higher = snappier). |
 | Live motion blur | `cam.motionBlur` | false |  | not built yet |  | Needs motion vectors. |
 
@@ -587,4 +588,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 134 live · script · 49 live · 29 not built yet · 15 editor · 6 needs you
+11 project.json · 135 live · script · 49 live · 29 not built yet · 15 editor · 6 needs you

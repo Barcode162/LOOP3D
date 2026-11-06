@@ -54,6 +54,10 @@ Next, in order:
 *Done when:* Samples and Ardane switch from the menu with memory staying flat, and a project made from a
 template by AI plays.
 
+## The Lantern Isle (a game to try the engine, 2026-11-06)
+Made to find what the engine can't do yet; waiting for your thoughts on it. Gaps it found are in
+`engine/gaps.json` (five fixed, two open: sharp stars, a queue for lines said at once).
+
 ## The editor (your reins, 2026-11-06)
 One editor for building, logic, film and sound, made for the phone first, answering years of complaints about
 Blender, Unity, Unreal, Godot, music and video apps (`docs/EDITOR.md`: each complaint and its rule).

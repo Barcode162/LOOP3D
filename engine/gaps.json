@@ -2,6 +2,55 @@
   "about": "What the engine is missing, found while building (a piece of the bar) or in the review of 2026-11-05. side: core, visual, tools. status: open or closed (with the piece or commit that closed it). Read by tools/dashboard.py for the Loop3D Workshop dashboard.",
   "gaps": [
     {
+      "gap": "Land couldn't make an island (terrain had no sea)",
+      "side": "core",
+      "found": "The Lantern Isle",
+      "status": "closed",
+      "closed": "terrain island: yes"
+    },
+    {
+      "gap": "The player stood only on the land, never on a dock, a bridge or a stair",
+      "side": "core",
+      "found": "The Lantern Isle",
+      "status": "closed",
+      "closed": "World::floorUnder"
+    },
+    {
+      "gap": "A phone held upright saw a narrow slice of the world (the lens kept its height)",
+      "side": "visual",
+      "found": "The Lantern Isle",
+      "status": "closed",
+      "closed": "cam.portraitWide"
+    },
+    {
+      "gap": "A project's shared script was listed as a scene",
+      "side": "tools",
+      "found": "The Lantern Isle",
+      "status": "closed",
+      "closed": "names ending in _common"
+    },
+    {
+      "gap": "Water marked collide: no was still a floor",
+      "side": "core",
+      "found": "The Lantern Isle",
+      "status": "closed",
+      "closed": "ground collide: no"
+    },
+    {
+      "gap": "Stars are blurry blobs (drawn into the low-resolution sky)",
+      "side": "visual",
+      "found": "The Lantern Isle",
+      "status": "open",
+      "piece": 0
+    },
+    {
+      "gap": "Lines said at once overlap (a queue for who speaks next)",
+      "side": "core",
+      "found": "The Lantern Isle",
+      "status": "open",
+      "piece": 0
+    },
+    {
       "gap": "A project is a list of scenes in project.json, not a .looped project file",
       "side": "core",
       "found": "review",

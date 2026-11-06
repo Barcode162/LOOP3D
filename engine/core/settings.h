@@ -58,6 +58,7 @@ struct Config {
   struct Camera {
     float adaptSpeed = 1, minEv = -12, maxEv = 23;
     float shake = 0, smoothing = 18;
+    bool portraitWide = true;  // an upright screen keeps the lens's width
   } camera;
   struct World {
     float drawDistance = 4000, patternFade = 1, foliageDensity = 1, terrainRes = 1;

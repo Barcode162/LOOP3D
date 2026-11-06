@@ -104,6 +104,11 @@ struct Camera {
   bool autoExposure = true;   // meter the scene, like a camera on auto
   float exposureCompensation = 0;  // stops
   float fovY() const;         // vertical field of view (rad)
+  // A screen taller than wide (a phone held upright) keeps the lens's width:
+  // the view is as wide side to side as on a square screen, and taller.
+  void widenForPortrait(float aspect) {
+    if (aspect > 0.05f && aspect < 1) sensor.y /= aspect;
+  }
   float ev100() const;        // exposure value of the camera's settings
 };
 

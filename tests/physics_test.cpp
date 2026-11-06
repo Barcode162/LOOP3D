@@ -1,5 +1,8 @@
 #include "engine/physics/physics.h"
+#include "engine/geometry/mesh.h"
 #include "tests/test.h"
+
+#include <cmath>
 
 using namespace loop;
 using namespace loop::physics;
@@ -157,4 +160,22 @@ TEST(physics_character_walks_and_steps_up) {
   CHECK(grounded);
   CHECK(pos.x > 4.0f && pos.x < 4.75f);  // walked over the step, stopped at the wall
   CHECK_NEAR(pos.y, 0.9, 0.05);
+}
+
+// Where a walker stands: the land or a fixed thing underfoot, stepping up a
+// little but never onto something overhead.
+TEST(walkers_stand_on_fixed_things) {
+  World w;
+  w.groundPlane = true;
+  w.groundHeight = 0;
+  // a dock: a slab whose top is at 0.6, from z 0 to 10
+  w.addStaticMesh(shapes::box(Vec3(3, 0.2f, 10)), Mat4::trs(Vec3(0, 0.5f, 5), Quat(), Vec3(1)));
+  float f = w.floorUnder(Vec3(0, 0.0f, 5), 0.3f);   // feet on the beach beside it: the dock is 0.6 up, too high a step
+  CHECK_NEAR(f, 0.0f, 1e-3f);
+  f = w.floorUnder(Vec3(0, 0.4f, 5), 0.3f);          // feet near its height: up onto it
+  CHECK_NEAR(f, 0.6f, 1e-3f);
+  f = w.floorUnder(Vec3(0, 0.6f, 20), 0.3f);         // walked off its end: down to the ground
+  CHECK_NEAR(f, 0.0f, 1e-3f);
+  w.groundPlane = false;
+  CHECK(std::isnan(w.floorUnder(Vec3(0, 0.6f, 20), 0.3f)));  // nothing at all below
 }

@@ -1,0 +1,208 @@
+# The Lantern Isle: the island every scene shares (each scene starts with
+# `use "isle_common"`). A small island at sunset: a dock in the south, a grove
+# in the west, a hill in the middle, ruins in the north-east, standing stones
+# in the east, and a lantern in each place. The sea is at height 0.
+
+# ---- the land and the sea
+let turf = material(like: "grass", color: rgb(0.13, 0.24, 0.07))
+let isle = terrain(size: 170, height: 44, ridges: 0.4, seed: 11, island: yes, detail: 193, material: turf)
+ground 8000, material: "water", collide: no
+# where things stand: on the land
+to on_land(x, z, lift: 0)
+  return vec(x, height_at(vec(x, 0, z)) + lift, z)
+
+# the dock starts where the land in the south comes down to its planks (0.63 m)
+let dock_top = 0.63
+let dock_z0 = 30
+while height_at(vec(0, 0, dock_z0)) > dock_top - 0.05 and dock_z0 < 75
+  dock_z0 += 0.5
+let dock_len = 18
+
+# the sea is all round: invisible walls just inside the shore keep you on the
+# island, with a gap for the dock (rails keep you on its planks)
+for k from 0 to 47
+  let a = k * 7.5 deg
+  let r = 10
+  while height_at(vec(cos(a) * r, 0, sin(a) * r)) > 0.6 and r < 80
+    r += 1
+  let c = vec(cos(a) * (r - 1.5), 0, sin(a) * (r - 1.5))
+  if abs(c.x) < 5 and c.z > 0
+    continue
+  blocker size: vec(r * 0.14, 3, 0.4), at: vec(c.x, height_at(c) + 1, c.z), turn: -(a + 90 deg)
+blocker size: vec(0.3, 3, dock_len + 6), at: vec(-1.65, 1.5, dock_z0 + dock_len / 2 - 3)
+blocker size: vec(0.3, 3, dock_len + 6), at: vec(1.65, 1.5, dock_z0 + dock_len / 2 - 3)
+blocker size: vec(3.6, 3, 0.3), at: vec(0, 1.5, dock_z0 + dock_len + 0.1)
+blocker size: vec(4, 3, 0.3), at: vec(-3.7, 1.5, dock_z0 - 1)
+blocker size: vec(4, 3, 0.3), at: vec(3.7, 1.5, dock_z0 - 1)
+
+# ---- materials
+let planks = material(like: "floorboards", color: rgb(0.42, 0.32, 0.22), roughness: 0.85)
+let post_stone = material(like: "stone", color: rgb(0.48, 0.46, 0.43))
+let iron = material(like: "iron", color: rgb(0.12, 0.12, 0.13), roughness: 0.6)
+let lantern_glass = material(like: "frosted glass", color: rgb(0.95, 0.9, 0.8))
+let ember_dim = material(color: rgb(0.05, 0.03, 0.02), glow: rgb(1.0, 0.45, 0.15) * 40)
+let flame_hot = material(color: rgb(1, 0.6, 0.25), glow: rgb(1.0, 0.62, 0.28) * 9000)
+let sail_cloth = material(like: "fabric", color: rgb(0.86, 0.82, 0.74))
+let hull_wood = material(like: "old wood", color: rgb(0.3, 0.2, 0.13))
+
+# ---- the dock, in the south: planks on posts, out over the water, a rope rail
+box size: vec(3, 0.16, dock_len + 3), at: vec(0, dock_top - 0.08, dock_z0 + dock_len / 2 - 1.5), material: planks
+for i from 0 to 4
+  let z = dock_z0 + 1 + i * (dock_len - 2) / 4
+  cylinder 0.14, 2.8, at: vec(-1.45, dock_top - 1.2, z), material: hull_wood
+  cylinder 0.14, 2.8, at: vec(1.45, dock_top - 1.2, z), material: hull_wood
+box size: vec(0.05, 0.05, dock_len), at: vec(-1.45, dock_top + 0.9, dock_z0 + dock_len / 2), material: "fabric", collide: no
+box size: vec(0.05, 0.05, dock_len), at: vec(1.45, dock_top + 0.9, dock_z0 + dock_len / 2), material: "fabric", collide: no
+# crates waiting for the boat (they tumble when it bumps the dock)
+let crates = []
+for i from 0 to 2
+  let c = box(size: vec(0.6, 0.6, 0.6), at: vec(0.75, dock_top + 0.31 + i * 0.62, dock_z0 + dock_len - 3 + i * 0.04), material: "pine")
+  solid c, mass: 18
+  crates.push(c)
+
+# ---- the grove, in the west: oaks and pines, fireflies once it's dusk
+let grove = on_land(-30, 8)
+forest "oak", around: grove, radius: 13, spacing: 5.5, clearing: 3.5, seed: 4
+flowers around: grove, radius: 11, count: 70, kinds: ["daisy", "bluebell", "violet"], seed: 3
+let flies = fireflies(around: grove, radius: 9, count: 40, height: 2.2)
+flies.visible = no
+
+# ---- the ruins, in the north-east: broken columns round a fallen floor
+let ruins = on_land(27, -28)
+for i from 0 to 6
+  let a = i * 51 deg
+  let p = on_land(ruins.x + cos(a) * 5.5, ruins.z + sin(a) * 5.5)
+  column at: p, height: 2.4 + (i % 3) * 0.9, radius: 0.32, broken: i % 2 == 0, seed: i + 1, material: "ruin stone"
+log at: on_land(ruins.x + 2, ruins.z + 3, 0.25), length: 3.2, radius: 0.25, turn: 30 deg, seed: 2
+box size: vec(6, 0.3, 6), at: on_land(ruins.x, ruins.z, 0.05), material: "mossy stone", turn: 15 deg
+
+# ---- the standing stones, in the east: a ring of tall rocks
+let stones = on_land(41, 10)
+for i from 0 to 6
+  let a = i * 51.4 deg
+  let p = on_land(stones.x + cos(a) * 4.5, stones.z + sin(a) * 4.5, 0.8)
+  let s = rock(1.1, seed: i + 7, at: p, material: "granite")
+  s.scale = vec(0.7, 2.2, 0.6)
+  s.turn = a
+
+# ---- the hill: rocks on its shoulders
+let hilltop = on_land(6, -6)
+for i from 0 to 5
+  let a = i * 60 deg + 20 deg
+  rock 0.9 + (i % 3) * 0.4, seed: i + 20, at: on_land(hilltop.x + cos(a) * 7, hilltop.z + sin(a) * 7, 0.2), material: "stone"
+
+# ---- the lanterns: a stone post, an iron cage of frosted glass, a flame when lit
+let lanterns = []
+to lantern(name, at)
+  cylinder 0.12, 1.5, at: at + vec(0, 0.75, 0), material: post_stone
+  box size: vec(0.34, 0.04, 0.34), at: at + vec(0, 1.52, 0), material: iron
+  box size: vec(0.3, 0.42, 0.3), at: at + vec(0, 1.75, 0), material: lantern_glass, collide: no
+  cone 0.26, 0.2, at: at + vec(0, 2.06, 0), material: iron
+  let dim = sphere(0.05, at: at + vec(0, 1.72, 0), material: ember_dim, collide: no)
+  let flame = sphere(0.07, at: at + vec(0, 1.74, 0), material: flame_hot, collide: no)
+  flame.scale = vec(1, 1.6, 1)
+  flame.visible = no
+  let l = {name: name, at: at, lit: no, flame: flame, dim: dim, light: nothing, fire: nothing}
+  lanterns.push(l)
+  return l
+
+lantern("the dock", vec(-0.7, dock_top, dock_z0 + dock_len - 1.2))
+lantern("the grove", on_land(grove.x, grove.z))
+lantern("the hilltop", on_land(hilltop.x, hilltop.z))
+lantern("the ruins", on_land(ruins.x, ruins.z, 0.2))
+lantern("the stones", on_land(stones.x, stones.z))
+
+# lights a lantern: its flame, its light, its crackle, a bell
+to light_lantern(l, quiet: no)
+  if l.lit
+    return
+  l.lit = yes
+  l.flame.visible = yes
+  l.dim.visible = no
+  l.light = light(l.at + vec(0, 1.75, 0), lumens: 700, kelvin: 1900, radius: 0.06)
+  l.fire = sound("fire", at: l.at + vec(0, 1.7, 0), volume: 0.35)
+  if not quiet
+    sound "bell", at: l.at + vec(0, 1.8, 0), strength: 0.8
+
+# lit lanterns breathe
+every 1 / 20 s
+  for each l in lanterns
+    if l.lit
+      l.light.lumens = 700 * (1 + 0.18 * flicker(time(), 6, l.at.x))
+
+to lit_count()
+  return lanterns.filter(fn(l): l.lit).length
+
+# ---- the sky: 0 the start of sunset .. 1 night. The sun goes down, the light
+# warms then turns blue, and the picture dims, so night looks like night while
+# the eye still finds its way (and the lanterns shine)
+setting "cam.minEv", -4
+to set_sky(p)
+  let e = lerp(9 deg, -6 deg, p)
+  sun elevation: e, toward: 255 deg, lux: lerp(30000, 200, smoothstep(0, 1, p)), kelvin: lerp(4300, 2000, p)
+  let q = smoothstep(0.55, 1, p)
+  look "natural", warmth: lerp(0.12, -0.35, q), gain: lerp(1, 0.5, q), saturation: lerp(1, 0.8, q), vignette: lerp(0.3, 0.45, q)
+
+# ---- the keeper, who waits by the dock
+let keeper = person(at: on_land(-2.4, dock_z0 - 4), height: 1.68, facing: 180 deg,
+  skin: material(like: "skin", color: rgb(0.62, 0.45, 0.34)),
+  shirt: material(like: "wool", color: rgb(0.25, 0.3, 0.26)), trousers: material(like: "fabric", color: rgb(0.2, 0.18, 0.16)))
+
+# ---- the boat that takes you home: a hull, a mast and a sail, moved together
+let boat_parts = []
+to boat_part(shape, offset)
+  boat_parts.push({shape: shape, offset: offset})
+boat_part(box(size: vec(1.8, 0.7, 5), at: vec(0, 0, 0), material: hull_wood, round: 0.2, collide: no), vec(0, 0.2, 0))
+boat_part(box(size: vec(1.4, 0.08, 4.2), at: vec(0, 0, 0), material: planks, collide: no), vec(0, 0.56, 0))
+boat_part(cylinder(0.07, 4.5, at: vec(0, 0, 0), material: hull_wood, collide: no), vec(0, 2.8, 0.4))
+boat_part(box(size: vec(0.04, 3.2, 2.2), at: vec(0, 0, 0), material: sail_cloth, collide: no), vec(0, 3.0, -0.7))
+let boat_light = sphere(0.06, at: vec(0, 0, 0), material: flame_hot, collide: no)
+boat_part(boat_light, vec(0, 1.0, 2.4))
+to place_boat(at, turn: 0)
+  for each p in boat_parts
+    let o = p.offset
+    p.shape.position = at + vec(o.x * cos(turn) + o.z * sin(turn), o.y + 0.08 * sin(time() * 1.3), o.z * cos(turn) - o.x * sin(turn))
+    p.shape.turn = turn
+place_boat(vec(0, 0, 400))
+
+# ---- the sounds of the island
+sound "wind", volume: 0.35
+let birds = sound("birds", at: on_land(grove.x, grove.z, 4), volume: 0.6)
+let crickets = sound("crickets", volume: 0)
+let waves = sound("stream", at: vec(0, 0.3, dock_z0 + 2), volume: 0.4)
+room size: 0.05, echo: 0.05
+
+# ---- the music: C minor, slow; each lantern lit adds a voice (tracks join in time)
+tempo 84
+track "pad", "C3 - - - - - - - Ab2 - - - - - - - Eb3 - - - - - - - Bb2 - - - - - - -", volume: 0.7
+to music_layer(n)
+  if n == 1
+    track "keys", "C4 . Eb4 . G4 . . . Ab3 . C4 . Eb4 . . . G3 . Bb3 . Eb4 . . . Bb3 . D4 . F4 . . .", volume: 0.55
+  if n == 2
+    track "hat", "..x...x...x...x.", volume: 0.45
+  if n == 3
+    track "bass", "C2 - - - . . . . Ab1 - - - . . . . Eb2 - - - . . . . Bb1 - - - . . G1 .", volume: 0.8
+  if n == 4
+    track "kick", "x.......x.......", volume: 0.8
+    track "pluck", "G4 . C5 . Eb5 . C5 . G4 . . . F4 . Eb4 . Ab4 . C5 . Eb5 . C5 . Bb4 . . . D5 . Bb4 .", volume: 0.5
+  if n == 5
+    track "snare", "....x.......x...", volume: 0.55
+    track "bell", "C6 . . . . . . . G5 . . . . . . . Eb6 . . . . . . . . . . . Bb5 . . .", volume: 0.35
+
+# ---- talking and choosing (used by every scene)
+to say(who, text)
+  wait line(who, text)
+let answer = -1
+when "choice"
+  answer = event
+to choose(question, options)
+  answer = -1
+  ask question, options
+  while answer < 0
+    wait 0.1 s
+  return answer
+to clock(seconds)
+  let m = floor(seconds / 60)
+  let s = round(seconds - m * 60)
+  let pad = "0" if s < 10 else ""
+  return "{m}:{pad}{s}"

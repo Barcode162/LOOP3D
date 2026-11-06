@@ -49,10 +49,18 @@ float shadedOf(int k) {
 
 }  // namespace
 
+// the camera as the screen sees it (an upright screen keeps the lens's width)
+Camera viewCamera(const FrameView& v) {
+  Camera c = v.camera;
+  if (v.portraitWide) c.widenForPortrait(static_cast<float>(std::max(v.width, 1)) / static_cast<float>(std::max(v.height, 1)));
+  return c;
+}
+
 Mat4 frameViewProj(const FrameView& v) {
   float aspect = static_cast<float>(std::max(v.width, 1)) / static_cast<float>(std::max(v.height, 1));
-  Mat4 view = Mat4::lookAt(v.camera.position, v.camera.target, v.camera.up);
-  return Mat4::perspective(v.camera.fovY(), aspect, 0.05f, std::max(v.drawDistance, 1.0f)) * view;
+  Camera c = viewCamera(v);
+  Mat4 view = Mat4::lookAt(c.position, c.target, c.up);
+  return Mat4::perspective(c.fovY(), aspect, 0.05f, std::max(v.drawDistance, 1.0f)) * view;
 }
 
 Mat4 frameShadowViewProj(const FrameView& v, Vec3 towardSun, int shadowMapSize) {
@@ -86,7 +94,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   // ---- the passes: what each draws, and what skipping off-screen copies leaves
   Frustum eye = Frustum::fromViewProj(frameViewProj(view));
   Frustum shadow = Frustum::fromViewProj(frameShadowViewProj(view, towardSun, 1024));
-  const float pixelsPerRadian = static_cast<float>(std::max(view.height, 1)) / (2 * std::tan(view.camera.fovY() * 0.5f));
+  const float pixelsPerRadian = static_cast<float>(std::max(view.height, 1)) / (2 * std::tan(viewCamera(view).fovY() * 0.5f));
   std::vector<AABB> meshBox(scene.meshes.size());
   for (size_t i = 0; i < scene.meshes.size(); ++i) meshBox[i] = scene.meshes[i].bounds();
   std::set<std::pair<int, bool>> sceneBatches, shadowBatches, viewBatches, shadowViewBatches;

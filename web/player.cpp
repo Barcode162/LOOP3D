@@ -390,9 +390,13 @@ Camera walkCamera(float dt) {
   Vec3 centre = g.pos - Vec3(0, pc.eye - body.charHeight * 0.5f, 0);
   g.stage->world.moveCharacter(centre, Vec3(g.vel.x * dt, 0, g.vel.z * dt), body.charRadius, half, body.charStep);
   g.pos.x = centre.x, g.pos.z = centre.z;
-  // stand on the land, with a gentle step bob when walking
+  // stand on the land, or on whatever fixed thing is underfoot (a dock, a
+  // bridge, a stair), with a gentle step bob when walking
   float ground = 0;
   if (!g.stage->terrains.empty()) ground = g.stage->terrains.back().height(g.pos.x, g.pos.z);
+  float feet = g.pos.y - pc.eye;
+  float floor = g.stage->world.floorUnder(Vec3(g.pos.x, feet, g.pos.z), body.charStep);
+  if (!std::isnan(floor)) ground = g.stage->terrains.empty() ? floor : std::max(ground, floor);  // never below the land
   static float bobPhase = 0;
   float sp = length(g.vel);
   bobPhase += sp * dt * 2.1f;
@@ -434,6 +438,7 @@ void updateWorkLight(Stage& s, const Camera& cam) {
   }
 }
 
+float viewAspect();
 bool frameBody(double now);
 // The time each frame spends on the CPU (script, world, sending to the GPU),
 // smoothed: shown in the stats so a slow script is easy to tell from a slow GPU.
@@ -532,6 +537,7 @@ bool frameBody(double now) {
   }
   applyLookOverride(look);
   applyCameraOverride(cam);
+  if (config().camera.portraitWide) cam.widenForPortrait(viewAspect());
   g.lastCam = cam;
   updateWorkLight(s, cam);
   g.stage->setListener(cam);

@@ -1,0 +1,21 @@
+# The Lantern Isle, 1 of 3: the opening. The island at sunset from the air,
+# down to the dock where the keeper waits, then the game begins.
+use "isle_common"
+title "The Lantern Isle"
+mode "movie"
+sky "physical", haze: 0.35
+fog density: 0.0014, top: 25, color: rgb(0.92, 0.8, 0.78)
+set_sky(0)
+camera at: vec(0, 30, dock_z0 + 70), look_at: vec(0, 3, 0), lens: 32 mm
+
+orbit "the isle", 10 s, around: vec(0, 3, 4), radius: 95, height: 42, from: 65 deg, to: 120 deg, lens: 30 mm, look_at: vec(0, 4, 0), fade_in: 2 s
+shot "the dock", 7 s, from: {at: vec(-7, 3.5, dock_z0 + 24), look_at: vec(0, 1.4, dock_z0 + 6), lens: 32 mm}, to: {at: vec(-4.5, 2.2, dock_z0 + 9), look_at: vec(-2.4, 1.6, dock_z0 - 4), lens: 45 mm}, fade_out: 1.2 s
+
+task
+  wait 2 s
+  say "", "THE LANTERN ISLE"
+  say "", "Five lanterns. One sunset."
+  wait 3.5 s
+  say "Keeper", "There you are. Come, before the light goes."
+  wait 1 s
+  go_to("isle")

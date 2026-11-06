@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · "Try making a full game of your choosing to try the capabilities of our engine": **The Lantern
+  Isle** (`projects/lantern_isle/`, made with `loop new`): an opening film, the island you play (light five
+  lanterns before the sun goes down; each one lit wakes another voice of the music; the keeper guides you), and
+  an ending film (the boat home, your time and best time). It found and fixed five engine gaps: island land
+  (`terrain … island: yes`), standing on docks, bridges and stairs (`World::floorUnder`, tested), an upright
+  phone keeping the lens's width (`cam.portraitWide`, tested), shared scripts in a project (`*_common`), and water
+  that isn't a floor; two left open (blurry stars, overlapping lines). Every scene fits the Phone budget.
 - **2026-11-06** · "Okay yes publish so I can test": the green Check's site (447b6ce) put on `gh-pages` as one
   commit (5e13602); the live editor checked in a browser on a phone and a computer screen (34 of 34). The
   template room is public now too.

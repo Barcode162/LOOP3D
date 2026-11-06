@@ -1,0 +1,41 @@
+# The Lantern Isle, 3 of 3: the ending. Night, every lantern burning, the boat
+# carrying you home across the water while the island's music plays in full.
+use "isle_common"
+title "The Lantern Isle: homeward"
+mode "movie"
+sky "physical", haze: 0.3
+fog density: 0.0012, top: 20, color: rgb(0.3, 0.35, 0.6)
+set_sky(1)
+for each l in lanterns
+  light_lantern(l, quiet: yes)
+flies.visible = yes
+birds.volume = 0
+crickets.volume = 0.5
+for n from 1 to 5
+  music_layer(n)
+camera at: vec(8, 4, dock_z0 + 30), look_at: vec(0, 2, dock_z0), lens: 35 mm
+
+# the boat sails out from the dock towards home
+let sail_from = vec(2.7, 0, dock_z0 + dock_len - 3.5)
+every 1 / 30 s
+  let k = clamp(time() / 40, 0, 1)
+  place_boat(sail_from + vec(0, 0, 160) * ease(k, "in_out"))
+
+shot "leaving", 8 s, from: {at: vec(5, 2.5, dock_z0 + dock_len + 4), look_at: vec(0, 2, dock_z0 + 4), lens: 35 mm}, to: {at: vec(6, 3, dock_z0 + dock_len + 14), look_at: vec(0, 3, dock_z0 - 6), lens: 40 mm}, fade_in: 1.5 s
+shot "the isle behind", 9 s, from: {at: vec(-8, 6, dock_z0 + 60), look_at: vec(0, 4, 0), lens: 30 mm}, to: {at: vec(-14, 10, dock_z0 + 80), look_at: vec(0, 6, -4), lens: 28 mm}
+shot "high above", 12 s, from: {at: vec(30, 40, dock_z0 + 90), look_at: vec(0, 4, 0), lens: 26 mm}, to: {at: vec(10, 70, dock_z0 + 140), look_at: vec(0, 0, 10), lens: 24 mm}, fade_out: 2 s
+
+task
+  wait 2 s
+  say "", "The boat carries you home."
+  let took = recall("isle_seconds", 0)
+  let best = recall("isle_best", 0)
+  if took > 0
+    say "", "You lit the isle in {clock(took)}. Best: {clock(best)}."
+  wait 3 s
+  say "", "Thank you for playing The Lantern Isle."
+  say "", "Made with Loop3D, by J Production."
+  wait 4 s
+  let a = choose("Play again?", ["Play again", "Stay a while"])
+  if a == 0
+    go_to("isle_intro")

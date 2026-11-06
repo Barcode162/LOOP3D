@@ -1,5 +1,7 @@
 #include "engine/physics/physics.h"
 
+#include <limits>
+
 #include <algorithm>
 
 namespace loop::physics {
@@ -402,11 +404,14 @@ void World::collide() {
 }
 
 // ------------------------------------------------------------------ stepping
+void World::ensureStatic() const {
+  if (!staticDirty_) return;
+  staticBvh_.build(staticTris_);
+  staticDirty_ = false;
+}
+
 void World::step(float dt) {
-  if (staticDirty_) {
-    staticBvh_.build(staticTris_);
-    staticDirty_ = false;
-  }
+  ensureStatic();
   accumulator_ += std::min(dt, 0.25f);
   const float h = 1.0f / std::clamp(stepRate, 30.0f, 480.0f);
   while (accumulator_ >= h) {
@@ -685,6 +690,7 @@ Mesh Cloth::mesh() const {
 
 // ------------------------------------------------------------------ queries
 RayHit World::raycast(const Ray& r, float maxDist) const {
+  ensureStatic();
   RayHit best;
   best.t = maxDist;
   if (groundPlane && r.d.y < 0) {
@@ -739,7 +745,15 @@ float World::totalEnergy() const {
   return e;
 }
 
+float World::floorUnder(Vec3 feet, float stepHeight, float maxDrop) const {
+  float from = stepHeight + 0.02f;
+  RayHit h = raycast(Ray{feet + Vec3(0, from, 0), Vec3(0, -1, 0)}, from + maxDrop);
+  if (!h.hit()) return std::numeric_limits<float>::quiet_NaN();
+  return feet.y + from - h.t;
+}
+
 bool World::moveCharacter(Vec3& pos, Vec3 move, float radius, float halfHeight, float stepHeight) const {
+  ensureStatic();
   // move in small pieces; after each, push the capsule's three spheres out
   // of whatever they're in. Blocked low down but clear higher up = a step.
   int pieces = 1;

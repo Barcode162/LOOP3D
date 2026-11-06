@@ -50,6 +50,7 @@ struct FrameView {
   bool cullBackFaces = false;      // the backs of closed shapes are skipped
   bool prepass = false;            // depth first: each pixel is lit once
   float lodBias = 0;               // world.lodBias
+  bool portraitWide = true;        // cam.portraitWide: an upright screen keeps the lens's width
 };
 
 struct FrameCost {

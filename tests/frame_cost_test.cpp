@@ -3,6 +3,8 @@
 #include "engine/render/frame_cost.h"
 #include "tests/test.h"
 
+#include <cmath>
+
 using namespace loop;
 
 namespace {
@@ -91,4 +93,18 @@ TEST(frame_cost_depth_prepass_lights_each_pixel_once) {
   CHECK_NEAR(c.shadedPerPixel, 1, 1e-3);      // lit once, however many surfaces stack up
   CHECK(c.prepassTriangles == c.sceneTriangles);  // but the opaque ones are drawn twice
   CHECK(c.triangles() == 48 && c.draws() == 2);
+}
+
+// A phone held upright keeps the lens's width: as wide side to side as a
+// square screen, taller; a wide screen is unchanged.
+TEST(upright_screens_keep_the_lens_width) {
+  Camera c;
+  c.focalLength = 35;
+  float tanY = std::tan(c.fovY() * 0.5f);
+  Camera up = c;
+  up.widenForPortrait(0.5f);
+  CHECK_NEAR(std::tan(up.fovY() * 0.5f) * 0.5f, tanY, 1e-5f);  // its width, seen on a screen half as wide as tall
+  Camera wide = c;
+  wide.widenForPortrait(16.0f / 9);
+  CHECK_NEAR(wide.fovY(), c.fovY(), 1e-6f);
 }

@@ -34,9 +34,12 @@ def cover_page(looped):
     # the scenes: places/*.loop, else the .loop files beside the cover page
     places = looped.parent / "places"
     where = places if places.is_dir() and any(places.glob("*.loop")) else looped.parent
-    others = sorted(f.stem for f in where.glob("*.loop") if f.stem != cover["start"])
+    # a script whose name ends in _common holds pieces the scenes share (`use "x_common"`): published, never listed
+    others = sorted(f.stem for f in where.glob("*.loop") if f.stem != cover["start"] and not f.stem.endswith("_common"))
+    shared = sorted(f.stem for f in where.glob("*_common.loop"))
+    build = {"scenesDir": "places", "libraryDir": "places"} if where == places else {}
     return {"name": looped.parent.name, "title": cover["name"], "start": cover["start"], "scenes": [cover["start"]] + others,
-            "settings": cover.get("settings", {}), "build": {"scenesDir": "places"} if where == places else {}}
+            "library": shared, "settings": cover.get("settings", {}), "build": build}
 
 
 projects, owner = [], {}

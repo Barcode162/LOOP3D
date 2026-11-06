@@ -914,8 +914,11 @@ void installSceneApi(Vm& vm, Stage& stage) {
   vm.native("ground", [](Args& a) {
     float sz = f32(a.num(0, "size", 100));
     Stage& st = stageOf(a.vm);
-    st.world.groundPlane = true;
-    st.world.groundHeight = a.vec(-1, "at", {}).y;
+    // collide: no (water, a painted floor) is seen but never stood on
+    if (a.flag(-1, "collide", true)) {
+      st.world.groundPlane = true;
+      st.world.groundHeight = a.vec(-1, "at", {}).y;
+    }
     Value v = place(a, cachedMesh(st, keyOf("plane", {sz}), [&] { return shapes::plane({sz, sz}); }));
     const Material& gm = st.scene.materials[st.scene.instances.back().material];
     st.groundSurface = audio::surfaceOf(gm.name);
@@ -1149,14 +1152,38 @@ void installSceneApi(Vm& vm, Stage& stage) {
     sh.ridges = f32(a.num(-1, "ridges", 0.5));
     sh.seed = static_cast<uint32_t>(a.num(-1, "seed", 1));
     h.generate(sh);
+    // island: yes: the land sinks into the sea towards the edges (a smooth
+    // ring from 40% to 90% of the way out), so the middle is an island
+    bool island = a.flag(-1, "island", false);
+    if (island) {
+      float lo = h.minHeight(), hi = h.maxHeight(), floor = lo - (hi - lo) * 0.3f;
+      int n = h.resolution();
+      for (int z = 0; z < n; ++z)
+        for (int x = 0; x < n; ++x) {
+          float wx = (static_cast<float>(x) / (n - 1) - 0.5f) * size, wz = (static_cast<float>(z) / (n - 1) - 0.5f) * size;
+          float r = std::sqrt(wx * wx + wz * wz) / (size * 0.5f);
+          float f = smoothstep(0.4f, 0.9f, r);
+          h.at(x, z) = h.at(x, z) * (1 - f) + floor * f;
+        }
+    }
     if (a.flag(-1, "erosion", true)) {
       HeightMap::Erosion e;
       e.droplets = static_cast<int>(a.num(-1, "rain", res * res * 2.5));
       h.erodeHydraulic(e);
       h.erodeThermal(6);
     }
-    // keep the middle near zero so things placed at y 0 sit on the land
+    // keep the middle near zero so things placed at y 0 sit on the land; an
+    // island's sea is at 0 instead: the land is raised so its shore (where the
+    // sinking ring is half way, 65% of the way out) is at 0 on average
     float mid = h.height(0, 0);
+    if (island) {
+      float sum = 0;
+      for (int k = 0; k < 64; ++k) {
+        float ang = k * kTwoPi / 64, rr = size * 0.5f * 0.65f;
+        sum += h.height(std::cos(ang) * rr, std::sin(ang) * rr);
+      }
+      mid = sum / 64;
+    }
     for (int z = 0; z < h.resolution(); ++z)
       for (int x = 0; x < h.resolution(); ++x) h.at(x, z) -= mid;
     s.terrains.push_back(h);
@@ -1167,7 +1194,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
     s.scene.add(mesh, mat);
     ++s.version;
     return Value::object(a.vm.newThing(&kTerrainClass, static_cast<int>(s.terrains.size() - 1)));
-  }, "terrain(size, height, ridges, seed, erosion, material)");
+  }, "terrain(size, height, ridges, seed, erosion, island, material): land carved by rain; island: yes sinks its edges into a sea at height 0");
   vm.native("height_at", [](Args& a) {
     Stage& s = stageOf(a.vm);
     Thing* t = a.get(-1, "on") ? a.get(-1, "on")->as<Thing>() : nullptr;

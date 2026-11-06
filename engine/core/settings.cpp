@@ -128,6 +128,7 @@ Settings::Settings() {
   F("cam.maxEv", ca.maxEv, 0, 26, "brightest scene exposure will adapt to (EV)");
   F("cam.shake", ca.shake, 0, 1, "handheld shake of the walking camera");
   F("cam.smoothing", ca.smoothing, 1, 60, "how quickly the view eases to where you point it");
+  B("cam.portraitWide", ca.portraitWide, "a screen taller than wide (a phone held upright) keeps the lens's width, so you see as much side to side as on a square screen");
 
   auto& w = c.world;
   F("world.drawDistance", w.drawDistance, 50, 50000, "farthest the camera sees (m)");
