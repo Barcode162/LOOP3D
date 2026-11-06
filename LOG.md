@@ -9,6 +9,7 @@ One line per request, newest first: the date, what the user asked, what was done
   (`terrain … island: yes`), standing on docks, bridges and stairs (`World::floorUnder`, tested), an upright
   phone keeping the lens's width (`cam.portraitWide`, tested), shared scripts in a project (`*_common`), and water
   that isn't a floor; two left open (blurry stars, overlapping lines). Every scene fits the Phone budget.
+  Published (ad5db47 → gh-pages 2fc7633); played on the live site from the opening to the island.
 - **2026-11-06** · "Okay yes publish so I can test": the green Check's site (447b6ce) put on `gh-pages` as one
   commit (5e13602); the live editor checked in a browser on a phone and a computer screen (34 of 34). The
   template room is public now too.
