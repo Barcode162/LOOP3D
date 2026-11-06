@@ -51,7 +51,9 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
    same world; each script now has its own random numbers).
 1. **The one clock and the flat world** (done 2026-11-06): the day, the film and the world on one clock;
    drawing blends between steps and gets only what moved (the Glade's sending 1.71 → 0.26 ms).
-2. **More than one core:** the work shared by the phone's cores (with a one-core fallback); faster maths.
+2. **More than one core** (done 2026-11-06): pictures decoded on every core (the bar's load 4.2 → 1.05 s
+   natively), a many-core web player with a one-core fallback, SIMD maths; per-frame physics and people move
+   to the cores with steps 7 and 9, where they get heavy.
 3. **The cook and the library:** `library/` for every project, each entry a recipe with its credit and
    licence, found by `use`, listed in the editor; meshes cooked into clusters; the rule that every goal adds to
    the library.

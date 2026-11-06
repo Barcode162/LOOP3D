@@ -2,6 +2,15 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · The rebuild, **step 2 (more than one core)**: a scene's model pictures wait packed while its
+  script runs, then are decoded together on every core (the bar's load was nearly all JPEG decoding: 4.2 →
+  1.05 s natively); the web gets a many-core player beside the one-core one, chosen by the page (our own small
+  service worker, `web/isolate.js`, makes the page isolated so cores can share memory; one reload on a first
+  visit; `?cores=1` asks for one core), both with SIMD; test browser: the bar's first frame 7.1 → 4.7 s; the
+  meter says how many cores work; pictures and the editor unchanged (2a2688e). Steps 0 and 1 are on the live
+  player (gh-pages 4f42392, built here with the Check's own toolchain: this session can't start the publish
+  workflow or fetch the Check's artifact).
+
 - **2026-11-06** · The rebuild, **step 1 (the one clock)**: the day, the film's time and the world all step on
   the fixed clock (not the frame rate); each thing keeps where it was and where it is, and the drawing blends
   between the two steps (smooth at any screen rate) and is sent only what moved: the Glade's sending 1.71 →
