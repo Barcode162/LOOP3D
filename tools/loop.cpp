@@ -9,6 +9,8 @@
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
 //   loop project <name.looped>                a project's cover page as JSON (its name and first scene)
 //   loop new "My Game"                        a new project in projects/, copied from projects/template
+//   loop cook   <script.loop>                 what the cook makes of a scene's shapes: each mesh's
+//               cluster tree (Nanite-style levels), how long it took
 //   loop library list|check|json              the library (library/): its entries; check refuses
 //               an entry with no credit or licence; json is for the site and the editor
 //   Every command that takes a scene also takes a project's cover page (.looped):
@@ -27,6 +29,8 @@
 #include "engine/core/json.h"
 #include "engine/core/settings.h"
 #include "engine/core/time.h"
+#include "engine/core/jobs.h"
+#include "engine/geometry/cook.h"
 #include "engine/project/library.h"
 #include "engine/project/project.h"
 #include "engine/render/demo_scenes.h"
@@ -532,6 +536,25 @@ int main(int argc, char** argv) {
   } else if (cmd == "project") {
     std::fprintf(stderr, "loop project takes a project's cover page (name.looped)\n");
     return 1;
+  }
+  if (cmd == "cook") {
+    Vm vm;
+    Stage stage;
+    if (!loadScript(target, vm, stage)) return 1;
+    Stopwatch sw;
+    Cook::shared().cookAll(stage.scene.meshes);
+    double ms = sw.ms();
+    size_t tris = 0, clusters = 0, coarsest = 0;
+    int deepest = 0;
+    for (const Mesh& m : stage.scene.meshes) {
+      auto t = Cook::shared().clusters(m);
+      tris += m.triangleCount(), clusters += t->clusters.size(), deepest = std::max(deepest, t->levels);
+      for (const Cluster& c : t->clusters)
+        if (c.parentError >= kInf) coarsest += c.count;
+    }
+    std::printf("%s: %zu meshes, %zu triangles, cooked into %zu clusters, up to %d levels; at their coarsest %zu triangles (%.1f%%); %.0f ms on %d cores\n",
+                target.c_str(), stage.scene.meshes.size(), tris, clusters, deepest, coarsest, tris ? 100.0 * coarsest / tris : 0.0, ms, JobSystem::shared().threads());
+    return 0;
   }
   if (cmd == "demo") return demo(target, o);
   if (cmd == "budget") return budget(target, o);
