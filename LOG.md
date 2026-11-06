@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · Perfecting the template (the user's 1, 2, 3, 4): a Sound group and plainer notes (16 settings);
+  the first room opens on a grid floor (1-metre squares, soft even light) through a new `grid` pattern whose lines
+  stay sharp at any distance (live and film renderers).
 - **2026-11-06** · Step 2 of 3, the template (kept to the minimum, the user's word): `projects/template/` is the
   folder every new project is copied from: `template.looped` (a name, its first room, 13 starting settings for the
   camera, things and you, each with its range) and `places/first_room.loop` (empty). Rooms are found in `places/`,

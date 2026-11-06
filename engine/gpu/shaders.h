@@ -118,6 +118,7 @@ fn patternLod(m : Material, p : vec3f, n : vec3f, lod : f32) -> vec3f {
     case 6: { feature = 0.12 / sc; }
     case 7: { feature = 0.06 / sc; avg = 0.3; }
     case 8: { feature = 0.003 / sc; avg = 0.3; }
+    case 10: { feature = 0.02 / sc; avg = 0.1; }
     default: {}
   }
   let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
@@ -194,6 +195,10 @@ fn pattern(m : Material, p : vec3f, n : vec3f) -> vec3f {
       let grain = vnoise(vec3f(pl.x * 3.0, gx * 60.0, id * 50.0)) * 0.5 + 0.5;
       let mx = max(gap, clamp(figure * 0.55 + grain * 0.25, 0.0, 1.0) * m.pattern.w);
       return vec3f(mx, 1.0 - gap - figure * 0.05, 0.75 + 0.5 * id);
+    }
+    case 10: { // grid: even squares with thin lines
+      let g = abs(fract(pl - 0.5) - 0.5);
+      return vec3f(1.0 - smoothstep(0.008, 0.016, min(g.x, g.y)), 0.5, 1.0);
     }
     default: { return vec3f(0.0, 0.5, 1.0); }
   }
@@ -388,6 +393,16 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let lod = length(fwidth(i.world));
     let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
     pv = vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
+    if (kind == 10) {
+      // grid: lines a pixel and a half wide at any distance, fading where the
+      // squares get no bigger than the lines
+      let g = planar(i.world * sc, n);
+      let w = max(fwidth(g), vec2f(1e-5)) * 1.5;
+      let d = abs(fract(g - 0.5) - 0.5) / w;
+      let line = 1.0 - clamp(min(d.x, d.y), 0.0, 1.0);
+      let far = clamp(max(w.x, w.y) * 3.0 - 0.5, 0.0, 1.0);
+      pv = vec3f(mix(line, 0.25, far), 0.5, 1.0);
+    }
     base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
     rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
     if (m.pattern.z > 0.0) {

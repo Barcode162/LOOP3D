@@ -280,7 +280,7 @@ bool applyMaterialSetting(Vm& vm, Material& m, const std::string& f, const Value
     static const std::pair<const char*, Pattern::Kind> kinds[] = {
         {"none", Pattern::Kind::kNone}, {"checker", Pattern::Kind::kChecker}, {"tiles", Pattern::Kind::kTiles}, {"bricks", Pattern::Kind::kBricks},
         {"wood", Pattern::Kind::kWood}, {"marble", Pattern::Kind::kMarble}, {"noise", Pattern::Kind::kNoise}, {"ground", Pattern::Kind::kGround},
-        {"planks", Pattern::Kind::kPlanks}};
+        {"planks", Pattern::Kind::kPlanks}, {"grid", Pattern::Kind::kGrid}};
     std::string p = vm.show(v);
     std::vector<std::string> names;
     for (auto& [k, kind] : kinds) {

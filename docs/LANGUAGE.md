@@ -130,7 +130,7 @@ Every setting has a sensible default; give only what matters.
   - `title "…"`
   - `mode "movie"` (plays its shots) or `mode "game"` (you walk around)
 - **Materials:** `material("oak")`, or `material(like: "oak", roughness: 0.3)`, or `material(color: rgb(..), roughness, metal, glass, ior, dispersion, glow, clearcoat, sheen, subsurface, subsurface_color, translucent, opacity, leaf, pattern, pattern_color, pattern_scale, bump)`.
-  - Patterns: `checker tiles bricks wood planks marble noise ground`.
+  - Patterns: `checker tiles bricks wood planks marble noise ground grid` (`grid`: even squares with thin lines in `pattern_color`, one square per `1 / pattern_scale` metres; its lines stay sharp at any distance).
   - Every shape takes `material:` as a name, a material, or a bare colour.
 - **59 named materials** (`materials()` lists them):
   - wood: oak, pine, walnut, cherry, floorboards, old wood, bark

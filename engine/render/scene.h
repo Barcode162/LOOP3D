@@ -20,7 +20,7 @@ namespace loop {
 // A pattern computed at the hit point (no image files needed): colour,
 // roughness and bumps that vary across a surface.
 struct Pattern {
-  enum class Kind { kNone, kChecker, kTiles, kBricks, kWood, kMarble, kNoise, kGround, kPlanks, kImage };
+  enum class Kind { kNone, kChecker, kTiles, kBricks, kWood, kMarble, kNoise, kGround, kPlanks, kImage, kGrid };
   Kind kind = Kind::kNone;
   Vec3 colorB{0.2f};          // second colour (grout, dark grain, veins...)
   float scale = 1;            // pattern cells per metre

@@ -32,6 +32,12 @@ void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, V
       mix = (c & 1) ? 1.0f : 0.0f;
       return;
     }
+    case Pattern::Kind::kGrid: {  // even squares with thin lines (colorB): a floor to judge sizes by
+      float gx = fract(pl.x), gy = fract(pl.y);
+      float edge = std::min(std::min(gx, 1 - gx), std::min(gy, 1 - gy));
+      mix = 1 - smoothstep(0.008f, 0.016f, edge);
+      return;
+    }
     case Pattern::Kind::kTiles: {
       float gx = fract(pl.x), gy = fract(pl.y);
       float edge = std::min(std::min(gx, 1 - gx), std::min(gy, 1 - gy));
