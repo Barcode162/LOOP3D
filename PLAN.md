@@ -54,9 +54,10 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 2. **More than one core** (done 2026-11-06): pictures decoded on every core (the bar's load 4.2 → 1.05 s
    natively), a many-core web player with a one-core fallback, SIMD maths; per-frame physics and people move
    to the cores with steps 7 and 9, where they get heavy.
-3. **The cook and the library:** `library/` for every project, each entry a recipe with its credit and
-   licence, found by `use`, listed in the editor; meshes cooked into clusters; the rule that every goal adds to
-   the library.
+3. **The cook and the library** (done 2026-11-06): `library/` for every project (5 entries so far), found by
+   `use`, placed from the editor, the rule that every goal adds to it; the cook makes each mesh's cluster tree
+   once (Nanite's idea, crack-free, tested). Still to come with step 4: leaf cards dropped and enlarged far
+   away, collapses along seams (hard-edged models), the cooked trees kept between visits.
 4. **Drawing rebuilt (Nanite for WebGPU):** the graphics chip culls and picks the detail of every piece
    itself, one draw a pass, each pixel shaded once; frame blending replaces 4x multisampling.
 5. **Smart light:** lamps only where they reach (the bar: 103 a pixel to about 10), kept shadows in steps for
@@ -178,6 +179,8 @@ meter.)
 - 2026-11-06: the plan in phases (A smooth and clean, B projects, C the bar, D hosting).
 - 2026-11-06: **the rebuild** (your reins): the engine rebuilt from its foundations in 14 steps, the ten moves
   ahead above; Phase A folded into it.
+- 2026-11-06: **the library**: `library/<kinds>/<name>.loop`, text recipes with a card (credit and licence
+  required), found by `use` after the scene's own folder; every goal adds to it.
 
 ## Open problems
 - **Never measured on the phone** (needs you, above).

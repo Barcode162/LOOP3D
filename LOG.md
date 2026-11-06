@@ -2,6 +2,17 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-06** · The rebuild, **step 3 (the library and the cook)**: **the library** (`library/`, every
+  project's): each entry a text recipe with its card (what, how to place it, credit, licence, from where);
+  `use "lantern"` finds it; the first five come out of the projects (the isle's lantern and sailing boat, the
+  Showcase's room shell, plinth and stone beam), which now use them (same pictures, the isle plays through);
+  `loop library`; a test refuses an entry without a licence; the editor's Build space places them with a tap
+  (editor 38 of 38); the rulebook's new rule: every goal grows the library (6745537). **The cook**: a simplifier
+  that never moves a vertex, cluster trees the Nanite way (groups simplified with their edges kept: any view
+  meets without cracks, tested; a sphere draws 19,064 triangles at 2 m, 80 at 200 m), each mesh cooked once by
+  its fingerprint on every core; `loop cook`: the bar in 0.46 s, the Glade in 1.6 s (1f3cf84). Left for step
+  4: leaf cards and hard-edged models don't simplify yet (two thirds stay at the coarsest).
+
 - **2026-11-06** · The rebuild, **step 2 (more than one core)**: a scene's model pictures wait packed while its
   script runs, then are decoded together on every core (the bar's load was nearly all JPEG decoding: 4.2 →
   1.05 s natively); the web gets a many-core player beside the one-core one, chosen by the page (our own small
