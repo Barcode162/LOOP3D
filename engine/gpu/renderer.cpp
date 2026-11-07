@@ -1122,6 +1122,13 @@ class GpuRenderer final : public Renderer {
         Vec2 uv = i < m.uvs.size() ? m.uvs[i] : Vec2{};
         verts.insert(verts.end(), {m.positions[i].x, m.positions[i].y, m.positions[i].z, n.x, n.y, n.z, uv.x, uv.y});
       }
+      // the thinned pieces' bigger corners, after the mesh's own
+      for (size_t k = 0; k < tree->extraPositions.size(); ++k) {
+        uint32_t i = tree->extraSource[k];
+        Vec3 p = tree->extraPositions[k], n = i < m.normals.size() ? m.normals[i] : Vec3{0, 1, 0};
+        Vec2 uv = i < m.uvs.size() ? m.uvs[i] : Vec2{};
+        verts.insert(verts.end(), {p.x, p.y, p.z, n.x, n.y, n.z, uv.x, uv.y});
+      }
       for (const Cluster& c : tree->clusters) {
         ClusterU u;
         u.bounds = c.bounds, u.lod = c.lodSphere, u.parent = c.parentSphere;

@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-07** · Step 4 continued: **grass, leaves and flowers get simpler far away** (separate cards can't
+  collapse edges: half of a group's cards are kept, each bigger by √2 so the same area stays covered, tested);
+  at their coarsest the Glade keeps 15% of its triangles (was 68%), the Woods 18% (was 29%). Pictures (a new
+  bar reference: thin outlines and bottle shelves past a pixel), editor 38 of 38.
+
 - **2026-11-06** · "You know what you're doing go": step 4 continued. **The sun's shadow from clusters**
   (its own cull from the sun's view, detail chosen from the eye; ee3a944). **Scenes open at once**: the cook had
   made first loads slow in the browser (the Glade 4.6 → 19.5 s); now a scene is drawn the old way at once while

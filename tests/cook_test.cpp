@@ -225,3 +225,34 @@ TEST(cook_keeps_one_tree_per_shape) {
   CHECK(Cook::fingerprint(moved) != Cook::fingerprint(meshes[0]));
   Cook::shared().forget();
 }
+
+// A meadow of separate cards can't simplify by collapsing edges: far away it
+// keeps half its cards at each level, each bigger (the same area covered).
+TEST(cluster_tree_thins_separate_pieces) {
+  Mesh meadow;
+  for (int i = 0; i < 4000; ++i) {
+    Mesh card = shapes::plane({0.05f, 0.05f});
+    card.transform(Mat4::trs(Vec3((i % 80) * 0.1f, 0, (i / 80) * 0.1f), Quat(), Vec3(1)));
+    meadow.append(card);
+  }
+  ClusterTree tree = buildClusterTree(meadow);
+  size_t coarsest = 0;
+  for (const Cluster& c : tree.clusters)
+    if (c.parentError >= kInf) coarsest += c.count;
+  CHECK(coarsest * 4 < meadow.triangleCount());
+  CHECK(!tree.extraPositions.empty() && tree.extraPositions.size() == tree.extraSource.size());
+  for (uint32_t s : tree.extraSource) CHECK(s < meadow.vertexCount());
+  // the area stays about the same: half the cards, each twice the area
+  auto area = [&](const std::vector<int>& chosen) {
+    double a = 0;
+    for (int c : chosen)
+      for (uint32_t t = 0; t < tree.clusters[c].count; ++t) {
+        const uint32_t* i = &tree.indices[tree.clusters[c].first + t * 3];
+        auto P = [&](uint32_t v) { return v < meadow.vertexCount() ? meadow.positions[v] : tree.extraPositions[v - meadow.vertexCount()]; };
+        a += 0.5 * length(cross(P(i[1]) - P(i[0]), P(i[2]) - P(i[0])));
+      }
+    return a;
+  };
+  double near = area(selectClusters(tree, Vec3(4, 1, 2), 1000, 1)), far = area(selectClusters(tree, Vec3(4, 400, 2), 1000, 1));
+  CHECK(far > near * 0.8 && far < near * 1.25);
+}

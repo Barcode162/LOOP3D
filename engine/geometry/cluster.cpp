@@ -219,8 +219,9 @@ std::vector<std::vector<uint32_t>> cutIntoClusters(const std::vector<Vec3>& posi
 
 ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) {
   ClusterTree tree;
-  const std::vector<Vec3>& pos = mesh.positions;
-  const std::vector<uint32_t> weld = weldMap(pos);
+  std::vector<Vec3> pos = mesh.positions;          // the mesh's vertices, then the extra ones
+  std::vector<uint32_t> weld = weldMap(mesh.positions);
+  const uint32_t meshVerts = static_cast<uint32_t>(mesh.positions.size());
   auto addCluster = [&](const std::vector<uint32_t>& tris, int level, float error, Vec4 lodSphere) {
     Cluster c;
     c.first = static_cast<uint32_t>(tree.indices.size());
@@ -295,7 +296,12 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) 
       float error = 0;
       Vec4 sphere;
       std::vector<std::vector<uint32_t>> parts;
+      // thinned pieces: the kept triangles, with new corners (kNew + k) at newPos[k]
+      std::vector<uint32_t> thinned;
+      std::vector<Vec3> newPos;
+      std::vector<uint32_t> newFrom;
     };
+    constexpr uint32_t kNew = 0x80000000u;
     std::vector<Done> done(groups.size());
     auto work = [&](int gi) {
       const std::vector<int>& g = groups[gi];
@@ -313,10 +319,62 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) 
       // simplify never moves: the new pieces meet their neighbours exactly
       size_t have = tris.size() / 3;
       SimplifyResult r = simplify(pos, tris, have / 2);
-      if (r.indices.size() / 3 > have * 85 / 100) return;  // it won't go simpler now
       Done& d = done[gi];
-      d.ok = true, d.error = std::max(childError, r.error), d.sphere = sphere;
-      d.parts = cutIntoClusters(pos, r.indices, maxTriangles);
+      if (r.indices.size() / 3 <= have * 85 / 100) {
+        d.ok = true, d.error = std::max(childError, r.error), d.sphere = sphere;
+        d.parts = cutIntoClusters(pos, r.indices, maxTriangles);
+        return;
+      }
+      // it won't go simpler by collapsing edges: if it's many separate small
+      // pieces, keep half of them (spread out, by a hash), each one bigger by
+      // the square root of two round its middle, so they cover the same area
+      std::unordered_map<uint32_t, uint32_t> parent;
+      std::function<uint32_t(uint32_t)> root = [&](uint32_t v) {
+        auto it = parent.find(v);
+        if (it == parent.end() || it->second == v) return v;
+        return it->second = root(it->second);
+      };
+      for (size_t t = 0; t < tris.size(); t += 3)
+        for (int k = 0; k < 3; ++k) parent.emplace(weld[tris[t + k]], weld[tris[t + k]]);
+      for (size_t t = 0; t < tris.size(); t += 3)
+        for (int k = 1; k < 3; ++k) {
+          uint32_t a = root(weld[tris[t]]), b = root(weld[tris[t + k]]);
+          if (a != b) parent[std::max(a, b)] = std::min(a, b);
+        }
+      std::map<uint32_t, std::vector<uint32_t>> pieces;  // by root: its triangles' starts
+      for (size_t t = 0; t < tris.size(); t += 3) pieces[root(weld[tris[t]])].push_back(static_cast<uint32_t>(t));
+      size_t count = pieces.size();
+      if (count < 4 || have > count * 16) return;  // not separate small pieces: it stays as it is
+      std::vector<std::pair<uint32_t, uint32_t>> order;  // (hash, root)
+      for (auto& [rt, ts] : pieces) order.push_back({rt * 2654435761u, rt});
+      std::sort(order.begin(), order.end());
+      size_t keep = (count + 1) / 2;
+      float grow = std::sqrt(static_cast<float>(count) / static_cast<float>(keep));
+      float widest = 0;
+      std::unordered_map<uint32_t, uint32_t> made;  // original vertex -> new corner
+      for (size_t i = 0; i < keep; ++i) {
+        const std::vector<uint32_t>& ts = pieces[order[i].second];
+        Vec3 mid(0);
+        int n = 0;
+        for (uint32_t t : ts)
+          for (int k = 0; k < 3; ++k) mid = mid + pos[tris[t + k]], ++n;
+        mid = mid / static_cast<float>(n);
+        made.clear();
+        for (uint32_t t : ts)
+          for (int k = 0; k < 3; ++k) {
+            uint32_t v = tris[t + k];
+            auto it = made.find(v);
+            if (it == made.end()) {
+              it = made.emplace(v, kNew + static_cast<uint32_t>(d.newPos.size())).first;
+              d.newPos.push_back(mid + (pos[v] - mid) * grow);
+              d.newFrom.push_back(v);
+              widest = std::max(widest, length(pos[v] - mid));
+            }
+            d.thinned.push_back(it->second);
+          }
+      }
+      d.ok = true, d.sphere = sphere;
+      d.error = std::max(childError, widest * grow);  // a piece may move or vanish by about its size
     };
     if (parallel) JobSystem::shared().parallelFor(static_cast<int>(groups.size()), work);
     else
@@ -337,6 +395,21 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) 
       }
       simplified = true;
       for (int c : g) tree.clusters[c].parentError = d.error, tree.clusters[c].parentSphere = d.sphere;
+      if (!d.thinned.empty()) {
+        // the thinned pieces' new corners join the vertices (in group order: the same tree every time)
+        uint32_t base = static_cast<uint32_t>(pos.size());
+        for (size_t k = 0; k < d.newPos.size(); ++k) {
+          uint32_t from = d.newFrom[k];
+          pos.push_back(d.newPos[k]);
+          weld.push_back(static_cast<uint32_t>(pos.size() - 1));
+          tree.extraPositions.push_back(d.newPos[k]);
+          tree.extraSource.push_back(from < meshVerts ? from : tree.extraSource[from - meshVerts]);
+        }
+        std::vector<uint32_t> idx(d.thinned);
+        for (uint32_t& v : idx) v = base + (v - kNew);
+        for (const auto& sub : cutIntoClusters(pos, idx, maxTriangles)) next.push_back(addCluster(sub, level + 1, d.error, d.sphere));
+        continue;
+      }
       for (const auto& sub : d.parts) next.push_back(addCluster(sub, level + 1, d.error, d.sphere));
     }
     if (!simplified) break;  // nothing goes simpler: the coarsest of every part is reached

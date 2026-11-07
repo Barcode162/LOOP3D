@@ -4,6 +4,8 @@
 // tree. This is the idea behind Nanite (Karis et al., 2021):
 //
 //   1. Cut the mesh into clusters of neighbouring triangles.
+//      (Separate small pieces that can't be simplified, like grass blades and
+//      leaf cards, are thinned instead: half kept, each bigger.)
 //   2. Group about four clusters that touch, simplify the group to half its
 //      triangles with its outer edges locked (simplify.h), and cut the result
 //      into new clusters: the next level. Repeat until nothing simplifies.
@@ -39,7 +41,13 @@ struct Cluster {
 
 struct ClusterTree {
   std::vector<Cluster> clusters;
-  std::vector<uint32_t> indices;  // over the mesh's own vertices (none are added or moved)
+  std::vector<uint32_t> indices;  // over the mesh's vertices, then the extra ones below
+  // Separate small pieces (grass blades, leaf cards, flowers) get simpler by
+  // keeping half of them, each kept one made bigger to cover the same area:
+  // their bigger corners are extra vertices, numbered after the mesh's own,
+  // each copying its normal and picture place from an original corner.
+  std::vector<Vec3> extraPositions;
+  std::vector<uint32_t> extraSource;  // the mesh's vertex each extra one copies
   int levels = 1;
   size_t triangles(int level) const;  // how many triangles that level holds
 };
