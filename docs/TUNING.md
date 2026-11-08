@@ -98,7 +98,23 @@ Every scene sets these with `look …`. Most are nearly free (one full-screen pa
 
 Every change to this sheet gets judged by numbers we keep.
 
-1. **Run a benchmark.** In the player, open **Benchmark…** and pick **This scene** or **The whole story** (about 30 minutes). It plays by itself: it presses Use, answers questions with the first option, and moves on scene by scene. Or open it directly with `?bench=scene` or `?bench=story`, plus `&quality=0|1|2`, `&choices=0,1,1` and `&seconds=N` (a time limit per scene).
+**The live recording (the easy way, from the phone).** Every visit to the player is timed while it is
+played, scene by scene, in parts of 30 s (a part is also cut when the scene or the quality changes, or the
+page goes to the background), with the same numbers as a benchmark below. Nothing to start:
+- **The recording page** (https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT, private to the user) is the
+  player inside claude.ai. A chip says **● Recording for Claude**: each visit is saved as it goes, one row in
+  the page's database (`runs/live-<when>-<code>`, a run of bench `live`; a visit past 150 parts goes on in
+  `…-2`). Claude reads them with `ArtifactData` (`list` of `runs`, `out_dir` to save them as files), then
+  `tools/perf_add.py` keeps them like any run. The page runs on one core (a page inside another can't share
+  memory between cores), and lists the whole bar.
+- **The public player** keeps the visit in the browser: **Benchmark… → Copy my recording**, then paste it in
+  the chat.
+- **Updating the recording page** after a change to the player: `tools/build_site.sh`,
+  `tools/recording_page.py`, then the Artifact tool publishes `build/recording/index.html` to the page's url
+  with the files `build/recording/files.json` lists, one publish per upload (only the changed files are
+  needed). `PAGE=build/recording/index.html xvfb-run -a node tools/recorder_check.js` checks it first.
+
+1. **Run a benchmark** (the same path every time, for before-and-after comparisons). In the player, open **Benchmark…** and pick **This scene** or **The whole story** (about 30 minutes). It plays by itself: it presses Use, answers questions with the first option, and moves on scene by scene. Or open it directly with `?bench=scene` or `?bench=story`, plus `&quality=0|1|2`, `&choices=0,1,1` and `&seconds=N` (a time limit per scene).
 2. **Read the results.** At the end it shows a table, one row per scene, and offers **Copy results** and **Save file**. The last 20 runs are also kept in that browser.
 3. **Keep them.** Paste the results into the chat with Claude, or send the file. Claude runs `tools/perf_add.py`, which keeps every run whole in `perf/raw/` and rebuilds `perf/runs.json` and `perf/segments.json`. Those feed the **Smoothness Tracker** (the link is in the results panel).
 

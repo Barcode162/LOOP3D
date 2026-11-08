@@ -29,6 +29,7 @@ of it in solid, checked steps and report at the end.
 4. **Commit small, push `main`.** GitHub's **Check** tests and builds every push. The public player changes only
    when it's published: the **Publish the player** workflow (by hand), or, where Claude can't start workflows,
    the `site` artifact of a green Check put on `gh-pages` as one new commit. Then open the live page to check it.
+   A change to the player also goes to the user's **recording page** (`docs/TUNING.md`, section 5).
 5. **Grow the library:** whatever a goal makes that another project could use (a model, a room, a piece, a
    light rig, a clip, a sound) goes into `library/<kinds>/<name>.loop` with its card (what it is, how to
    place it, its credit and licence, where it came from), and the project uses it from there
@@ -61,8 +62,10 @@ of it in solid, checked steps and report at the end.
 `tools/loop.cpp` (the `loop` command: check, run, play, render, budget, project, library, words, settings) ·
 `library/` (what every project shares, growing with every goal) · `projects/`
 (each project's folder; a cover page `name.looped` names it and its first scene) · `tests/` ·
-`docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING) · `perf/` (benchmark runs from the phone).
+`docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING, PIPELINE: the picture's plan) · `perf/` (benchmark runs from the phone).
 The public player: https://barcode162.github.io/LOOP3D/ (the editor: `editor.html`), published from `gh-pages`.
+The recording page (private, the player inside claude.ai): https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT;
+every scene the user plays there is timed and saved in its database (`runs`), read with `ArtifactData`.
 Pictures of the live renderer: download the `site` artifact of GitHub's **Check**, serve it, and run
 `xvfb-run -a node tools/web_check.js <url> out.png` (never headless: WebGPU loses its device there).
 A new skill, when one is needed, is made with the `legends` skill (`.claude/skills/legends/`).

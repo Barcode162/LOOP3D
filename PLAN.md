@@ -5,10 +5,10 @@ made in Unreal. Everything is judged on the user's iPhone: smooth first, then be
 phase is done when its "done when" is true on the phone.
 
 ## Needs you
-- **Benchmark on your phone** (any time, a minute each): open a scene, tap **Benchmark… → This scene**, then
-  **Copy results** and paste them in the chat. Best first: the bar (`#bar`), The Woods (`#the_woods`). Your 12
-  runs of 2026-11-05 came before the cluster drawing (The Woods: 6 fps, 159 ms on the graphics chip, 1 ms on the
-  processor); new ones are the picture pipeline's phase 1.
+- **Play on your recording page** (any time, as long as you like): https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT.
+  Every scene you play is timed and saved for Claude; say "check my runs". Best first: the bar (in the scene
+  list as "The bar (all of it)") and The Woods. Your 12 runs of 2026-11-05 came before the cluster drawing (The
+  Woods: 6 fps, 159 ms on the graphics chip, 1 ms on the processor); new ones are the picture pipeline's phase 1.
 - **The project file's name:** `.looped` is proposed; say if you want another.
 - **The bar at its hidden link on joshuavelasco.com** (phase C): the three IONOS secrets added to this repo's
   GitHub settings (only you can).
@@ -98,7 +98,8 @@ once, fog, blend and upscale, film.
 
 **The phases, in order** (each keeps every scene playing, no slower on the phone, no further from cinema):
 1. **Measure:** your phone on today's cluster build (the bar, The Woods), the score against cinema, `loop budget`
-   counting the cluster way.
+   counting the cluster way. The recording page (2026-11-08) times whatever you play, saved where Claude reads
+   it.
 2. **Frame graph:** the renderer split into steps, each timed on the phone; the same picture, the same speed.
 3. **Change tracker and frame history:** version numbers on the graphics chip's work, each pixel's motion.
 4. **Occlusion culling:** skip what's hidden behind walls (of the 443 things in the bar's view).

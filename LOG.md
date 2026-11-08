@@ -2,6 +2,15 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "A more direct way for you to record it while I'm playing live … as a feature for the future
+  as well": **the live recorder**. The player times every scene played, in parts of 30 s, saved as each ends;
+  **the recording page** (https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT, private) is the player inside
+  claude.ai, saving each visit in its database for Claude to read (`ArtifactData`, then `tools/perf_add.py`); the
+  public player keeps it for **Copy my recording**. The page has the whole bar (models as text: claude.ai serves
+  no .glb) and one core. Tests: `tests/recorder_test.js` (31, in the quick checks and Check),
+  `tools/recorder_check.js` (the real player framed and not, and the published page itself: 20); editor 38 of
+  38. Not yet known: whether Safari draws WebGPU inside a claude.ai page (09e03eb, 6e9431c).
+
 - **2026-11-08** · "This, make it my plan and then we go over it" (your page, Loop3D Pipeline Plan: The
   Strongest Combination): it is now the plan. `PLAN.md` gets **the picture pipeline** (six foundations, ten
   phases, measure first) in the place of rebuild step 5; the whole plan, checked against the code, in
