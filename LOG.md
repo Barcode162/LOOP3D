@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · The first live recording from your phone (pasted, and saved by the page itself: both
+  arrived; the page runs in the Claude app): 7 scenes, 3 minutes, kept in `perf/` (`live-20261108-094026-w7cs`).
+  The Woods on High: 48 ms of graphics-chip time a frame, 18 fps at half resolution (Nov 5, on Phone, before
+  clusters: 159 ms, 6 fps); the Glade on Phone 27 ms, 37 fps; the Courtyard and the Lantern Isle fit 60.
+  Freezes at a scene's start (the Glade 7 s on Ultra, the Isle 2 s, the Woods 1.9 s). The bar played was the
+  empty new room: on the recording page the whole bar now sits first in the bar's group as "The whole bar".
+
 - **2026-11-08** · "A more direct way for you to record it while I'm playing live … as a feature for the future
   as well": **the live recorder**. The player times every scene played, in parts of 30 s, saved as each ends;
   **the recording page** (https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT, private) is the player inside

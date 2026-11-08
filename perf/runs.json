@@ -320,5 +320,28 @@
   "dpr": 3,
   "screen": "430x932",
   "browser": "Safari 26"
+ },
+ {
+  "runId": "live-20261108-094026-w7cs",
+  "when": "2026-11-08T09:40:26.800Z",
+  "day": "2026-11-08",
+  "quality": "Phone",
+  "gpu": "apple",
+  "build": "6e9431c 2026-11-08",
+  "bench": "live",
+  "start": "courtyard",
+  "scenes": 7,
+  "seconds": 183.2,
+  "frames": 6832,
+  "fps": 37.29,
+  "worstLow1Fps": 0.14,
+  "worstP99Ms": 266,
+  "maxMs": 7005,
+  "hitches": 82,
+  "avgScale": 0.636,
+  "worstLoadMs": 1993,
+  "dpr": 3,
+  "screen": "430x932",
+  "browser": "browser"
  }
 ]

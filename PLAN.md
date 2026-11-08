@@ -7,7 +7,7 @@ phase is done when its "done when" is true on the phone.
 ## Needs you
 - **Play on your recording page** (any time, as long as you like): https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT.
   Every scene you play is timed and saved for Claude; say "check my runs". Best first: the bar (in the scene
-  list as "The bar (all of it)") and The Woods. Your 12 runs of 2026-11-05 came before the cluster drawing (The
+  list as "The whole bar") and The Woods. Your 12 runs of 2026-11-05 came before the cluster drawing (The
   Woods: 6 fps, 159 ms on the graphics chip, 1 ms on the processor); new ones are the picture pipeline's phase 1.
 - **The project file's name:** `.looped` is proposed; say if you want another.
 - **The bar at its hidden link on joshuavelasco.com** (phase C): the three IONOS secrets added to this repo's

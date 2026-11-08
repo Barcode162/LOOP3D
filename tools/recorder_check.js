@@ -145,6 +145,8 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
       const wrong = names.filter((n) => sizes[n] !== fs.statSync(path.join(SITE, 'scenes/models', n)).size);
       ok(names.length > 100, "the bar's models arrive", names.length);
       ok(wrong.length === 0, 'each model whole, byte for byte', wrong.slice(0, 5));
+      const group = await frame.evaluate(() => { const o = [...document.getElementById('scene').options].find((x) => x.value === 'bar'); return [o.parentNode.label, o.textContent, o.nextElementSibling && o.nextElementSibling.value]; });
+      ok(group[1] === 'The whole bar' && group[2] === 'bar_room', 'the whole bar is first in its group, before the empty room', group);
       const problems = await frame.evaluate(() => document.getElementById('problems').textContent);
       ok(!/model/i.test(problems), 'no model missing', problems.slice(0, 200));
     }
