@@ -84,6 +84,7 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
         ok(s.frames > 5 && s.gpuMs >= 0 && s.fps > 0, 'the part holds frames', [s.frames, s.fps, s.gpuMs]);
         ok(s.loadMs > 0, "the scene's first part has its load time", s.loadMs);
         ok(row.body.device && row.body.device.ua, 'the row says which device');
+        ok(Array.isArray(row.body.device.gpu.features), 'and what its graphics chip offers', row.body.device.gpu);
       }
       // the next scene: the last part of the one before, then the new one's
       await frame.evaluate(() => window.loopGoTo('cabin'));

@@ -251,8 +251,15 @@
   }
   async function deviceInfo() {
     let gpu = {};
-    try { const a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' }); const i = a && (a.info || (a.requestAdapterInfo && await a.requestAdapterInfo())); if (i) gpu = { vendor: i.vendor, architecture: i.architecture, device: i.device, description: i.description }; } catch (e) {}
-    return { gpu, ua: navigator.userAgent, dpr: devicePixelRatio, screen: screen.width + 'x' + screen.height, cores: navigator.hardwareConcurrency || 0 };
+    try {
+      const a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      const i = a && (a.info || (a.requestAdapterInfo && await a.requestAdapterInfo()));
+      if (i) gpu = { vendor: i.vendor, architecture: i.architecture, device: i.device, description: i.description };
+      // what the graphics chip offers (timestamp-query: its own timers, for timing each step of a frame)
+      if (a) gpu.features = [...a.features].sort(), gpu.limits = { storageBuffers: a.limits.maxStorageBuffersPerShaderStage, bufferMB: Math.round(a.limits.maxBufferSize / 1048576) };
+    } catch (e) {}
+    return { gpu, ua: navigator.userAgent, dpr: devicePixelRatio, screen: screen.width + 'x' + screen.height, cores: navigator.hardwareConcurrency || 0,
+             isolated: !!window.crossOriginIsolated };
   }
   async function benchFinish() {
     clearTimeout(benchTimer); clearInterval(benchUse);
