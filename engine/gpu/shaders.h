@@ -1600,6 +1600,8 @@ struct TaaU {
 @group(0) @binding(2) var hist : texture_2d<f32>;
 @group(0) @binding(3) var depthTex : texture_depth_2d;
 @group(0) @binding(4) var lin : sampler;
+@group(0) @binding(5) var seen : texture_2d<u32>;            // which copy each pixel shows (+1; 0: none)
+@group(0) @binding(6) var<storage, read> back : array<mat4x4f>;  // each copy: now -> where it was last frame
 struct Out { @builtin(position) pos : vec4f };
 @vertex fn vsTaa(@builtin(vertex_index) vi : u32) -> Out {
   let p = vec2f(f32((vi << 1u) & 2u), f32(vi & 2u));
@@ -1630,7 +1632,12 @@ fn untame(c : vec3f) -> vec3f { return c / max(1.0 - max(c.r, max(c.g, c.b)) * 0
   // how far the point moved on screen, measured without the shifts: a still
   // view reads its past exactly in place (no blur that builds up)
   let wp = vec4f(w4.xyz / w4.w, 1.0);
-  let prev = tu.prevViewProj * wp;
+  // a thing that moved: where this point of it was last frame (the frame
+  // history's motion; still things and the sky stay where they are)
+  let id = textureLoad(seen, p, 0).x;
+  var was = wp;
+  if (id > 0u) { was = back[id - 1u] * wp; }
+  let prev = tu.prevViewProj * was;
   let now = tu.curViewProj * wp;
   let motion = vec2f(prev.x / prev.w - now.x / now.w, now.y / now.w - prev.y / prev.w) * 0.5;
   let puv = o.pos.xy * tu.screen.zw + motion;

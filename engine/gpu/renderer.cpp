@@ -199,6 +199,7 @@ class GpuRenderer final : public Renderer {
     queue_.WriteBuffer(exposureBuf_, 0, zero, 16);
     ensureStorage(materialsBuf_, materialsCap_, sizeof(MaterialU), 16);
     ensureStorage(instancesBuf_, instancesCap_, sizeof(InstanceU), 16);
+    stillAgain(16);
     ensureStorage(visibleBuf_, visibleCap_, sizeof(uint32_t), 64);
     wgpu::SamplerDescriptor sd;
     sd.magFilter = sd.minFilter = wgpu::FilterMode::Linear;
@@ -448,6 +449,39 @@ class GpuRenderer final : public Renderer {
     }
     if (ensureStorage(instancesBuf_, instancesCap_, sizeof(InstanceU), std::max<size_t>(1, data.size()))) bindGroupsDirty_ = true;
     if (!data.empty()) queue_.WriteBuffer(instancesBuf_, 0, data.data(), data.size() * sizeof(InstanceU));
+    stillAgain(data.size());  // the whole list again: a cut, every copy starts still
+  }
+
+  // ---- each copy's move since the last frame drawn (the frame history's
+  // motion, phase 3): the matrix that takes where a copy's surface is now to
+  // where it was then; frame blending follows moving things with it instead
+  // of smearing them. Still copies keep the identity; only the ones that
+  // moved are written, and set still again once they stop.
+  wgpu::Buffer backBuf_;
+  size_t backCap_ = 0;
+  std::vector<Mat4> drawnModel_;                  // each slot's place when last drawn
+  std::vector<uint32_t> movedNow_, movedBefore_;  // slots moved since the last frame drawn, and in it
+  void stillAgain(size_t slots) {
+    if (ensureStorage(backBuf_, backCap_, sizeof(Mat4), std::max<size_t>(1, slots))) bindGroupsDirty_ = true;
+    std::vector<Mat4> still(std::max<size_t>(1, slots));
+    queue_.WriteBuffer(backBuf_, 0, still.data(), still.size() * sizeof(Mat4));
+    drawnModel_.resize(instData_.size());
+    for (size_t i = 0; i < instData_.size(); ++i) drawnModel_[i] = instData_[i].model;
+    movedNow_.clear(), movedBefore_.clear();
+  }
+  void writeMotion() {
+    std::sort(movedNow_.begin(), movedNow_.end());
+    movedNow_.erase(std::unique(movedNow_.begin(), movedNow_.end()), movedNow_.end());
+    auto write = [&](uint32_t slot, const Mat4& m) { queue_.WriteBuffer(backBuf_, static_cast<uint64_t>(slot) * sizeof(Mat4), &m, sizeof(Mat4)); };
+    for (uint32_t s : movedBefore_)
+      if (!std::binary_search(movedNow_.begin(), movedNow_.end(), s) && s < drawnModel_.size()) write(s, Mat4{});  // stopped: still again
+    for (uint32_t s : movedNow_) {
+      if (s >= drawnModel_.size() || s >= instData_.size()) continue;
+      write(s, drawnModel_[s] * instData_[s].model.inverse());
+      drawnModel_[s] = instData_[s].model;
+    }
+    movedBefore_.swap(movedNow_);
+    movedNow_.clear();
   }
 
   // Only some copies moved: each new transform goes into its own place in the
@@ -478,6 +512,7 @@ class GpuRenderer final : public Renderer {
       instBox_[slot] = meshes_[scene.instances[id].mesh].box.transformed(xf);
       instHidden_[slot] = std::fabs(xf.linear().determinant()) < 1e-12f ? 1 : 0;
       touched_.push_back(slot);
+      movedNow_.push_back(static_cast<uint32_t>(slot));
     }
     // something moved more than a couple of millimetres (not just breathing):
     // Ultra lets the old picture fade quickly instead of smearing
@@ -686,6 +721,7 @@ class GpuRenderer final : public Renderer {
     // ---- the frame's steps (engine/render/frame_graph.h): each says what it
     // reads and writes, in the order they run; the order is checked on a
     // renderer's first frame. The bits of `skip` switch steps off (tests).
+    writeMotion();
     graph_.clear();
     stampSteps_.clear(), stampSlot_ = -1;
     if (stampSet_)
@@ -1731,7 +1767,9 @@ class GpuRenderer final : public Renderer {
       cd.compute.entryPoint = "pack";
       packPipe_ = device_.CreateComputePipeline(&cd);
       // frame blending
-      taaLayout_ = layout({ubo(0, F), tex(1, F, false, true), tex(2, F), tex(3, F, true), samp(4, F)});
+      wgpu::BindGroupLayoutEntry seen = tex(5, F);  // the visibility picture: which copy each pixel shows
+      seen.texture.sampleType = wgpu::TextureSampleType::Uint;
+      taaLayout_ = layout({ubo(0, F), tex(1, F, false, true), tex(2, F), tex(3, F, true), samp(4, F), seen, ssbo(6, F)});
       {
         wgpu::ShaderModule tm = module(kTaaWgsl, "frame blending");
         wgpu::RenderPipelineDescriptor d;
@@ -2128,7 +2166,8 @@ class GpuRenderer final : public Renderer {
       clusterResolveGroup_ = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_)});
       if (histView_[0])
         for (int i = 0; i < 2; ++i)
-          taaGroup_[i] = group(taaLayout_, {bufE(0, taaUbo_), texE(1, hdrView_), texE(2, histView_[i]), texE(3, depthView_), sampE(4, linear_)});
+          taaGroup_[i] = group(taaLayout_, {bufE(0, taaUbo_), texE(1, hdrView_), texE(2, histView_[i]), texE(3, depthView_), sampE(4, linear_),
+                                            texE(5, visView_), bufE(6, backBuf_)});
     }
     sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
     if (!modelView_) uploadModelTextures(Scene());
