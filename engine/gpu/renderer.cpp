@@ -73,13 +73,14 @@ struct GpuState {
   struct StampSlot {
     wgpu::Buffer buf;
     std::vector<std::string> steps;  // the step each pair of stamps belongs to
+    uint64_t frame = 0;              // which frame (numbered from 1)
     bool busy = false;
   };
-  StampSlot slots[3];
+  StampSlot slots[6];
   // the pieces the view drew (piecesDrawn), copied out of the draw lists
   wgpu::Buffer piecesBuf;
   bool piecesBusy = false;
-  uint32_t pieces[2] = {0, 0};
+  uint32_t pieces[3] = {0, 0, 0};  // the view's two passes, the sun's shadow
 };
 
 // The first few WebGPU errors go to the page (a black screen should say why).
@@ -391,6 +392,7 @@ class GpuRenderer final : public Renderer {
 
   void syncTransforms(const Scene& scene) override {
     changes_.bump("placements");
+    lastMoved_.clear();
     lastScene_ = &scene;
     meshLods_ = scene.lods;
     if (needRays()) {
@@ -495,7 +497,7 @@ class GpuRenderer final : public Renderer {
   // those places are sent, in a few runs.
   void moveInstances(const Scene& scene, const std::vector<int>& ids, const std::vector<Mat4>& xfs) override {
     if (ids.empty()) return;
-    changes_.bump("placements");
+    changes_.bump("moves");
     lastScene_ = &scene;
     if (slotOf_.size() != scene.instances.size()) {  // the copies changed: the whole list again
       syncTransforms(scene);
@@ -519,6 +521,8 @@ class GpuRenderer final : public Renderer {
       instHidden_[slot] = std::fabs(xf.linear().determinant()) < 1e-12f ? 1 : 0;
       touched_.push_back(slot);
       movedNow_.push_back(static_cast<uint32_t>(slot));
+      if (lastMoved_.size() <= static_cast<size_t>(slot)) lastMoved_.resize(slot + 1, 0);
+      lastMoved_[slot] = presented_ + 1;
     }
     // something moved more than a couple of millimetres (not just breathing):
     // Ultra lets the old picture fade quickly instead of smearing
@@ -626,9 +630,17 @@ class GpuRenderer final : public Renderer {
     Vec3 up = std::fabs(sunDir_.y) > 0.99f ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
     Mat4 lv = Mat4::lookAt(Vec3(0), -sunDir_, up);
     Vec3 lc = lv.point(center);
-    float texel = 2 * R / shadowSize_;
-    lc.x = std::floor(lc.x / texel) * texel, lc.y = std::floor(lc.y / texel) * texel;
-    Mat4 lp = Mat4::ortho(lc.x - R, lc.x + R, lc.y - R, lc.y + R, -lc.z - R * 4, -lc.z + R * 4);
+    // the box moves in steps of an eighth of its size (whole texels), and is an
+    // eighth bigger so what's near the eye stays covered: walking or turning
+    // redraws the shadow every few metres, not every frame (phase 5)
+    const float B = R * 1.125f;
+    float texel = 2 * B / shadowSize_;
+    float step = std::max(1.0f, std::round(R / 8 / texel)) * texel;
+    lc.x = std::floor(lc.x / step + 0.5f) * step, lc.y = std::floor(lc.y / step + 0.5f) * step;
+    lc.z = std::floor(lc.z / step + 0.5f) * step;
+    // the shadow's pieces pick their detail from the eye, rounded to the same steps
+    sunEye_ = Vec3(std::floor(cam.position.x / step + 0.5f), std::floor(cam.position.y / step + 0.5f), std::floor(cam.position.z / step + 0.5f)) * step;
+    Mat4 lp = Mat4::ortho(lc.x - B, lc.x + B, lc.y - B, lc.y + B, -lc.z - R * 4, -lc.z + R * 4);
     f.shadowViewProj = lp * lv;
     f.camPos = {cam.position, time};
     f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
@@ -708,14 +720,22 @@ class GpuRenderer final : public Renderer {
         Mat4 view;
         Vec4 eye;
         int on, clusters;
-      } sunView{f.shadowViewProj, Vec4(cam.position, static_cast<float>(shadowSize_)), sunOn_ && !(skip & 1) ? 1 : 0, clustersReady() ? 1 : 0};
+      } sunView{f.shadowViewProj, Vec4(sunEye_, static_cast<float>(shadowSize_)), sunOn_ && !(skip & 1) ? 1 : 0, clustersReady() ? 1 : 0};
+      if (!sunView.on) sunView.view = Mat4(), sunView.eye = Vec4(0, 0, 0, sunView.eye.w);  // no sun: cleared once, kept
       changes_.set("sun view", sunView);
     }
-    static const std::vector<std::string> kShadowFrom = {"placements", "shapes", "settings", "sun view"};
+    // with clusters, what moved lately (movers) is drawn every frame on a copy
+    // of the kept shadow of the rest; without, any move draws it all again
+    updateMovers();
+    const bool clusterSun = raster && sunOn_ && !(skip & 1) && clustersReady() && sunList_.cullGroup;
+    const bool splitting = clusterSun && !movers_.empty() && !(skip & 2048);  // 2048: draw it all every time (tests)
+    static const std::vector<std::string> kShadowFrom = {"placements", "shapes", "settings", "sun view", "movers"};
+    static const std::vector<std::string> kShadowFromAll = {"placements", "shapes", "settings", "sun view", "moves"};
     // what's hidden (phase 4): with clusters, unless render.occlude is off
     const bool occluding = raster && clustersReady() && C.render.occlude && hzbTex_[0] && !(skip & 1024);
     if (!occluding) hzbValid_ = false;
-    const bool shadowStale = changes_.stale(shadowMade_, kShadowFrom);
+    const std::vector<std::string>& shadowFrom = clustersReady() ? kShadowFrom : kShadowFromAll;
+    const bool shadowStale = changes_.stale(shadowMade_, shadowFrom) || (splitting && !stillDrawn_) || ((skip & 2048) && !movers_.empty());
     // ---- what each pass draws: the copies its view can see
     if (raster) {
       buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1), cam.position,
@@ -724,7 +744,8 @@ class GpuRenderer final : public Renderer {
         float perPixel = static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f));
         prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel, occluding && hzbValid_ ? 1.0f : 0.0f);
         if (occluding && hzbValid_) prepareList(eyeList2_, sceneDraws_, f.viewProj, cam.position, perPixel, 2.0f);
-        if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, cam.position, perPixel);
+        if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, sunEye_, perPixel, 0, splitting ? 1 : 0);
+        if (splitting) prepareList(sunMovers_, shadowDraws_, f.shadowViewProj, sunEye_, perPixel, 0, 2);
       }
       if (bindGroupsDirty_) makeBindGroups();
     }
@@ -735,47 +756,69 @@ class GpuRenderer final : public Renderer {
     graph_.clear();
     stampSteps_.clear(), stampSlot_ = -1;
     if (stampSet_)
-      for (int k = 0; k < 3; ++k)
+      for (int k = 0; k < 6; ++k)
         if (!gs_->slots[k].busy) { stampSlot_ = k; break; }
     const bool clusterPath = raster && clustersReady() && eyeList_.cullGroup;
     const int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
     if (passUniformsDirty_) writePassUniforms();
     // 1. the sun's shadow
     graph_.add("shadow", {"scene", "sun list"}, {"shadow map"}, [&] {
-      wgpu::RenderPassDepthStencilAttachment da;
-      da.view = shadowView_;
-      da.depthLoadOp = wgpu::LoadOp::Clear;
-      da.depthStoreOp = wgpu::StoreOp::Store;
-      da.depthClearValue = 1;
-      wgpu::RenderPassColorAttachment dc;
-      dc.view = shadowDummy_;
-      dc.loadOp = wgpu::LoadOp::Clear;
-      dc.storeOp = wgpu::StoreOp::Discard;
-      wgpu::RenderPassDescriptor rp;
-      rp.colorAttachmentCount = 1;
-      rp.colorAttachments = &dc;
-      rp.depthStencilAttachment = &da;
-      const bool clusterShadow = sunOn_ && !(skip & 1) && clustersReady() && sunList_.cullGroup;
-      if (clusterShadow) runCull(enc, sunList_);
-      wgpu::PassTimestampWrites tw;
-      rp.timestampWrites = stamp(tw);
-      wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
-      if (clusterShadow) {
-        pass.SetPipeline(shadowVisPipe_);
-        pass.SetBindGroup(0, sceneGroup0_);
-        pass.SetBindGroup(1, emptyGroup_);
-        pass.SetBindGroup(2, emptyGroup_);
-        pass.SetBindGroup(3, sunList_.drawGroup);
-        pass.DrawIndirect(sunList_.args, 0);
-        ++drawCalls_;
-      } else if (sunOn_ && !(skip & 1)) {
-        pass.SetPipeline(shadowPipe_);
-        pass.SetBindGroup(0, sceneGroup0_);
-        drawBatches(pass, false, true);
+      // one depth pass: into `view`, cleared or kept, drawing one cluster list
+      // (or, without clusters, the batches)
+      auto shadowPass = [&](const wgpu::TextureView& view, bool clear, const ClusterList* L) {
+        wgpu::RenderPassDepthStencilAttachment da;
+        da.view = view;
+        da.depthLoadOp = clear ? wgpu::LoadOp::Clear : wgpu::LoadOp::Load;
+        da.depthStoreOp = wgpu::StoreOp::Store;
+        da.depthClearValue = 1;
+        wgpu::RenderPassColorAttachment dc;
+        dc.view = shadowDummy_;
+        dc.loadOp = wgpu::LoadOp::Clear;
+        dc.storeOp = wgpu::StoreOp::Discard;
+        wgpu::RenderPassDescriptor rp;
+        rp.colorAttachmentCount = 1;
+        rp.colorAttachments = &dc;
+        rp.depthStencilAttachment = &da;
+        if (L) runCull(enc, *L);
+        wgpu::PassTimestampWrites tw;
+        rp.timestampWrites = stamp(tw);
+        wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+        if (L) {
+          pass.SetPipeline(shadowVisPipe_);
+          pass.SetBindGroup(0, sceneGroup0_);
+          pass.SetBindGroup(1, emptyGroup_);
+          pass.SetBindGroup(2, emptyGroup_);
+          pass.SetBindGroup(3, L->drawGroup);
+          pass.DrawIndirect(L->args, 0);
+          ++drawCalls_;
+        } else if (sunOn_ && !(skip & 1)) {
+          pass.SetPipeline(shadowPipe_);
+          pass.SetBindGroup(0, sceneGroup0_);
+          drawBatches(pass, false, true);
+        }
+        pass.End();
+      };
+      if (splitting && sunMovers_.cullGroup) {
+        // what stands still: drawn again only when it changed; then copied,
+        // and what moved lately drawn on the copy, every frame
+        if (shadowStale) {
+          shadowPass(stillView_, true, &sunList_);
+          changes_.made(shadowMade_, shadowFrom);
+          stillDrawn_ = true;
+          ++shadowRedraws_;
+        }
+        wgpu::TexelCopyTextureInfo from, to;
+        from.texture = stillTex_, to.texture = shadowTex_;
+        wgpu::Extent3D size{static_cast<uint32_t>(shadowSize_), static_cast<uint32_t>(shadowSize_), 1};
+        enc.CopyTextureToTexture(&from, &to, &size);
+        shadowPass(shadowView_, false, &sunMovers_);
+      } else {
+        shadowPass(shadowView_, true, clusterSun ? &sunList_ : nullptr);
+        changes_.made(shadowMade_, shadowFrom);
+        stillDrawn_ = false;
+        ++shadowRedraws_;
       }
-      pass.End();
-      changes_.made(shadowMade_, kShadowFrom);
-    }, raster && !(skip & 32) && shadowStale);
+    }, raster && !(skip & 32) && (shadowStale || splitting));
     // the Ultra quality: the path tracer, then its noise cleaned, keeping edges
     graph_.add("ultra", {"scene", "rays", "lamps", "sky"}, {"hdr"}, [&] {
       wgpu::PassTimestampWrites tw;
@@ -1011,15 +1054,17 @@ class GpuRenderer final : public Renderer {
       const uint32_t n = 2 * static_cast<uint32_t>(stampSteps_.size());
       enc.ResolveQuerySet(stampSet_, 0, n, stampResolve_, 0);
       enc.CopyBufferToBuffer(stampResolve_, 0, slot.buf, 0, 8ull * n);
-      slot.steps = stampSteps_, slot.busy = true;
+      slot.steps = stampSteps_, slot.frame = presented_ + 1, slot.busy = true;
     }
     // now and then, how many pieces the view drew (each list's count of copies)
     const bool counting = piecesWanted_ && !gs_->piecesBusy && eyeList_.args;
     if (counting) {
-      if (!gs_->piecesBuf) gs_->piecesBuf = buffer(8, wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst);
+      if (!gs_->piecesBuf) gs_->piecesBuf = buffer(16, wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst);
       enc.CopyBufferToBuffer(eyeList_.args, 4, gs_->piecesBuf, 0, 4);
       if (secondDrawn_ && eyeList2_.args) enc.CopyBufferToBuffer(eyeList2_.args, 4, gs_->piecesBuf, 4, 4);
       else enc.ClearBuffer(gs_->piecesBuf, 4, 4);
+      if (sunList_.args) enc.CopyBufferToBuffer(sunList_.args, 4, gs_->piecesBuf, 8, 4);
+      else enc.ClearBuffer(gs_->piecesBuf, 8, 4);
       gs_->piecesBusy = true;
     }
     wgpu::CommandBuffer cb = enc.Finish();
@@ -1037,17 +1082,17 @@ class GpuRenderer final : public Renderer {
                                      if (tick)
                                        for (size_t i = 0; i < sl.steps.size(); ++i) st.push_back({sl.steps[i], tick[2 * i], tick[2 * i + 1]});
                                      sl.buf.Unmap();
-                                     gs->steps.addTimes(st);
+                                     gs->steps.addTimes(st, sl.frame);
                                    }
                                    sl.busy = false;
                                  });
     }
     if (counting)
-      gs_->piecesBuf.MapAsync(wgpu::MapMode::Read, 0, 8, wgpu::CallbackMode::AllowSpontaneous,
+      gs_->piecesBuf.MapAsync(wgpu::MapMode::Read, 0, 16, wgpu::CallbackMode::AllowSpontaneous,
                               [gs = gs_](wgpu::MapAsyncStatus status, wgpu::StringView) {
                                 if (status == wgpu::MapAsyncStatus::Success) {
-                                  if (const uint32_t* n = static_cast<const uint32_t*>(gs->piecesBuf.GetConstMappedRange(0, 8)))
-                                    gs->pieces[0] = n[0], gs->pieces[1] = n[1];
+                                  if (const uint32_t* n = static_cast<const uint32_t*>(gs->piecesBuf.GetConstMappedRange(0, 16)))
+                                    gs->pieces[0] = n[0], gs->pieces[1] = n[1], gs->pieces[2] = n[2];
                                   gs->piecesBuf.Unmap();
                                 }
                                 gs->piecesBusy = false;
@@ -1077,6 +1122,7 @@ class GpuRenderer final : public Renderer {
   }
 
   uint64_t presentedFrames() const override { return presented_; }
+  uint64_t shadowDraws() const override { return shadowRedraws_; }
   bool timers() const override { return static_cast<bool>(stampSet_); }
   std::vector<std::pair<std::string, float>> stepMs() const override {
     std::vector<std::pair<std::string, float>> out;
@@ -1084,9 +1130,9 @@ class GpuRenderer final : public Renderer {
     return out;
   }
   std::vector<std::pair<std::string, float>> takeStepAverages() override { return gs_->steps.takeAverages(); }
-  std::pair<uint32_t, uint32_t> piecesDrawn() const override {
+  std::array<uint32_t, 3> piecesDrawn() const override {
     piecesWanted_ = true;  // counted only once someone asks
-    return {gs_->pieces[0], gs_->pieces[1]};
+    return {gs_->pieces[0], gs_->pieces[1], gs_->pieces[2]};
   }
   float gpuMs() const override { return gs_->gpuMs; }
   float lastGpuMs() const override { return gs_->lastGpuMs; }
@@ -1407,13 +1453,16 @@ class GpuRenderer final : public Renderer {
   // ones: glass is still drawn the old way), with room for every cluster they
   // have. Detail is chosen from where the eye is, whatever the view (the sun's
   // shadow keeps the detail you see).
-  void prepareList(ClusterList& L, const std::vector<Batch>& draws, const Mat4& viewProj, Vec3 eye, float perPixel, float occlusion = 0) {
+  // movers: 0 every copy, 1 only what stands still, 2 only what moved lately
+  void prepareList(ClusterList& L, const std::vector<Batch>& draws, const Mat4& viewProj, Vec3 eye, float perPixel, float occlusion = 0,
+                   int movers = 0) {
     L.cpu.clear();
     size_t room = 0;
     for (const Batch& b : draws) {
       if (b.glass) continue;
       for (uint32_t i = b.first; i < b.first + b.count; ++i) {
         uint32_t slot = visible_[i];
+        if (movers && ((slot < isMover_.size() && isMover_[slot]) ? 2 : 1) != movers) continue;
         uint32_t mesh = slot < instData_.size() ? instData_[slot].material[1] : 0;
         L.cpu.push_back(slot);
         L.cpu.push_back(static_cast<uint32_t>(room));  // its stretch: room for every cluster it has
@@ -1806,7 +1855,7 @@ class GpuRenderer final : public Renderer {
         d.fragment = &fst;
         d.primitive.cullMode = wgpu::CullMode::None;
         wgpu::DepthStencilState ds;
-        ds.format = wgpu::TextureFormat::Depth24Plus;
+        ds.format = wgpu::TextureFormat::Depth32Float;
         ds.depthWriteEnabled = true;
         ds.depthCompare = wgpu::CompareFunction::Less;
         ds.depthBias = 2;
@@ -1890,7 +1939,7 @@ class GpuRenderer final : public Renderer {
       d.fragment = &fst;
       d.primitive.cullMode = wgpu::CullMode::None;
       wgpu::DepthStencilState ds;
-      ds.format = wgpu::TextureFormat::Depth24Plus;
+      ds.format = wgpu::TextureFormat::Depth32Float;
       ds.depthWriteEnabled = true;
       ds.depthCompare = wgpu::CompareFunction::Less;
       ds.depthBias = 2;
@@ -1950,13 +1999,19 @@ class GpuRenderer final : public Renderer {
   void makeShadowMap() {
     changes_.bump("settings");  // a new shadow picture holds nothing yet
     if (shadowTex_) shadowTex_.Destroy();
+    if (stillTex_) stillTex_.Destroy();
     if (shadowDummyTex_) shadowDummyTex_.Destroy();
     wgpu::TextureDescriptor td;
     td.size = {static_cast<uint32_t>(shadowSize_), static_cast<uint32_t>(shadowSize_), 1};
-    td.format = wgpu::TextureFormat::Depth24Plus;
-    td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding;
+    td.format = wgpu::TextureFormat::Depth32Float;
+    td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
     shadowTex_ = device_.CreateTexture(&td);
     shadowView_ = shadowTex_.CreateView();
+    // the shadow of what stands still, kept while things move (copied, then the movers drawn on it)
+    td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
+    stillTex_ = device_.CreateTexture(&td);
+    stillView_ = stillTex_.CreateView();
+    stillDrawn_ = false;
     td.format = wgpu::TextureFormat::R8Unorm;
     td.usage = wgpu::TextureUsage::RenderAttachment;
     shadowDummyTex_ = device_.CreateTexture(&td);
@@ -2263,7 +2318,7 @@ class GpuRenderer final : public Renderer {
 
   void makeBindGroups() {
     if (!hdrView_) return;
-    for (ClusterList* L : {&eyeList_, &sunList_, &eyeList2_})
+    for (ClusterList* L : {&eyeList_, &sunList_, &eyeList2_, &sunMovers_})
       if (poolVerts_ && L->drawn && L->cullList && L->stretch && L->counts && hzbAll_[0]) {
         L->drawGroup = group(clusterDrawLayout_, {bufE(0, poolVerts_), bufE(1, L->drawn)});
         // old = last frame's pyramid, new = this frame's: which is which flips every frame
@@ -2362,6 +2417,7 @@ class GpuRenderer final : public Renderer {
   ClusterList eyeList_, sunList_;
   // ---- what's hidden (phase 4): two depth pyramids, last frame's and this
   // frame's first pass's, each level the farthest depth over a patch
+  ClusterList sunMovers_;  // the sun's shadow of what moved lately (drawn every frame on the kept rest)
   ClusterList eyeList2_;  // the second pass: what the first skipped, tried again
   wgpu::Texture hzbTex_[2];
   wgpu::TextureView hzbAll_[2];
@@ -2378,6 +2434,34 @@ class GpuRenderer final : public Renderer {
   uint32_t hzbLevels_ = 0;  // levels each pyramid holds
   int hzbIndex_ = 0;        // the pyramid this frame makes (the other is last frame's)
   bool hzbValid_ = false;   // last frame made one
+  Vec3 sunEye_;                       // where the shadow's detail is judged from (the eye, in steps)
+  uint64_t shadowRedraws_ = 0;
+  wgpu::Texture stillTex_;
+  wgpu::TextureView stillView_;
+  bool stillDrawn_ = false;            // stillTex_ holds the still things' shadow
+  std::vector<uint64_t> lastMoved_;    // per place: the frame it last moved in (0: never)
+  std::vector<uint32_t> movers_;       // the places that moved in the last two seconds
+  std::vector<uint8_t> isMover_;
+  static constexpr uint64_t kMoverFrames = 120;
+  // A copy that moved joins the movers; one still for two seconds leaves them.
+  // Either way the kept shadow of the rest is drawn again ("movers").
+  void updateMovers() {
+    const uint64_t now = presented_ + 1;
+    std::vector<uint32_t> next;
+    for (uint32_t slot : movers_)
+      if (slot < lastMoved_.size() && lastMoved_[slot] && now - lastMoved_[slot] < kMoverFrames) next.push_back(slot);
+    for (uint32_t slot : movedNow_)
+      if (slot < lastMoved_.size() && lastMoved_[slot] == now) next.push_back(slot);
+    std::sort(next.begin(), next.end());
+    next.erase(std::unique(next.begin(), next.end()), next.end());
+    if (next != movers_) {
+      movers_.swap(next);
+      changes_.bump("movers");
+      isMover_.assign(instData_.size(), 0);
+      for (uint32_t slot : movers_)
+        if (slot < isMover_.size()) isMover_[slot] = 1;
+    }
+  }  // times the sun's shadow was drawn
   bool secondDrawn_ = false;          // this frame's second pass ran
   mutable bool piecesWanted_ = false;  // someone asked how many pieces were drawn
   HzbSize hzbSizeNow() const {

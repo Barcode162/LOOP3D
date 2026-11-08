@@ -55,7 +55,10 @@ class FrameGraph {
     std::string step;
     uint64_t begin = 0, end = 0;
   };
-  void addTimes(const std::vector<Stamp>& stamps);
+  // `number` numbers the frames sent (0: not numbered). A frame that doesn't
+  // follow the last timed one only sets the finish line: what the untimed
+  // frame before it still had to do would be charged to its first step.
+  void addTimes(const std::vector<Stamp>& stamps, uint64_t number = 0);
   struct Time {
     std::string step;
     float ms = 0;          // smoothed, for the meter
@@ -89,6 +92,7 @@ class FrameGraph {
   int current_ = -1;
   std::vector<Time> times_;
   uint64_t lastEnd_ = 0;  // where the last timed frame finished
+  uint64_t lastFrame_ = 0;  // and its number (0: none yet)
 };
 
 }  // namespace loop

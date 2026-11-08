@@ -124,3 +124,15 @@ TEST(frame_graph_counts_storage_buffers_against_the_iphone) {
   CHECK(FrameGraph::storageFaults("cull", {{0, 0, 9}}, 10).empty());
 }
 
+
+TEST(frame_graph_skips_a_frame_after_an_untimed_one) {
+  // frame 2 wasn't timed: frame 3's first pass started early and waited for
+  // frame 2's work, so its time would be frame 2's. It only sets the line.
+  FrameGraph g;
+  g.addTimes({{"shadow", 0, 1000000}, {"light", 1000000, 3000000}}, 1);
+  g.addTimes({{"shadow", 4000000, 20000000}, {"light", 20000000, 22000000}}, 3);
+  g.addTimes({{"shadow", 22500000, 23500000}, {"light", 23500000, 25500000}}, 4);
+  auto avg = g.takeAverages();
+  CHECK(avg.size() == 2);
+  for (auto& [step, ms] : avg) CHECK(ms > 0.9f && ms < 2.1f);  // never frame 3's 16 ms shadow
+}

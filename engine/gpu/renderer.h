@@ -3,6 +3,7 @@
 // physical materials and patterns, the sun with soft shadows, lamps in real
 // units, the physical sky lighting everything, fog, and the film (auto
 // exposure like eyes, bloom, the look) — the cinema renderer's rules, fast.
+#include <array>
 #include <functional>
 #include <memory>
 #include <string>
@@ -42,6 +43,8 @@ class Renderer {
   virtual bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) = 0;
   // Frames that reached the screen, and the share of full resolution drawn.
   virtual uint64_t presentedFrames() const = 0;
+  // How many times the sun's shadow has been drawn (it is kept while nothing it is made from changes).
+  virtual uint64_t shadowDraws() const { return 0; }
   virtual float renderScale() const = 0;
   // GPU milliseconds per frame (estimated from the GPU's "done" signals):
   // smoothed, and the latest frame's.
@@ -75,8 +78,9 @@ class Renderer {
   virtual std::vector<std::pair<std::string, float>> takeStepAverages() = 0;
   // Drawing in clusters: how many pieces the view drew a moment ago, in its
   // first pass and in the second (what last frame's depth had hidden but this
-  // frame's showed); both 0 otherwise. Read back a frame or two late.
-  virtual std::pair<uint32_t, uint32_t> piecesDrawn() const { return {0, 0}; }
+  // frame's showed), and in the sun's shadow (its last redraw); all 0
+  // otherwise. Read back a frame or two late.
+  virtual std::array<uint32_t, 3> piecesDrawn() const { return {0, 0, 0}; }
   // Reads the next frame back (for tests and screenshots): RGBA8, top row first.
   virtual void capture(std::function<void(int w, int h, const uint8_t* rgba)> done) = 0;
 };

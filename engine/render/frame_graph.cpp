@@ -48,7 +48,7 @@ void FrameGraph::run() {
   current_ = -1;
 }
 
-void FrameGraph::addTimes(const std::vector<Stamp>& stamps) {
+void FrameGraph::addTimes(const std::vector<Stamp>& stamps, uint64_t number) {
   // this frame's total per step (a step can stamp several passes). A pass is
   // given only how far it moved the frame's finish line: the time from the
   // latest end before it to its own end. A tile-based chip (the iPhone's)
@@ -74,6 +74,11 @@ void FrameGraph::addTimes(const std::vector<Stamp>& stamps) {
     else it->second += ms;
   }
   if (started) lastEnd_ = line;
+  if (number) {
+    const bool follows = lastFrame_ && number == lastFrame_ + 1;
+    lastFrame_ = number;
+    if (!follows) return;
+  }
   for (Time& t : times_) ++t.missed;
   for (auto& [step, ms] : frame) {
     auto it = std::find_if(times_.begin(), times_.end(), [&](const Time& t) { return t.step == step; });

@@ -117,7 +117,13 @@ once, fog, blend and upscale, film.
    last frame's depth, and what that skipped tried again against this frame's own, so nothing coming into view
    goes missing. Pieces drawn: the Woods 53,728 to 33,255 (38% fewer), the cabin 40%, the Glade 10%, the bar 2%
    (its room is open: few things are hidden). The meter now says how many pieces are drawn.
-5. **Direct light:** the lamp grid (the bar: 103 lamps a pixel to about 10; started on `parked/light-grid`),
+5. **Direct light** (started 2026-11-08). *Done first, because your phone's recording said so:* the sun's shadow
+   kept far more often: with no sun it is never redrawn (the hall: 0 redraws walking, it was every frame); its
+   box moves in steps of an eighth, so walking redraws it every few metres (the courtyard: 10 redraws in 134
+   walking frames, was 134; standing still 0, was every frame, because things there move); what moved lately is
+   drawn every frame on a copy of the kept shadow of the rest (same picture, checked by `tools/shadow_check.js`).
+   The step timers no longer charge a frame's first step with the untimed frame before it.
+   *Still to do in phase 5:* the lamp grid (the bar: 103 lamps a pixel to about 10; started on `parked/light-grid`),
    shared with the fog; sun shadows in steps, redrawn on change; shadow maps for the main lamps on Phone;
    contact shadows.
 6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient

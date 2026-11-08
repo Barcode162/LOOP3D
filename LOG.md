@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "I tested check and then go" (phase 5): your recording showed occlusion working (the Woods'
+  visibility 9 → 5 ms) and the sun's shadow as the big cost (16–27 ms a redraw). **The shadow kept**: no sun, no
+  redraw; its box moves in steps, so walking redraws it every few metres; moving things drawn each frame on a copy
+  of the kept rest (courtyard walking: 10 redraws in 134 frames, was every frame). The step timers no longer charge
+  the untimed frame before (the hall's false 17 ms). Pictures 12 of 12; new `tools/shadow_check.js`.
+
 - **2026-11-08** · "Go ahead do occlusions": **occlusion culling** (phase 4): two passes, last frame's depth
   pyramid then this frame's, so hidden pieces aren't drawn and nothing coming into view goes missing
   (`render.occlude`, on). Pieces drawn: the Woods 38% fewer, the cabin 40%, the Glade 10%, the bar 2% (open
