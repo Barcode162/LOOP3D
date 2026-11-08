@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "I did a new recording" / "Go put live for the fix": the phone (the Claude app) **has the graphics
+  chip's timers**, so every step was timed on the iPhone. It also showed a fault: its chip starts a pass early and lets
+  it wait, so adding each pass's own time counted bloom up to ten frames. Steps are now timed by how far each pass
+  moves the frame's finish line (they add up to the frame; tests for overlap and frames in flight, b90cdb3); the
+  recording page updated (version 8). The blur on your screen is the engine's own resolution (Phone 1 pixel a point,
+  High dropping to 50% to keep up; Ultra is the live path tracer's look): phase 7's upscaling is its answer.
+
 - **2026-11-08** · "Go ahead phase 2": **the frame graph.** `engine/render/frame_graph.h` (steps that say what
   they read and write, the order checked, times added up per step; tested natively, 5 tests); the renderer's
   frame rebuilt as its steps, the code moved as it was (cdcd3e1, 9fc90ff); **each step timed** by the graphics
