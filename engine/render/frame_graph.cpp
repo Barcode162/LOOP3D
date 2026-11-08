@@ -49,15 +49,31 @@ void FrameGraph::run() {
 }
 
 void FrameGraph::addTimes(const std::vector<Stamp>& stamps) {
-  // this frame's total per step (a step can stamp several passes)
+  // this frame's total per step (a step can stamp several passes). A pass is
+  // given only how far it moved the frame's finish line: the time from the
+  // latest end before it to its own end. A tile-based chip (the iPhone's)
+  // starts a pass early and lets it wait for the ones before, so a pass's own
+  // start-to-end overlaps theirs (bloom's 11 passes once added up to ten
+  // frames). This way the steps add up to the frame exactly, wherever they overlap.
   std::vector<std::pair<std::string, double>> frame;
+  uint64_t line = 0;  // the latest end so far (the finish line)
+  bool started = false;
   for (const Stamp& s : stamps) {
-    if (s.end < s.begin) continue;  // a timer that went backwards says nothing
-    double ms = static_cast<double>(s.end - s.begin) / 1e6;
+    // a timer that went backwards, or a pass longer than two seconds, says nothing
+    if (s.end < s.begin || s.end - s.begin > 2000000000ull) continue;
+    if (!started) {
+      // the frame starts where the one before it finished, if it was still
+      // running when this one's first pass began (frames in flight)
+      line = s.begin, started = true;
+      if (lastEnd_ > line && lastEnd_ - line < 1000000000ull) line = lastEnd_;
+    }
+    double ms = s.end > line ? static_cast<double>(s.end - line) / 1e6 : 0.0;
+    line = std::max(line, s.end);
     auto it = std::find_if(frame.begin(), frame.end(), [&](auto& p) { return p.first == s.step; });
     if (it == frame.end()) frame.push_back({s.step, ms});
     else it->second += ms;
   }
+  if (started) lastEnd_ = line;
   for (Time& t : times_) ++t.missed;
   for (auto& [step, ms] : frame) {
     auto it = std::find_if(times_.begin(), times_.end(), [&](const Time& t) { return t.step == step; });

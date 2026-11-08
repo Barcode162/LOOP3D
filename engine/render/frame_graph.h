@@ -47,8 +47,10 @@ class FrameGraph {
   int current() const { return current_; }
 
   // ---- time, from the graphics chip's timers
-  // One frame's stamps: for each stamped pass, the step it belonged to (by
-  // name) and its start and end ticks (nanoseconds). Adds each step's total.
+  // One frame's stamps, in the order the passes were sent: for each, the step
+  // it belonged to (by name) and its start and end ticks (nanoseconds). Adds
+  // each step's share of the frame: how far its passes moved the frame's
+  // finish line (the steps add up to the whole frame, overlapping or not).
   struct Stamp {
     std::string step;
     uint64_t begin = 0, end = 0;
@@ -86,6 +88,7 @@ class FrameGraph {
   std::vector<Step> steps_;
   int current_ = -1;
   std::vector<Time> times_;
+  uint64_t lastEnd_ = 0;  // where the last timed frame finished
 };
 
 }  // namespace loop
