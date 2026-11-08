@@ -59,7 +59,7 @@ of it in solid, checked steps and report at the end.
 ## Where things are
 `engine/` (core, project, geometry, render, gpu, script, physics, anim, audio; which side each part is on:
 `engine/modules.json`) · `web/` (the player, the editor) ·
-`tools/loop.cpp` (the `loop` command: check, run, play, render, budget, project, library, words, settings) ·
+`tools/loop.cpp` (the `loop` command: check, run, play, render, budget, score, project, library, words, settings) ·
 `library/` (what every project shares, growing with every goal) · `projects/`
 (each project's folder; a cover page `name.looped` names it and its first scene) · `tests/` ·
 `docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING, PIPELINE: the picture's plan) · `perf/` (benchmark runs from the phone).

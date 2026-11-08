@@ -7,6 +7,10 @@
 //               makes the stills and films the script asks for (render / film)
 //               with the cinema renderer; with none asked, one still of its camera
 //   loop demo   <studio|valley> [...]         the renderer's reference scenes
+//   loop score  <script.loop> <live.png> [--filmtime T] [--samples N] [-o folder]
+//   loop score  tests/pictures [--samples N] [-o folder]
+//               how far the live picture is from the cinema renderer's picture
+//               of the same view (engine/render/score.h): one number per scene
 //   loop project <name.looped>                a project's cover page as JSON (its name and first scene)
 //   loop new "My Game"                        a new project in projects/, copied from projects/template
 //   loop cook   <script.loop>                 what the cook makes of a scene's shapes: each mesh's
@@ -37,6 +41,7 @@
 #include "engine/render/film.h"
 #include "engine/render/frame_cost.h"
 #include "engine/render/pathtracer.h"
+#include "engine/render/score.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
 
@@ -53,6 +58,8 @@ int usage() {
       "loop render <script.loop> [--quality draft|good|cinema|ultra] [--width 1920] [--samples N] [--look name]\n"
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
       "loop budget <script.loop or folder> [--quality phone|high] [--seconds 1] [--size 374x811] [--set name=value]\n"
+      "loop score  <script.loop> <live.png> [--filmtime T] [--samples 256] [-o folder]   how far live is from cinema\n"
+      "loop score  tests/pictures [--samples 256] [-o folder]   every picture test's scene, scored\n"
       "loop settings list    every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -64,8 +71,9 @@ int usage() {
 struct Options {
   std::string quality, look, out, choices;
   int width = 0, samples = 0, w = 960, h = 540;
-  double seconds = 10;
+  double seconds = 10, filmtime = 0;
   bool secondsGiven = false, sizeGiven = false;
+  std::string live;  // loop score: the live picture
   std::vector<std::pair<std::string, std::string>> sets;  // --set name=value (engine settings)
 };
 
@@ -444,6 +452,97 @@ int budgetFolder(const std::string& dir, const Options& o) {
   return overCount ? 2 : 0;
 }
 
+// `loop score`: the cinema renderer's picture of the very view a live picture
+// shows (the camera the player starts with, or the film's at `filmtime`; the
+// world held at its first moment, as the picture tests hold it; widened for an
+// upright screen, as the player does), scored against it.
+struct Scored {
+  std::string title;
+  PictureScore s;
+  double seconds = 0;
+};
+bool scoreScene(const std::string& path, const std::string& livePath, double filmtime, int samples, const std::string& outDir, Scored& out) {
+  Image live;
+  if (!readPng(livePath, live, true)) {
+    std::fprintf(stderr, "can't read %s\n", livePath.c_str());
+    return false;
+  }
+  Vm vm;
+  Stage stage;
+  if (!loadScript(path, vm, stage)) return false;
+  Scene sc = stage.scene;
+  Camera cam = sc.camera;
+  if (stage.mode == "movie" && !stage.film.shots.empty()) {
+    int shot = 0;
+    float fade = 1;
+    cam = stage.film.at(static_cast<float>(filmtime), sc.camera, &shot, &fade);
+    if (!stage.film.shots[shot].look.empty()) lookByName(stage.film.shots[shot].look, sc.look);
+  }
+  if (config().camera.portraitWide) cam.widenForPortrait(static_cast<float>(live.width) / static_cast<float>(std::max(live.height, 1)));
+  cam.positionEnd = Vec3(kInf);  // a still: no motion blur
+  RenderRequest req;
+  const Config::Cinema& cc = config().cinema;
+  req.bounces = cc.bounces, req.denoise = cc.denoise, req.dispersion = cc.dispersion, req.motionBlur = false;
+  std::string base = path.substr(path.find_last_of('/') + 1);
+  base = base.substr(0, base.find('.'));
+  Image cinema = renderStill(sc, cam, live.width, live.height, samples, 0, base, &req);
+  for (Vec4& p : cinema.px) p = Vec4(srgbToLinear(p.x), srgbToLinear(p.y), srgbToLinear(p.z), 1);
+  out.title = stage.title;
+  out.s = scorePictures(live, cinema);
+  if (!outDir.empty()) {
+    std::filesystem::create_directories(outDir);
+    writePng(outDir + "/" + base + "_cinema.png", cinema);
+    writePng(outDir + "/" + base + "_difference.png", out.s.difference);
+  }
+  return true;
+}
+
+// A scene's script by its name, anywhere under projects/ (the picture tests name scenes).
+std::string findScene(const std::string& name) {
+  namespace fs = std::filesystem;
+  if (!fs::exists("projects")) return "";
+  for (const auto& e : fs::recursive_directory_iterator("projects"))
+    if (e.is_regular_file() && e.path().filename() == name + ".loop") return e.path().string();
+  return "";
+}
+
+int score(const std::string& target, const Options& o) {
+  const int samples = o.samples ? o.samples : 256;
+  if (!std::filesystem::is_directory(target)) {
+    if (o.live.empty()) return usage();
+    Scored r;
+    if (!scoreScene(target, o.live, o.filmtime, samples, o.out, r)) return 1;
+    std::printf("%s: %.1f (worst tenth over %.1f; brightness live/cinema %.2f)\n", r.title.c_str(), static_cast<double>(r.s.score),
+                static_cast<double>(r.s.worstTenth), static_cast<double>(r.s.brightness));
+    return 0;
+  }
+  // the picture tests' folder: its scenes.json names the scenes and their moments
+  std::string text;
+  Json cfg;
+  if (!readText(target + "/scenes.json", text) || !Json::parse(text, cfg)) {
+    std::fprintf(stderr, "no scenes.json in %s\n", target.c_str());
+    return 1;
+  }
+  std::printf("%-22s %7s %12s %11s\n", "scene", "score", "worst tenth", "brightness");
+  double total = 0;
+  int n = 0;
+  for (const Json& s : cfg["scenes"].items()) {
+    std::string name = s["name"].string(), path = findScene(name);
+    if (path.empty()) {
+      std::printf("%-22s  (no script found)\n", name.c_str());
+      continue;
+    }
+    Scored r;
+    double ft = s.has("filmtime") ? s["filmtime"].number() : 0;
+    if (!scoreScene(path, target + "/" + name + ".png", ft, samples, o.out, r)) continue;
+    std::printf("%-22s %7.1f %12.1f %11.2f\n", name.c_str(), static_cast<double>(r.s.score), static_cast<double>(r.s.worstTenth),
+                static_cast<double>(r.s.brightness));
+    total += r.s.score, ++n;
+  }
+  if (n) std::printf("average %.1f over %d scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)\n", total / n, n);
+  return n ? 0 : 1;
+}
+
 int budget(const std::string& target, const Options& o) {
   if (std::filesystem::is_directory(target)) return budgetFolder(target, o);
   return budgetScene(target, o);
@@ -461,6 +560,8 @@ int main(int argc, char** argv) {
     else if (a == "--width") o.width = std::atoi(val().c_str());
     else if (a == "--samples") o.samples = std::atoi(val().c_str());
     else if (a == "--seconds") o.seconds = std::atof(val().c_str()), o.secondsGiven = true;
+    else if (a == "--filmtime") o.filmtime = std::atof(val().c_str());
+    else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;
     else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h), o.sizeGiven = true;
     else if (a == "-o") o.out = val();
     else if (a == "--choices") o.choices = val();
@@ -562,6 +663,7 @@ int main(int argc, char** argv) {
   }
   if (cmd == "demo") return demo(target, o);
   if (cmd == "budget") return budget(target, o);
+  if (cmd == "score") return score(target, o);
   if (cmd == "words") {
     // `loop words js` writes web/editor/words.js: every word of Looped Script and its help
     Vm vm;

@@ -127,6 +127,11 @@ phase is meant to change the look).
 
 1. **Measure.** The phone benchmark on the current cluster build, at least the bar and The Woods. The error
    score against cinema. `loop budget` counting the cluster way. Nothing after this is decided blind.
+   *Tools (2026-11-08):* the recording page times whatever is played on the phone (`docs/TUNING.md`, section 5);
+   `loop budget` counts the cluster way; `loop score tests/pictures` renders the cinema picture of each picture
+   test's view and scores the live one against it (`engine/render/score.h`: ΔE in CIELAB after matching
+   brightness, film bars left out; 0 the same, about 2 barely visible, 10 plainly different); the scores are
+   kept in `perf/score.md`.
 2. **Frame graph.** The renderer split into steps that each say what they read and write, every step timed on
    the phone (if Safari gives no graphics-chip timers, a step is timed by switching it off for a few frames).
    Same picture, same speed: a pure restructure.
