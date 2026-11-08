@@ -18,6 +18,7 @@
 #include "engine/geometry/cook.h"
 #include "engine/gpu/shaders.h"
 #include "engine/render/frame_cost.h"
+#include "engine/render/change_tracker.h"
 #include "engine/render/frame_graph.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
@@ -234,6 +235,7 @@ class GpuRenderer final : public Renderer {
   void capture(std::function<void(int, int, const uint8_t*)> done) override { captureDone_ = std::move(done); }
 
   void setQuality(Quality q) override {
+    changes_.bump("settings");
     if (q == quality_ && outW_) {  // picked again: only the settings may have changed
       applySettings();
       return;
@@ -253,6 +255,7 @@ class GpuRenderer final : public Renderer {
   }
 
   void applySettings() override {
+    changes_.bump("settings");
     const Config::Render& r = config().render;
     Quality q = quality_;
     // pixels per screen point: past ~1.5 the eye barely sees more, but the GPU
@@ -301,6 +304,7 @@ class GpuRenderer final : public Renderer {
   int framesInFlight() const override { return gs_->inFlight; }
 
   void sync(const Scene& scene, bool geometryChanged, bool skyChanged) override {
+    changes_.bump("shapes");
     if (scene.textures.size() != texUploaded_ || texSize_ != std::clamp(config().render.textureSize, 16, 2048)) uploadModelTextures(scene);
     if (geometryChanged || meshes_.size() != scene.meshes.size()) {
       for (size_t i = meshes_.size(); i < scene.meshes.size(); ++i) meshes_.push_back(upload(scene.meshes[i]));
@@ -343,6 +347,7 @@ class GpuRenderer final : public Renderer {
   }
 
   void reset() override {
+    changes_.bump("shapes"), changes_.bump("placements");
     for (wgpu::Buffer* b : {&poolVerts_, &poolMeshes_})
       if (*b) b->Destroy(), *b = nullptr;
     poolIdx_ = poolClusters_ = nullptr;
@@ -378,6 +383,7 @@ class GpuRenderer final : public Renderer {
   bool needRays() const { return quality_ == Quality::kUltra || shadowLamps_ > 0; }
 
   void syncTransforms(const Scene& scene) override {
+    changes_.bump("placements");
     lastScene_ = &scene;
     meshLods_ = scene.lods;
     if (needRays()) {
@@ -449,6 +455,7 @@ class GpuRenderer final : public Renderer {
   // those places are sent, in a few runs.
   void moveInstances(const Scene& scene, const std::vector<int>& ids, const std::vector<Mat4>& xfs) override {
     if (ids.empty()) return;
+    changes_.bump("placements");
     lastScene_ = &scene;
     if (slotOf_.size() != scene.instances.size()) {  // the copies changed: the whole list again
       syncTransforms(scene);
@@ -651,6 +658,20 @@ class GpuRenderer final : public Renderer {
       queue_.WriteBuffer(ultraUbo_, 0, &u, sizeof u);
       ++ultraFrame_;
     }
+    // ---- the sun's shadow is drawn again only when something it is made from
+    // changed (engine/render/change_tracker.h): the placements, the shapes,
+    // the settings, or the sun's view (where the sun is, the box it covers,
+    // and the eye, which picks each cluster's detail)
+    {
+      struct {
+        Mat4 view;
+        Vec4 eye;
+        int on, clusters;
+      } sunView{f.shadowViewProj, Vec4(cam.position, static_cast<float>(shadowSize_)), sunOn_ && !(skip & 1) ? 1 : 0, clustersReady() ? 1 : 0};
+      changes_.set("sun view", sunView);
+    }
+    static const std::vector<std::string> kShadowFrom = {"placements", "shapes", "settings", "sun view"};
+    const bool shadowStale = changes_.stale(shadowMade_, kShadowFrom);
     // ---- what each pass draws: the copies its view can see
     if (raster) {
       buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1), cam.position,
@@ -658,7 +679,7 @@ class GpuRenderer final : public Renderer {
       if (clustersReady()) {
         float perPixel = static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f));
         prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel);
-        if (sunOn_ && !(skip & 1)) prepareList(sunList_, shadowDraws_, f.shadowViewProj, cam.position, perPixel);
+        if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, cam.position, perPixel);
       }
       if (bindGroupsDirty_) makeBindGroups();
     }
@@ -707,7 +728,8 @@ class GpuRenderer final : public Renderer {
         drawBatches(pass, false, true);
       }
       pass.End();
-    }, raster && !(skip & 32));
+      changes_.made(shadowMade_, kShadowFrom);
+    }, raster && !(skip & 32) && shadowStale);
     // the Ultra quality: the path tracer, then its noise cleaned, keeping edges
     graph_.add("ultra", {"scene", "rays", "lamps", "sky"}, {"hdr"}, [&] {
       wgpu::PassTimestampWrites tw;
@@ -1805,6 +1827,7 @@ class GpuRenderer final : public Renderer {
   }
 
   void makeShadowMap() {
+    changes_.bump("settings");  // a new shadow picture holds nothing yet
     if (shadowTex_) shadowTex_.Destroy();
     if (shadowDummyTex_) shadowDummyTex_.Destroy();
     wgpu::TextureDescriptor td;
@@ -2405,7 +2428,10 @@ class GpuRenderer final : public Renderer {
   bool fresh_ = true;  // next frame starts a new measurement
   // the frame's steps (draw); what a frame finds already there: the scene and
   // its lists, lamps, sky and rays, last frame's history
-  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history"}};
+  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history", "shadow map"}};
+  // what the frame is made from, versioned; the sun's shadow as last drawn
+  ChangeTracker changes_;
+  ChangeTracker::Made shadowMade_;
   bool graphChecked_ = false;
   // the chip's timers (when it has them): a frame's stamps, two per pass
   static constexpr uint32_t kStampPairs = 32;

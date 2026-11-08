@@ -38,7 +38,9 @@ async function run(browser, name, viewport, touch) {
   });
 
   await tap('Box');
-  await p.waitForTimeout(2500);
+  // wait for the box itself (a fixed 2.5 s failed one run in two on a busy machine)
+  await p.waitForFunction(() => window.LE && LE.view.sel && LE.history.text.split('\n').some((l) => /^box/.test(l)), null, { timeout: 20000 }).catch(() => {});
+  await p.waitForTimeout(500);
   const box = await lines('^box');
   check(box.length === 1, name + ': Box adds a line (' + box[0] + ')');
   check(await p.evaluate(() => !!LE.view.sel), name + ': the new box is picked');

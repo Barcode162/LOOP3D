@@ -20,7 +20,7 @@
     {"name": "Shapes and rays", "side": "core", "status": "in place", "what": "meshes and fast ray hits; the cook: simpler meshes, cluster trees (Nanite-style), kept by fingerprint",
      "files": ["engine/geometry/mesh.*", "engine/geometry/bvh.*", "engine/geometry/simplify.*", "engine/geometry/cluster.*", "engine/geometry/cook.*"]},
     {"name": "Live drawing", "side": "visual", "status": "to separate", "what": "the WebGPU renderer, with the GPU path tracer (Ultra) mixed in",
-     "files": ["engine/gpu/*", "engine/render/frame_graph.*"]},
+     "files": ["engine/gpu/*", "engine/render/frame_graph.*", "engine/render/change_tracker.*"]},
     {"name": "Film renderer", "side": "visual", "status": "in place", "what": "the path tracer for stills: materials, sky, film looks, shots",
      "files": ["engine/render/pathtracer.*", "engine/render/bsdf.*", "engine/render/film.*", "engine/render/sky.*", "engine/render/shots.*", "engine/render/scene_bvh.*", "engine/render/demo_scenes.*", "engine/render/materials.*", "engine/render/pattern.*"]},
     {"name": "Pictures and models", "side": "visual", "status": "in place", "what": "PNG, JPEG and glTF readers",
