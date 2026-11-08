@@ -78,6 +78,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Skip what can't be seen | `render.cull` | true |  | live · script | `setting "render.cull", true` | Each pass draws only the things its view can see: off screen or outside the sun's shadow area is skipped. Off: everything, every frame (for comparing). |
 | Cluster detail (pixels) | `render.clusterError` | 1 | 0.01 … 16 | live · script | `setting "render.clusterError", 1` | With clusters: the most a simpler version of a shape may look different from its full detail, in pixels. Smaller: more detail, more work. |
 | Draw in clusters | `render.clusters` | true |  | live · script | `setting "render.clusters", true` | Every shape in small pieces, each at the detail its size on screen needs, chosen and drawn by the graphics chip in one go (Nanite's way). Off: one draw per kind of shape, with multisampling (for comparing). |
+| Skip hidden shapes | `render.occlude` | true |  | live · script | `setting "render.occlude", true` | With clusters: pieces hidden behind walls are not drawn. Last frame's depth says what was hidden; anything that comes into view is drawn the same frame. Off: every piece in view is drawn (for comparing). |
 | Film grain while playing | `render.filmGrain` | false |  | live · script | `setting "render.filmGrain", false` | Off: the live picture never fizzes. Stills and film frames always keep a scene's grain. |
 | Frame blending (TAA) | `render.taa` | true |  | live · script | `setting "render.taa", true` | The view shifts a fraction of a pixel each frame and every pixel is blended with the frames before it: smooth edges, no shimmer. With clusters, in place of multisampling. |
 
@@ -590,4 +591,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 138 live · script · 49 live · 28 not built yet · 15 editor · 6 needs you
+11 project.json · 139 live · script · 49 live · 28 not built yet · 15 editor · 6 needs you

@@ -30,6 +30,7 @@ struct Config {
     bool filmGrain = false;
     bool cull = true;  // skip what a pass can't see
     bool clusters = true;  // draw from the cook's cluster trees (Nanite's way; off: the triangle drawing)
+    bool occlude = true;   // with clusters: skip clusters hidden behind nearer ones (phase 4)
     float clusterError = 1;  // pixels: the most a simpler cluster may look different from the full shape
     bool taa = true;  // frame blending (with clusters, where it takes multisampling's place)
     bool sunShadows = true;

@@ -76,6 +76,7 @@ Settings::Settings() {
   F("render.clusterError", r.clusterError, 0.01, 16, "with clusters: the most, in pixels, a simpler version of a shape may look different from its full detail (smaller: more detail, more work)");
   B("render.taa", r.taa, "frame blending: the view shifts a fraction of a pixel each frame and each pixel is blended with the frames before (smooth edges, no shimmer); with clusters, in place of multisampling");
   B("render.clusters", r.clusters, "draw every shape in clusters, each at the detail its size on screen needs, chosen and drawn by the GPU in one go (Nanite's way; off: one draw per kind of shape, with multisampling)");
+  B("render.occlude", r.occlude, "with clusters: skip the clusters hidden behind nearer ones, tested against the last frame's depth and tried again against this frame's (nothing newly in view goes missing)");
   B("render.filmGrain", r.filmGrain, "film grain in the live picture (off: no fizz; stills keep a scene's grain)");
   B("render.sunShadows", r.sunShadows, "the sun casts shadows");
   I("render.sunMapPhone", r.sunMapPhone, 256, 4096, "sun shadow map size on Phone");

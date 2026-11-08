@@ -696,6 +696,14 @@ void addSteps(std::string& json, const std::vector<std::pair<std::string, float>
   json.insert(json.size() - 1, o + "}");
 }
 
+// Drawing in clusters: the pieces the view drew a moment ago, its first pass
+// and its second (what had been hidden last frame and showed in this one).
+void addPieces(std::string& json) {
+  if (!g.renderer || !g.renderer->clustered()) return;
+  auto [first, second] = g.renderer->piecesDrawn();
+  json.insert(json.size() - 1, ",\"pieces\":[" + std::to_string(first) + "," + std::to_string(second) + "]");
+}
+
 // The numbers recorded so far, as JSON.
 const char* perfJson() {
   static std::string out;
@@ -727,6 +735,7 @@ const char* perfJson() {
                 mean(perf.scale), scaleMin, perf.loadMs, g.stage ? g.stage->scene.instances.size() : 0, g.stage ? g.stage->scene.lights.size() : 0,
                 EM_ASM_INT({ return document.getElementById('view').width; }), EM_ASM_INT({ return document.getElementById('view').height; }));
   out = buf;
+  addPieces(out);
   // each step's average over these frames (then counted again from here)
   if (g.renderer && g.renderer->timers()) addSteps(out, g.renderer->takeStepAverages());
   return out.c_str();
@@ -1104,6 +1113,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
                 g.renderer ? g.renderer->gpuMs() : 0.0f, mi.uordblks * mb, emscripten_get_heap_size() * mb, g.renderer ? g.renderer->gpuBytes() * mb : 0.0,
                 JobSystem::shared().threads(), g.renderer && g.renderer->clustered() ? 1 : 0);
   out = buf;
+  addPieces(out);
   // each step of the frame on the graphics chip, when it has its own timers
   if (g.renderer && g.renderer->timers()) addSteps(out, g.renderer->stepMs());
   return out.c_str();

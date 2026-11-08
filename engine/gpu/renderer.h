@@ -73,6 +73,10 @@ class Renderer {
   virtual bool timers() const = 0;
   virtual std::vector<std::pair<std::string, float>> stepMs() const = 0;
   virtual std::vector<std::pair<std::string, float>> takeStepAverages() = 0;
+  // Drawing in clusters: how many pieces the view drew a moment ago, in its
+  // first pass and in the second (what last frame's depth had hidden but this
+  // frame's showed); both 0 otherwise. Read back a frame or two late.
+  virtual std::pair<uint32_t, uint32_t> piecesDrawn() const { return {0, 0}; }
   // Reads the next frame back (for tests and screenshots): RGBA8, top row first.
   virtual void capture(std::function<void(int w, int h, const uint8_t* rgba)> done) = 0;
 };

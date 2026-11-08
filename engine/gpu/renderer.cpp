@@ -76,6 +76,10 @@ struct GpuState {
     bool busy = false;
   };
   StampSlot slots[3];
+  // the pieces the view drew (piecesDrawn), copied out of the draw lists
+  wgpu::Buffer piecesBuf;
+  bool piecesBusy = false;
+  uint32_t pieces[2] = {0, 0};
 };
 
 // The first few WebGPU errors go to the page (a black screen should say why).
@@ -236,6 +240,7 @@ class GpuRenderer final : public Renderer {
   void capture(std::function<void(int, int, const uint8_t*)> done) override { captureDone_ = std::move(done); }
 
   void setQuality(Quality q) override {
+    hzbValid_ = false;
     changes_.bump("settings");
     if (q == quality_ && outW_) {  // picked again: only the settings may have changed
       applySettings();
@@ -348,6 +353,7 @@ class GpuRenderer final : public Renderer {
   }
 
   void reset() override {
+    hzbValid_ = false;
     changes_.bump("shapes"), changes_.bump("placements");
     for (wgpu::Buffer* b : {&poolVerts_, &poolMeshes_})
       if (*b) b->Destroy(), *b = nullptr;
@@ -706,6 +712,9 @@ class GpuRenderer final : public Renderer {
       changes_.set("sun view", sunView);
     }
     static const std::vector<std::string> kShadowFrom = {"placements", "shapes", "settings", "sun view"};
+    // what's hidden (phase 4): with clusters, unless render.occlude is off
+    const bool occluding = raster && clustersReady() && C.render.occlude && hzbTex_[0] && !(skip & 1024);
+    if (!occluding) hzbValid_ = false;
     const bool shadowStale = changes_.stale(shadowMade_, kShadowFrom);
     // ---- what each pass draws: the copies its view can see
     if (raster) {
@@ -713,7 +722,8 @@ class GpuRenderer final : public Renderer {
                      static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f)));
       if (clustersReady()) {
         float perPixel = static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f));
-        prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel);
+        prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel, occluding && hzbValid_ ? 1.0f : 0.0f);
+        if (occluding && hzbValid_) prepareList(eyeList2_, sceneDraws_, f.viewProj, cam.position, perPixel, 2.0f);
         if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, cam.position, perPixel);
       }
       if (bindGroupsDirty_) makeBindGroups();
@@ -795,17 +805,18 @@ class GpuRenderer final : public Renderer {
     // 2. the scene, in light (HDR). With clusters: the GPU culls and picks
     // each cluster's level, one draw writes which triangle each pixel sees,
     // then every pixel is lit once; the sky and glass follow as before.
-    graph_.add("visibility", {"scene", "eye list"}, {"visibility", "depth"}, [&] {
-      runCull(enc, eyeList_);
-      {
+    graph_.add("visibility", {"scene", "eye list", "depth pyramid"}, {"visibility", "depth", "depth pyramid"}, [&] {
+      // one draw of a list's clusters into the visibility picture (the first
+      // clears it, the second adds to it)
+      auto visPass = [&](const ClusterList& L, bool first) {
         wgpu::RenderPassColorAttachment ca;
         ca.view = visView_;
-        ca.loadOp = wgpu::LoadOp::Clear;
+        ca.loadOp = first ? wgpu::LoadOp::Clear : wgpu::LoadOp::Load;
         ca.storeOp = wgpu::StoreOp::Store;
         ca.clearValue = {0, 0, 0, 0};
         wgpu::RenderPassDepthStencilAttachment da;
         da.view = depthView_;
-        da.depthLoadOp = wgpu::LoadOp::Clear;
+        da.depthLoadOp = first ? wgpu::LoadOp::Clear : wgpu::LoadOp::Load;
         da.depthStoreOp = wgpu::StoreOp::Store;
         da.depthClearValue = 1;
         wgpu::RenderPassDescriptor rp;
@@ -819,11 +830,29 @@ class GpuRenderer final : public Renderer {
         pass.SetBindGroup(0, sceneGroup0_);
         pass.SetBindGroup(1, sceneGroup1_);
         pass.SetBindGroup(2, rayGroup_);
-        pass.SetBindGroup(3, eyeList_.drawGroup);
+        pass.SetBindGroup(3, L.drawGroup);
         pass.SetPipeline(visPipe_);
-        pass.DrawIndirect(eyeList_.args, 0);
+        pass.DrawIndirect(L.args, 0);
         ++drawCalls_;
         pass.End();
+      };
+      // what's hidden (phase 4): the first pass skips what last frame's walls
+      // hid; this frame's walls are then made from it, and what was skipped is
+      // tried against them, so nothing newly in view goes missing
+      runCull(enc, eyeList_);
+      visPass(eyeList_, true);
+      secondDrawn_ = false;
+      if (occluding) {
+        const bool second = hzbValid_ && eyeList2_.cullGroup && eyeList2_.drawGroup;
+        buildHzb(enc);
+        if (second) {
+          runCull(enc, eyeList2_);
+          visPass(eyeList2_, false);
+          secondDrawn_ = true;
+        }
+        hzbView_[hzbIndex_] = f.viewProj;
+        hzbValid_ = true;
+        hzbIndex_ ^= 1;
       }
     }, clusterPath && !(skip & 64));
     graph_.add("light", {"visibility", "depth", "shadow map", "lamps", "sky", "rays"}, {"hdr"}, [&] {
@@ -984,6 +1013,15 @@ class GpuRenderer final : public Renderer {
       enc.CopyBufferToBuffer(stampResolve_, 0, slot.buf, 0, 8ull * n);
       slot.steps = stampSteps_, slot.busy = true;
     }
+    // now and then, how many pieces the view drew (each list's count of copies)
+    const bool counting = piecesWanted_ && !gs_->piecesBusy && eyeList_.args;
+    if (counting) {
+      if (!gs_->piecesBuf) gs_->piecesBuf = buffer(8, wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst);
+      enc.CopyBufferToBuffer(eyeList_.args, 4, gs_->piecesBuf, 0, 4);
+      if (secondDrawn_ && eyeList2_.args) enc.CopyBufferToBuffer(eyeList2_.args, 4, gs_->piecesBuf, 4, 4);
+      else enc.ClearBuffer(gs_->piecesBuf, 4, 4);
+      gs_->piecesBusy = true;
+    }
     wgpu::CommandBuffer cb = enc.Finish();
     queue_.Submit(1, &cb);
     if (stamped) {
@@ -1004,6 +1042,16 @@ class GpuRenderer final : public Renderer {
                                    sl.busy = false;
                                  });
     }
+    if (counting)
+      gs_->piecesBuf.MapAsync(wgpu::MapMode::Read, 0, 8, wgpu::CallbackMode::AllowSpontaneous,
+                              [gs = gs_](wgpu::MapAsyncStatus status, wgpu::StringView) {
+                                if (status == wgpu::MapAsyncStatus::Success) {
+                                  if (const uint32_t* n = static_cast<const uint32_t*>(gs->piecesBuf.GetConstMappedRange(0, 8)))
+                                    gs->pieces[0] = n[0], gs->pieces[1] = n[1];
+                                  gs->piecesBuf.Unmap();
+                                }
+                                gs->piecesBusy = false;
+                              });
     ++gs_->inFlight;
     // GPU time per frame, estimated from when the GPU says it's done: from
     // submit (or from the end of the frame before, if it was still busy)
@@ -1036,6 +1084,10 @@ class GpuRenderer final : public Renderer {
     return out;
   }
   std::vector<std::pair<std::string, float>> takeStepAverages() override { return gs_->steps.takeAverages(); }
+  std::pair<uint32_t, uint32_t> piecesDrawn() const override {
+    piecesWanted_ = true;  // counted only once someone asks
+    return {gs_->pieces[0], gs_->pieces[1]};
+  }
   float gpuMs() const override { return gs_->gpuMs; }
   float lastGpuMs() const override { return gs_->lastGpuMs; }
   size_t gpuBytes() const override {
@@ -1239,6 +1291,7 @@ class GpuRenderer final : public Renderer {
     uint32_t count = 0;
     std::vector<uint32_t> cpu;  // per copy its instance and where its stretch starts
     wgpu::BindGroup cullGroup, drawGroup;
+    wgpu::BindGroup cullGroupB;  // the same with the two depth pyramids the other way round
   };
   struct ClusterU {
     Vec4 bounds, lod, parent;            // spheres (centre, radius) in the mesh's space
@@ -1354,7 +1407,7 @@ class GpuRenderer final : public Renderer {
   // ones: glass is still drawn the old way), with room for every cluster they
   // have. Detail is chosen from where the eye is, whatever the view (the sun's
   // shadow keeps the detail you see).
-  void prepareList(ClusterList& L, const std::vector<Batch>& draws, const Mat4& viewProj, Vec3 eye, float perPixel) {
+  void prepareList(ClusterList& L, const std::vector<Batch>& draws, const Mat4& viewProj, Vec3 eye, float perPixel, float occlusion = 0) {
     L.cpu.clear();
     size_t room = 0;
     for (const Batch& b : draws) {
@@ -1369,8 +1422,8 @@ class GpuRenderer final : public Renderer {
     }
     L.count = static_cast<uint32_t>(L.cpu.size() / 2);
     if (L.cpu.empty()) L.cpu = {0, 0};
-    if (!L.ubo) L.ubo = buffer(128, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
-    if (!L.args) L.args = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::Indirect | wgpu::BufferUsage::CopyDst);
+    if (!L.ubo) L.ubo = buffer(288, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+    if (!L.args) L.args = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::Indirect | wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::CopySrc);
     if (ensureStorage(L.cullList, L.cullListCap, 8, L.cpu.size() / 2)) bindGroupsDirty_ = true;
     if (ensureStorage(L.drawn, L.drawnCap, 8, std::max<size_t>(room, 1))) bindGroupsDirty_ = true;
     if (ensureStorage(L.stretch, L.stretchCap, 8, std::max<size_t>(room, 1))) bindGroupsDirty_ = true;
@@ -1380,7 +1433,15 @@ class GpuRenderer final : public Renderer {
     struct {
       Vec4 planes[6];
       Vec4 eye, params;
+      Vec4 occl, occl2;
+      Mat4 oldView, newView;
     } u;
+    // what's hidden (phase 4): the old pyramid (last frame's) and the new (this frame's first pass)
+    const int was = hzbIndex_ ^ 1, now = hzbIndex_;
+    u.occl = Vec4(occlusion, static_cast<float>(hzbSize_[was].z), hzbSize_[was].w0, hzbSize_[was].h0);
+    u.occl2 = Vec4(static_cast<float>(hzbSizeNow().z), hzbSizeNow().w0, hzbSizeNow().h0, 0.0f);
+    u.oldView = hzbView_[was], u.newView = viewProj;
+    (void)now;
     Frustum fr = Frustum::fromViewProj(viewProj);
     for (int i = 0; i < 6; ++i) u.planes[i] = Vec4(fr.p[i].n, fr.p[i].d);
     u.eye = Vec4(eye, perPixel);
@@ -1405,7 +1466,7 @@ class GpuRenderer final : public Renderer {
     wgpu::ComputePassDescriptor cd;
     cd.timestampWrites = stamp(tw);
     wgpu::ComputePassEncoder cp = enc.BeginComputePass(&cd);
-    cp.SetBindGroup(0, L.cullGroup);
+    cp.SetBindGroup(0, hzbIndex_ && L.cullGroupB ? L.cullGroupB : L.cullGroup);
     uint32_t n = std::max(L.count, 1u), x = std::min(n, 65535u);
     cp.SetPipeline(cullPipe_);
     cp.DispatchWorkgroups(x, (n + x - 1) / x);
@@ -1681,7 +1742,29 @@ class GpuRenderer final : public Renderer {
       wgpu::BindGroupLayoutEntry vt = tex(2, F);
       vt.texture.sampleType = wgpu::TextureSampleType::Uint;
       clusterResolveLayout_ = layout({ssbo(0, F), vt});
-      cullLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C), ssbo(4, C), ssbo(5, C, true), ssbo(6, C, true), ssbo(7, C, true), ssbo(8, C, true)});
+      cullLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C), ssbo(4, C), ssbo(5, C, true), ssbo(6, C, true), ssbo(7, C, true), ssbo(8, C, true),
+                            tex(9, C, false, true), tex(10, C, false, true)});
+      // the depth pyramid (phase 4)
+      hzbDepthLayout_ = layout({ubo(0, F), tex(1, F, true)});
+      hzbLevelLayout_ = layout({ubo(0, F), tex(2, F, false, true)});
+      {
+        wgpu::ShaderModule hm = module(kHzbWgsl, "depth pyramid");
+        for (int k = 0; k < 2; ++k) {
+          wgpu::RenderPipelineDescriptor d;
+          d.layout = pipeLayout({k == 0 ? hzbDepthLayout_ : hzbLevelLayout_}, "depth pyramid");
+          d.vertex.module = hm;
+          d.vertex.entryPoint = "vsHzb";
+          wgpu::ColorTargetState ct;
+          ct.format = wgpu::TextureFormat::R32Float;
+          wgpu::FragmentState fst;
+          fst.module = hm;
+          fst.entryPoint = k == 0 ? "fsFromDepth" : "fsFromLevel";
+          fst.targetCount = 1;
+          fst.targets = &ct;
+          d.fragment = &fst;
+          (k == 0 ? hzbDepthPipe_ : hzbLevelPipe_) = device_.CreateRenderPipeline(&d);
+        }
+      }
       {
         wgpu::RenderPipelineDescriptor d;
         d.layout = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, clusterDrawLayout_}, "visibility");
@@ -2078,6 +2161,30 @@ class GpuRenderer final : public Renderer {
         for (int i = 0; i < 2; ++i)
           histView_[i] = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopySrc, histTex_[i]);
         histValid_ = false;
+        // the depth pyramids (phase 4): half the screen, rounded up to a power of two, every level down to one texel
+        uint32_t pw = 1, ph = 1;
+        while (pw < (ow + 1) / 2) pw *= 2;
+        while (ph < (oh + 1) / 2) ph *= 2;
+        hzbLevels_ = 1;
+        while ((1u << (hzbLevels_ - 1)) < std::max(pw, ph)) ++hzbLevels_;
+        hzbUbo_.clear();
+        for (uint32_t l = 0; l < hzbLevels_; ++l) hzbUbo_.push_back(buffer(32, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst));
+        for (int i = 0; i < 2; ++i) {
+          wgpu::TextureDescriptor td;
+          td.size = {pw, ph, 1};
+          td.format = wgpu::TextureFormat::R32Float;
+          td.mipLevelCount = hzbLevels_;
+          td.usage = attach | wgpu::TextureUsage::TextureBinding;
+          hzbTex_[i] = device_.CreateTexture(&td);
+          hzbAll_[i] = hzbTex_[i].CreateView();
+          hzbMip_[i].clear();
+          for (uint32_t l = 0; l < hzbLevels_; ++l) {
+            wgpu::TextureViewDescriptor vd;
+            vd.baseMipLevel = l, vd.mipLevelCount = 1;
+            hzbMip_[i].push_back(hzbTex_[i].CreateView(&vd));
+          }
+        }
+        hzbValid_ = false;
       } else {
         visView_ = nullptr, visTex_ = nullptr;
         histView_[0] = histView_[1] = nullptr, histTex_[0] = histTex_[1] = nullptr;
@@ -2156,12 +2263,22 @@ class GpuRenderer final : public Renderer {
 
   void makeBindGroups() {
     if (!hdrView_) return;
-    for (ClusterList* L : {&eyeList_, &sunList_})
-      if (poolVerts_ && L->drawn && L->cullList && L->stretch && L->counts) {
+    for (ClusterList* L : {&eyeList_, &sunList_, &eyeList2_})
+      if (poolVerts_ && L->drawn && L->cullList && L->stretch && L->counts && hzbAll_[0]) {
         L->drawGroup = group(clusterDrawLayout_, {bufE(0, poolVerts_), bufE(1, L->drawn)});
-        L->cullGroup = group(cullLayout_, {bufE(0, L->ubo), bufE(1, instancesBuf_), bufE(2, L->cullList), bufE(3, poolMeshes_), bufE(4, poolVerts_), bufE(5, L->drawn),
-                                           bufE(6, L->args), bufE(7, L->stretch), bufE(8, L->counts)});
+        // old = last frame's pyramid, new = this frame's: which is which flips every frame
+        for (int k = 0; k < 2; ++k)
+          (k == 0 ? L->cullGroup : L->cullGroupB) =
+              group(cullLayout_, {bufE(0, L->ubo), bufE(1, instancesBuf_), bufE(2, L->cullList), bufE(3, poolMeshes_), bufE(4, poolVerts_), bufE(5, L->drawn),
+                                  bufE(6, L->args), bufE(7, L->stretch), bufE(8, L->counts), texE(9, hzbAll_[k ^ 1]), texE(10, hzbAll_[k])});
       }
+    for (int i = 0; i < 2; ++i) {
+      hzbGroup_[i].clear();
+      if (hzbTex_[i] && depthView_)
+        for (uint32_t l = 0; l < hzbLevels_; ++l)
+          hzbGroup_[i].push_back(l == 0 ? group(hzbDepthLayout_, {bufE(0, hzbUbo_[0]), texE(1, depthView_)})
+                                        : group(hzbLevelLayout_, {bufE(0, hzbUbo_[l]), texE(2, hzbMip_[i][l - 1])}));
+    }
     if (poolVerts_ && visView_ && eyeList_.drawn) {
       clusterResolveGroup_ = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_)});
       if (histView_[0])
@@ -2243,6 +2360,64 @@ class GpuRenderer final : public Renderer {
   wgpu::ComputePipeline cullPipe_, countPipe_, packPipe_;
   wgpu::BindGroup clusterResolveGroup_;
   ClusterList eyeList_, sunList_;
+  // ---- what's hidden (phase 4): two depth pyramids, last frame's and this
+  // frame's first pass's, each level the farthest depth over a patch
+  ClusterList eyeList2_;  // the second pass: what the first skipped, tried again
+  wgpu::Texture hzbTex_[2];
+  wgpu::TextureView hzbAll_[2];
+  std::vector<wgpu::TextureView> hzbMip_[2];
+  std::vector<wgpu::Buffer> hzbUbo_;
+  std::vector<wgpu::BindGroup> hzbGroup_[2];
+  wgpu::BindGroupLayout hzbDepthLayout_, hzbLevelLayout_;
+  wgpu::RenderPipeline hzbDepthPipe_, hzbLevelPipe_;
+  Mat4 hzbView_[2];
+  struct HzbSize {
+    uint32_t x = 1, y = 1, z = 1;  // level 0's valid size, and how many levels
+    float w0 = 1, h0 = 1;          // the depth picture's size halved, unrounded (where a point lands)
+  } hzbSize_[2];
+  uint32_t hzbLevels_ = 0;  // levels each pyramid holds
+  int hzbIndex_ = 0;        // the pyramid this frame makes (the other is last frame's)
+  bool hzbValid_ = false;   // last frame made one
+  bool secondDrawn_ = false;          // this frame's second pass ran
+  mutable bool piecesWanted_ = false;  // someone asked how many pieces were drawn
+  HzbSize hzbSizeNow() const {
+    HzbSize h;
+    h.x = std::max(1u, (width_ + 1) / 2), h.y = std::max(1u, (height_ + 1) / 2);
+    h.w0 = std::max(0.5f, width_ * 0.5f), h.h0 = std::max(0.5f, height_ * 0.5f);
+    uint32_t m = std::max(h.x, h.y), l = 1;
+    while ((1u << (l - 1)) < m) ++l;
+    h.z = std::min(l, std::max(hzbLevels_, 1u));
+    return h;
+  }
+  // this frame's pyramid from its depth picture (after the first pass)
+  void buildHzb(wgpu::CommandEncoder& enc) {
+    const int i = hzbIndex_;
+    HzbSize h = hzbSizeNow();
+    uint32_t sw = width_, sh = height_;
+    for (uint32_t l = 0; l < h.z && l < hzbGroup_[i].size(); ++l) {
+      uint32_t dw = std::max(1u, (h.x + (1u << l) - 1) >> l), dh = std::max(1u, (h.y + (1u << l) - 1) >> l);
+      float u[8] = {static_cast<float>(sw), static_cast<float>(sh), 0, 0, static_cast<float>(dw), static_cast<float>(dh), 0, 0};
+      queue_.WriteBuffer(hzbUbo_[l], 0, u, sizeof u);
+      wgpu::RenderPassColorAttachment ca;
+      ca.view = hzbMip_[i][l];
+      ca.loadOp = wgpu::LoadOp::Clear;
+      ca.storeOp = wgpu::StoreOp::Store;
+      ca.clearValue = {1, 0, 0, 1};
+      wgpu::RenderPassDescriptor rp;
+      rp.colorAttachmentCount = 1;
+      rp.colorAttachments = &ca;
+      wgpu::PassTimestampWrites tw;
+      rp.timestampWrites = stamp(tw);
+      wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+      pass.SetViewport(0, 0, static_cast<float>(dw), static_cast<float>(dh), 0, 1);
+      pass.SetPipeline(l == 0 ? hzbDepthPipe_ : hzbLevelPipe_);
+      pass.SetBindGroup(0, hzbGroup_[i][l]);
+      pass.Draw(3);
+      pass.End();
+      sw = dw, sh = dh;
+    }
+    hzbSize_[i] = h;
+  }
   // frame blending (render.taa, with clusters): two pictures of the past, swapped each frame
   wgpu::Texture histTex_[2];
   wgpu::TextureView histView_[2];
@@ -2467,13 +2642,13 @@ class GpuRenderer final : public Renderer {
   bool fresh_ = true;  // next frame starts a new measurement
   // the frame's steps (draw); what a frame finds already there: the scene and
   // its lists, lamps, sky and rays, last frame's history
-  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history", "shadow map"}};
+  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history", "shadow map", "depth pyramid"}};
   // what the frame is made from, versioned; the sun's shadow as last drawn
   ChangeTracker changes_;
   ChangeTracker::Made shadowMade_;
   bool graphChecked_ = false;
   // the chip's timers (when it has them): a frame's stamps, two per pass
-  static constexpr uint32_t kStampPairs = 32;
+  static constexpr uint32_t kStampPairs = 48;
   wgpu::QuerySet stampSet_;
   wgpu::Buffer stampResolve_;
   std::vector<std::string> stampSteps_;  // this frame's: each pair's step

@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "Go ahead do occlusions": **occlusion culling** (phase 4): two passes, last frame's depth
+  pyramid then this frame's, so hidden pieces aren't drawn and nothing coming into view goes missing
+  (`render.occlude`, on). Pieces drawn: the Woods 38% fewer, the cabin 40%, the Glade 10%, the bar 2% (open
+  room). The meter and recordings now count pieces drawn. Pictures 12 of 12; editor and recorder checks pass.
+
 - **2026-11-08** · "Straight to phase 3": **the change tracker** (`engine/render/change_tracker.h`, 2 tests): the
   sun's shadow kept until something it is made from changes (the Glade standing still about a quarter less
   graphics work on the test machine; on the phone its shadow was 17 ms) (859a26e). **Each pixel's motion**:

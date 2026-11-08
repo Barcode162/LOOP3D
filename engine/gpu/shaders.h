@@ -801,6 +801,11 @@ struct CullU {
   planes : array<vec4f, 6>,  // the view's sides (inside: dot >= 0)
   eye : vec4f,               // xyz, w: pixels per metre at 1 m
   params : vec4f,            // x: the error limit in pixels, y: how many copies
+  occl : vec4f,              // what's hidden (phase 4): x 0 off, 1 not hidden in last frame's walls,
+                             // 2 hidden then but not by this frame's first pass; y, zw: the old pyramid's levels, level 0's size
+  occl2 : vec4f,             // the new pyramid's: x levels, yz level 0's size
+  oldView : mat4x4f,         // the view last frame's depth pyramid was made in
+  newView : mat4x4f,         // this frame's (its first pass's pyramid)
 };
 @group(0) @binding(0) var<uniform> cu : CullU;
 @group(0) @binding(1) var<storage, read> instances : array<Instance>;
@@ -811,12 +816,47 @@ struct CullU {
 @group(0) @binding(6) var<storage, read_write> args : array<u32, 4>;       // the draw's: corners, clusters, 0, 0
 @group(0) @binding(7) var<storage, read_write> stretch : array<vec2u>;     // each copy's chosen clusters
 @group(0) @binding(8) var<storage, read_write> counts : array<vec2u>;      // per copy: how many chosen, where its list starts when packed
+@group(0) @binding(9) var oldWalls : texture_2d<f32>;   // the depth pyramids: the farthest depth over each patch,
+@group(0) @binding(10) var newWalls : texture_2d<f32>;  // last frame's, and this frame's first pass's
 fn poolF(i : u32) -> f32 { return bitcast<f32>(pool[i]); }
 fn poolV4(i : u32) -> vec4f { return vec4f(poolF(i), poolF(i + 1u), poolF(i + 2u), poolF(i + 3u)); }
 fn looks(err : f32, c : vec3f, r : f32) -> f32 {
   let d = length(c - cu.eye.xyz) - r;
   if (d <= 1e-4) { return select(0.0, 3.0e38, err > 0.0); }
   return err / d * cu.eye.w;
+}
+// Is a sphere wholly behind the walls a depth pyramid (made in view `vp`)
+// remembers? Its box's corners give the patch of screen it covers and its
+// nearest depth; the pyramid's level where that patch is a texel or two says
+// how far the farthest wall over it is. Anything it can't judge (behind the
+// eye, past the view's edge) is not hidden.
+fn hiddenIn(walls : texture_2d<f32>, vp : mat4x4f, bc : vec3f, br : f32, size0 : vec2f, levels : f32) -> bool {
+  var lo = vec2f(1e9);
+  var hi = vec2f(-1e9);
+  var near = 2.0;
+  for (var i = 0u; i < 8u; i++) {
+    let corner = bc + br * vec3f(select(-1.0, 1.0, (i & 1u) != 0u), select(-1.0, 1.0, (i & 2u) != 0u), select(-1.0, 1.0, (i & 4u) != 0u));
+    let q = vp * vec4f(corner, 1.0);
+    if (q.w <= 1e-4) { return false; }
+    let n = q.xyz / q.w;
+    let uv = vec2f(n.x * 0.5 + 0.5, 0.5 - n.y * 0.5);
+    lo = min(lo, uv);
+    hi = max(hi, uv);
+    near = min(near, n.z);
+  }
+  if (lo.x < 0.0 || lo.y < 0.0 || hi.x > 1.0 || hi.y > 1.0 || near <= 0.0) { return false; }
+  // level 0's texel j covers the depth picture's pixels 2j..2j+2, level l's
+  // texel k level l-1's 2k..2k+2: a point's texel on level l is its level-0
+  // texel halved l times (size0 is the depth picture's size halved, unrounded)
+  let span = (hi - lo) * size0;
+  let lvl = u32(clamp(ceil(log2(max(max(span.x, span.y), 1.0))), 0.0, levels - 1.0));
+  let scale = exp2(f32(lvl));
+  let last = vec2i(ceil(ceil(size0) / scale)) - 1;
+  let a = min(vec2i(floor(lo * size0 / scale)), last);
+  let b = min(vec2i(floor(hi * size0 / scale)), last);
+  let far = max(max(textureLoad(walls, a, lvl).x, textureLoad(walls, vec2i(b.x, a.y), lvl).x),
+                max(textureLoad(walls, vec2i(a.x, b.y), lvl).x, textureLoad(walls, b, lvl).x));
+  return near > far;
 }
 fn chosen(m : mat4x4f, scale : f32, id : u32) -> bool {
   let b = pool[1] + id * 16u;
@@ -831,7 +871,11 @@ fn chosen(m : mat4x4f, scale : f32, id : u32) -> bool {
   for (var p = 0; p < 6; p++) {
     if (dot(cu.planes[p].xyz, bc) + cu.planes[p].w < -br) { return false; }
   }
-  return true;
+  // hidden behind what's nearer (phase 4): first last frame's walls, then
+  // what that skipped is tried again against this frame's own first pass
+  let hiddenThen = cu.occl.x > 0.5 && hiddenIn(oldWalls, cu.oldView, bc, br, cu.occl.zw, cu.occl.y);
+  if (cu.occl.x > 1.5) { return hiddenThen && !hiddenIn(newWalls, cu.newView, bc, br, cu.occl2.yz, cu.occl2.x); }
+  return !hiddenThen;
 }
 var<workgroup> found : array<u32, 64>;
 @compute @workgroup_size(64) fn cull(@builtin(workgroup_id) wg : vec3u, @builtin(num_workgroups) nwg : vec3u, @builtin(local_invocation_index) li : u32) {
@@ -1645,6 +1689,40 @@ fn untame(c : vec3f) -> vec3f { return c / max(1.0 - max(c.r, max(c.g, c.b)) * 0
   let h = tame(textureSampleLevel(hist, lin, puv * tu.screen.xy / tu.full.xy, 0.0).rgb);
   let kept = fromYCoCg(clamp(toYCoCg(h), lo3, hi3));
   return vec4f(untame(mix(kept, c, tu.full.z)), 1.0);
+}
+)";
+
+// The depth pyramid (phase 4): each level the farthest depth over 2x2 (with a
+// third row and column, so odd sizes lose nothing) of the level below; level 0
+// from the depth picture, half its size. Far beats near: a patch hides
+// something only if every wall over it is nearer.
+inline const char* kHzbWgsl = R"(
+struct HzbU { src : vec4f, dst : vec4f };  // xy: the valid size of the level read and of the one written
+@group(0) @binding(0) var<uniform> hu : HzbU;
+@group(0) @binding(1) var depthIn : texture_depth_2d;
+@group(0) @binding(2) var levelIn : texture_2d<f32>;
+struct Out { @builtin(position) pos : vec4f };
+@vertex fn vsHzb(@builtin(vertex_index) vi : u32) -> Out {
+  let p = vec2f(f32((vi << 1u) & 2u), f32(vi & 2u));
+  return Out(vec4f(p * 2.0 - 1.0, 0.0, 1.0));
+}
+@fragment fn fsFromDepth(o : Out) -> @location(0) vec4f {
+  let x = vec2i(o.pos.xy) * 2;
+  let lim = vec2i(hu.src.xy) - 1;
+  var far = 0.0;
+  for (var dy = 0; dy < 3; dy++) {
+    for (var dx = 0; dx < 3; dx++) { far = max(far, textureLoad(depthIn, min(x + vec2i(dx, dy), lim), 0)); }
+  }
+  return vec4f(far, 0.0, 0.0, 1.0);
+}
+@fragment fn fsFromLevel(o : Out) -> @location(0) vec4f {
+  let x = vec2i(o.pos.xy) * 2;
+  let lim = vec2i(hu.src.xy) - 1;
+  var far = 0.0;
+  for (var dy = 0; dy < 3; dy++) {
+    for (var dx = 0; dx < 3; dx++) { far = max(far, textureLoad(levelIn, min(x + vec2i(dx, dy), lim), 0).x); }
+  }
+  return vec4f(far, 0.0, 0.0, 1.0);
 }
 )";
 

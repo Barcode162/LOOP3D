@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · next: phase 4
+## The picture pipeline (your plan, 2026-11-08) · next: phase 5
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -113,7 +113,10 @@ once, fog, blend and upscale, film.
    (`engine/render/change_tracker.h`); the sun's shadow kept until something it covers changes (your iPhone's
    17 ms in the Glade, now only when something moves or you walk); each pixel's motion, so frame blending
    follows moving things (a moving board about 70% crisper).
-4. **Occlusion culling:** skip what's hidden behind walls (of the 443 things in the bar's view).
+4. **Occlusion culling** (done 2026-11-08): pieces hidden behind nearer things are not drawn, tested against
+   last frame's depth, and what that skipped tried again against this frame's own, so nothing coming into view
+   goes missing. Pieces drawn: the Woods 53,728 to 33,255 (38% fewer), the cabin 40%, the Glade 10%, the bar 2%
+   (its room is open: few things are hidden). The meter now says how many pieces are drawn.
 5. **Direct light:** the lamp grid (the bar: 103 lamps a pixel to about 10; started on `parked/light-grid`),
    shared with the fog; sun shadows in steps, redrawn on change; shadow maps for the main lamps on Phone;
    contact shadows.

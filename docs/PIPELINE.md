@@ -150,6 +150,13 @@ phase is meant to change the look).
    graphics work on the test machine; a board moving at 6 m/s 598 sharp edges with motion, 346 without.
 4. **Occlusion culling.** Clusters tested against last frame's depth, then what was hidden tested again. How
    many of the bar's 443 things in view are really seen is counted first, and is the target.
+   *Done 2026-11-08:* two passes in the visibility step (Nanite's way). A depth pyramid (each level the farthest
+   depth of 2×2 below, half the picture's size at the bottom) is made after the first pass; the cull tests each
+   piece's box against last frame's pyramid first, and the second pass draws what that skipped but this frame's
+   own pyramid shows. `render.occlude` (on); the meter and every recorded part count the pieces drawn
+   (`pieces`: first pass, second). Counted on the test machine: the Woods 53,728 → 33,255 pieces, the cabin
+   47 → 28, the Glade 14,042 → 12,661, the bar 2,427 → 2,369 (an open room: the bar's cost is its lamps, phase 5),
+   the hall 64 → 64. Pictures 12 of 12. The phone's milliseconds come from its next recording.
 5. **Direct light** (the first half of the old "smart light"). The lamp grid (about 10 lamps a pixel in the bar),
    shared with the fog; the unfinished one on `parked/light-grid` (builder, tests and budget counting done) is
    the start. Sun shadows in steps, each redrawn only on change. Shadow maps for the main lamps on Phone. Contact
