@@ -97,10 +97,13 @@ and writes, and is timed), the **score** against cinema, **one BVH**, **one fram
 once, fog, blend and upscale, film.
 
 **The phases, in order** (each keeps every scene playing, no slower on the phone, no further from cinema):
-1. **Measure:** your phone on today's cluster build (the bar, The Woods), the score against cinema, `loop budget`
-   counting the cluster way (done 2026-11-08: 6 of 41 scenes over the Phone budget, the forests on triangles,
-   the bar on lamps). The recording page (2026-11-08) times whatever you play, saved where Claude reads it, and
-   says what went wrong when a scene fails.
+1. **Measure** (the tools done 2026-11-08): the recording page times whatever you play and says what went wrong
+   when a scene fails (your first visit: the Woods 48 ms on High, the Glade 27 ms on Phone; the whole bar
+   didn't load on your phone: its next visit will say why); `loop budget` counts the cluster way (6 of 41
+   scenes over the Phone budget: the forests on triangles, the bar on lamps); `loop score` measures each
+   picture test against cinema (`perf/score.md`: 23.4 on average, closed rooms lit by the sky, patterns
+   missing on Phone, a haze outdoors). Still to come from the phone: the whole bar, and its graphics chip's
+   own timers (each recording now lists what the chip offers).
 2. **Frame graph:** the renderer split into steps, each timed on the phone; the same picture, the same speed.
 3. **Change tracker and frame history:** version numbers on the graphics chip's work, each pixel's motion.
 4. **Occlusion culling:** skip what's hidden behind walls (of the 443 things in the bar's view).

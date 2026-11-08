@@ -2,6 +2,16 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "The whole bar doesn't work … skip my side, you know what to do, you have the plan" (the
+  reins for phase 1): the bar's visit saved the Courtyard, then nothing, so the recording page now **says what
+  went wrong** (problems, the graphics card lost, no WebGPU, page errors, a scene with no picture after 20 s
+  with how far its loading got, leaving mid-load; saved at once) and loads the bar's models four at a time
+  (memory peak 144-163 → 76 MB in the test browser); recordings list the graphics chip's features (its own
+  timers, for phase 2). **`loop budget` counts the cluster way** (the bar 568 → 47 draw calls; 6 of 41 over
+  the Phone budget). **`loop score`**: each picture test against cinema, ΔE (`perf/score.md`: average 23.4;
+  closed rooms lit by the sky, rooms too bright, patterns missing on Phone, a haze outdoors). Tests: frame_cost
+  (cluster way, the engine's own choice), score_test 6, recorder_test 36, recorder_check 19 and 23.
+
 - **2026-11-08** · The first live recording from your phone (pasted, and saved by the page itself: both
   arrived; the page runs in the Claude app): 7 scenes, 3 minutes, kept in `perf/` (`live-20261108-094026-w7cs`).
   The Woods on High: 48 ms of graphics-chip time a frame, 18 fps at half resolution (Nov 5, on Phone, before
