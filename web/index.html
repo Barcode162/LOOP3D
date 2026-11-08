@@ -27,6 +27,8 @@
   button.on { border-color: var(--amber); color: var(--amber); box-shadow: var(--glow); text-shadow: 0 0 10px rgba(255, 255, 255, 0.55); }
   #title { font-weight: 650; letter-spacing: 0.02em; }
   #stats { font: 12px ui-monospace, monospace; color: var(--dim); }
+  #rec { font: 12px ui-monospace, monospace; color: var(--dim); }
+  #rec[hidden] { display: none; }
   #note.loading::after { content: ''; display: block; width: 28px; height: 28px; margin: 12px auto 0; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--amber); animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #note { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: min(520px, 86vw); text-align: center; background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 18px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
@@ -68,6 +70,7 @@
 <img id="trailer" alt="The cinema render of this scene">
 <div class="bar top">
   <span class="chip" id="title">Loop3D</span>
+  <span class="chip" id="rec" hidden title="Every scene you play is timed and saved for Claude"></span>
   <span class="chip" id="stats">starting…</span>
 </div>
 <div class="bar bottom">
@@ -78,11 +81,12 @@
   <select id="scene" title="Scene">
     <option value="courtyard">Courtyard</option>
   </select>
-  <a class="chip" href="editor.html" title="Open the Loop3D editor" style="text-decoration:none">Editor</a>
+  <a class="chip" id="editorLink" href="editor.html" title="Open the Loop3D editor" style="text-decoration:none">Editor</a>
   <select id="benchSel" title="Measure how smoothly it runs">
     <option value="">Benchmark…</option>
-    <option value="scene">This scene</option>
-    <option value="story">The whole story (about 30 min)</option>
+    <option value="copy">Copy my recording (this visit)</option>
+    <option value="scene" class="auto">This scene, by itself</option>
+    <option value="story" class="auto">The whole story (about 30 min)</option>
   </select>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
@@ -129,6 +133,16 @@
   const benchChoices = (params.get('choices') || '').split(',').filter((x) => x !== '').map(Number);
   let benchAsked = 0, benchSegments = [], benchScene = null, benchTimer = null, benchUse = null, benchStarted = 0;
   const qualityNames = ['Phone', 'High', 'Ultra'];
+  // the live recorder (LoopUI.recorder): every visit outside a benchmark is
+  // timed scene by scene. Framed (the recording page inside claude.ai) it is
+  // saved where Claude reads it; the page has no editor and no benchmarks
+  // that reload it there.
+  const framed = window.self !== window.top;
+  let rec = null;
+  if (framed) {
+    document.getElementById('editorLink').style.display = 'none';
+    document.querySelectorAll('#benchSel option.auto').forEach((o) => o.remove());
+  }
   const TRACKER = '__TRACKER__';
 
   // a GPU that's gone leaves its last "done" promises rejected: expected, not news
@@ -143,6 +157,7 @@
   window.loopGpuBack = (q) => {
     const sel = document.getElementById('quality');
     const lowered = +sel.value !== q;
+    if (rec && lowered) rec.quality();
     sel.value = String(q);
     if (lowered) { showNote('Switched to ' + qualityNames[q] + ' so it keeps running smoothly.', false); setTimeout(() => { note.style.display = 'none'; }, 3500); }
     else note.style.display = 'none';
@@ -175,6 +190,7 @@
     M.stringToUTF8(json, ptr, n); M._loop_set_project_settings(ptr); M._free(ptr);
   }
   async function loadScene(name) {
+    if (rec) rec.scene(name);
     useProject(name);
     showNote(LoopUI.loadingText(M, titleOf(name)), true);
     const own = fromEditor && fromEditor.scene === name ? fromEditor.text : await fetchScene(name);
@@ -221,22 +237,28 @@
   async function benchFinish() {
     clearTimeout(benchTimer); clearInterval(benchUse);
     document.getElementById('benchLive').style.display = 'none';
-    const segs = benchSegments, frames = segs.reduce((t, x) => t + x.frames, 0), secs = segs.reduce((t, x) => t + x.seconds, 0);
+    const segs = benchSegments;
     const result = {
       kind: 'loop3d-bench', v: 1, when: new Date().toISOString(), build: document.querySelector('meta[name=loop-build]').content,
       bench, start: sceneName, quality: qualityNames[+document.getElementById('quality').value], msaa: +(params.get('msaa') || 4),
       device: await deviceInfo(),
-      summary: {
-        scenes: segs.length, seconds: +secs.toFixed(1), frames, fps: +(secs ? frames / secs : 0).toFixed(2),
-        worstLow1Fps: Math.min(...segs.map((x) => x.low1Fps)), worstP99Ms: Math.max(...segs.map((x) => x.p99Ms)), maxMs: Math.max(...segs.map((x) => x.maxMs)),
-        hitches: segs.reduce((t, x) => t + x.hitches, 0), avgScale: +(segs.reduce((t, x) => t + x.scaleAvg * x.seconds, 0) / (secs || 1)).toFixed(3),
-        worstLoadMs: Math.max(...segs.map((x) => x.loadMs)),
-      },
+      summary: LoopUI.summary(segs),
       segments: segs,
     };
     try { const h = JSON.parse(localStorage.getItem('loop3d.bench') || '[]'); h.unshift(result); localStorage.setItem('loop3d.bench', JSON.stringify(h.slice(0, 20))); } catch (e) {}
     window.loopBenchResult = result;
     showBench(result);
+  }
+  // the menu's "Copy my recording": this visit so far, to paste in the chat
+  async function copyRecording() {
+    if (!rec) return;
+    rec.cut();
+    const v = rec.visit, text = JSON.stringify(v);
+    const said = v.segments.length ? 'Copied: ' + v.summary.scenes + ' scene(s), ' + Math.max(1, Math.round(v.summary.seconds / 60)) + ' min. Paste it in the chat with Claude.'
+                                   : 'Nothing recorded yet: play for half a minute first.';
+    if (v.segments.length) { try { await navigator.clipboard.writeText(text); } catch (x) { prompt('Copy the recording:', text); } }
+    showNote(said, false);
+    setTimeout(() => { note.style.display = 'none'; }, 4000);
   }
   function showBench(r) {
     const box = document.getElementById('bench'), s = r.summary;
@@ -307,7 +329,7 @@
   window.loopReady = async () => {
     const q = document.getElementById('quality');
     q.value = params.get('quality') || (touch ? '0' : '1');
-    q.onchange = () => { M._loop_set_quality(+q.value); q.blur(); };
+    q.onchange = () => { if (rec) rec.quality(); M._loop_set_quality(+q.value); q.blur(); };
     M._loop_set_quality(+q.value);
     // ?pause=1: the world holds still from its very first moment (picture tests)
     if (params.get('pause') === '1') { const n = M.lengthBytesUTF8('pause') + 1, p = M._malloc(n); M.stringToUTF8('pause', p, n); M._loop_set_option(p, 1); M._free(p); }
@@ -329,9 +351,22 @@
     setInterval(() => LoopUI.applyPage(M, { hud: [...document.querySelectorAll('.bar, #menuBtn')] }), 1000);
     sc.value = sceneName;
     sc.onchange = () => { sc.blur(); location.hash = sc.value; window.loopGoTo(sc.value); };
+    if (!bench) {
+      const chip = document.getElementById('rec');
+      const store = LoopUI.recordingStore(window, (visit, ok, code) => {
+        chip.hidden = false;
+        chip.textContent = ok ? '● Recording for Claude · ' + Math.max(1, Math.round(visit.summary.seconds / 60)) + ' min' : 'Recording not saved (' + (code || 'error') + ')';
+      });
+      rec = LoopUI.recorder({ getM: () => M, quality: () => qualityNames[+q.value], store, device: deviceInfo(),
+                              build: document.querySelector('meta[name=loop-build]').content });
+      document.addEventListener('visibilitychange', () => (document.hidden ? rec.hidden() : rec.shown()));
+      addEventListener('pagehide', () => rec.cut());
+      window.loopRecorder = rec;  // for the checks (tools/recorder_check.js)
+    }
     document.getElementById('benchSel').onchange = (e) => {
       const kind = e.target.value; e.target.value = ''; e.target.blur();
       if (!kind) return;
+      if (kind === 'copy') { copyRecording(); return; }
       useProject(sceneName);
       const u = new URLSearchParams(location.search); u.set('bench', kind); u.set('quality', q.value);
       location.href = location.pathname + '?' + u.toString() + '#' + (kind === 'story' && sceneName.startsWith('ardane_') ? 'ardane_01_home' : sceneName);

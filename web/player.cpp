@@ -672,8 +672,9 @@ EMSCRIPTEN_KEEPALIVE void loop_audio(float* stereo, int frames) {
   if (g.stage) g.stage->mixer.render(stereo, frames);
   else std::memset(stereo, 0, sizeof(float) * frames * 2);
 }
-// The benchmark: start recording (the clock for "load time" starts at the
-// scene's script), and stop, getting the scene's numbers as JSON.
+// The benchmark and the live recorder: start recording (the clock for "load
+// time" starts at the scene's script), and stop, getting the scene's numbers
+// as JSON.
 EMSCRIPTEN_KEEPALIVE void loop_perf_begin() {
   perf.on = true;
   perf.waitingFirst = true;
@@ -682,9 +683,9 @@ EMSCRIPTEN_KEEPALIVE void loop_perf_begin() {
   perf.rafFrames = 0;
   perf.interval.clear(), perf.cpu.clear(), perf.gpu.clear(), perf.scale.clear();
 }
-EMSCRIPTEN_KEEPALIVE const char* loop_perf_end() {
+// The numbers recorded so far, as JSON.
+const char* perfJson() {
   static std::string out;
-  perf.on = false;
   const auto& iv = perf.interval;
   float p50 = pct(iv, 0.5f);
   float hitchAt = std::max(2 * p50, config().perf.hitch);
@@ -714,6 +715,29 @@ EMSCRIPTEN_KEEPALIVE const char* loop_perf_end() {
                 EM_ASM_INT({ return document.getElementById('view').width; }), EM_ASM_INT({ return document.getElementById('view').height; }));
   out = buf;
   return out.c_str();
+}
+EMSCRIPTEN_KEEPALIVE const char* loop_perf_end() {
+  perf.on = false;
+  return perfJson();
+}
+// The live recorder cuts a long visit into parts: the numbers since the last
+// part, and on at once with the next (the load time counts in a scene's first).
+EMSCRIPTEN_KEEPALIVE const char* loop_perf_part() {
+  const char* out = perfJson();
+  perf.interval.clear(), perf.cpu.clear(), perf.gpu.clear(), perf.scale.clear();
+  perf.rafFrames = 0;
+  if (!perf.waitingFirst) perf.loadMs = -1;
+  return out;
+}
+// Recording again at once, in the same scene (back from another app): the
+// time away is not a frame.
+EMSCRIPTEN_KEEPALIVE void loop_perf_go() {
+  perf.on = true;
+  perf.waitingFirst = false;
+  perf.loadMs = -1;
+  perf.rafFrames = 0;
+  perf.lastShown = 0;
+  perf.interval.clear(), perf.cpu.clear(), perf.gpu.clear(), perf.scale.clear();
 }
 // The last 240 shown frames' times (ms), oldest first, for the live graph.
 EMSCRIPTEN_KEEPALIVE const float* loop_perf_graph() {

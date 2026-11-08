@@ -2,6 +2,8 @@
 """Adds benchmark results from the Loop3D player to perf/.
 
     tools/perf_add.py result.json [more.json ...]   add runs (a file may hold one run or a list)
+                                                    (the recording page's rows too: bench "live",
+                                                    each scene in parts of 30 s)
     tools/perf_add.py                               just rebuild the tables from perf/raw/
 
 Every run is kept whole in perf/raw/<run id>.json. From those it rebuilds:
@@ -27,6 +29,8 @@ def gpu_name(dev):
 
 
 def run_id(r):
+    if r.get("id"):  # a live recording's row (the recording page) names itself
+        return r["id"]
     stamp = re.sub(r"[^0-9T]", "", r["when"][:19]).replace("T", "-")
     return f"{stamp}-{r.get('quality', 'q')}-{r.get('start', 'scene')}"
 
@@ -56,6 +60,7 @@ def rebuild():
                      "dpr": dev.get("dpr"), "screen": dev.get("screen"), "browser": browser(dev.get("ua", ""))})
         for x in r.get("segments", []):
             segs.append({**base, "scene": x.get("scene"), "title": x.get("title") or x.get("scene"), "mode": x.get("mode"),
+                         "part": x.get("part"), "quality": x.get("quality") or base["quality"],
                          **{k: x.get(k) for k in ("seconds", "frames", "fps", "avgMs", "p50Ms", "p95Ms", "p99Ms", "maxMs", "low1Fps", "low01Fps",
                                                   "hitches", "hitchPct", "dropped", "cpuMs", "cpuP99Ms", "gpuMs", "gpuP95Ms", "scaleAvg",
                                                   "scaleMin", "loadMs", "things", "lights", "width", "height")}})

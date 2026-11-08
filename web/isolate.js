@@ -32,6 +32,9 @@ if (typeof window === 'undefined') {
       if (window.crossOriginIsolated) return true;
       const params = new URLSearchParams(location.search);
       if (params.get('cores') === '1' || !window.isSecureContext || !('serviceWorker' in navigator)) return false;
+      // a page inside another (the recording page in claude.ai) is isolated
+      // only if the page around it is: never, there, so no worker and no reload
+      if (window.self !== window.top) return false;
       let tried = false;
       try { tried = sessionStorage.getItem('loopIsolateTried') === '1'; } catch (e) { tried = true; }
       if (tried) return false;  // one reload at most: never a loop

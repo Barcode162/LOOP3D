@@ -22,7 +22,7 @@ of it in solid, checked steps and report at the end.
 2. **The user asks, you do it.** Ask only when the choice is really theirs (money, making something public,
    deleting their things, a change of direction): one question, your recommendation first.
 3. **Quick checks always run before a push:** `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build
-   build && ./build/loop_tests && node tests/editor_source_test.js` (seconds). A bug you fix gets a test. Slow
+   build && ./build/loop_tests && node tests/editor_source_test.js && node tests/recorder_test.js` (seconds). A bug you fix gets a test. Slow
    browser checks only when they cover what changed (the editor: `tools/editor_check.js`; the live picture:
    `xvfb-run -a node tools/picture_check.js`, 12 scenes against `tests/pictures/`, about 4 min). The web player: `source /opt/emsdk/emsdk_env.sh && ./tools/build_site.sh` (about 30 s; the
    cloud setup **J Production (Loop3D)** installs Emscripten 6.0.13 there and builds the engine at each start).

@@ -22,6 +22,8 @@ jobs:
           ./build/loop_tests
       - name: The editor's script edits (and the engine reads them)
         run: node tests/editor_source_test.js
+      - name: The live recorder (what the phone's visits save)
+        run: node tests/recorder_test.js
       - name: The editor and the engine agree on every setting
         run: node tools/check_settings.js
       - uses: mymindstorm/setup-emsdk@v14
