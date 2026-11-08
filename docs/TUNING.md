@@ -108,7 +108,9 @@ page goes to the background), with the same numbers as a benchmark below. Nothin
   `tools/perf_add.py` keeps them like any run. A row also keeps what went wrong (`events`: `problem`,
   `gpu-problem`, `gpu-lost`, `gpu-back`, `gpu-gave-up`, `no-webgpu`, `error`, `slow-load` after 20 s and 60 s
   without a picture, `left-while-loading`), each with its scene, seconds, loading stage and memory, saved at once:
-  a visit that fails on the phone still says why. The page runs on one core (a page inside another can't share
+  a visit that fails on the phone still says why. Where the graphics chip has its own timers, each part also
+  keeps each step of the frame (`steps`: shadow, visibility, light, blend, exposure, bloom, film … in ms), and the
+  meter (tap the stats) lists them under the GPU's line. The page runs on one core (a page inside another can't share
   memory between cores), and lists the whole bar.
 - **The public player** keeps the visit in the browser: **Benchmark… → Copy my recording**, then paste it in
   the chat.

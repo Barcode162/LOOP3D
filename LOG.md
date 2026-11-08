@@ -2,6 +2,14 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "Go ahead phase 2": **the frame graph.** `engine/render/frame_graph.h` (steps that say what
+  they read and write, the order checked, times added up per step; tested natively, 5 tests); the renderer's
+  frame rebuilt as its steps, the code moved as it was (cdcd3e1, 9fc90ff); **each step timed** by the graphics
+  chip's own timers where it has them, in the meter and every recorded part, and **the iPhone's 8-buffer limit
+  checked** for every pipeline (8cf3f11). Pictures 12 of 12 (the bar's test had failed one run in two since
+  frame blending: photographs now from the unshifted view, references renewed); the same speed measured before
+  and after; editor and recorder checks pass; the recording page updated (version 7).
+
 - **2026-11-08** · GitHub's **Check** failed six times today on one thing outside our code: GitHub's release
   server timing out (504) on Emscripten's WebGPU port. The web build now brings its own copy
   (`tools/ports/`, the exact file, BSD-3 and MIT; checked with an empty cache and no network), Emscripten's

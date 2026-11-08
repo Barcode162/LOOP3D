@@ -135,6 +135,12 @@ phase is meant to change the look).
 2. **Frame graph.** The renderer split into steps that each say what they read and write, every step timed on
    the phone (if Safari gives no graphics-chip timers, a step is timed by switching it off for a few frames).
    Same picture, same speed: a pure restructure.
+   *Done 2026-11-08:* `engine/render/frame_graph.h` (tested natively); the frame is shadow, ultra, visibility,
+   light, blend, forward, exposure, bloom, film, its order checked; each step timed by the chip's own timers
+   (`timestamp-query`) where it has them, in the meter and in every recorded part (`steps`); every pipeline's
+   storage buffers checked against the iPhone's 8 (the visibility and light passes use exactly 8). Pictures 12
+   of 12; the same speed measured before and after. Still to learn from the phone: whether Safari has the
+   timers (each recording lists the chip's features); without them, the fallback above.
 3. **Change tracker and frame history.** Version numbers on graphics-chip work, and each pixel's motion recorded
    from the visibility buffer: the two foundations most later phases plug into.
 4. **Occlusion culling.** Clusters tested against last frame's depth, then what was hidden tested again. How
