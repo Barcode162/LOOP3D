@@ -3,3 +3,4 @@ build-*/
 out/
 *.pfm
 site/
+.em-cache/

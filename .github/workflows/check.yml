@@ -12,6 +12,8 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      EM_CACHE: ${{ github.workspace }}/.em-cache  # kept between runs (below)
     steps:
       - uses: actions/checkout@v4
       - name: Engine tests
@@ -29,8 +31,15 @@ jobs:
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: 6.0.13
+      # Emscripten's downloads (the WebGPU port from GitHub's releases) kept
+      # between runs: that server's time-outs failed whole runs (2026-11-08)
+      - uses: actions/cache@v4
+        with:
+          path: .em-cache
+          key: em-cache-6.0.13-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: em-cache-6.0.13-
       - name: The web player
-        run: ./tools/build_site.sh
+        run: for i in 1 2 3; do ./tools/build_site.sh && exit 0; sleep 30; done; exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: site
