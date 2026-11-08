@@ -18,6 +18,7 @@
 #include "engine/geometry/cook.h"
 #include "engine/gpu/shaders.h"
 #include "engine/render/frame_cost.h"
+#include "engine/render/frame_graph.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
 
@@ -537,7 +538,10 @@ class GpuRenderer final : public Renderer {
     float fovY = cam.fovY();
     Mat4 proj = Mat4::perspective(fovY, aspect, 0.05f, std::max(C.world.drawDistance, 1.0f));
     const Mat4 steadyViewProj = proj * view;  // without frame blending's shift
-    if (blending()) {
+    // a photograph (capture: the picture tests, a screenshot) is taken from
+    // the unshifted view: which of the 8 shifts it landed on decided thin
+    // bright lines (the bar's string lights) and failed one test run in two
+    if (blending() && !captureDone_) {
       // frame blending: this frame's fraction-of-a-pixel shift (Halton 2, 3: 8 spots)
       auto halton = [](uint32_t i, uint32_t b) {
         float f = 1, r = 0;
@@ -641,8 +645,15 @@ class GpuRenderer final : public Renderer {
       }
       if (bindGroupsDirty_) makeBindGroups();
     }
-    // ---- 1. sun shadow
-    if (raster && !(skip & 32)) {
+    // ---- the frame's steps (engine/render/frame_graph.h): each says what it
+    // reads and writes, in the order they run; the order is checked on a
+    // renderer's first frame. The bits of `skip` switch steps off (tests).
+    graph_.clear();
+    const bool clusterPath = raster && clustersReady() && eyeList_.cullGroup;
+    const int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
+    if (passUniformsDirty_) writePassUniforms();
+    // 1. the sun's shadow
+    graph_.add("shadow", {"scene", "sun list"}, {"shadow map"}, [&] {
       wgpu::RenderPassDepthStencilAttachment da;
       da.view = shadowView_;
       da.depthLoadOp = wgpu::LoadOp::Clear;
@@ -673,8 +684,9 @@ class GpuRenderer final : public Renderer {
         drawBatches(pass, false, true);
       }
       pass.End();
-    }
-    if (ultra) {
+    }, raster && !(skip & 32));
+    // the Ultra quality: the path tracer, then its noise cleaned, keeping edges
+    graph_.add("ultra", {"scene", "rays", "lamps", "sky"}, {"hdr"}, [&] {
       wgpu::ComputePassEncoder cp = enc.BeginComputePass();
       cp.SetPipeline(ultraPipe_);
       cp.SetBindGroup(0, sceneGroup0_);
@@ -695,13 +707,12 @@ class GpuRenderer final : public Renderer {
         cp.DispatchWorkgroups((bw + 7) / 8, (bh + 7) / 8);
       }
       cp.End();
-    }
-    // ---- 2. the scene, in light (HDR). With clusters: the GPU culls and picks
+    }, ultra);
+    // 2. the scene, in light (HDR). With clusters: the GPU culls and picks
     // each cluster's level, one draw writes which triangle each pixel sees,
     // then every pixel is lit once; the sky and glass follow as before.
-    if (raster && !(skip & 64) && clustersReady() && eyeList_.cullGroup) {
+    graph_.add("visibility", {"scene", "eye list"}, {"visibility", "depth"}, [&] {
       runCull(enc, eyeList_);
-      int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
       {
         wgpu::RenderPassColorAttachment ca;
         ca.view = visView_;
@@ -728,6 +739,8 @@ class GpuRenderer final : public Renderer {
         ++drawCalls_;
         pass.End();
       }
+    }, clusterPath && !(skip & 64));
+    graph_.add("light", {"visibility", "depth", "shadow map", "lamps", "sky", "rays"}, {"hdr"}, [&] {
       {
         wgpu::RenderPassColorAttachment ca;
         ca.view = hdrView_;
@@ -757,41 +770,43 @@ class GpuRenderer final : public Renderer {
         drawBatches(pass, true, false);
         pass.End();
       }
-      // frame blending: this frame with the past, into the other picture of
-      // the past, which then becomes the frame
-      if (blending() && taaGroup_[histIndex_]) {
-        struct {
-          Mat4 prev, cur, inv;
-          Vec4 screen, full;
-        } u;
-        u.prev = histValid_ ? prevViewProj_ : steadyViewProj, u.cur = steadyViewProj, u.inv = f.invViewProj;
-        u.screen = Vec4(static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_);
-        u.full = Vec4(static_cast<float>(hdrTex_.GetWidth()), static_cast<float>(hdrTex_.GetHeight()), 0.1f, histValid_ ? 0.0f : 1.0f);
-        queue_.WriteBuffer(taaUbo_, 0, &u, sizeof u);
-        int next = 1 - histIndex_;
-        wgpu::RenderPassColorAttachment ca;
-        ca.view = histView_[next];
-        ca.loadOp = wgpu::LoadOp::Clear;
-        ca.storeOp = wgpu::StoreOp::Store;
-        ca.clearValue = {0, 0, 0, 1};
-        wgpu::RenderPassDescriptor rp;
-        rp.colorAttachmentCount = 1;
-        rp.colorAttachments = &ca;
-        wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
-        pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
-        pass.SetPipeline(taaPipe_);
-        pass.SetBindGroup(0, taaGroup_[histIndex_]);
-        pass.Draw(3);
-        pass.End();
-        wgpu::TexelCopyTextureInfo from, to;
-        from.texture = histTex_[next], to.texture = hdrTex_;
-        wgpu::Extent3D size{width_, height_, 1};
-        enc.CopyTextureToTexture(&from, &to, &size);
-        histIndex_ = next;
-        histValid_ = true;
-        prevViewProj_ = steadyViewProj;
-      }
-    } else if (raster && !(skip & 64)) {
+    }, clusterPath && !(skip & 64));
+    // frame blending: this frame with the past, into the other picture of
+    // the past, which then becomes the frame
+    graph_.add("blend", {"hdr", "depth", "history"}, {"hdr", "history"}, [&] {
+      struct {
+        Mat4 prev, cur, inv;
+        Vec4 screen, full;
+      } u;
+      u.prev = histValid_ ? prevViewProj_ : steadyViewProj, u.cur = steadyViewProj, u.inv = f.invViewProj;
+      u.screen = Vec4(static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_);
+      u.full = Vec4(static_cast<float>(hdrTex_.GetWidth()), static_cast<float>(hdrTex_.GetHeight()), 0.1f, histValid_ ? 0.0f : 1.0f);
+      queue_.WriteBuffer(taaUbo_, 0, &u, sizeof u);
+      int next = 1 - histIndex_;
+      wgpu::RenderPassColorAttachment ca;
+      ca.view = histView_[next];
+      ca.loadOp = wgpu::LoadOp::Clear;
+      ca.storeOp = wgpu::StoreOp::Store;
+      ca.clearValue = {0, 0, 0, 1};
+      wgpu::RenderPassDescriptor rp;
+      rp.colorAttachmentCount = 1;
+      rp.colorAttachments = &ca;
+      wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+      pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
+      pass.SetPipeline(taaPipe_);
+      pass.SetBindGroup(0, taaGroup_[histIndex_]);
+      pass.Draw(3);
+      pass.End();
+      wgpu::TexelCopyTextureInfo from, to;
+      from.texture = histTex_[next], to.texture = hdrTex_;
+      wgpu::Extent3D size{width_, height_, 1};
+      enc.CopyTextureToTexture(&from, &to, &size);
+      histIndex_ = next;
+      histValid_ = true;
+      prevViewProj_ = steadyViewProj;
+    }, clusterPath && !(skip & 64) && blending() && taaGroup_[histIndex_]);
+    // the drawing before clusters: each thing drawn and lit where it lands
+    graph_.add("forward", {"scene", "shadow map", "lamps", "sky", "rays"}, {"hdr", "depth"}, [&] {
       wgpu::RenderPassColorAttachment ca;
       ca.view = g_samples > 1 ? msaaView_ : hdrView_;
       if (g_samples > 1) ca.resolveTarget = hdrView_;
@@ -815,7 +830,6 @@ class GpuRenderer final : public Renderer {
       pass.SetBindGroup(1, sceneGroup1_);
       pass.SetBindGroup(2, rayGroup_);
       if (!(skip & 2)) {
-        int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
         // the depth pre-pass (render.prepass; automatic: when many lamps light
         // each pixel, see prepassOn): every pixel is lit once, not once per
         // surface drawn over it. Old note, before @invariant positions:
@@ -835,23 +849,28 @@ class GpuRenderer final : public Renderer {
         drawBatches(pass, true, false);
       }
       pass.End();
-    }
-    // ---- 3. how bright it is: the eyes adjust
-    if (!(skip & 4)) {
+    }, raster && !clusterPath && !(skip & 64));
+    // 3. how bright it is: the eyes adjust
+    graph_.add("exposure", {"hdr"}, {"exposure"}, [&] {
       wgpu::ComputePassEncoder cp = enc.BeginComputePass();
       cp.SetPipeline(exposurePipe_);
       cp.SetBindGroup(0, exposureGroup_);
       cp.DispatchWorkgroups(1);
       cp.End();
-    }
-    // ---- 4. bloom: down the chain, then back up, adding
-    if (passUniformsDirty_) writePassUniforms();
-    if (!(skip & 8)) {
+    }, !(skip & 4));
+    // 4. bloom: down the chain, then back up, adding
+    graph_.add("bloom", {"hdr"}, {"bloom"}, [&] {
       for (int i = 0; i < kBloomLevels; ++i) postPass(enc, bloomViews_[i], downPipe_, downGroups_[i], false, levelW(i), levelH(i));
       for (int i = kBloomLevels - 2; i >= 0; --i) postPass(enc, bloomViews_[i], upPipe_, upGroups_[i], true, levelW(i), levelH(i));
+    }, !(skip & 8));
+    // 5. the film, onto the screen
+    graph_.add("film", {"hdr", "bloom", "exposure"}, {"screen"}, [&] { postPass(enc, st.texture.CreateView(), finalPipe_, finalGroup_, false); },
+               !(skip & (16 | 256)));
+    if (!graphChecked_) {
+      graphChecked_ = true;
+      for (const std::string& fault : graph_.check()) reportGpuError("the frame's steps: " + fault);
     }
-    // ---- 5. the film, onto the screen
-    if (!(skip & (16 | 256))) postPass(enc, st.texture.CreateView(), finalPipe_, finalGroup_, false);
+    graph_.run();
     // a capture: the same film pass into a texture the page reads back
     wgpu::Texture captureTex;
     if (captureDone_) {
@@ -2279,6 +2298,10 @@ class GpuRenderer final : public Renderer {
   double judgedAt_ = 0;
   float displayHz_ = 60;
   bool fresh_ = true;  // next frame starts a new measurement
+  // the frame's steps (draw); what a frame finds already there: the scene and
+  // its lists, lamps, sky and rays, last frame's history
+  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history"}};
+  bool graphChecked_ = false;
   int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, longCalm_ = 0, step_ = 0, ceilStep_ = 0;
   uint64_t presented_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
