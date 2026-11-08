@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · next: phase 3
+## The picture pipeline (your plan, 2026-11-08) · next: phase 4
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -109,7 +109,10 @@ once, fog, blend and upscale, film.
    has them (the meter, every recording), the iPhone's 8-buffer limit checked for every pipeline; the same
    picture (12 of 12), the same speed. From your phone still: whether Safari has those timers (your next visit
    to the recording page says).
-3. **Change tracker and frame history:** version numbers on the graphics chip's work, each pixel's motion.
+3. **Change tracker and frame history** (done 2026-11-08): version numbers on what a frame is made from
+   (`engine/render/change_tracker.h`); the sun's shadow kept until something it covers changes (your iPhone's
+   17 ms in the Glade, now only when something moves or you walk); each pixel's motion, so frame blending
+   follows moving things (a moving board about 70% crisper).
 4. **Occlusion culling:** skip what's hidden behind walls (of the 443 things in the bar's view).
 5. **Direct light:** the lamp grid (the bar: 103 lamps a pixel to about 10; started on `parked/light-grid`),
    shared with the fog; sun shadows in steps, redrawn on change; shadow maps for the main lamps on Phone;

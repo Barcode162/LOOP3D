@@ -143,6 +143,11 @@ phase is meant to change the look).
    timers (each recording lists the chip's features); without them, the fallback above.
 3. **Change tracker and frame history.** Version numbers on graphics-chip work, and each pixel's motion recorded
    from the visibility buffer: the two foundations most later phases plug into.
+   *Done 2026-11-08:* `engine/render/change_tracker.h` (tested); its first user, the sun's shadow, drawn again
+   only when the placements, shapes, settings or the sun's view (sun, box, eye) change. Each copy's move since
+   the last frame drawn (written only for copies that moved); frame blending reads the copy each pixel shows
+   from the visibility picture and follows it. Measured: the Glade standing still about a quarter less
+   graphics work on the test machine; a board moving at 6 m/s 598 sharp edges with motion, 346 without.
 4. **Occlusion culling.** Clusters tested against last frame's depth, then what was hidden tested again. How
    many of the bar's 443 things in view are really seen is counted first, and is the target.
 5. **Direct light** (the first half of the old "smart light"). The lamp grid (about 10 lamps a pixel in the bar),

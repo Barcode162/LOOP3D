@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "Straight to phase 3": **the change tracker** (`engine/render/change_tracker.h`, 2 tests): the
+  sun's shadow kept until something it is made from changes (the Glade standing still about a quarter less
+  graphics work on the test machine; on the phone its shadow was 17 ms) (859a26e). **Each pixel's motion**:
+  each copy's move since the last frame, read by frame blending through the visibility picture (a board moving
+  at 6 m/s: 598 sharp edges with, 346 without, 244 reversed) (aa855af). Pictures 12 of 12; the editor check's
+  fixed 2.5 s wait (failed one run in two) now waits for the box; the recording page updated (version 9).
+
 - **2026-11-08** · "I did a new recording" / "Go put live for the fix": the phone (the Claude app) **has the graphics
   chip's timers**, so every step was timed on the iPhone. It also showed a fault: its chip starts a pass early and lets
   it wait, so adding each pass's own time counted bloom up to ten frames. Steps are now timed by how far each pass
