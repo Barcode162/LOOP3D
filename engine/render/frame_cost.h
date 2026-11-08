@@ -49,6 +49,8 @@ struct FrameView {
   bool cullOffscreen = false;      // things outside a pass's view are skipped
   bool cullBackFaces = false;      // the backs of closed shapes are skipped
   bool prepass = false;            // depth first: each pixel is lit once
+  bool lightGrid = false;          // render.lightGrid: each pixel works out its cell's lamps and far groups
+  float lampGrouping = 7;          // render.lampGrouping
   float lodBias = 0;               // world.lodBias
   bool portraitWide = true;        // cam.portraitWide: an upright screen keeps the lens's width
   // render.clusters: drawn from the cook's cluster trees, as the graphics chip
@@ -84,7 +86,7 @@ struct FrameCost {
   float frontLayers = 0;         // of them facing the camera
   float shadedPerPixel = 0;      // fragments shaded per covered pixel (expected, with no depth pre-pass)
   float shadedFrontsOnly = 0;    // the same with the backs of shapes skipped
-  int lampsComputed = 0;         // lamps the shader loops over for every shaded fragment
+  float lampsComputed = 0;       // lamps the shader works out per shaded fragment (with the light grid: its cell's, on average)
   float lampsThatMatter = 0;     // lamps giving 95% of a visible point's direct light (average)
   int lampsThatMatterMost = 0;   // and at the worst point
   float lampsFor99 = 0;          // lamps giving 99% of it (average)
@@ -92,7 +94,7 @@ struct FrameCost {
   uint64_t triangles() const { return sceneTriangles + shadowTriangles + prepassTriangles; }
   size_t draws() const { return sceneDraws + shadowDraws + prepassDraws; }
   // per-pixel work today: fragments shaded x lamps each works out
-  float lampWorkPerPixel() const { return shadedPerPixel * static_cast<float>(lampsComputed); }
+  float lampWorkPerPixel() const { return shadedPerPixel * lampsComputed; }
 };
 
 // The view's camera matrices, exactly as the renderer builds them.

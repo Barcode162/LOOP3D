@@ -72,6 +72,8 @@ Settings::Settings() {
   F("render.calm", r.calm, 0.5, 30, "seconds of steady frames before the resolution climbs");
   I("render.msaa", r.msaa, 1, 4, "multisampling of the scene pass: 1 off, 4 on");
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
+  B("render.lightGrid", r.lightGrid, "many lamps cheaply: each pixel works out the lamps near it alone, and far groups of lamps as one lamp each (off: every lamp alone, everywhere)");
+  F("render.lampGrouping", r.lampGrouping, 1, 64, "how far (in its own sizes) a group of lamps must be to be worked out as one: more is closer to every lamp alone, and more work");
   B("render.cull", r.cull, "skip what a pass can't see: off screen, or outside the sun's shadow area (off: draw everything)");
   F("render.clusterError", r.clusterError, 0.01, 16, "with clusters: the most, in pixels, a simpler version of a shape may look different from its full detail (smaller: more detail, more work)");
   B("render.taa", r.taa, "frame blending: the view shifts a fraction of a pixel each frame and each pixel is blended with the frames before (smooth edges, no shimmer); with clusters, in place of multisampling");

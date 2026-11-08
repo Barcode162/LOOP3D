@@ -20,6 +20,7 @@
 #include "engine/render/frame_cost.h"
 #include "engine/render/change_tracker.h"
 #include "engine/render/frame_graph.h"
+#include "engine/render/light_grid.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
 
@@ -111,6 +112,7 @@ struct FrameU {
   Vec4 sh[9];
   Vec4 fog, fogColor, params, screen, fixedExposure;
   Vec4 exposure;  // filled on the GPU from exposureBuf_ (the scene's passes may read only 8 storage buffers on an iPhone)
+  Vec4 grid0, grid1;  // the light grid: low corner, cell size; cells x y z, on
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -153,7 +155,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 480, "frame layout");
+static_assert(sizeof(FrameU) == 512, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -198,7 +200,7 @@ class GpuRenderer final : public Renderer {
     frameUbo_ = buffer(sizeof(FrameU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     postUbo_ = buffer(sizeof(PostU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     expUbo_ = buffer(sizeof(ExposureU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
-    lightsBuf_ = buffer(sizeof(LightU) * kMaxLights, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
+    lightsBuf_ = buffer(sizeof(LightU) * kMaxLights * 2, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
     exposureBuf_ = buffer(16, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::CopySrc);
     float zero[4] = {0, 0, 0, 0};
     queue_.WriteBuffer(exposureBuf_, 0, zero, 16);
@@ -597,6 +599,7 @@ class GpuRenderer final : public Renderer {
     }
     if (lastScene_ && cookJob_ && cookJob_->done) wantClusters(*lastScene_);  // the background cook finished: switch over
     if (bindGroupsDirty_) makeBindGroups();
+    keepGrid();
     uploadLights(cam.position);
     drawCalls_ = 0;
 
@@ -649,6 +652,8 @@ class GpuRenderer final : public Renderer {
     f.sh[0].w = C.render.shadowSoftness, f.sh[1].w = C.world.patternFade;
     f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
     f.fogColor = {fog_.albedo, C.render.shadowBias};
+    f.grid0 = {grid_.origin, grid_.cell};
+    f.grid1 = {static_cast<float>(grid_.nx), static_cast<float>(grid_.ny), static_cast<float>(grid_.nz), grid_.on ? 1.0f : 0.0f};
     f.params = {static_cast<float>(lightCount()), (skip & 512) ? 0.0f : static_cast<float>(shadowLamps_), static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
     f.screen = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_};
     // a first guess for the eyes: the camera's own settings, or a sunny / indoor guess
@@ -1275,6 +1280,86 @@ class GpuRenderer final : public Renderer {
       lights_.push_back(u);
     }
     lightsDirty_ = true;
+    // the light grid: laid out again when lamps move (a lamp's light changing
+    // only changes its groups' light, sent with the lamps)
+    std::vector<GridLamp> lamps = gridLamps(scene, kMaxLights);
+    bool same = lamps.size() == gridLampsCpu_.size();
+    for (size_t k = 0; same && k < lamps.size(); ++k) same = length(lamps[k].position - gridLampsCpu_[k].position) < 0.02f;
+    gridLampsCpu_ = std::move(lamps);
+    if (!same) gridKey_ = -1;
+  }
+
+  // ---- the light grid (engine/render/light_grid.h): the lamps in a tree of
+  // groups, each group sent as one more lamp (its members' light added up,
+  // at their middle); each cell lists the lamps near it and the groups far
+  // enough away. Off or few lamps: every lamp everywhere, as before.
+  LightGrid grid_;
+  std::vector<GridLamp> gridLampsCpu_;
+  float gridKey_ = -1;     // the settings the grid was laid out for
+  wgpu::Texture gridCellsTex_, gridListTex_;
+  wgpu::TextureView gridCellsView_, gridListView_;
+  static constexpr int kGridCells = 4096;
+  wgpu::Texture gridTexture(wgpu::TextureDimension dim, uint32_t x, uint32_t y, uint32_t z) {
+    wgpu::TextureDescriptor td;
+    td.size = {std::max(1u, x), std::max(1u, y), std::max(1u, z)};
+    td.format = wgpu::TextureFormat::R32Uint, td.dimension = dim;
+    td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+    return device_.CreateTexture(&td);
+  }
+  void writeGridTexture(const wgpu::Texture& t, const void* data, uint32_t x, uint32_t y, uint32_t z) {
+    wgpu::TexelCopyTextureInfo dst;
+    dst.texture = t;
+    wgpu::TexelCopyBufferLayout lay;
+    lay.bytesPerRow = x * 4, lay.rowsPerImage = y;
+    wgpu::Extent3D ext{x, y, z};
+    queue_.WriteTexture(&dst, data, static_cast<size_t>(x) * y * z * 4, &lay, &ext);
+  }
+  static float gridSetting() {
+    const auto& r = config().render;
+    return r.lightGrid ? std::clamp(r.lampGrouping, 1.0f, 64.0f) : 0.0f;
+  }
+  // Lays the grid out for the lamps and settings now: the tree, the cells.
+  void layOutGrid() {
+    gridKey_ = gridSetting();
+    grid_ = gridKey_ > 0 ? buildLightGrid(gridLampsCpu_, gridKey_, 8, kGridCells) : LightGrid();
+    if (grid_.on && (gridLampsCpu_.size() != lights_.size() || grid_.entries.size() >= (1u << 20) || grid_.mostEntries >= 4096 ||
+                     lights_.size() + grid_.groups.size() > 2 * static_cast<size_t>(kMaxLights)))
+      grid_ = LightGrid();
+    const uint32_t nx = grid_.on ? grid_.nx : 1, ny = grid_.on ? grid_.ny : 1, nz = grid_.on ? grid_.nz : 1;
+    std::vector<uint32_t> cells(static_cast<size_t>(nx) * ny * nz, 0);
+    if (grid_.on)
+      for (int c = 0; c < grid_.cells(); ++c)
+        cells[static_cast<size_t>(c)] = grid_.start[static_cast<size_t>(c)] | ((grid_.start[static_cast<size_t>(c) + 1] - grid_.start[static_cast<size_t>(c)]) << 20);
+    gridCellsTex_ = gridTexture(wgpu::TextureDimension::e3D, nx, ny, nz);
+    writeGridTexture(gridCellsTex_, cells.data(), nx, ny, nz);
+    const uint32_t rows = std::max<uint32_t>(1, static_cast<uint32_t>((grid_.entries.size() + 1023) / 1024));
+    gridListTex_ = gridTexture(wgpu::TextureDimension::e2D, 1024, rows, 1);
+    gridCellsView_ = gridCellsTex_.CreateView(), gridListView_ = gridListTex_.CreateView();
+    lightsDirty_ = true;
+    bindGroupsDirty_ = true;
+  }
+  // Each group as one lamp: its members' light added up, at their middle,
+  // as big as the ball holding them (which also softens its shine).
+  LightU groupLamp(const LightGrid::Group& grp) const {
+    LightU u{};
+    const LightU& f = lights_[grp.members[0]];
+    Vec3 col(0), dir(0);
+    float r = grp.radius;
+    for (uint32_t k : grp.members) {
+      const LightU& m = lights_[k];
+      r = std::max(r, length(m.pos.xyz() - grp.center) + m.pos.w);
+      if (f.dir.w > 1.5f) col = col + m.color.xyz() * (m.cone.z * m.cone.w), dir = dir + m.dir.xyz();
+      else col = col + m.color.xyz();
+    }
+    u.pos = {grp.center, std::max(r, 0.01f)};
+    u.color = {col, 0};
+    if (f.dir.w > 1.5f) u.dir = {normalize(dir), 2}, u.cone = {0, 0, 1, 1};
+    else u.dir = {0, -1, 0, 0};
+    return u;
+  }
+  // Each frame: laid out again when its setting changed.
+  void keepGrid() {
+    if (!gridCellsTex_ || gridSetting() != gridKey_) layOutGrid();
   }
 
   // The lamps go to the GPU brightest-near-the-camera first: the shader
@@ -1300,6 +1385,20 @@ class GpuRenderer final : public Renderer {
     sortedLights_.resize(lights_.size());
     for (size_t i = 0; i < rank.size(); ++i) sortedLights_[i] = lights_[rank[i].second];
     queue_.WriteBuffer(lightsBuf_, 0, sortedLights_.data(), sortedLights_.size() * sizeof(LightU));
+    // the groups after the lamps; the grid's lists name lamps by where they
+    // now sit in that order, groups by their place after them
+    if (grid_.on && gridListTex_) {
+      std::vector<LightU> groups;
+      for (const LightGrid::Group& grp : grid_.groups) groups.push_back(groupLamp(grp));
+      queue_.WriteBuffer(lightsBuf_, sortedLights_.size() * sizeof(LightU), groups.data(), groups.size() * sizeof(LightU));
+      std::vector<uint32_t> at(lights_.size());
+      for (size_t i = 0; i < rank.size(); ++i) at[rank[i].second] = static_cast<uint32_t>(i);
+      const uint32_t rows = std::max<uint32_t>(1, static_cast<uint32_t>((grid_.entries.size() + 1023) / 1024));
+      std::vector<uint32_t> list(static_cast<size_t>(rows) * 1024, 0);
+      const uint32_t n = static_cast<uint32_t>(lights_.size());
+      for (size_t j = 0; j < grid_.entries.size(); ++j) list[j] = grid_.entries[j] < n ? at[grid_.entries[j]] : grid_.entries[j];
+      writeGridTexture(gridListTex_, list.data(), 1024, rows, 1);
+    }
   }
 
   static Vec3 whiteBalanceGains(float temperature, float tint) {
@@ -1700,7 +1799,11 @@ class GpuRenderer final : public Renderer {
     }
     wgpu::BindGroupLayoutEntry arr = tex(4, F);
     arr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
-    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F)});
+    // the light grid's: its cells (3D) and their lists
+    wgpu::BindGroupLayoutEntry gCells = tex(6, F), gList = tex(7, F);
+    gCells.texture.sampleType = gList.texture.sampleType = wgpu::TextureSampleType::Uint;
+    gCells.texture.viewDimension = wgpu::TextureViewDimension::e3D;
+    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList});
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
     std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl + kClusterDrawWgsl;
@@ -2343,7 +2446,9 @@ class GpuRenderer final : public Renderer {
     }
     sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
     if (!modelView_) uploadModelTextures(Scene());
-    sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_)});
+    if (!gridCellsTex_) layOutGrid();
+    sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_),
+                                         texE(6, gridCellsView_), texE(7, gridListView_)});
     // each pass reads one texture and writes another; the unused second slot
     // gets a texture that isn't the one being written
     for (int i = 0; i < kBloomLevels - 1; ++i)

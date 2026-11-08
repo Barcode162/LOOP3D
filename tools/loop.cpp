@@ -347,6 +347,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.lodBias = C.world.lodBias;
   v.portraitWide = C.camera.portraitWide;
   v.clusters = C.render.clusters, v.clusterError = C.render.clusterError;
+  v.lightGrid = C.render.lightGrid, v.lampGrouping = C.render.lampGrouping;
   {
     int lamps = 0;
     for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;
@@ -389,8 +390,8 @@ int budgetScene(const std::string& path, const Options& o) {
   std::printf("  surfaces behind a pixel       %8.1f        (%.1f facing the camera)\n", static_cast<double>(c.layers), static_cast<double>(c.frontLayers));
   std::printf("  surfaces shaded per pixel     %8.2f        %8.2f with the backs of shapes skipped\n", static_cast<double>(c.shadedPerPixel),
               static_cast<double>(c.shadedFrontsOnly));
-  std::printf("  lamps worked out per surface  %8d        lamps giving 95%% of the light: %.1f on average, %d at most (99%%: %.1f)\n",
-              c.lampsComputed, static_cast<double>(c.lampsThatMatter), c.lampsThatMatterMost, static_cast<double>(c.lampsFor99));
+  std::printf("  lamps worked out per surface  %8.1f      lamps giving 95%% of the light: %.1f on average, %d at most (99%%: %.1f)\n",
+              static_cast<double>(c.lampsComputed), static_cast<double>(c.lampsThatMatter), c.lampsThatMatterMost, static_cast<double>(c.lampsFor99));
   std::printf("  lamp work per pixel           %8.0f        %8.0f if each pixel added only the lamps that matter\n",
               static_cast<double>(c.lampWorkPerPixel()), static_cast<double>(c.shadedFrontsOnly * c.lampsThatMatter));
   if (c.lodCopies[0] + c.lodCopies[1] + c.lodCopies[2])
@@ -442,7 +443,7 @@ int budgetFolder(const std::string& dir, const Options& o) {
       std::snprintf(things, sizeof things, "%zu > %zu", c.sceneThings + c.shadowThings, c.inViewThings + c.inShadowThings);
       std::snprintf(tris, sizeof tris, "%.2f > %.2f", static_cast<double>(c.triangles()) / 1e6, static_cast<double>(c.inViewTriangles + c.inShadowTriangles) / 1e6);
       std::snprintf(draws, sizeof draws, "%zu > %zu", c.draws(), c.inViewDraws + c.inShadowDraws);
-      std::snprintf(lamps, sizeof lamps, "%d > %.1f", c.lampsComputed, static_cast<double>(c.lampsThatMatter));
+      std::snprintf(lamps, sizeof lamps, "%.0f > %.1f", static_cast<double>(c.lampsComputed), static_cast<double>(c.lampsThatMatter));
       std::printf("%-28s %15s %15s %11s %7.2f %13s %11.0f  %s\n", name.string().c_str(), things, tris, draws, static_cast<double>(c.shadedPerPixel), lamps,
                   static_cast<double>(c.lampWorkPerPixel()), over.empty() ? "fits" : words.c_str());
       ++scenes, overCount += !over.empty();

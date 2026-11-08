@@ -168,6 +168,15 @@ phase is meant to change the look).
    depth map, copyable; skip bit 2048 draws it all every time, for comparing: `tools/shadow_check.js`). The
    timers: a frame that doesn't follow the last timed one only sets the finish line (the untimed frame's tail
    was charged to the first step, the shadow: 17 ms in the hall, which has no sun).
+   *The lamp grid, 2026-11-08* (`engine/render/light_grid.h`, 5 tests): the lamps in a tree (halved along their
+   longest side; points with points, panels facing alike together, spots alone); a group is sent as one more lamp
+   (its members' light added up at their light-weighted middle, as big as the ball holding them, which softens
+   its shine). A grid over the lamps (at most 4,096 cells): each cell lists a cut through the tree, each group
+   used only from `render.lampGrouping` (7) of its sizes away from all of the cell, else its halves. Every lamp
+   reaches every pixel, alone or in its group. The bar: 75 entries per surface for 103 lamps (`loop budget`),
+   pictures 12 of 12 (the bar 1.79). Tried first and dropped: lamps listed only within a reach, the rest as a
+   soft per-cell light (the parked design): on average 63% of a bar pixel's lamp light came from the soft part,
+   and its missing shine on the glossy floor showed (the bar 10 to 18 of 2.0 allowed).
 6. **Bounced light** (the second half). Cinema bakes the light cache; live, a few probes a frame are relit, only
    where something changed. Ambient occlusion fills the small creases.
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.

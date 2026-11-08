@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "engine/geometry/cook.h"
+#include "engine/render/light_grid.h"
 #include "engine/render/scene_bvh.h"
 
 namespace loop {
@@ -115,7 +116,10 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   }
   c.sun = sun != nullptr;
   Vec3 towardSun = sun ? normalize(-sun->direction) : Vec3(0, 1, 0);
-  c.lampsComputed = std::min({lamps, kMaxGpuLights, std::max(view.maxLights, 1)});
+  c.lampsComputed = static_cast<float>(std::min({lamps, kMaxGpuLights, std::max(view.maxLights, 1)}));
+  // the light grid: a pixel works out only its cell's entries (as the renderer builds it)
+  const LightGrid grid = view.lightGrid ? buildLightGrid(gridLamps(scene, kMaxGpuLights), view.lampGrouping, 8, 4096) : LightGrid();
+  double gridEntries = 0;
 
   // ---- the passes: what each draws, and what skipping off-screen copies leaves
   Frustum eye = Frustum::fromViewProj(frameViewProj(view));
@@ -257,6 +261,10 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
         }
       }
       matter += need, matter99 += need99;
+      if (grid.on) {
+        const int cell = grid.cellOf(p);
+        gridEntries += grid.start[static_cast<size_t>(cell) + 1] - grid.start[static_cast<size_t>(cell)];
+      }
       c.lampsThatMatterMost = std::max(c.lampsThatMatterMost, need);
     }
   if (c.samples) c.coverage = static_cast<float>(covered) / static_cast<float>(c.samples);
@@ -266,6 +274,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
     c.shadedFrontsOnly = static_cast<float>(shadedFronts / covered);
     c.lampsThatMatter = static_cast<float>(matter / covered);
     c.lampsFor99 = static_cast<float>(matter99 / covered);
+    if (grid.on) c.lampsComputed = static_cast<float>(gridEntries / covered);
     c.patternShare = static_cast<float>(patterned) / static_cast<float>(covered);
   }
   return c;

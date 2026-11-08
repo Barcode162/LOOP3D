@@ -29,6 +29,8 @@ struct Config {
     bool fxaa = false;
     bool filmGrain = false;
     bool cull = true;  // skip what a pass can't see
+    bool lightGrid = true;     // lamps near a pixel alone, far groups of lamps as one each
+    float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
     bool clusters = true;  // draw from the cook's cluster trees (Nanite's way; off: the triangle drawing)
     bool occlude = true;   // with clusters: skip clusters hidden behind nearer ones (phase 4)
     float clusterError = 1;  // pixels: the most a simpler cluster may look different from the full shape

@@ -20,6 +20,8 @@ struct Frame {
   screen : vec4f,        // width, height, 1/width, 1/height
   fixedExposure : vec4f, // x: exposure when not auto, y: rays per lamp, z: debug view, w: occlusion strength
   exposure : vec4f,      // the eyes' last exposure (copied in on the GPU each frame: one storage buffer fewer)
+  grid0 : vec4f,         // the light grid: low corner xyz, cell size
+  grid1 : vec4f,         // cells x, y, z; w: on
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -233,6 +235,11 @@ inline const char* kSceneWgsl = R"(
 @group(1) @binding(3) var skySampler : sampler;
 @group(1) @binding(4) var modelTex : texture_2d_array<f32>;
 @group(1) @binding(5) var modelSampler : sampler;
+// the light grid (engine/render/light_grid.h): per cell, where its entries
+// start in the list (20 bits) and how many (12 bits); the list (lamps, and
+// groups of far lamps sent as one lamp each, after them)
+@group(1) @binding(6) var gridCells : texture_3d<u32>;
+@group(1) @binding(7) var gridList : texture_2d<u32>;
 
 fn srgbToLinear(c : vec3f) -> vec3f {
   return select(pow((c + 0.055) / 1.055, vec3f(2.4)), c / 12.92, c <= vec3f(0.04045));
@@ -466,10 +473,23 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       lo += c * frame.sunColor.rgb * sh;
     }
   }
-  // lamps (inverse-square, as bulbs with a size)
-  let count = u32(frame.params.x);
+  // lamps (inverse-square, as bulbs with a size). With the light grid, the
+  // ones listed in this point's cell: the lamps near it, and far groups of
+  // lamps each as one (a point outside the grid takes the nearest cell)
+  var first = 0u;
+  var last = u32(frame.params.x);
+  let gridOn = frame.grid1.w > 0.5;
+  if (gridOn) {
+    let dims = vec3i(frame.grid1.xyz);
+    let c = clamp(vec3i(floor((i.world - frame.grid0.xyz) / frame.grid0.w)), vec3i(0), dims - 1);
+    let packed = textureLoad(gridCells, c, 0).x;
+    first = packed & 0xFFFFFu;
+    last = first + (packed >> 20u);
+  }
   var shadowed = 0u;
-  for (var k = 0u; k < count; k++) {
+  for (var j = first; j < last; j++) {
+    var k = j;
+    if (gridOn) { k = textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x; }
     let L = lights[k];
     var tl = L.pos.xyz - i.world;
     let d2 = max(dot(tl, tl), L.pos.w * L.pos.w);

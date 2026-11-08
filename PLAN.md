@@ -123,9 +123,12 @@ once, fog, blend and upscale, film.
    walking frames, was 134; standing still 0, was every frame, because things there move); what moved lately is
    drawn every frame on a copy of the kept shadow of the rest (same picture, checked by `tools/shadow_check.js`).
    The step timers no longer charge a frame's first step with the untimed frame before it.
-   *Still to do in phase 5:* the lamp grid (the bar: 103 lamps a pixel to about 10; started on `parked/light-grid`),
-   shared with the fog; sun shadows in steps, redrawn on change; shadow maps for the main lamps on Phone;
-   contact shadows.
+   *The lamp grid (done 2026-11-08):* the lamps in a tree of groups; each part of the room works out the lamps
+   near it one by one and far groups of lamps as one lamp each, so every lamp still lights everything (its shine
+   too). The bar: 75 lamps worked out per surface instead of 103 (it truly needs about 50 for 95% of its light:
+   its light is spread over many lamps), the same picture (1.8 of 2.0 allowed). The earlier idea of 10 lamps a
+   pixel would have dropped the rest of the light: tried, the bar went visibly wrong.
+   *Still to do in phase 5:* sun shadows in steps; shadow maps for the main lamps on Phone; contact shadows.
 6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient
    occlusion.
 7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the

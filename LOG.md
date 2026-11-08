@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "Go" (+ your recording: the whole bar loads, 59 fps, its lamps 6–10 ms): **the lamp grid**.
+  The lamps in a tree of groups; each part of the room works out near lamps one by one and far groups as one lamp
+  each (every lamp still lights everything). The bar: 75 lamps per surface instead of 103, same picture (1.79 of
+  2.0); the test machine's light step about 15% less. The parked "near lamps + soft far light" design was tried
+  and dropped (the bar's floor lost its shine). `loop budget` counts it; settings render.lightGrid, render.lampGrouping.
+
 - **2026-11-08** · "I tested check and then go" (phase 5): your recording showed occlusion working (the Woods'
   visibility 9 → 5 ms) and the sun's shadow as the big cost (16–27 ms a redraw). **The shadow kept**: no sun, no
   redraw; its box moves in steps, so walking redraws it every few metres; moving things drawn each frame on a copy
