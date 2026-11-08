@@ -103,6 +103,8 @@ window.LE = window.LE || {};
         sl('render.skyLight', 'Light from the sky', 1, 0, 4, 0.05, E({ unit: 'x' })),
         sl('render.occlusion', 'Shading in creases and undersides', 1, 0, 2, 0.05, E({ unit: 'x' })),
         tog('render.lightGrid', 'Lamp grid (many lamps cheaply)', true, E({ help: 'Each part of the room lists the lamps near it, worked out one by one, and far groups of lamps, each worked out as one lamp with all their light. Every lamp still lights everything. Off: every lamp alone, everywhere (for comparing).' })),
+        num('render.lampMaps', 'Lamp shadows on Phone (main lamps)', 2, E({ min: 0, max: 2, step: 1, help: 'Phone traces no rays: the main lamps near you (up to 2) cast shadows from shadow maps instead, six views round each bulb, drawn again only when the main lamps change. 0: no lamp shadows on Phone.' })),
+        en('render.lampMapSize', 'Lamp shadow sharpness', 256, opts(128, 256, 512, 1024), E({ help: 'Pixels square for each of a lamp shadow map\'s six views: sharper costs memory (256: 3 MB for two lamps, 512: 12 MB).' })),
         num('render.lampGrouping', 'Lamp grouping distance', 7, E({ min: 1, max: 64, step: 0.5, help: 'How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work.' })),
         en('render.ao', 'Screen-space ambient occlusion', 'off', opts('off', 'SSAO', 'GTAO'), NB('Real contact darkening from the depth buffer.')),
         en('render.reflections', 'Reflections', 'sky', opts(['sky', 'Sky only'], ['ssr', 'Screen space']), NB('Screen-space reflections.')),

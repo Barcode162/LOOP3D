@@ -22,6 +22,8 @@ struct Frame {
   exposure : vec4f,      // the eyes' last exposure (copied in on the GPU each frame: one storage buffer fewer)
   grid0 : vec4f,         // the light grid: low corner xyz, cell size
   grid1 : vec4f,         // cells x, y, z; w: on
+  lampMaps : vec4f,      // lamp shadow maps: how many lamps (the first in the list), tile size, atlas width, height
+  lampFaces : array<mat4x4f, 12>,  // each mapped lamp's six views (+x -x +y -y +z -z)
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -240,6 +242,28 @@ inline const char* kSceneWgsl = R"(
 // groups of far lamps sent as one lamp each, after them)
 @group(1) @binding(6) var gridCells : texture_3d<u32>;
 @group(1) @binding(7) var gridList : texture_2d<u32>;
+// the main lamps' shadow maps (Phone, where no rays are traced): one row of six
+// views per lamp, in one depth picture
+@group(1) @binding(8) var lampMap : texture_depth_2d;
+
+// How much of lamp k (one of the first, mapped) a point sees: its depth in the
+// lamp's view that faces it, against the map (the chip blends 2x2 of them).
+fn lampMapSeen(p : vec3f, L : Light, k : u32) -> f32 {
+  let v = p - L.pos.xyz;
+  let a = abs(v);
+  var face = 0u;
+  if (a.x >= a.y && a.x >= a.z) { face = select(1u, 0u, v.x > 0.0); }
+  else if (a.y >= a.z) { face = select(3u, 2u, v.y > 0.0); }
+  else { face = select(5u, 4u, v.z > 0.0); }
+  let c = frame.lampFaces[k * 6u + face] * vec4f(p, 1.0);
+  let ndc = c.xyz / c.w;
+  if (ndc.z >= 1.0) { return 1.0; }  // beyond the map's reach
+  let tile = frame.lampMaps.y;
+  let inset = 1.0 / tile;
+  let uv = clamp(ndc.xy * vec2f(0.5, -0.5) + 0.5, vec2f(inset), vec2f(1.0 - inset));
+  let at = (vec2f(f32(face), f32(k)) + uv) * tile / frame.lampMaps.zw;
+  return textureSampleCompareLevel(lampMap, shadowSampler, at, ndc.z);
+}
 
 fn srgbToLinear(c : vec3f) -> vec3f {
   return select(pow((c + 0.055) / 1.055, vec3f(2.4)), c / 12.92, c <= vec3f(0.04045));
@@ -502,6 +526,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     } else if (L.dir.w > 1.5) {  // panel: radiance x area x cosines
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
+    // the main lamps' shadow maps (Phone): only the first few lamps have one
+    if (k < u32(frame.lampMaps.x)) {
+      I *= lampMapSeen(i.world + ng * 0.02, L, k);
+      if (dot(I, I) == 0.0) { continue; }
+    }
     // a real shadow: can this point see the lamp? (rays through the scene)
     // panels (windows, softboxes) are left unshadowed: their real shadows are
     // so soft they barely show, and one ray to their middle would cost the
@@ -725,6 +754,25 @@ struct VisOut {
   let pv = poolVertex(poolCorner(cl.first + vi));
   let inst = instances[d.x];
   o.clip = frame.shadowViewProj * inst.model * vec4f(pv.pos, 1.0);
+  o.uv = pv.uv;
+  o.mat = inst.material.x;
+  return o;
+}
+
+// A main lamp's shadow map, one of its six views (the view in its own small
+// uniform: one draw per view, into its tile of the lamps' depth picture).
+@group(1) @binding(9) var<uniform> lampFace : mat4x4f;
+@vertex fn vsVisLampShadow(@builtin(vertex_index) vi : u32, @builtin(instance_index) k : u32) -> ShadowOut {
+  var o : ShadowOut;
+  let d = drawn[k];
+  let cl = poolCluster(d.y);
+  if (vi / 3u >= cl.count) {
+    o.clip = vec4f(2.0, 2.0, 2.0, 1.0);
+    return o;
+  }
+  let pv = poolVertex(poolCorner(cl.first + vi));
+  let inst = instances[d.x];
+  o.clip = lampFace * inst.model * vec4f(pv.pos, 1.0);
   o.uv = pv.uv;
   o.mat = inst.material.x;
   return o;

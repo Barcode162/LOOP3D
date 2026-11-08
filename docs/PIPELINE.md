@@ -177,6 +177,13 @@ phase is meant to change the look).
    pictures 12 of 12 (the bar 1.79). Tried first and dropped: lamps listed only within a reach, the rest as a
    soft per-cell light (the parked design): on average 63% of a bar pixel's lamp light came from the soft part,
    and its missing shine on the glossy floor showed (the bar 10 to 18 of 2.0 allowed).
+   *Lamp shadow maps, 2026-11-08* (Phone, where no rays are traced): the first `render.lampMaps` (2) lamps in the
+   list (the brightest near the eye; panels go last and never get one) each get six 90-degree views
+   (`render.lampMapSize` 256 square), tiles of one depth picture; each view is a cluster list (the still copies
+   within 15 m, culled per view), all twelve drawn in one pass with a viewport per tile. Kept by the change tracker
+   ("lamp maps": which lamps, the placements, shapes, settings, movers); moving things are left out of them. The
+   shader picks the view facing the point and compares (2x2 blended). Checked against High's rays: the cabin 0.75
+   apart (8.5 without); the cabin's and the bar's reference pictures renewed.
 6. **Bounced light** (the second half). Cinema bakes the light cache; live, a few probes a frame are relit, only
    where something changed. Ambient occlusion fills the small creases.
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.

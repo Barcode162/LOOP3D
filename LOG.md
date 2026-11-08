@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "Continue next": **lamp shadows on Phone**: the two main lamps near you cast shadows from
+  shadow maps (six views round each bulb, one depth picture), drawn again only when those lamps change (walking
+  the bar: 5 times). The cabin on Phone now matches High's ray-traced shadows (0.75 apart, was 8.5); the cabin's
+  and bar's reference pictures renewed. Settings render.lampMaps, render.lampMapSize; picture_check takes QUALITY=.
+
 - **2026-11-08** · "Go" (+ your recording: the whole bar loads, 59 fps, its lamps 6–10 ms): **the lamp grid**.
   The lamps in a tree of groups; each part of the room works out near lamps one by one and far groups as one lamp
   each (every lamp still lights everything). The bar: 75 lamps per surface instead of 103, same picture (1.79 of

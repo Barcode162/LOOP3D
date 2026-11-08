@@ -128,7 +128,10 @@ once, fog, blend and upscale, film.
    too). The bar: 75 lamps worked out per surface instead of 103 (it truly needs about 50 for 95% of its light:
    its light is spread over many lamps), the same picture (1.8 of 2.0 allowed). The earlier idea of 10 lamps a
    pixel would have dropped the rest of the light: tried, the bar went visibly wrong.
-   *Still to do in phase 5:* sun shadows in steps; shadow maps for the main lamps on Phone; contact shadows.
+   *Lamp shadows on Phone (done 2026-11-08):* the two main lamps near you cast shadows from shadow maps (six
+   views round each bulb), drawn again only when those lamps change (the bar: 5 times walking its length; the
+   cabin: once). The cabin on Phone now matches High's traced shadows (0.75 apart; it was 8.5).
+   *Still to do in phase 5:* sun shadows in steps (the far sun shadow in a coarser second map); contact shadows.
 6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient
    occlusion.
 7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the

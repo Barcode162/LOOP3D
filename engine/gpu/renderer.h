@@ -45,6 +45,8 @@ class Renderer {
   virtual uint64_t presentedFrames() const = 0;
   // How many times the sun's shadow has been drawn (it is kept while nothing it is made from changes).
   virtual uint64_t shadowDraws() const { return 0; }
+  // How many times the main lamps' shadow maps have been drawn (Phone).
+  virtual uint64_t lampShadowDraws() const { return 0; }
   virtual float renderScale() const = 0;
   // GPU milliseconds per frame (estimated from the GPU's "done" signals):
   // smoothed, and the latest frame's.

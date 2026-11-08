@@ -114,6 +114,8 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Light from the sky | `render.skyLight` | 1 | 0 … 4 x | live · script | `setting "render.skyLight", 1` | strength of the light from the sky (bounced daylight) |
 | Shading in creases and undersides | `render.occlusion` | 1 | 0 … 2 x | live · script | `setting "render.occlusion", 1` | how much creases and undersides darken |
 | Lamp grid (many lamps cheaply) | `render.lightGrid` | true |  | live · script | `setting "render.lightGrid", true` | Each part of the room lists the lamps near it, worked out one by one, and far groups of lamps, each worked out as one lamp with all their light. Every lamp still lights everything. Off: every lamp alone, everywhere (for comparing). |
+| Lamp shadows on Phone (main lamps) | `render.lampMaps` | 2 | 0 … 2 | live · script | `setting "render.lampMaps", 2` | Phone traces no rays: the main lamps near you (up to 2) cast shadows from shadow maps instead, six views round each bulb, drawn again only when the main lamps change. 0: no lamp shadows on Phone. |
+| Lamp shadow sharpness | `render.lampMapSize` | 256 | 128 / 256 / 512 / 1024 | live · script | `setting "render.lampMapSize", 256` | Pixels square for each of a lamp shadow map's six views: sharper costs memory (256: 3 MB for two lamps, 512: 12 MB). |
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
 | Screen-space ambient occlusion | `render.ao` | off | off / SSAO / GTAO | not built yet |  | Real contact darkening from the depth buffer. |
 | Reflections | `render.reflections` | sky | sky / ssr | not built yet |  | Screen-space reflections. |
@@ -592,4 +594,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 141 live · script · 49 live · 27 not built yet · 15 editor · 6 needs you
+11 project.json · 143 live · script · 49 live · 27 not built yet · 15 editor · 6 needs you
