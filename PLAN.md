@@ -98,8 +98,9 @@ once, fog, blend and upscale, film.
 
 **The phases, in order** (each keeps every scene playing, no slower on the phone, no further from cinema):
 1. **Measure:** your phone on today's cluster build (the bar, The Woods), the score against cinema, `loop budget`
-   counting the cluster way. The recording page (2026-11-08) times whatever you play, saved where Claude reads
-   it.
+   counting the cluster way (done 2026-11-08: 6 of 41 scenes over the Phone budget, the forests on triangles,
+   the bar on lamps). The recording page (2026-11-08) times whatever you play, saved where Claude reads it, and
+   says what went wrong when a scene fails.
 2. **Frame graph:** the renderer split into steps, each timed on the phone; the same picture, the same speed.
 3. **Change tracker and frame history:** version numbers on the graphics chip's work, each pixel's motion.
 4. **Occlusion culling:** skip what's hidden behind walls (of the 443 things in the bar's view).

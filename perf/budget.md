@@ -228,3 +228,62 @@ showcase_story                       15 > 15     0.01 > 0.01     10 > 10    1.52
 showcase_settings                      7 > 7     0.04 > 0.04       4 > 4    1.51       1 > 1.0           2  fits
 9 of 41 scenes over the Phone budget
 ```
+
+## Counted the cluster way (2026-11-08, `loop budget` follows `render.clusters`)
+
+`loop budget` now counts what the graphics chip draws since rebuild step 4: each copy in view, then each of
+its clusters in view at the detail whose error looks under `render.clusterError` pixels (the cull shader's own
+rule; the test checks it picks exactly the engine's `selectClusters`), the sun's pass at the detail you see,
+one draw a pass, each pixel lit once (the visibility buffer). Glass is still drawn the old way (the bar's 46
+draw calls are its bottles and glasses). The bar: 0.59 M → 0.18 M triangles, 568 → 47 draw calls; what is
+left over is its lamps (103 a pixel: the picture pipeline's phase 5). The forests are still over on triangles
+(the Woods 4.07 M, the Glade 3.85 M): the phone measured the Woods at 48 ms of graphics-chip time on High.
+6 of 41 scenes over the Phone budget (the old way, counted today: 12 of 41); on High, 3 of 41.
+
+```
+scene                           things drawn   triangles (M)  draw calls  shaded   lamps (95%)   lamp work  over the budget on
+                                today > seen    today > seen today > seen  /pixel   each > need      /pixel
+bar                                847 > 847     0.18 > 0.18     47 > 47    1.00    103 > 50.5         103  lamp work
+ardane_01_home                       77 > 77     0.01 > 0.01       4 > 4    1.00       3 > 1.1           3  fits
+ardane_02_market                   503 > 503     0.06 > 0.06       3 > 3    1.00      21 > 1.8          21  fits
+ardane_03_alley                    111 > 111     0.01 > 0.01       2 > 2    1.00       3 > 2.1           3  fits
+ardane_04_velasse                  130 > 130     0.01 > 0.01       4 > 4    1.00      10 > 0.7          10  fits
+ardane_05_canals                   157 > 157     0.07 > 0.07       4 > 4    1.00       8 > 1.8           8  fits
+ardane_06_sluice                   157 > 157     0.01 > 0.01       4 > 4    1.00       4 > 0.1           4  fits
+ardane_07_qadesh                   157 > 157     0.01 > 0.01       2 > 2    1.00       1 > 0.1           1  fits
+ardane_08_palace                   348 > 348     0.05 > 0.05       4 > 4    1.00       6 > 2.1           6  fits
+ardane_09_cisterns                 143 > 143     0.01 > 0.01       3 > 3    1.00      11 > 4.0          11  fits
+ardane_10_well                       32 > 32     0.00 > 0.00       2 > 2    1.00       2 > 1.0           2  fits
+ardane_11_aelor                    171 > 171     0.93 > 0.93       6 > 6    1.00       1 > 0.0           1  triangles
+ardane_12_garden                   570 > 570     0.84 > 0.84       4 > 4    1.00     28 > 15.5          28  triangles, lamp work
+ardane_13_roots                    542 > 542     0.12 > 0.12       3 > 3    1.00       9 > 5.1           9  fits
+ardane_14_nexus                    176 > 176     0.04 > 0.04       3 > 3    1.00      18 > 7.5          18  fits
+ardane_15_undercity                244 > 244     0.04 > 0.04       2 > 2    1.00     21 > 11.8          21  fits
+ardane_16_core                     125 > 125     0.01 > 0.01       1 > 1    1.00      12 > 2.9          12  fits
+ardane_17_return                     92 > 92     0.02 > 0.02       4 > 4    1.00       7 > 6.0           7  fits
+ardane_18_hollow                   775 > 775     0.12 > 0.12       2 > 2    1.00       0 > 0.0           0  fits
+ardane_19_scar                       34 > 34     0.00 > 0.00       2 > 2    1.00       2 > 0.2           2  fits
+ardane_20_convergence              612 > 612     0.33 > 0.33       6 > 6    1.00      16 > 5.9          16  fits
+ardane_21_battle                   331 > 331     0.15 > 0.15       6 > 6    1.00      14 > 7.6          14  fits
+ardane_22_mind                     321 > 321     0.05 > 0.05       3 > 3    1.00      22 > 5.6          22  fits
+ardane_23_after                    241 > 241     0.04 > 0.04       4 > 4    1.00       9 > 1.1           9  fits
+ardane_24_epilogue                   96 > 96     0.02 > 0.02       2 > 2    1.00       6 > 0.5           6  fits
+courtyard                            44 > 44     0.01 > 0.01       3 > 3    1.00       1 > 0.1           1  fits
+cabin                                54 > 54     0.01 > 0.01       2 > 2    1.00       2 > 1.7           2  fits
+the_gate                             32 > 32     0.00 > 0.00       2 > 2    1.00       0 > 0.0           0  fits
+the_woods                          719 > 719     4.07 > 4.07       2 > 2    1.00       0 > 0.0           0  triangles
+showcase_glade                   8450 > 8450     3.85 > 3.85       2 > 2    1.00       0 > 0.0           0  triangles
+showcase_hall                        64 > 64     0.00 > 0.00       1 > 1    1.00      22 > 5.4          22  fits
+showcase_materials                   87 > 87     0.09 > 0.09       2 > 2    1.00       3 > 2.0           3  fits
+showcase_light                       11 > 11     0.00 > 0.00       1 > 1    1.00       6 > 2.7           6  fits
+showcase_sky                         18 > 18     0.01 > 0.01       2 > 2    1.00       0 > 0.0           0  fits
+showcase_fog                       265 > 265     1.41 > 1.41       2 > 2    1.00       0 > 0.0           0  triangles
+showcase_physics                     24 > 24     0.01 > 0.01       2 > 2    1.00       1 > 0.7           1  fits
+showcase_people                      40 > 40     0.00 > 0.00       1 > 1    1.00       1 > 0.6           1  fits
+showcase_sound                         9 > 9     0.00 > 0.00       2 > 2    1.00       2 > 1.1           2  fits
+showcase_film                        15 > 15     0.00 > 0.00       2 > 2    1.00       3 > 2.1           3  fits
+showcase_story                       15 > 15     0.00 > 0.00       1 > 1    1.00       1 > 0.7           1  fits
+showcase_settings                      9 > 9     0.01 > 0.01       2 > 2    1.00       1 > 0.7           1  fits
+6 of 41 scenes over the Phone budget
+```
+

@@ -338,6 +338,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.cullOffscreen = C.render.cull;
   v.lodBias = C.world.lodBias;
   v.portraitWide = C.camera.portraitWide;
+  v.clusters = C.render.clusters, v.clusterError = C.render.clusterError;
   {
     int lamps = 0;
     for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;
@@ -369,6 +370,9 @@ int budgetScene(const std::string& path, const Options& o) {
   std::string q = m.budget.quality == "high" ? "High" : "Phone";
   std::printf("%s · %s · %d x %d pixels · %zu things (%zu hidden) · %zu lamps%s\n", m.title.c_str(), q.c_str(), m.view.width, m.view.height,
               c.things, c.hidden, m.lamps, c.sun ? " · sun" : "");
+  if (c.clustered)
+    std::printf("  drawn in clusters             %zu + %zu clusters (scene + shadow); the copies hold %.2f M triangles at full detail, %.2f M drawn\n",
+                c.sceneClusters, c.shadowClusters, static_cast<double>(c.fullTriangles) / 1e6, static_cast<double>(c.sceneTriangles) / 1e6);
   std::printf("                                today          skipping what's off screen\n");
   std::printf("  things drawn (scene + shadow) %6zu + %-6zu  %6zu + %zu\n", c.sceneThings, c.shadowThings, c.inViewThings, c.inShadowThings);
   std::printf("  triangles (all passes)        %8.2f M      %8.2f M\n", static_cast<double>(c.triangles()) / 1e6,

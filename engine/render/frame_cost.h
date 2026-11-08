@@ -51,6 +51,12 @@ struct FrameView {
   bool prepass = false;            // depth first: each pixel is lit once
   float lodBias = 0;               // world.lodBias
   bool portraitWide = true;        // cam.portraitWide: an upright screen keeps the lens's width
+  // render.clusters: drawn from the cook's cluster trees, as the graphics chip
+  // does it (each copy in view, then each cluster in view at the detail whose
+  // error looks under render.clusterError pixels; one draw a pass; each pixel
+  // lit once). Glass is still drawn the old way.
+  bool clusters = false;
+  float clusterError = 1;
 };
 
 struct FrameCost {
@@ -64,6 +70,9 @@ struct FrameCost {
   uint64_t prepassTriangles = 0;              // the depth pre-pass draws the opaque ones again
   size_t prepassDraws = 0;
   bool sun = false;                           // a sun, so a shadow pass
+  bool clustered = false;                     // counted the cluster way (FrameView::clusters)
+  size_t sceneClusters = 0, shadowClusters = 0;  // clusters each pass draws
+  uint64_t fullTriangles = 0;                 // what the copies drawn hold at full detail (clusters: how much the detail saves)
   // what skipping off-screen copies would leave
   size_t inViewThings = 0, inShadowThings = 0;
   uint64_t inViewTriangles = 0, inShadowTriangles = 0;
@@ -91,6 +100,14 @@ Mat4 frameViewProj(const FrameView& view);
 Mat4 frameShadowViewProj(const FrameView& view, Vec3 towardSun, int shadowMapSize);
 
 FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples = 40000);
+
+// The graphics chip's choice of a copy's clusters (kClusterCullWgsl's
+// `chosen`): each whose own error looks within `limit` pixels from `eye` while
+// its parent's doesn't, and whose sphere is inside `view`. Adds the chosen
+// clusters and their triangles.
+struct ClusterTree;
+void chooseClusters(const ClusterTree& tree, const Mat4& model, const Frustum& view, Vec3 eye, float perPixel, float limit, size_t& clusters,
+                    uint64_t& triangles);
 
 // One quality's budget for a frame on the user's phone. First guesses from
 // what phones of 2023 sustain at 60 frames a second; the phone's benchmark

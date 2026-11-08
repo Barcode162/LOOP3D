@@ -5,6 +5,7 @@
 #include <set>
 #include <utility>
 
+#include "engine/geometry/cook.h"
 #include "engine/render/scene_bvh.h"
 
 namespace loop {
@@ -47,7 +48,32 @@ float shadedOf(int k) {
   return s;
 }
 
+// How big an error looks, in pixels (the cull shader's `looks`): from inside
+// its sphere any error is too big.
+float looks(float err, Vec3 centre, float radius, Vec3 eye, float perPixel) {
+  float d = length(centre - eye) - radius;
+  if (d <= 1e-4f) return err > 0 ? 3.0e38f : 0.0f;
+  return err / d * perPixel;
+}
+
 }  // namespace
+
+void chooseClusters(const ClusterTree& tree, const Mat4& m, const Frustum& view, Vec3 eye, float perPixel, float limit, size_t& clusters,
+                    uint64_t& triangles) {
+  auto col = [&](int i) { return length(Vec3(m.m[i][0], m.m[i][1], m.m[i][2])); };
+  const float scale = std::max(col(0), std::max(col(1), col(2)));
+  for (const Cluster& cl : tree.clusters) {
+    if (looks(cl.error * scale, m.point(cl.lodSphere.xyz()), cl.lodSphere.w * scale, eye, perPixel) > limit) continue;
+    if (cl.parentError < kInf && looks(cl.parentError * scale, m.point(cl.parentSphere.xyz()), cl.parentSphere.w * scale, eye, perPixel) <= limit) continue;
+    Vec3 bc = m.point(cl.bounds.xyz());
+    float br = cl.bounds.w * scale;
+    bool inside = true;
+    for (const Plane& p : view.p)
+      if (dot(p.n, bc) + p.d < -br) { inside = false; break; }
+    if (!inside) continue;
+    ++clusters, triangles += cl.count;
+  }
+}
 
 // the camera as the screen sees it (an upright screen keeps the lens's width)
 Camera viewCamera(const FrameView& v) {
@@ -98,6 +124,15 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   std::vector<AABB> meshBox(scene.meshes.size());
   for (size_t i = 0; i < scene.meshes.size(); ++i) meshBox[i] = scene.meshes[i].bounds();
   std::set<std::pair<int, bool>> sceneBatches, shadowBatches, viewBatches, shadowViewBatches;
+  // the cluster way: every mesh's tree, from the cook (made once, then kept)
+  std::vector<std::shared_ptr<const ClusterTree>> trees;
+  if (view.clusters) {
+    std::vector<const Mesh*> ms;
+    for (const Mesh& m : scene.meshes) ms.push_back(&m);
+    Cook::shared().cookAll(ms);
+    for (const Mesh& m : scene.meshes) trees.push_back(Cook::shared().clusters(m));
+    c.clustered = true;
+  }
   for (const MeshInstance& in : scene.instances) {
     if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size())) continue;
     if (!scene.meshes[in.mesh].triangleCount()) continue;
@@ -114,6 +149,24 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
     bool hasLods = static_cast<size_t>(in.mesh) < scene.lods.size() && scene.lods[static_cast<size_t>(in.mesh)][0] >= 0;
     bool inView = !hidden && eye.visible(box);
     bool inShadow = c.sun && !glass && !hidden && shadow.visible(box);
+    if (view.clusters && !glass) {
+      // the GPU picks each cluster of the full mesh; the copy's whole box first, on the processor
+      const ClusterTree& tree = *trees[static_cast<size_t>(in.mesh)];
+      if (!view.cullOffscreen || inView) {
+        ++c.sceneThings, ++c.inViewThings, c.fullTriangles += scene.meshes[in.mesh].triangleCount();
+        uint64_t before = c.sceneTriangles;
+        chooseClusters(tree, in.transform, eye, view.camera.position, pixelsPerRadian, view.clusterError, c.sceneClusters, c.sceneTriangles);
+        c.inViewTriangles += c.sceneTriangles - before;
+      }
+      if (c.sun && (!view.cullOffscreen || inShadow)) {
+        ++c.shadowThings, ++c.inShadowThings;
+        uint64_t before = c.shadowTriangles;  // the detail you see, in the sun's view
+        chooseClusters(tree, in.transform, shadow, view.camera.position, pixelsPerRadian, view.clusterError, c.shadowClusters, c.shadowTriangles);
+        c.inShadowTriangles += c.shadowTriangles - before;
+      }
+      continue;
+    }
+
     if (inView) ++c.inViewThings, c.inViewTriangles += tris, viewBatches.insert({drawn, glass});
     if (inShadow) ++c.inShadowThings, c.inShadowTriangles += shadowTris, shadowViewBatches.insert({shadowDrawn, false});
     if (!view.cullOffscreen || inView) {
@@ -128,9 +181,15 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
     }
   }
   c.sceneDraws = sceneBatches.size(), c.shadowDraws = shadowBatches.size();
-  if (view.prepass)
+  if (view.prepass && !view.clusters)
     for (const auto& b : sceneBatches) c.prepassDraws += !b.second;
   c.inViewDraws = viewBatches.size(), c.inShadowDraws = shadowViewBatches.size();
+  if (view.clusters) {
+    // one draw for every chosen cluster in each pass, then the glass the old way
+    c.sceneDraws += c.sceneClusters > 0, c.shadowDraws += c.shadowClusters > 0;
+    c.inViewDraws = c.sceneDraws, c.inShadowDraws = c.shadowDraws;
+    c.prepassTriangles = 0;
+  }
 
   // ---- per pixel: rays through a grid of the frame's pixels
   SceneBvh bvh;
@@ -162,7 +221,8 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       if (!k) continue;
       ++covered;
       layers += k, fronts += front;
-      shaded += view.prepass ? 1.0f : shadedOf(view.cullBackFaces ? std::max(front, 1) : k);
+      // clusters: one draw writes which triangle each pixel sees, then each pixel is lit once
+      shaded += view.prepass || view.clusters ? 1.0f : shadedOf(view.cullBackFaces ? std::max(front, 1) : k);
       shadedFronts += shadedOf(std::max(front, 1));
       TriInfo tri = bvh.triangle(first.inst, first.prim);
       const int mat = bvh.materialOf(first.inst);

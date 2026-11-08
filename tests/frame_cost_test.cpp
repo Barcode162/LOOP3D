@@ -1,4 +1,5 @@
 // The work budget (engine/render/frame_cost): what one live frame costs.
+#include "engine/geometry/cook.h"
 #include "engine/geometry/mesh.h"
 #include "engine/render/frame_cost.h"
 #include "tests/test.h"
@@ -107,4 +108,54 @@ TEST(upright_screens_keep_the_lens_width) {
   Camera wide = c;
   wide.widenForPortrait(16.0f / 9);
   CHECK_NEAR(wide.fovY(), c.fovY(), 1e-6f);
+}
+
+// The cluster way (render.clusters): the budget picks a copy's clusters as the
+// graphics chip does, the engine's own choice (selectClusters) when all of it
+// is in view; near copies draw more than far ones; one draw a pass; each pixel
+// lit once.
+TEST(frame_cost_counts_the_cluster_way) {
+  Scene s;
+  int mesh = s.addMesh(shapes::sphere(1, 96, 48));
+  int mat = s.addMaterial(Material{});
+  s.add(mesh, mat, Mat4::translation({0, 1, 0}));     // near
+  s.add(mesh, mat, Mat4::translation({0, 1, -200}));  // far, straight ahead
+  s.add(mesh, mat, Mat4::translation({0, 1, 30}));    // behind the camera
+  FrameView v = viewOf(s);
+  v.width = 400, v.height = 300;
+  v.cullOffscreen = true;
+  v.clusters = true;
+  FrameCost c = measureFrame(s, v, 2000);
+  CHECK(c.clustered);
+  CHECK(c.sceneThings == 2);  // the one behind is skipped whole
+  CHECK(c.sceneClusters > 0 && c.sceneDraws == 1 && c.prepassTriangles == 0);
+  CHECK_NEAR(c.shadedPerPixel, 1, 1e-3);
+  CHECK(c.fullTriangles == 2 * s.meshes[mesh].triangleCount());
+  CHECK(c.sceneTriangles < c.fullTriangles);  // the far one is far simpler
+
+  // one copy at a time: near draws more than far
+  auto alone = [&](Vec3 at) {
+    Scene one;
+    int m = one.addMesh(shapes::sphere(1, 96, 48));
+    one.add(m, one.addMaterial(Material{}), Mat4::translation(at));
+    FrameView w = v;
+    w.camera = one.camera;
+    return measureFrame(one, w, 100).sceneTriangles;
+  };
+  uint64_t nearTris = alone({0, 1, 0}), farTris = alone({0, 1, -200});
+  CHECK(nearTris > farTris * 4 && farTris > 0);
+
+  // the same choice as the engine's own, for a copy wholly in view
+  auto tree = Cook::shared().clusters(s.meshes[mesh]);
+  Frustum everything;
+  for (Plane& p : everything.p) p.n = {0, 0, 0}, p.d = 1;  // nothing is outside
+  for (float dist : {3.0f, 12.0f, 60.0f}) {
+    size_t n = 0;
+    uint64_t tris = 0;
+    chooseClusters(*tree, Mat4{}, everything, Vec3(0.3f, 0.2f, dist), 400, 1, n, tris);
+    std::vector<int> engine = selectClusters(*tree, Vec3(0.3f, 0.2f, dist), 400, 1);
+    uint64_t engineTris = 0;
+    for (int i : engine) engineTris += tree->clusters[static_cast<size_t>(i)].count;
+    CHECK(n == engine.size() && tris == engineTris);
+  }
 }
