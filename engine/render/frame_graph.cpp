@@ -58,6 +58,7 @@ void FrameGraph::addTimes(const std::vector<Stamp>& stamps) {
     if (it == frame.end()) frame.push_back({s.step, ms});
     else it->second += ms;
   }
+  for (Time& t : times_) ++t.missed;
   for (auto& [step, ms] : frame) {
     auto it = std::find_if(times_.begin(), times_.end(), [&](const Time& t) { return t.step == step; });
     if (it == times_.end()) {
@@ -66,8 +67,15 @@ void FrameGraph::addTimes(const std::vector<Stamp>& stamps) {
     } else {
       it->ms += (static_cast<float>(ms) - it->ms) * 0.1f;
     }
-    it->sumMs += ms, ++it->frames;
+    it->sumMs += ms, ++it->frames, it->missed = 0;
   }
+}
+
+std::vector<FrameGraph::Time> FrameGraph::recent() const {
+  std::vector<Time> out;
+  for (const Time& t : times_)
+    if (t.missed < kGone) out.push_back(t);
+  return out;
 }
 
 std::vector<std::pair<std::string, float>> FrameGraph::takeAverages() {
@@ -76,7 +84,20 @@ std::vector<std::pair<std::string, float>> FrameGraph::takeAverages() {
     if (t.frames) out.push_back({t.step, static_cast<float>(t.sumMs / t.frames)});
     t.sumMs = 0, t.frames = 0;
   }
+  // a step gone for good (and already counted) is forgotten
+  times_.erase(std::remove_if(times_.begin(), times_.end(), [](const Time& t) { return t.missed >= kGone && !t.frames; }), times_.end());
   return out;
+}
+
+std::vector<std::string> FrameGraph::storageFaults(const std::string& pipeline, const std::vector<StageBuffers>& groups, int limit) {
+  StageBuffers sum;
+  for (const StageBuffers& g : groups) sum.vertex += g.vertex, sum.fragment += g.fragment, sum.compute += g.compute;
+  std::vector<std::string> faults;
+  for (auto [stage, n] : {std::pair<const char*, int>{"vertex", sum.vertex}, {"fragment", sum.fragment}, {"compute", sum.compute}})
+    if (n > limit)
+      faults.push_back("the " + pipeline + " pipeline's " + stage + " stage reads " + std::to_string(n) + " storage buffers; the iPhone allows " +
+                       std::to_string(limit));
+  return faults;
 }
 
 }  // namespace loop

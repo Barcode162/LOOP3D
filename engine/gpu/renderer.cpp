@@ -66,6 +66,15 @@ struct GpuState {
   float gpuMs = 0, lastGpuMs = 0;
   double gpuSum = 0;  // GPU ms of the frames finished since the resolution was last judged
   int gpuCount = 0;
+  // each step's time from the chip's timers (frame_graph.h), and the places a
+  // frame's stamps are read back from (one per frame still on its way)
+  FrameGraph steps;
+  struct StampSlot {
+    wgpu::Buffer buf;
+    std::vector<std::string> steps;  // the step each pair of stamps belongs to
+    bool busy = false;
+  };
+  StampSlot slots[3];
 };
 
 // The first few WebGPU errors go to the page (a black screen should say why).
@@ -167,6 +176,14 @@ class GpuRenderer final : public Renderer {
       maxBufferSize_ = lim.maxBufferSize;
       maxTexture_ = lim.maxTextureDimension2D;
       maxLayers_ = lim.maxTextureArrayLayers;
+    }
+    if (device_.HasFeature(wgpu::FeatureName::TimestampQuery)) {
+      wgpu::QuerySetDescriptor qd;
+      qd.type = wgpu::QueryType::Timestamp;
+      qd.count = 2 * kStampPairs;
+      stampSet_ = device_.CreateQuerySet(&qd);
+      stampResolve_ = buffer(16 * kStampPairs, wgpu::BufferUsage::QueryResolve | wgpu::BufferUsage::CopySrc);
+      for (auto& s : gs_->slots) s.buf = buffer(16 * kStampPairs, wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst);
     }
     wgpu::SurfaceCapabilities caps;
     surface_.GetCapabilities(adapter_, &caps);
@@ -649,6 +666,10 @@ class GpuRenderer final : public Renderer {
     // reads and writes, in the order they run; the order is checked on a
     // renderer's first frame. The bits of `skip` switch steps off (tests).
     graph_.clear();
+    stampSteps_.clear(), stampSlot_ = -1;
+    if (stampSet_)
+      for (int k = 0; k < 3; ++k)
+        if (!gs_->slots[k].busy) { stampSlot_ = k; break; }
     const bool clusterPath = raster && clustersReady() && eyeList_.cullGroup;
     const int rays = shadowLamps_ > 0 && !(skip & 512) ? 1 : 0;
     if (passUniformsDirty_) writePassUniforms();
@@ -669,6 +690,8 @@ class GpuRenderer final : public Renderer {
       rp.depthStencilAttachment = &da;
       const bool clusterShadow = sunOn_ && !(skip & 1) && clustersReady() && sunList_.cullGroup;
       if (clusterShadow) runCull(enc, sunList_);
+      wgpu::PassTimestampWrites tw;
+      rp.timestampWrites = stamp(tw);
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
       if (clusterShadow) {
         pass.SetPipeline(shadowVisPipe_);
@@ -687,7 +710,10 @@ class GpuRenderer final : public Renderer {
     }, raster && !(skip & 32));
     // the Ultra quality: the path tracer, then its noise cleaned, keeping edges
     graph_.add("ultra", {"scene", "rays", "lamps", "sky"}, {"hdr"}, [&] {
-      wgpu::ComputePassEncoder cp = enc.BeginComputePass();
+      wgpu::PassTimestampWrites tw;
+      wgpu::ComputePassDescriptor cd;
+      cd.timestampWrites = stamp(tw);
+      wgpu::ComputePassEncoder cp = enc.BeginComputePass(&cd);
       cp.SetPipeline(ultraPipe_);
       cp.SetBindGroup(0, sceneGroup0_);
       cp.SetBindGroup(1, ultraGroup_);
@@ -728,6 +754,8 @@ class GpuRenderer final : public Renderer {
         rp.colorAttachmentCount = 1;
         rp.colorAttachments = &ca;
         rp.depthStencilAttachment = &da;
+        wgpu::PassTimestampWrites tw;
+        rp.timestampWrites = stamp(tw);
         wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
         pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
         pass.SetBindGroup(0, sceneGroup0_);
@@ -756,6 +784,8 @@ class GpuRenderer final : public Renderer {
         rp.colorAttachmentCount = 1;
         rp.colorAttachments = &ca;
         rp.depthStencilAttachment = &da;
+        wgpu::PassTimestampWrites tw;
+        rp.timestampWrites = stamp(tw);
         wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
         pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
         pass.SetBindGroup(0, sceneGroup0_);
@@ -791,6 +821,8 @@ class GpuRenderer final : public Renderer {
       wgpu::RenderPassDescriptor rp;
       rp.colorAttachmentCount = 1;
       rp.colorAttachments = &ca;
+      wgpu::PassTimestampWrites tw;
+      rp.timestampWrites = stamp(tw);
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
       pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
       pass.SetPipeline(taaPipe_);
@@ -824,6 +856,8 @@ class GpuRenderer final : public Renderer {
       rp.colorAttachmentCount = 1;
       rp.colorAttachments = &ca;
       if (!(skip & 128)) rp.depthStencilAttachment = &da;
+      wgpu::PassTimestampWrites tw;
+      rp.timestampWrites = stamp(tw);
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
       pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
       pass.SetBindGroup(0, sceneGroup0_);
@@ -852,7 +886,10 @@ class GpuRenderer final : public Renderer {
     }, raster && !clusterPath && !(skip & 64));
     // 3. how bright it is: the eyes adjust
     graph_.add("exposure", {"hdr"}, {"exposure"}, [&] {
-      wgpu::ComputePassEncoder cp = enc.BeginComputePass();
+      wgpu::PassTimestampWrites tw;
+      wgpu::ComputePassDescriptor cd;
+      cd.timestampWrites = stamp(tw);
+      wgpu::ComputePassEncoder cp = enc.BeginComputePass(&cd);
       cp.SetPipeline(exposurePipe_);
       cp.SetBindGroup(0, exposureGroup_);
       cp.DispatchWorkgroups(1);
@@ -881,8 +918,34 @@ class GpuRenderer final : public Renderer {
       captureTex = device_.CreateTexture(&td);
       postPass(enc, captureTex.CreateView(), finalPipe_, finalGroup_, false);
     }
+    const bool stamped = stampSlot_ >= 0 && !stampSteps_.empty();
+    if (stamped) {
+      GpuState::StampSlot& slot = gs_->slots[stampSlot_];
+      const uint32_t n = 2 * static_cast<uint32_t>(stampSteps_.size());
+      enc.ResolveQuerySet(stampSet_, 0, n, stampResolve_, 0);
+      enc.CopyBufferToBuffer(stampResolve_, 0, slot.buf, 0, 8ull * n);
+      slot.steps = stampSteps_, slot.busy = true;
+    }
     wgpu::CommandBuffer cb = enc.Finish();
     queue_.Submit(1, &cb);
+    if (stamped) {
+      // read when the chip is done, a frame or two later: the frame never waits for it
+      const size_t bytes = 16 * stampSteps_.size();
+      const int k = stampSlot_;
+      gs_->slots[k].buf.MapAsync(wgpu::MapMode::Read, 0, bytes, wgpu::CallbackMode::AllowSpontaneous,
+                                 [gs = gs_, k, bytes](wgpu::MapAsyncStatus status, wgpu::StringView) {
+                                   GpuState::StampSlot& sl = gs->slots[k];
+                                   if (status == wgpu::MapAsyncStatus::Success) {
+                                     const uint64_t* tick = static_cast<const uint64_t*>(sl.buf.GetConstMappedRange(0, bytes));
+                                     std::vector<FrameGraph::Stamp> st;
+                                     if (tick)
+                                       for (size_t i = 0; i < sl.steps.size(); ++i) st.push_back({sl.steps[i], tick[2 * i], tick[2 * i + 1]});
+                                     sl.buf.Unmap();
+                                     gs->steps.addTimes(st);
+                                   }
+                                   sl.busy = false;
+                                 });
+    }
     ++gs_->inFlight;
     // GPU time per frame, estimated from when the GPU says it's done: from
     // submit (or from the end of the frame before, if it was still busy)
@@ -908,6 +971,13 @@ class GpuRenderer final : public Renderer {
   }
 
   uint64_t presentedFrames() const override { return presented_; }
+  bool timers() const override { return static_cast<bool>(stampSet_); }
+  std::vector<std::pair<std::string, float>> stepMs() const override {
+    std::vector<std::pair<std::string, float>> out;
+    for (const FrameGraph::Time& t : gs_->steps.recent()) out.push_back({t.step, t.ms});
+    return out;
+  }
+  std::vector<std::pair<std::string, float>> takeStepAverages() override { return gs_->steps.takeAverages(); }
   float gpuMs() const override { return gs_->gpuMs; }
   float lastGpuMs() const override { return gs_->lastGpuMs; }
   size_t gpuBytes() const override {
@@ -1261,8 +1331,22 @@ class GpuRenderer final : public Renderer {
   }
   // choose (each copy its own list, in order), count up where each list
   // starts, pack: the same order every frame
+  // A pass of the step now running gets the chip's two stamps (its start and
+  // end), when the chip has timers and a place to read them back is free;
+  // nothing outside a step (a capture) is stamped.
+  const wgpu::PassTimestampWrites* stamp(wgpu::PassTimestampWrites& w) {
+    if (stampSlot_ < 0 || graph_.current() < 0 || stampSteps_.size() >= kStampPairs) return nullptr;
+    uint32_t i = static_cast<uint32_t>(stampSteps_.size());
+    w.querySet = stampSet_, w.beginningOfPassWriteIndex = 2 * i, w.endOfPassWriteIndex = 2 * i + 1;
+    stampSteps_.push_back(graph_.steps()[static_cast<size_t>(graph_.current())].name);
+    return &w;
+  }
+
   void runCull(wgpu::CommandEncoder& enc, const ClusterList& L) {
-    wgpu::ComputePassEncoder cp = enc.BeginComputePass();
+    wgpu::PassTimestampWrites tw;
+    wgpu::ComputePassDescriptor cd;
+    cd.timestampWrites = stamp(tw);
+    wgpu::ComputePassEncoder cp = enc.BeginComputePass(&cd);
     cp.SetBindGroup(0, L.cullGroup);
     uint32_t n = std::max(L.count, 1u), x = std::min(n, 65535u);
     cp.SetPipeline(cullPipe_);
@@ -1367,6 +1451,8 @@ class GpuRenderer final : public Renderer {
     wgpu::RenderPassDescriptor rp;
     rp.colorAttachmentCount = 1;
     rp.colorAttachments = &ca;
+    wgpu::PassTimestampWrites tw;
+    rp.timestampWrites = stamp(tw);
     wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
     if (vw && vh) pass.SetViewport(0, 0, static_cast<float>(vw), static_cast<float>(vh), 0, 1);
     pass.SetPipeline(pipe);
@@ -1388,8 +1474,20 @@ class GpuRenderer final : public Renderer {
     wgpu::BindGroupLayoutDescriptor d;
     d.entryCount = e.size();
     d.entries = e.data();
-    return device_.CreateBindGroupLayout(&d);
+    wgpu::BindGroupLayout l = device_.CreateBindGroupLayout(&d);
+    // the storage buffers it gives each stage, for the iPhone's limit (pipeLayout)
+    FrameGraph::StageBuffers sb;
+    auto has = [](wgpu::ShaderStage v, wgpu::ShaderStage s) { return (v & s) != wgpu::ShaderStage::None; };
+    for (const auto& x : e)
+      if (x.buffer.type == wgpu::BufferBindingType::Storage || x.buffer.type == wgpu::BufferBindingType::ReadOnlyStorage) {
+        sb.vertex += has(x.visibility, wgpu::ShaderStage::Vertex);
+        sb.fragment += has(x.visibility, wgpu::ShaderStage::Fragment);
+        sb.compute += has(x.visibility, wgpu::ShaderStage::Compute);
+      }
+    stageBuffers_.push_back({l, sb});
+    return l;
   }
+  std::vector<std::pair<wgpu::BindGroupLayout, FrameGraph::StageBuffers>> stageBuffers_;
   static wgpu::BindGroupLayoutEntry ubo(uint32_t b, wgpu::ShaderStage s) {
     wgpu::BindGroupLayoutEntry e;
     e.binding = b, e.visibility = s, e.buffer.type = wgpu::BufferBindingType::Uniform;
@@ -1442,15 +1540,22 @@ class GpuRenderer final : public Renderer {
     wgpu::ShaderModule pm = module(kPostWgsl, "post");
     wgpu::ShaderModule em = module(kExposureWgsl, "exposure");
 
-    auto pipeLayout = [&](std::vector<wgpu::BindGroupLayout> ls) {
+    // a pipeline's layout, its storage buffers counted against the iPhone's
+    // limit (a stage over 8 left the phone's screen black on 2026-11-06)
+    auto pipeLayout = [&](std::vector<wgpu::BindGroupLayout> ls, const char* step) {
+      std::vector<FrameGraph::StageBuffers> groups;
+      for (const wgpu::BindGroupLayout& l : ls)
+        for (const auto& [known, sb] : stageBuffers_)
+          if (known.Get() == l.Get()) groups.push_back(sb);
+      for (const std::string& fault : FrameGraph::storageFaults(step, groups)) reportGpuError(fault);
       wgpu::PipelineLayoutDescriptor d;
       d.bindGroupLayoutCount = ls.size();
       d.bindGroupLayouts = ls.data();
       return device_.CreatePipelineLayout(&d);
     };
-    wgpu::PipelineLayout sceneL = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_});
-    wgpu::PipelineLayout shadowL = pipeLayout({scene0Layout_});
-    wgpu::PipelineLayout postL = pipeLayout({postLayout_});
+    wgpu::PipelineLayout sceneL = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_}, "forward");
+    wgpu::PipelineLayout shadowL = pipeLayout({scene0Layout_}, "shadow");
+    wgpu::PipelineLayout postL = pipeLayout({postLayout_}, "bloom and film");
 
     static wgpu::VertexAttribute attrs[3];
     attrs[0].format = wgpu::VertexFormat::Float32x3, attrs[0].offset = 0, attrs[0].shaderLocation = 0;
@@ -1521,7 +1626,7 @@ class GpuRenderer final : public Renderer {
       cullLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C), ssbo(4, C), ssbo(5, C, true), ssbo(6, C, true), ssbo(7, C, true), ssbo(8, C, true)});
       {
         wgpu::RenderPipelineDescriptor d;
-        d.layout = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, clusterDrawLayout_});
+        d.layout = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, clusterDrawLayout_}, "visibility");
         d.vertex.module = sm;
         d.vertex.entryPoint = "vsVis";
         wgpu::ColorTargetState ct;
@@ -1546,7 +1651,7 @@ class GpuRenderer final : public Renderer {
         emptyLayout_ = layout({});
         emptyGroup_ = group(emptyLayout_, {});
         wgpu::RenderPipelineDescriptor d;
-        d.layout = pipeLayout({scene0Layout_, emptyLayout_, emptyLayout_, clusterDrawLayout_});
+        d.layout = pipeLayout({scene0Layout_, emptyLayout_, emptyLayout_, clusterDrawLayout_}, "shadow (clusters)");
         d.vertex.module = sm;
         d.vertex.entryPoint = "vsVisShadow";
         static wgpu::ColorTargetState dummy;
@@ -1570,7 +1675,7 @@ class GpuRenderer final : public Renderer {
       }
       for (int r = 0; r < 2; ++r) {
         wgpu::RenderPipelineDescriptor d;
-        d.layout = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, clusterResolveLayout_});
+        d.layout = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, clusterResolveLayout_}, "light");
         d.vertex.module = sm;
         d.vertex.entryPoint = "vsResolve";
         wgpu::ColorTargetState ct;
@@ -1595,7 +1700,7 @@ class GpuRenderer final : public Renderer {
       }
       wgpu::ShaderModule cm = module(kClusterCullWgsl, "cluster cull");
       wgpu::ComputePipelineDescriptor cd;
-      cd.layout = pipeLayout({cullLayout_});
+      cd.layout = pipeLayout({cullLayout_}, "cluster cull");
       cd.compute.module = cm;
       cd.compute.entryPoint = "cull";
       cullPipe_ = device_.CreateComputePipeline(&cd);
@@ -1608,7 +1713,7 @@ class GpuRenderer final : public Renderer {
       {
         wgpu::ShaderModule tm = module(kTaaWgsl, "frame blending");
         wgpu::RenderPipelineDescriptor d;
-        d.layout = pipeLayout({taaLayout_});
+        d.layout = pipeLayout({taaLayout_}, "blend");
         d.vertex.module = tm;
         d.vertex.entryPoint = "vsTaa";
         wgpu::ColorTargetState ct;
@@ -1677,14 +1782,14 @@ class GpuRenderer final : public Renderer {
     {
       std::string code = std::string(kCommonWgsl) + kRayWgsl + kUltraWgsl;
       wgpu::ComputePipelineDescriptor d;
-      d.layout = pipeLayout({scene0Layout_, ultraLayout_, rayLayout_});
+      d.layout = pipeLayout({scene0Layout_, ultraLayout_, rayLayout_}, "ultra");
       d.compute.module = module(code, "ultra");
       d.compute.entryPoint = "main";
       ultraPipe_ = device_.CreateComputePipeline(&d);
     }
     {
       wgpu::ComputePipelineDescriptor d;
-      d.layout = pipeLayout({denoiseLayout_});
+      d.layout = pipeLayout({denoiseLayout_}, "ultra denoise");
       d.compute.module = module(kDenoiseWgsl, "denoise");
       d.compute.entryPoint = "main";
       denoisePipe_ = device_.CreateComputePipeline(&d);
@@ -1692,7 +1797,7 @@ class GpuRenderer final : public Renderer {
     }
     {
       wgpu::ComputePipelineDescriptor d;
-      d.layout = pipeLayout({expLayout_});
+      d.layout = pipeLayout({expLayout_}, "exposure");
       d.compute.module = em;
       d.compute.entryPoint = "main";
       exposurePipe_ = device_.CreateComputePipeline(&d);
@@ -2302,6 +2407,12 @@ class GpuRenderer final : public Renderer {
   // its lists, lamps, sky and rays, last frame's history
   FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history"}};
   bool graphChecked_ = false;
+  // the chip's timers (when it has them): a frame's stamps, two per pass
+  static constexpr uint32_t kStampPairs = 32;
+  wgpu::QuerySet stampSet_;
+  wgpu::Buffer stampResolve_;
+  std::vector<std::string> stampSteps_;  // this frame's: each pair's step
+  int stampSlot_ = -1;                    // where they're read back (-1: not this frame)
   int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, longCalm_ = 0, step_ = 0, ceilStep_ = 0;
   uint64_t presented_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
@@ -2353,6 +2464,9 @@ void Renderer::create(const char* canvas, std::function<void(std::unique_ptr<Ren
       want.maxTextureArrayLayers = have.maxTextureArrayLayers;  // room for every model picture
       dd.requiredLimits = &want;
     }
+    // the chip's own timers, when it has them: each step of a frame timed
+    static const wgpu::FeatureName kTimers = wgpu::FeatureName::TimestampQuery;
+    if (a.HasFeature(kTimers)) dd.requiredFeatureCount = 1, dd.requiredFeatures = &kTimers;
     dd.SetUncapturedErrorCallback([](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView m) { reportGpuError(str(m)); });
     auto state = std::make_shared<GpuState>();
     p->state = state;

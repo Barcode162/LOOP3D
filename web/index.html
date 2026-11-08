@@ -325,6 +325,8 @@
       const slower = m.gpu > m.cpu ? 'The GPU' : 'The CPU', worst = Math.max(m.cpu, m.gpu);
       meter.innerHTML = parts.map((k) => meterRow(k, m[k], scale)).join('') + meterRow('the rest', other, scale) +
         `<div class="sum">${meterRow('CPU', m.cpu, scale)}${meterRow('GPU', m.gpu, scale)}</div>` +
+        // the graphics chip's time, step by step (its own timers, where it has them)
+        Object.entries(m.steps || {}).map(([k, ms]) => meterRow('· ' + k, ms, scale)).join('') +
         `<div class="row"><span>memory</span><span style="grid-column: span 2">${m.memUsed.toFixed(0)} MB used of ${m.memReserved.toFixed(0)} · GPU ${m.gpuMem.toFixed(0)} MB</span></div>` +
         `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.clustered ? 'Drawn in clusters.' : 'Clusters cooking…'}</div>`;
     } catch (e) {}

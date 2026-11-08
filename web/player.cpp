@@ -676,6 +676,7 @@ EMSCRIPTEN_KEEPALIVE void loop_audio(float* stereo, int frames) {
 // time" starts at the scene's script), and stop, getting the scene's numbers
 // as JSON.
 EMSCRIPTEN_KEEPALIVE void loop_perf_begin() {
+  if (g.renderer) g.renderer->takeStepAverages();  // the steps' times count from here
   perf.on = true;
   perf.waitingFirst = true;
   perf.serialAtBegin = g.scriptSerial;
@@ -683,6 +684,18 @@ EMSCRIPTEN_KEEPALIVE void loop_perf_begin() {
   perf.rafFrames = 0;
   perf.interval.clear(), perf.cpu.clear(), perf.gpu.clear(), perf.scale.clear();
 }
+// Each step's time (the frame graph's, from the graphics chip's timers) put
+// into a JSON object before its closing brace: ...,"steps":{"shadow":0.42,...}}
+void addSteps(std::string& json, const std::vector<std::pair<std::string, float>>& steps) {
+  std::string o = ",\"steps\":{";
+  char num[32];
+  for (size_t i = 0; i < steps.size(); ++i) {
+    std::snprintf(num, sizeof num, "%.3f", static_cast<double>(steps[i].second));
+    o += (i ? ",\"" : "\"") + steps[i].first + "\":" + num;
+  }
+  json.insert(json.size() - 1, o + "}");
+}
+
 // The numbers recorded so far, as JSON.
 const char* perfJson() {
   static std::string out;
@@ -714,6 +727,8 @@ const char* perfJson() {
                 mean(perf.scale), scaleMin, perf.loadMs, g.stage ? g.stage->scene.instances.size() : 0, g.stage ? g.stage->scene.lights.size() : 0,
                 EM_ASM_INT({ return document.getElementById('view').width; }), EM_ASM_INT({ return document.getElementById('view').height; }));
   out = buf;
+  // each step's average over these frames (then counted again from here)
+  if (g.renderer && g.renderer->timers()) addSteps(out, g.renderer->takeStepAverages());
   return out.c_str();
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_perf_end() {
@@ -732,6 +747,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_perf_part() {
 // Recording again at once, in the same scene (back from another app): the
 // time away is not a frame.
 EMSCRIPTEN_KEEPALIVE void loop_perf_go() {
+  if (g.renderer) g.renderer->takeStepAverages();
   perf.on = true;
   perf.waitingFirst = false;
   perf.loadMs = -1;
@@ -1077,6 +1093,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_log() {
 // engine's own (in use and reserved) and what the GPU holds.
 EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
   static char buf[512];
+  static std::string out;
   const Meter& m = Meter::get();
   struct mallinfo mi = mallinfo();
   const double mb = 1.0 / (1024 * 1024);
@@ -1086,7 +1103,10 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
                 m.ms(Part::kScript), m.ms(Part::kPhysics), m.ms(Part::kPeople), m.ms(Part::kSend), m.ms(Part::kDraw), g.cpuMs,
                 g.renderer ? g.renderer->gpuMs() : 0.0f, mi.uordblks * mb, emscripten_get_heap_size() * mb, g.renderer ? g.renderer->gpuBytes() * mb : 0.0,
                 JobSystem::shared().threads(), g.renderer && g.renderer->clustered() ? 1 : 0);
-  return buf;
+  out = buf;
+  // each step of the frame on the graphics chip, when it has its own timers
+  if (g.renderer && g.renderer->timers()) addSteps(out, g.renderer->stepMs());
+  return out.c_str();
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[512];

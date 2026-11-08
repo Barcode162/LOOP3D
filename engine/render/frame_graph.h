@@ -57,13 +57,29 @@ class FrameGraph {
   struct Time {
     std::string step;
     float ms = 0;          // smoothed, for the meter
-    double sumMs = 0;      // added up since takeTotals(), for the recordings
+    double sumMs = 0;      // added up since takeAverages(), for the recordings
     uint32_t frames = 0;
+    uint32_t missed = 0;   // timed frames since this step last ran
   };
   const std::vector<Time>& times() const { return times_; }
+  // The steps running now: a step that hasn't run for a second of timed
+  // frames (the old drawing, once a scene's clusters are cooked) drops out.
+  static constexpr uint32_t kGone = 60;
+  std::vector<Time> recent() const;
   // Each step's average over the frames since the last call, then starts again.
   std::vector<std::pair<std::string, float>> takeAverages();
   bool timed() const { return !times_.empty(); }
+
+  // ---- the iPhone's limit: storage buffers a shader stage may read
+  // What one bind group gives each stage; a pipeline's groups add up, and a
+  // stage over `limit` (8 on the iPhone, though Safari reports more) is a
+  // fault in words, naming the pipeline (the step it serves) and the stage.
+  struct StageBuffers {
+    int vertex = 0, fragment = 0, compute = 0;
+  };
+  static constexpr int kStorageBufferLimit = 8;
+  static std::vector<std::string> storageFaults(const std::string& pipeline, const std::vector<StageBuffers>& groups,
+                                                int limit = kStorageBufferLimit);
 
  private:
   std::vector<std::string> outside_;

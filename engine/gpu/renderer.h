@@ -5,6 +5,9 @@
 // exposure like eyes, bloom, the look) — the cinema renderer's rules, fast.
 #include <functional>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "engine/render/scene.h"
 
@@ -63,6 +66,13 @@ class Renderer {
   // or with render.clusters off).
   virtual bool clustered() const = 0;
   virtual float currentExposure() const = 0;
+  // Each step of a frame on the graphics chip (engine/render/frame_graph.h), in
+  // milliseconds, from the chip's own timers: smoothed for the meter, and each
+  // step's average over the frames since the last call for the recordings.
+  // Empty when the chip has no timers (timers() false).
+  virtual bool timers() const = 0;
+  virtual std::vector<std::pair<std::string, float>> stepMs() const = 0;
+  virtual std::vector<std::pair<std::string, float>> takeStepAverages() = 0;
   // Reads the next frame back (for tests and screenshots): RGBA8, top row first.
   virtual void capture(std::function<void(int w, int h, const uint8_t* rgba)> done) = 0;
 };

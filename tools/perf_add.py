@@ -63,7 +63,7 @@ def rebuild():
                      "dpr": dev.get("dpr"), "screen": dev.get("screen"), "browser": browser(dev.get("ua", ""))})
         for x in r.get("segments", []):
             segs.append({**base, "scene": x.get("scene"), "title": x.get("title") or x.get("scene"), "mode": x.get("mode"),
-                         "part": x.get("part"), "quality": x.get("quality") or base["quality"],
+                         "part": x.get("part"), "quality": x.get("quality") or base["quality"], "steps": x.get("steps"),
                          **{k: x.get(k) for k in ("seconds", "frames", "fps", "avgMs", "p50Ms", "p95Ms", "p99Ms", "maxMs", "low1Fps", "low01Fps",
                                                   "hitches", "hitchPct", "dropped", "cpuMs", "cpuP99Ms", "gpuMs", "gpuP95Ms", "scaleAvg",
                                                   "scaleMin", "loadMs", "things", "lights", "width", "height")}})

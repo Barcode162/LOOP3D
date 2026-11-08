@@ -83,6 +83,8 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
         ok(s.scene === 'courtyard' && s.part === 0 && s.quality === 'Phone', 'the part names its scene, number and quality', [s.scene, s.part, s.quality]);
         ok(s.frames > 5 && s.gpuMs >= 0 && s.fps > 0, 'the part holds frames', [s.frames, s.fps, s.gpuMs]);
         ok(s.loadMs > 0, "the scene's first part has its load time", s.loadMs);
+        // the test browser's graphics chip has its own timers: each step of the frame is in the part
+        ok(s.steps && s.steps.film > 0 && Object.keys(s.steps).length >= 4, 'the part has each step of the frame, timed', s.steps);
         ok(row.body.device && row.body.device.ua, 'the row says which device');
         ok(Array.isArray(row.body.device.gpu.features), 'and what its graphics chip offers', row.body.device.gpu);
       }
@@ -95,7 +97,8 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
       const all = await page.evaluate(() => window.dbWrites);
       const last = all[all.length - 1].body.segments;
       ok(last.map((s) => s.scene).join(',') === 'courtyard,courtyard,cabin', 'the parts follow the play', last.map((s) => [s.scene, s.part]));
-      for (const x of last) console.log(`  saved: ${x.scene} part ${x.part}, ${x.quality}: ${x.frames} frames, ${x.fps} fps, GPU ${x.gpuMs} ms, load ${x.loadMs} ms`);
+      for (const x of last) console.log(`  saved: ${x.scene} part ${x.part}, ${x.quality}: ${x.frames} frames, ${x.fps} fps, GPU ${x.gpuMs} ms, load ${x.loadMs} ms`
+        + (x.steps ? '; steps ' + Object.entries(x.steps).map(([k, v]) => k + ' ' + v.toFixed(2)).join(', ') : ''));
       const cabin = last[last.length - 1] || {};
       ok(cabin.part === 0 && cabin.loadMs > 0 && cabin.frames > 0, "the new scene's part starts at its first frame", [cabin.part, cabin.loadMs, cabin.frames]);
       const look = await frame.evaluate(() => ({
