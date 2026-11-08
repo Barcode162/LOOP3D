@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · GitHub's **Check** failed six times today on one thing outside our code: GitHub's release
+  server timing out (504) on Emscripten's WebGPU port. The web build now brings its own copy
+  (`tools/ports/`, the exact file, BSD-3 and MIT; checked with an empty cache and no network), Emscripten's
+  cache is kept between runs, and the web build is tried up to three times. Check green again (b8d97dc).
+
 - **2026-11-08** · "The whole bar doesn't work … skip my side, you know what to do, you have the plan" (the
   reins for phase 1): the bar's visit saved the Courtyard, then nothing, so the recording page now **says what
   went wrong** (problems, the graphics card lost, no WebGPU, page errors, a scene with no picture after 20 s
