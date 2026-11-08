@@ -108,6 +108,8 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
       ok(look.editor === 'none', 'in a frame: no editor link', look.editor);
       ok(look.menu.join() === ',copy', 'in a frame: only "Copy my recording" in the menu', look.menu);
       ok(look.chip.startsWith('● Recording for Claude'), 'the chip says it is saved', look.chip);
+      const events = all[all.length - 1].body.events || [];
+      ok(Array.isArray(all[all.length - 1].body.events) && !events.some((e) => /error|problem|gpu/.test(e.kind)), 'the row keeps events, and a good visit has no trouble in them', events);
     }
     await page.close();
   }
@@ -149,6 +151,8 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
       ok(group[1] === 'The whole bar' && group[2] === 'bar_room', 'the whole bar is first in its group, before the empty room', group);
       const problems = await frame.evaluate(() => document.getElementById('problems').textContent);
       ok(!/model/i.test(problems), 'no model missing', problems.slice(0, 200));
+      const trouble = await frame.evaluate(() => window.loopRecorder.visit.events.filter((e) => e.kind !== 'left-while-loading'));
+      ok(trouble.length === 0, 'the bar loads with nothing to report', trouble);
     }
     await page.close();
   }

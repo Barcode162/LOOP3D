@@ -143,20 +143,35 @@
     document.getElementById('editorLink').style.display = 'none';
     document.querySelectorAll('#benchSel option.auto').forEach((o) => o.remove());
   }
+  // it starts with the page, before the engine, so a phone without WebGPU is recorded too
+  if (!bench) {
+    const chip = document.getElementById('rec');
+    const store = LoopUI.recordingStore(window, (visit, ok, code) => {
+      chip.hidden = false;
+      chip.textContent = ok ? '● Recording for Claude · ' + Math.max(1, Math.round(visit.summary.seconds / 60)) + ' min' : 'Recording not saved (' + (code || 'error') + ')';
+    });
+    rec = LoopUI.recorder({ getM: () => M, quality: () => qualityNames[+document.getElementById('quality').value], store, device: deviceInfo(),
+                            build: document.querySelector('meta[name=loop-build]').content });
+    document.addEventListener('visibilitychange', () => (document.hidden ? rec.hidden() : rec.shown()));
+    addEventListener('pagehide', () => rec.cut());
+    addEventListener('error', (e) => rec.event('error', (e.message || 'error') + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')));
+    window.loopRecorder = rec;  // for the checks (tools/recorder_check.js)
+  }
   const TRACKER = '__TRACKER__';
 
   // a GPU that's gone leaves its last "done" promises rejected: expected, not news
   addEventListener('unhandledrejection', (e) => { if (String(e.reason).includes('external Instance reference')) e.preventDefault(); });
-  window.loopNoGpu = () => { note.style.display = 'block'; note.textContent = M ? 'The graphics card stopped answering twice: this scene may be too heavy for it. Try Phone quality, then reload.' : 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
-  window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
+  window.loopNoGpu = () => { if (rec) rec.event(M ? 'gpu-gave-up' : 'no-webgpu', navigator.userAgent); note.style.display = 'block'; note.textContent = M ? 'The graphics card stopped answering twice: this scene may be too heavy for it. Try Phone quality, then reload.' : 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
+  window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; if (rec) rec.event('problem', t); };
   // the loading screen stays until the scene's first frame is on screen
   const showNote = (t, spinning) => { note.textContent = t; note.classList.toggle('loading', !!spinning); note.style.display = 'block'; };
-  window.loopShown = () => { note.style.display = 'none'; fade.in(M); };
-  window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; };
-  window.loopGpuLost = () => showNote('The graphics card restarted. Reconnecting…', true);
+  window.loopShown = () => { note.style.display = 'none'; fade.in(M); if (rec) rec.firstFrame(); };
+  window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; if (rec) rec.event('gpu-problem', t); };
+  window.loopGpuLost = () => { showNote('The graphics card restarted. Reconnecting…', true); if (rec) rec.event('gpu-lost'); };
   window.loopGpuBack = (q) => {
     const sel = document.getElementById('quality');
     const lowered = +sel.value !== q;
+    if (rec) rec.event('gpu-back', 'at ' + qualityNames[q]);
     if (rec && lowered) rec.quality();
     sel.value = String(q);
     if (lowered) { showNote('Switched to ' + qualityNames[q] + ' so it keeps running smoothly.', false); setTimeout(() => { note.style.display = 'none'; }, 3500); }
@@ -191,16 +206,21 @@
   }
   async function loadScene(name) {
     if (rec) rec.scene(name);
+    const stage = (t) => { if (rec) rec.stage(t); };
     useProject(name);
     showNote(LoopUI.loadingText(M, titleOf(name)), true);
+    stage('fetching the scene');
     const own = fromEditor && fromEditor.scene === name ? fromEditor.text : await fetchScene(name);
     const text = (await LoopUI.assemble(own, fetchScene)).text;
-    await LoopUI.loadModels(M, text);
+    stage('fetching models');
+    await LoopUI.loadModels(M, text, (done, total) => stage('fetching models ' + done + '/' + total));
+    stage('building the world');
     // let the loading screen reach the screen first: building a world takes a moment
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
     M.stringToUTF8(text, p, n);
     M._loop_run_script(p);
+    stage('waiting for the first picture');
     setTimeout(() => M._free(p), 1000);
     trailer.src = 'scenes/' + encodeURIComponent(name) + '.png';
   }
@@ -358,18 +378,6 @@
     setInterval(() => LoopUI.applyPage(M, { hud: [...document.querySelectorAll('.bar, #menuBtn')] }), 1000);
     sc.value = sceneName;
     sc.onchange = () => { sc.blur(); location.hash = sc.value; window.loopGoTo(sc.value); };
-    if (!bench) {
-      const chip = document.getElementById('rec');
-      const store = LoopUI.recordingStore(window, (visit, ok, code) => {
-        chip.hidden = false;
-        chip.textContent = ok ? '● Recording for Claude · ' + Math.max(1, Math.round(visit.summary.seconds / 60)) + ' min' : 'Recording not saved (' + (code || 'error') + ')';
-      });
-      rec = LoopUI.recorder({ getM: () => M, quality: () => qualityNames[+q.value], store, device: deviceInfo(),
-                              build: document.querySelector('meta[name=loop-build]').content });
-      document.addEventListener('visibilitychange', () => (document.hidden ? rec.hidden() : rec.shown()));
-      addEventListener('pagehide', () => rec.cut());
-      window.loopRecorder = rec;  // for the checks (tools/recorder_check.js)
-    }
     document.getElementById('benchSel').onchange = (e) => {
       const kind = e.target.value; e.target.value = ''; e.target.blur();
       if (!kind) return;

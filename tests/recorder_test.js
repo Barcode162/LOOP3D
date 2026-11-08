@@ -61,6 +61,25 @@ function fakeStore() { const s = { saved: [] }; s.save = (visit, id) => s.saved.
   rec.stop();
 }
 
+// ---- what went wrong is kept, and saved at once
+{
+  const e = fakeEngine(), store = fakeStore();
+  const rec = L.recorder({ getM: () => e.M, quality: () => 'Phone', store, partMs: 1e9, slowMs: 30 });
+  rec.event('no-webgpu', 'Safari');
+  eq([rec.visit.events.length, rec.visit.events[0].kind, rec.visit.events[0].text, store.saved.length], [1, 'no-webgpu', 'Safari', 1], 'an event is kept and saved at once, with no parts yet');
+  rec.scene('bar'); rec.stage('fetching models 12/167');
+  rec.hidden();
+  eq(rec.visit.events.slice(-1).map((x) => [x.kind, x.scene, x.stage]), [['left-while-loading', 'bar', 'fetching models 12/167']], 'leaving while a scene loads says how far it got');
+  rec.shown();
+  global.slowRec = rec;
+}
+{
+  const e = fakeEngine(), store = fakeStore();
+  const rec = L.recorder({ getM: () => e.M, quality: () => 'Phone', store, partMs: 1e9, slowMs: 30 });
+  rec.scene('courtyard'); rec.firstFrame();
+  global.fastRec = rec;
+}
+
 // ---- the summary (the benchmark's too)
 {
   const s = L.summary([{ scene: 'a', frames: 600, seconds: 10, low1Fps: 40, p99Ms: 25, maxMs: 40, hitches: 2, scaleAvg: 1, loadMs: 300 },
@@ -134,6 +153,19 @@ const visitOf = (n, id) => ({ kind: 'loop3d-bench', bench: 'live', start: 's0', 
     store.save(visitOf(1), 'v3');
     await new Promise((r) => setTimeout(r, 2200));
     eq(db.writes.map((x) => x.path), ['runs/v3', 'runs/v3'], 'a passing hiccup is tried once more');
+    db.answer();
+  }
+  // a scene with no picture after the wait says so (twice: at 1x and 3x the wait); one that showed says nothing
+  await new Promise((r) => setTimeout(r, 120));
+  eq(global.slowRec.visit.events.filter((x) => x.kind === 'slow-load').map((x) => [x.scene, x.stage]), [['bar', 'fetching models 12/167'], ['bar', 'fetching models 12/167']], 'a scene that shows no picture is reported with its stage');
+  eq(global.fastRec.visit.events.length, 0, 'a scene that showed its picture reports nothing');
+  global.slowRec.stop(); global.fastRec.stop();
+  {
+    const db = fakeDb(), store = L.recordingStore(fakeWin(db));
+    await tick();
+    store.save({ ...visitOf(0), events: [{ kind: 'gpu-lost' }] }, 'v4');
+    await tick();
+    eq(db.writes.map((x) => [x.path, x.parts]), [['runs/v4', 0]], 'a visit with only an event is written');
     db.answer();
   }
   console.log(`${checks} recorder checks, ${failed} failed`);

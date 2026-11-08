@@ -174,22 +174,31 @@ window.LoopUI = (() => {
     // text beside where it would be: <name>.glb.json = {"glb": "<base64>"}
     const asText = typeof document !== 'undefined' && !!document.querySelector('meta[name="loop-models"][content="json"]');
     let done = 0;
-    await Promise.all([...names].map(async (name) => {
+    const one = async (name) => {
       const path = '/scene/models/' + name;
       try { M.FS.stat(path); done++; return; } catch (e) {}
       try {
         const json = asText && name.endsWith('.glb');
         const r = await fetch('scenes/models/' + encodeURIComponent(name) + (json ? '.json' : ''));
         if (!r.ok) return;  // the script then says which model is missing
-        M.FS.writeFile(path, json ? fromBase64((await r.json()).glb) : new Uint8Array(await r.arrayBuffer()));
+        M.FS.writeFile(path, json ? fromBase64(await r.text()) : new Uint8Array(await r.arrayBuffer()));
       } catch (e) {}
       done++;
       if (onProgress) onProgress(done, names.size);
-    }));
+    };
+    const list = [...names];
+    if (!asText) { await Promise.all(list.map(one)); return; }
+    // as text, a model takes several times its size while it is read: four
+    // at a time keeps the bar's 167 from all being in memory at once
+    let next = 0;
+    await Promise.all([0, 1, 2, 3].map(async () => { while (next < list.length) await one(list[next++]); }));
   }
 
-  function fromBase64(s) {
-    const bin = atob(s), out = new Uint8Array(bin.length);
+  // a model as text, {"glb": "<base64>"}, to its bytes (straight to bytes where the browser can)
+  function fromBase64(text) {
+    const b64 = text.slice(text.indexOf('"', text.indexOf(':') + 1) + 1, text.lastIndexOf('"'));
+    if (Uint8Array.fromBase64) return Uint8Array.fromBase64(b64);
+    const bin = atob(b64), out = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
   }
@@ -224,14 +233,19 @@ window.LoopUI = (() => {
   //   o.getM()      the engine (or null while it loads)
   //   o.quality()   'Phone', 'High' or 'Ultra' now
   //   o.store       where the visit is saved: { save(visit) }
-  //   o.build, o.device (a promise), o.partMs, o.clock (tests)
+  //   o.build, o.device (a promise), o.partMs, o.slowMs, o.clock (tests)
+  // It also keeps what went wrong, saved the moment it happens (visit.events:
+  // a problem on screen, the graphics card lost or back, a scene with no
+  // picture after 20 s and how far its loading got, leaving while it loads),
+  // so a visit that fails on the phone still tells Claude why.
   function recorder(o) {
-    const clock = o.clock || (() => new Date()), partMs = o.partMs || 30000;
+    const clock = o.clock || (() => new Date()), partMs = o.partMs || 30000, slowMs = o.slowMs || 20000;
     const t0 = clock(), stamp = t0.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
     const visit = { kind: 'loop3d-bench', v: 1, when: t0.toISOString(), build: o.build || '', bench: 'live', start: null, quality: o.quality(),
-                    device: null, summary: summary([]), segments: [] };
+                    device: null, summary: summary([]), segments: [], events: [] };
     const id = 'live-' + stamp + '-' + Math.random().toString(36).slice(2, 6);
     let scene = null, part = 0, quality = o.quality(), on = false;
+    let stage = '', loading = false, sceneAt = t0, slow = [];
     if (o.device) o.device.then((d) => { visit.device = d; }).catch(() => {});
     const engine = () => { const M = o.getM(); return M && M._loop_perf_part ? M : null; };
     // the numbers since the last cut, as the next part of this scene
@@ -248,25 +262,47 @@ window.LoopUI = (() => {
       o.store.save(visit, id);
       return true;
     }
+    // something worth knowing: kept with the scene, how long it had been
+    // loading or playing, and the engine's memory then; saved at once
+    function event(kind, text) {
+      if (visit.events.length >= 100) return;
+      const e = { at: clock().toISOString(), scene, kind, seconds: +((clock() - sceneAt) / 1000).toFixed(1), quality: o.quality() };
+      if (text) e.text = String(text).slice(0, 500);
+      if (loading) e.stage = stage;
+      const M = o.getM();
+      try { if (M && M._loop_meter) { const m = JSON.parse(M.UTF8ToString(M._loop_meter())); e.memoryMB = Math.round(m.memUsed), e.gpuMemoryMB = Math.round(m.gpuMem); } } catch (x) {}
+      visit.events.push(e);
+      o.store.save(visit, id);
+    }
     const timer = setInterval(cut, partMs);
     const r = {
-      id, visit, cut,
+      id, visit, cut, event,
       // a scene starts loading: the last one's part ends, the new one's
       // recording starts with its first frame (so its load time counts)
       scene(name) {
         const M = engine();
         if (!M) return;
         cut();
-        if (!visit.start) visit.start = name;
+        if (!visit.start) visit.start = name, visit.quality = o.quality();
         scene = name, part = 0, quality = o.quality(), on = true;
+        loading = true, stage = 'starting', sceneAt = clock();
+        slow.forEach(clearTimeout);
+        slow = [1, 3].map((k) => setTimeout(() => { if (loading && scene === name) event('slow-load'); }, slowMs * k));
         M._loop_perf_begin();
       },
+      // how far the scene's loading got (fetching, models n/m, building …)
+      stage(text) { stage = text; },
+      // the scene's first picture is on screen
+      firstFrame() { loading = false; slow.forEach(clearTimeout); },
       // before the quality changes: the part so far keeps the old one's name
       quality() { cut(); },
       // the page goes to the background, and comes back
-      hidden() { const M = engine(); if (!M || !on) return; cut(); M._loop_perf_end(); on = false; },
+      hidden() {
+        if (loading && scene) event('left-while-loading');
+        const M = engine(); if (!M || !on) return; cut(); M._loop_perf_end(); on = false;
+      },
       shown() { const M = engine(); if (!M || on || !scene) return; M._loop_perf_go(); quality = o.quality(); on = true; },
-      stop() { clearInterval(timer); r.hidden(); },
+      stop() { clearInterval(timer); slow.forEach(clearTimeout); r.hidden(); },
     };
     return r;
   }
@@ -293,7 +329,8 @@ window.LoopUI = (() => {
       pending = null;
       const k = Math.max(0, Math.ceil(visit.segments.length / PARTS_PER_ROW) - 1), rowId = k ? id + '-' + (k + 1) : id;
       const segs = visit.segments.slice(k * PARTS_PER_ROW);
-      const body = JSON.parse(JSON.stringify({ ...visit, id: rowId, start: segs.length ? segs[0].scene : visit.start, summary: summary(segs), segments: segs }));
+      const body = JSON.parse(JSON.stringify({ ...visit, id: rowId, start: segs.length ? segs[0].scene : visit.start, summary: summary(segs), segments: segs,
+                                               events: (visit.events || []).slice(-100) }));
       let retry = false;
       try {
         await db.doc('runs/' + rowId).set(body);

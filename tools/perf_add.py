@@ -42,6 +42,9 @@ def add(path):
         if r.get("kind") != "loop3d-bench":
             print(f"skipped something that isn't a Loop3D benchmark in {path}")
             continue
+        if not r.get("segments"):  # a live visit that only reported trouble (its events): nothing to time
+            print(f"skipped {r.get('id') or path}: no frames recorded" + (f" ({len(r.get('events', []))} events)" if r.get("events") else ""))
+            continue
         rid = run_id(r)
         RAW.mkdir(parents=True, exist_ok=True)
         (RAW / f"{rid}.json").write_text(json.dumps(r, indent=1))

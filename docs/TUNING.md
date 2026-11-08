@@ -105,7 +105,10 @@ page goes to the background), with the same numbers as a benchmark below. Nothin
   player inside claude.ai. A chip says **● Recording for Claude**: each visit is saved as it goes, one row in
   the page's database (`runs/live-<when>-<code>`, a run of bench `live`; a visit past 150 parts goes on in
   `…-2`). Claude reads them with `ArtifactData` (`list` of `runs`, `out_dir` to save them as files), then
-  `tools/perf_add.py` keeps them like any run. The page runs on one core (a page inside another can't share
+  `tools/perf_add.py` keeps them like any run. A row also keeps what went wrong (`events`: `problem`,
+  `gpu-problem`, `gpu-lost`, `gpu-back`, `gpu-gave-up`, `no-webgpu`, `error`, `slow-load` after 20 s and 60 s
+  without a picture, `left-while-loading`), each with its scene, seconds, loading stage and memory, saved at once:
+  a visit that fails on the phone still says why. The page runs on one core (a page inside another can't share
   memory between cores), and lists the whole bar.
 - **The public player** keeps the visit in the browser: **Benchmark… → Copy my recording**, then paste it in
   the chat.
