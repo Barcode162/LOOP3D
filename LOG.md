@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-08** · "This, make it my plan and then we go over it" (your page, Loop3D Pipeline Plan: The
+  Strongest Combination): it is now the plan. `PLAN.md` gets **the picture pipeline** (six foundations, ten
+  phases, measure first) in the place of rebuild step 5; the whole plan, checked against the code, in
+  `docs/PIPELINE.md`. Three lines corrected from the code: the live fog is height fog (fog cells are new), the
+  bar's 1,894 → 443 was already won by skipping what's off-screen, and the phone was measured on 12 scenes on
+  2026-11-05 (the plan had said never). Going over it with you next, one piece at a time.
+
 - **2026-11-07** · Step 4 continued: **grass, leaves and flowers get simpler far away** (separate cards can't
   collapse edges: half of a group's cards are kept, each bigger by √2 so the same area stays covered, tested);
   at their coarsest the Glade keeps 15% of its triangles (was 68%), the Woods 18% (was 29%). Pictures (a new

@@ -1,0 +1,166 @@
+# The picture pipeline
+
+The user's plan for how Loop3D draws a frame, made the plan on 2026-11-08 from their page
+**Loop3D Pipeline Plan: The Strongest Combination** (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm).
+`PLAN.md` holds the order of work; this page holds the whole plan, and what we change in it as we go is written
+here.
+
+## The idea
+The strongest pipeline is the one that gets closest to the cinema picture inside 16.7 ms on the iPhone, not the
+one running the most techniques. Every choice is judged by two numbers: **milliseconds on the phone**, and
+**distance from the cinema picture**.
+
+"Use as much as possible" works by giving every technique a job instead of running them all at once. 41 of the
+50 get one: live on every tier, an upgrade for stronger devices, a baking tool, a world-building piece, a
+reference, a research experiment or a fallback. One is held in reserve, and 8 are out, each with its reason.
+
+The clever part is shared foundations: six pieces of machinery built once, with most techniques riding on them,
+so adding a technique costs one new step in the frame, not a new system.
+
+## The six shared foundations
+Three already exist; the frame graph, the score and the light cache are new.
+
+| Foundation | What it is | What rides on it | Loop3D today |
+| --- | --- | --- | --- |
+| Frame graph | Each step of the frame says what it reads and writes; the graph orders the steps, reuses memory, checks the iPhone's 8-storage-buffer limit and times every step | Every step; Phone, High and Ultra become three recipes of the same steps | None: one 2,352-line renderer (`engine/gpu/renderer.cpp`) and one 1,699-line shader file (`engine/gpu/shaders.h`) |
+| Reference and score | The cinema path tracer, plus an error score of each live picture against it, per scene | Every decision in this plan; cinema also bakes light | Cinema and Trailer exist (`engine/render/pathtracer.*`, `shots.h`); no score yet |
+| One BVH | Boxes inside boxes on the GPU, so rays find triangles fast | Ray-traced shadows, Ultra, probe updates, ReSTIR, baking | Exists: two levels (`engine/geometry/bvh.*`), for lamp shadows on High and for Ultra |
+| One frame history | Last frame's picture, depth and motion for every pixel | Frame blending, upscaling, denoising, ReSTIR reuse, occlusion culling, ambient occlusion | Frame blending keeps a history (`render.taa`) |
+| One light cache | A sparse grid of probes, each holding the light around it as 9 numbers, the same maths as the sky | Bounced light, rough reflections when screen rays miss, the light inside fog | None (sky light only) |
+| One change tracker | Version numbers on everything, so work happens only where something changed | Cluster uploads, sun shadows, probe relighting, sky reflections | Only for sending what moved (rebuild step 1) |
+
+## One frame, step by step
+A Phone frame runs eight steps in this order; High and Ultra add to steps 4 and 5, and Ultra's path tracing
+replaces the lighting in step 5.
+
+1. **Update the world.** Flat tables on the processor; the change tracker marks what changed, and only that is
+   sent to the graphics chip. *Uses: change tracker.*
+2. **Find what's seen.** Clusters culled by the view and by last frame's depth, then drawn once into the
+   visibility buffer. *Uses: frame history.*
+3. **Relight the light cache** (the big new one). A few probes a frame get fresh rays through the BVH, only where
+   a lamp or object changed; cinema bakes the starting light. *Uses: BVH, change tracker, light cache.*
+4. **Lamps and shadows.** The lamp grid: in the bar each pixel checks about 10 lamps, not 103. Sun shadows in
+   steps. Phone: shadow maps for the main lamps. High: ray-traced shadows and ReSTIR DI. *Uses: change tracker;
+   the BVH on High.*
+5. **Light every pixel once.** PBR materials with grid lamps, sky reflections and bounce light from the cache,
+   plus contact shadows and ambient occlusion. High: screen reflections. Ultra: path tracing. *Uses: light
+   cache, frame history.*
+6. **Fog.** Fog cells lit by the same lamp grid and light cache, instead of building their own. *Uses: lamp
+   grid, light cache.*
+7. **Blend and upscale.** Drawn at about two-thirds size; past frames rebuild full size and clean up noise. The
+   resolution rises and falls with the frame graph's measured timings. *Uses: frame history.*
+8. **Film.** Bloom, exposure and AgX tone mapping turn light into the final picture.
+
+Steps 4, 5 and 6 all read the same lamp grid and light cache, which is what keeps a frame with this many
+techniques lean.
+
+## The phone's budget
+The whole frame gets 16.7 ms on the iPhone for 60 frames a second, and it's a graphics-chip problem: the phone
+runs of 2026-11-05 (12 scenes, before cluster drawing; `perf/`) show The Woods at 159 ms of graphics-chip time a
+frame and 1 ms of processor time (6 fps), even at half resolution.
+
+Per-step targets stay blank until phase 1 times each step on the phone; guessing them now would steer the work
+toward the wrong step. Once measured, going over budget is handled in a fixed order: first the resolution drops
+(step 7), then the step that buys the least accuracy per millisecond is turned down.
+
+## Every technique's role
+41 of the 50 get a job, 1 waits in reserve and 8 are out. **Have** = Loop3D already runs it; **New live** =
+added on every tier; **Upgrade** = High or Ultra only.
+
+| # | Technique | Role | Job, or why it's out |
+| --- | --- | --- | --- |
+| 1 | Procedural generation | Bake | Terrain and forests made while cooking a project |
+| 2 | Scene graph | Out | Flat tables plus typed relationships (4, 6) do its job faster |
+| 3 | Streaming | World | Big worlds loaded around the player (rebuild step 12) |
+| 4 | Data-oriented design / ECS | Have | The world as flat lists (rebuild step 1) |
+| 5 | Incremental updates | Have | Grows into the change tracker |
+| 6 | Typed relationships | World | Knows which room a lamp or object is in, so a change relights only that room |
+| 7 | Spatial index | Have | The one BVH |
+| 8 | Frustum culling | Have | Per cluster, on the graphics chip |
+| 9 | Draw per object + LOD | Fallback | Kept only for devices where cluster drawing fails |
+| 10 | Occlusion culling | New live | Skipping what's off-screen already took the bar from 1,894 things drawn to the 443 in view; this skips the ones of those 443 hidden behind walls, tested against last frame's depth |
+| 11 | Instancing and batching | Have | Folded into cluster drawing |
+| 12 | Visibility buffer | Have | Lights each pixel once |
+| 13 | Signed distance fields | Reserve | Only if contact shadows and ambient occlusion score poorly against cinema |
+| 14 | Clusters / meshlets | Have | Rebuild step 4 |
+| 15 | Gaussian splatting | Out | Captured blobs can't be relit by your lamps |
+| 16 | Phong / Blinn-Phong | Out | Replaced by PBR (17) |
+| 17 | PBR microfacet / GGX | Have | The same material maths as cinema |
+| 18 | Layered materials | Have | Clear-coat, sheen, skin, see-through leaves |
+| 19 | Image-based light | Have | Re-filtered only when the sun moves |
+| 20 | Neural materials | Out | Needs training and research-grade graphics-chip support |
+| 21 | Shadow maps | Have | The sun on every tier, plus the main lamps on Phone (phase 5) |
+| 22 | Shadow-caster culling | Have | Cluster culling from the sun's view |
+| 23 | Cascades and soft filtering | New live | Sun shadows in steps; a step is redrawn only when something in it moves |
+| 24 | Tiled / clustered lights | New live | The bar: about 10 lamps a pixel instead of 103; the same grid lights the fog |
+| 25 | Contact shadows | New live | Short rays for tiny shadows the maps miss |
+| 26 | Ray-traced shadows | Upgrade | High: the two brightest lamps (runs today); Ultra: every lamp |
+| 27 | ReSTIR DI | Upgrade | High: shadows from many lamps with one ray a pixel |
+| 28 | Baked lightmaps | Bake | Idea kept, storage changed: cinema bakes bounce light into the light cache, no unwrapping |
+| 29 | Sky as 9 numbers | Have | Its maths is reused for every probe |
+| 30 | Ambient occlusion | New live | Small creases the probes are too coarse for |
+| 31 | Light propagation volumes | Out | Probes (35) do the same job better |
+| 32 | Screen-space GI and reflections | Upgrade | High: glossy floors and counters; falls back to the light cache |
+| 33 | Voxel cone tracing | Out | Too much memory for a phone; probes do the job |
+| 34 | Live path tracing + denoising | Upgrade | Ultra |
+| 35 | Probe grids / DDGI | New live | The light cache, relit by a few rays a frame through the BVH |
+| 36 | Lumen | Out | Too much machinery; its best ideas live in the light cache |
+| 37 | ReSTIR GI | Upgrade | Ultra: cleaner bounce light from fewer rays |
+| 38 | Radiance cascades | Research | Tested against the light cache with the score |
+| 39 | Split radiance cascades | Research | Its sparse storage is borrowed for the light cache; the full method is tested on High |
+| 40 | Physical sky | Have | Recomputed only when the sun moves |
+| 41 | Exposure and tone mapping | Have | AgX |
+| 42 | Bloom and lens effects | Have | Unchanged |
+| 43 | Dynamic resolution | Have | Steered by the frame graph's timings |
+| 44 | Frame blending (TAA) | Have | Grows into upscaling (47) |
+| 45 | Fog | Have | Height fog with the sun's glow today; grows into fog cells lit by the lamp grid (24) and the light cache (35) |
+| 46 | Denoisers | Upgrade | Ray-traced shadows on High, and Ultra; shares the frame history |
+| 47 | Temporal upscaling | New live | Draw at about two-thirds size, rebuild full size from history (phase 7) |
+| 48 | Path tracing | Reference | The cinema renderer: truth and baker |
+| 49 | Bidirectional path tracing | Reference | Later: candles behind glass and other hard light |
+| 50 | Metropolis light transport | Out | Hard to build; 49 covers your scenes |
+
+## Build order
+Measure first, restructure second, add techniques third. Every phase passes the same gate: every scene keeps
+playing, nothing gets slower on the phone, and the score against cinema doesn't get worse (or improves, when the
+phase is meant to change the look).
+
+1. **Measure.** The phone benchmark on the current cluster build, at least the bar and The Woods. The error
+   score against cinema. `loop budget` counting the cluster way. Nothing after this is decided blind.
+2. **Frame graph.** The renderer split into steps that each say what they read and write, every step timed on
+   the phone (if Safari gives no graphics-chip timers, a step is timed by switching it off for a few frames).
+   Same picture, same speed: a pure restructure.
+3. **Change tracker and frame history.** Version numbers on graphics-chip work, and each pixel's motion recorded
+   from the visibility buffer: the two foundations most later phases plug into.
+4. **Occlusion culling.** Clusters tested against last frame's depth, then what was hidden tested again. How
+   many of the bar's 443 things in view are really seen is counted first, and is the target.
+5. **Direct light** (the first half of the old "smart light"). The lamp grid (about 10 lamps a pixel in the bar),
+   shared with the fog; the unfinished one on `parked/light-grid` (builder, tests and budget counting done) is
+   the start. Sun shadows in steps, each redrawn only on change. Shadow maps for the main lamps on Phone. Contact
+   shadows.
+6. **Bounced light** (the second half). Cinema bakes the light cache; live, a few probes a frame are relit, only
+   where something changed. Ambient occlusion fills the small creases.
+7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.
+8. **Upgrades.** ReSTIR DI and screen-space reflections on High; ReSTIR GI on Ultra.
+9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.
+10. **World.** Typed relationships and streaming (with rebuild step 12, world generation).
+
+## Where the new research is
+Four experiments come almost free once the foundations exist, because each is just a different recipe measured
+with the same two numbers.
+- **Change-driven light cache.** Relight only the probes a change reaches, instead of a fixed number a frame in
+  rotation as DDGI does. Measure milliseconds, the score, and how many frames the picture takes to settle after a
+  lamp switches on.
+- **Radiance cascades in a browser.** Run them, and the 2026 split version, on our own BVH in small rooms,
+  against the light cache. No one was found publishing this on WebGPU.
+- **One grid, three jobs.** The lamp grid already lights surfaces; measure what fog costs when it reuses that
+  grid and the light cache instead of building its own.
+- **Self-tuning tiers.** Rate every step by how much it lowers the error per millisecond it costs; over budget,
+  drop the lowest-rated step first, so the tiers are tuned by measurement, not guesswork.
+
+## Checked against the code (2026-11-08)
+Three lines differ from the page, because the code says otherwise: the live fog is height fog (fog cells would be
+new, technique 45); the bar's 1,894 → 443 was already won by skipping what's off-screen, so occlusion culling's
+target is counted first (technique 10, phase 4); and the phone was measured on 12 scenes on 2026-11-05, not one.
+The rules the page carries over (from scratch, phone first, eight storage buffers, nothing breaks) are
+`CLAUDE.md`'s and the rebuild's.

@@ -6,8 +6,9 @@ phase is done when its "done when" is true on the phone.
 
 ## Needs you
 - **Benchmark on your phone** (any time, a minute each): open a scene, tap **Benchmark… → This scene**, then
-  **Copy results** and paste them in the chat. Best first: the bar (`#bar`), The Woods (`#the_woods`). Every
-  number so far came from a software graphics card; yours set the real budget.
+  **Copy results** and paste them in the chat. Best first: the bar (`#bar`), The Woods (`#the_woods`). Your 12
+  runs of 2026-11-05 came before the cluster drawing (The Woods: 6 fps, 159 ms on the graphics chip, 1 ms on the
+  processor); new ones are the picture pipeline's phase 1.
 - **The project file's name:** `.looped` is proposed; say if you want another.
 - **The bar at its hidden link on joshuavelasco.com** (phase C): the three IONOS secrets added to this repo's
   GitHub settings (only you can).
@@ -60,12 +61,12 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
    away, collapses along seams (hard-edged models), the cooked trees kept between visits.
 4. **Drawing rebuilt (Nanite for WebGPU)** (on by default 2026-11-06): the graphics chip culls and picks the
    detail of every piece itself, one draw, each pixel shaded once (the bar 3.7x faster on the test machine),
-   frame blending in multisampling's place. Still to come: the sun's shadow through clusters, the cooked trees
-   kept between visits (faster loads), leaf cards and hard edges simplifying, `loop budget` counting the new
-   way; then the old way goes (depth pre-pass, hand-made tree versions) once your phone confirms it.
-5. **Smart light:** lamps only where they reach (the bar: 103 a pixel to about 10), kept shadows in steps for
-   the sun and for the main lamps on Phone too, bounce light baked by our own path tracer, soft contact
-   shadows, upscaling.
+   frame blending in multisampling's place, the sun's shadow through clusters, leaf cards simplifying far away
+   (2026-11-07). What's left moves into the picture pipeline (`loop budget` counting the new way: its phase 1);
+   done along the way: the cooked trees kept between visits (faster loads), hard-edged models simplifying; once
+   your phone confirms clusters, the old way shrinks to a fallback for devices that can't draw clusters.
+5. **The picture pipeline** (your plan, 2026-11-08): the section below. It takes the place of "smart light"
+   (its phases 5 and 6) and adds the foundations under it.
 6. **The full skeleton and a real body:** about 65 bones (hands, fingers, feet, toes, jaw, eyes), a smooth
    skin that bends, sizes and masses from human measurement tables.
 7. **One physics solver for everything:** joints with real limits and muscles, shapes fitted to every model,
@@ -83,6 +84,37 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
+## The picture pipeline (your plan, 2026-11-08) · next: phase 1
+*Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
+(https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
+*The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
+one with the most techniques. Every choice is judged by two numbers: milliseconds on the phone and distance from
+cinema. Each of 50 techniques gets a job (41), waits in reserve (1) or is out with its reason (8).
+*Six foundations*, built once, most techniques riding on them: the **frame graph** (each step says what it reads
+and writes, and is timed), the **score** against cinema, **one BVH**, **one frame history**, **one light cache**
+(probes of bounced light), **one change tracker** (work only where something changed).
+*A frame:* update the world, find what's seen, relight the light cache, lamps and shadows, light every pixel
+once, fog, blend and upscale, film.
+
+**The phases, in order** (each keeps every scene playing, no slower on the phone, no further from cinema):
+1. **Measure:** your phone on today's cluster build (the bar, The Woods), the score against cinema, `loop budget`
+   counting the cluster way.
+2. **Frame graph:** the renderer split into steps, each timed on the phone; the same picture, the same speed.
+3. **Change tracker and frame history:** version numbers on the graphics chip's work, each pixel's motion.
+4. **Occlusion culling:** skip what's hidden behind walls (of the 443 things in the bar's view).
+5. **Direct light:** the lamp grid (the bar: 103 lamps a pixel to about 10; started on `parked/light-grid`),
+   shared with the fog; sun shadows in steps, redrawn on change; shadow maps for the main lamps on Phone;
+   contact shadows.
+6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient
+   occlusion.
+7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the
+   frame graph's timings.
+8. **Upgrades:** ReSTIR DI and screen reflections on High; ReSTIR GI on Ultra.
+9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
+10. **World:** typed relationships and streaming, with rebuild step 12.
+
+*Done when:* phases 1 to 7 run smooth on your phone and every scene's score is no worse than today.
+
 ## Phase A · Smooth and clean (the foundations) · folded into the rebuild
 *You see:* every scene moves smoothly on the phone, with a clean, still picture.
 
@@ -97,9 +129,8 @@ Done:
   33 M → 3.7 M triangles a frame (2026-11-06).
 - Scenes over the Phone budget: **18 of 41 → 9 of 41**.
 
-Its next steps are now rebuild steps: the bar's lamps (step 5), frame blending (step 4), the rest of the
-forests (step 4: clusters give every shape its simpler versions), patterns made once and the sun's shadow kept
-(step 5).
+Its next steps are now the picture pipeline's: the bar's lamps (phase 5), patterns made once and the sun's
+shadow kept (phases 3 and 5); frame blending and the forests' simpler versions came with rebuild step 4.
 
 *Done when:* every scene fits the Phone budget, and your benchmark says smooth (steady 60, no hitches).
 
@@ -165,7 +196,7 @@ works.
 skinned people, clips for scripts, convex shapes, hit events, no tunnelling, ragdolls, picture tests and the
 meter.)
 - **Content:** the rest of model import (normal maps, glowing pictures); a picture word for a loose image.
-- **Look:** light shafts in the live fog; wind sway; reflections; Ultra with reprojection.
+- **Look:** wind sway (light in the fog, reflections and Ultra's reuse are now picture pipeline phases 5, 8, 9).
 - **Characters:** paths around obstacles; faces, hair.
 - **Physics:** vehicles (3D has a tyre model).
 - **Sound:** the mixer on its own thread.
@@ -184,12 +215,14 @@ meter.)
   ahead above; Phase A folded into it.
 - 2026-11-06: **the library**: `library/<kinds>/<name>.loop`, text recipes with a card (credit and licence
   required), found by `use` after the scene's own folder; every goal adds to it.
+- 2026-11-08: **the picture pipeline** (your plan, from your page): six shared foundations, 50 techniques each
+  given a role, ten phases measured first; it takes the place of rebuild step 5 (`docs/PIPELINE.md`).
 
 ## Open problems
-- **Never measured on the phone** (needs you, above).
-- **The bar** is the heaviest scene: 103 lamps per pixel (phase A, step 1).
-- **Shimmer and soft edges** remain until frame blending (phase A, step 2); Phone draws 1 pixel per screen point.
-- **The forests' small plants and rocks** have no simpler versions (phase A, step 3).
+- **Measured on the phone only before clusters** (2026-11-05: The Woods 6 fps, the Ardane scenes 12 to 59 fps);
+  the cluster build not yet (needs you, above).
+- **The bar** is the heaviest scene: 103 lamps per pixel (the picture pipeline, phase 5).
+- **Phone draws 1 pixel per screen point;** upscaling (phase 7) is how it gets sharper for the same cost.
 - **Big files in git:** the bar's models (30 MB) and Ardane's stills (24 MB); later, models rebuilt from their
   recipes and packs kept out of git.
 - The rating of 2026-11-05 (4 / 10) and its findings: `LOG.md` and `perf/budget.md`.
