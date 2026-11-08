@@ -12,6 +12,18 @@ if [ -n "${PLAYER_PREBUILT:-}" ]; then
   cp "$PLAYER_PREBUILT/player.js" "$PLAYER_PREBUILT/player.wasm" site/
   if [ -f "$PLAYER_PREBUILT/player_mt.js" ]; then cp "$PLAYER_PREBUILT/player_mt.js" "$PLAYER_PREBUILT/player_mt.wasm" site/; fi
 else
+  # Emscripten's WebGPU port from our own copy (tools/ports/README.md) when its cache lacks it
+  ver=v20260423.175430
+  url=https://github.com/google/dawn/releases/download/$ver/emdawnwebgpu_pkg-$ver.zip
+  ports="$(em-config CACHE)/ports"
+  if grep -q "_VERSION = '$ver'" "$(em-config EMSCRIPTEN_ROOT)/tools/ports/emdawnwebgpu.py" 2>/dev/null &&
+     [ "$(cat "$ports/emdawnwebgpu/.emscripten_url" 2>/dev/null)" != "$url" ]; then
+    mkdir -p "$ports" && rm -rf "$ports/emdawnwebgpu"
+    python3 -c 'import shutil,sys; shutil.unpack_archive(sys.argv[1], sys.argv[2])' "tools/ports/emdawnwebgpu_pkg-$ver.zip" "$ports/emdawnwebgpu"
+    cp "tools/ports/emdawnwebgpu_pkg-$ver.zip" "$ports/emdawnwebgpu.${ver#*.}.zip"
+    echo "$url" > "$ports/emdawnwebgpu/.emscripten_url"
+    echo "Emscripten's WebGPU port: from tools/ports/"
+  fi
   # build.opt from the projects' project.json (the first that says), else O3
   opt=$(python3 -c 'import json,glob;print(next((json.load(open(f)).get("build",{}).get("opt") for f in sorted(glob.glob("projects/*/project.json")) if json.load(open(f)).get("build",{}).get("opt")),"O3"))')
   emcmake cmake -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release "-DLOOP_OPT=-$opt" >/dev/null
