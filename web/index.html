@@ -344,6 +344,8 @@
         sc.appendChild(g);
       }
     } catch (e) { /* keep the built-in entry */ }
+    // the recording page is private: the whole bar (the public player's hidden link, #bar) is in its list
+    if (framed && ![...sc.options].some((o) => o.value === 'bar')) { const o = document.createElement('option'); o.value = 'bar'; o.textContent = 'The bar (all of it)'; sc.appendChild(o); }
     if (![...sc.options].some((o) => o.value === sceneName)) { const o = document.createElement('option'); o.value = o.textContent = sceneName; sc.appendChild(o); }
     if (fromEditor && fromEditor.scene === sceneName) document.getElementById('title').textContent = 'From the editor: ' + sceneName;
     LoopUI.gamepad(() => M, useIt, () => { if (movie) setMode(false); });

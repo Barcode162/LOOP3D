@@ -170,18 +170,28 @@ window.LoopUI = (() => {
     for (const m of text.matchAll(/\bmodel\s*\(?\s*(?:file:\s*)?"([^"]+\.glb)"/g)) names.add(m[1]);
     try { M.FS.mkdirTree('/scene/models'); } catch (e) {}
     if (names.size) names.add('materials.json');  // the models' real values, if the site has them
+    // the recording page (claude.ai serves no model files) has each model as
+    // text beside where it would be: <name>.glb.json = {"glb": "<base64>"}
+    const asText = typeof document !== 'undefined' && !!document.querySelector('meta[name="loop-models"][content="json"]');
     let done = 0;
     await Promise.all([...names].map(async (name) => {
       const path = '/scene/models/' + name;
       try { M.FS.stat(path); done++; return; } catch (e) {}
       try {
-        const r = await fetch('scenes/models/' + encodeURIComponent(name));
+        const json = asText && name.endsWith('.glb');
+        const r = await fetch('scenes/models/' + encodeURIComponent(name) + (json ? '.json' : ''));
         if (!r.ok) return;  // the script then says which model is missing
-        M.FS.writeFile(path, new Uint8Array(await r.arrayBuffer()));
+        M.FS.writeFile(path, json ? fromBase64((await r.json()).glb) : new Uint8Array(await r.arrayBuffer()));
       } catch (e) {}
       done++;
       if (onProgress) onProgress(done, names.size);
     }));
+  }
+
+  function fromBase64(s) {
+    const bin = atob(s), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
   }
 
   // What the editor hands to the player: the scene it has open, edits and all
