@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Keep going" (+ your 2x recording: courtyard 60 fps steady; the Woods 32 fps, its far sun
+  shadow 54 ms a redraw): the resolution floor now counts from 1 a point; the far sun shadow is High only; sun
+  shadows' detail by their own sharpness; bloom from a quarter at 2x. **The bricks**: patterns no longer fade by the
+  drawn pixel or by their thinnest line; with frame blending fine detail stays (bricks, wood grain, stone now show,
+  close to a full 2x drawing). Pictures renewed, 12 of 12.
+
 - **2026-11-09** · "everything so far didn't make much a difference ... making high end graphics just to blur it":
   found it: Phone drew 1 pixel per screen point on your 3-per-point iPhone (a ninth of its pixels, stretched).
   **Phase 7's upscaling brought forward**: the picture is now 2 pixels a point, filled in by frame blending from a

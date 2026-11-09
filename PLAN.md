@@ -154,6 +154,15 @@ once, fog, blend and upscale, film.
    from a smaller drawing (16 shifted spots, each full-size pixel taking the sample that landed nearest, the past
    read with a sharp Catmull-Rom curve, a light sharpening after): drawn at the old size it comes out with clean
    edges, 0.91 from a full 2x drawing (the old way 2.13). The automatic resolution chooses how much is drawn.
+   *Your recording at 2x (2026-11-09):* the courtyard steady at 60, but the Woods 32 fps (the automatic resolution's
+   floor was set for 1 a point; the far sun shadow 54 ms a redraw, its trees' simplest pieces over 25 times the
+   area). *Done:* the floor counts from 1 a point (the drawing may go as small as before); the far sun shadow is
+   High only; sun shadows pick their pieces' detail by the shadow picture's sharpness; bloom starts from a
+   quarter at 2x. *And the bricks:* patterns faded by the drawn pixel's size (early when the drawing is smaller)
+   and as a whole by their thinnest line (bricks by their 7 mm mortar: gone 2 m away); now by the shown pixel,
+   each brick's or tile's or plank's colour by its own size, and with frame blending detail stays until several
+   times smaller than a pixel (blending averages it, as the film renderer's many samples do): bricks, wood grain
+   and stone now show (docs/detail_2026-11-09.png).
    *Still to do:* resolution steered by the frame graph's timings.
 8. **Upgrades:** ReSTIR DI and screen reflections on High; ReSTIR GI on Ultra.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.

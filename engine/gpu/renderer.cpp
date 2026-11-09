@@ -676,7 +676,7 @@ class GpuRenderer final : public Renderer {
       sunFarEye_ = Vec3(std::floor(cam.position.x / stepF + 0.5f), std::floor(cam.position.y / stepF + 0.5f), std::floor(cam.position.z / stepF + 0.5f)) * stepF;
       sunFarViewProj_ = Mat4::ortho(lf.x - BF, lf.x + BF, lf.y - BF, lf.y + BF, -lf.z - RF * 4, -lf.z + RF * 4) * lv;
       f.shadowFarViewProj = sunFarViewProj_;
-      f.shadowFar = {B / BF, sunFarValid_ ? 1.0f : 0.0f, 0, 0};
+      f.shadowFar = {B / BF, sunFarValid_ ? 1.0f : 0.0f, upscaling_ ? 1.0f : 0.0f, upscaling_ ? static_cast<float>(width_) / std::max(outW_, 1u) : 1.0f};
     }
     f.camPos = {cam.position, time};
     f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
@@ -787,7 +787,10 @@ class GpuRenderer final : public Renderer {
       changes_.set("sun far view", farView);
     }
     static const std::vector<std::string> kFarFrom = {"placements", "shapes", "settings", "sun far view", "movers"};
-    const bool farWanted = clusterSun && quality_ != Quality::kUltra && !(skip & 4096);  // 4096: no far shadow (tests)
+    // not on Phone: your phone's recording, the Woods: 54 ms each time it was
+    // drawn again (its trees' simplest pieces, over 25 times the near area),
+    // for shadows only seen beyond 25 m
+    const bool farWanted = clusterSun && quality_ == Quality::kHigh && !(skip & 4096);  // 4096: no far shadow (tests)
     const bool farStale = farWanted && changes_.stale(sunFarMade_, kFarFrom);
     if (!farWanted || farStale) sunFarValid_ = false;
     const bool shadowStale = changes_.stale(shadowMade_, shadowFrom) || (splitting && !stillDrawn_) || ((skip & 2048) && !movers_.empty());
@@ -799,10 +802,14 @@ class GpuRenderer final : public Renderer {
         float perPixel = static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f));
         prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel, occluding && hzbValid_ ? 1.0f : 0.0f);
         if (occluding && hzbValid_) prepareList(eyeList2_, sceneDraws_, f.viewProj, cam.position, perPixel, 2.0f);
-        if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, sunEye_, perPixel, 0, splitting ? 1 : 0);
-        if (splitting) prepareList(sunMovers_, shadowDraws_, f.shadowViewProj, sunEye_, perPixel, 0, 2);
+        // the sun's shadows pick their pieces' detail by the shadow picture's own
+        // sharpness (its texels a metre, at a middling distance), not the
+        // screen's: a 2x screen asked them for 7 times the detail they can show
+        const float shadowPerPixel = static_cast<float>(shadowSize_) * 0.22f;
+        if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, sunEye_, shadowPerPixel, 0, splitting ? 1 : 0);
+        if (splitting) prepareList(sunMovers_, shadowDraws_, f.shadowViewProj, sunEye_, shadowPerPixel, 0, 2);
         if (lampMapsStale) prepareLampMaps();
-        if (farStale) prepareSunFar(perPixel);
+        if (farStale) prepareSunFar(shadowPerPixel);
       }
       if (bindGroupsDirty_) makeBindGroups();
     }
@@ -1317,7 +1324,8 @@ class GpuRenderer final : public Renderer {
   // slow; after 20 calm seconds that limit lifts a step. A change costs
   // nothing: the targets stay, only the part of them drawn changes.
   void adaptResolution(double now) {
-    static constexpr float kSteps[] = {1.0f, 0.87f, 0.75f, 0.65f, 0.56f, 0.5f, 0.42f, 0.35f};
+    static constexpr float kSteps[] = {1.0f, 0.87f, 0.75f, 0.65f, 0.56f, 0.5f, 0.42f, 0.35f, 0.3f, 0.25f, 0.2f, 0.175f};
+    constexpr int kLast = static_cast<int>(sizeof kSteps / sizeof kSteps[0]) - 1;
     const Config::Render& cr = config().render;
     if (cr.res > 0) {
       renderScale_ = std::clamp(cr.res, 0.2f, 1.0f);
@@ -1326,9 +1334,11 @@ class GpuRenderer final : public Renderer {
     if (judgedAt_ == 0) judgedAt_ = now;
     double secs = (now - judgedAt_) / 1000.0;
     // render.floor / floorUltra: the smallest size it may drop to
-    float floorScale = quality_ == Quality::kUltra ? cr.floorUltra : cr.floor;
+    // (of 1 pixel a point: with frame blending upscaling into 2 a point, the drawing
+    // may go as small as it could before, the picture staying sharper than it was)
+    float floorScale = quality_ == Quality::kUltra ? cr.floorUltra : cr.floor / std::max(upscaling_ ? ratio_ : 1.0f, 1.0f);
     int lowest = 0;
-    while (lowest < 7 && kSteps[lowest + 1] >= floorScale - 1e-3f) ++lowest;
+    while (lowest < kLast && kSteps[lowest + 1] >= floorScale - 1e-3f) ++lowest;
     // a GPU that hasn't finished a single frame for 2 s: smallest size now
     bool stuck = gs_->gpuCount == 0 && gs_->inFlight > 0 && now - gs_->lastProgress > 2000;
     if (secs < 1.0 && !stuck) return;
@@ -2663,8 +2673,11 @@ class GpuRenderer final : public Renderer {
   }
 
   // Bloom level i: its full size, and the part of it in use this frame.
-  uint32_t levelW(int i) const { return std::max(1u, postW_ >> (i + 1)); }
-  uint32_t levelH(int i) const { return std::max(1u, postH_ >> (i + 1)); }
+  // bloom's levels: halves of the picture; at 2 pixels a point and more, from a
+  // quarter (the same sizes on screen as at 1 a point, for the same cost)
+  int bloomShift() const { return upscaling_ && ratio_ >= 1.75f ? 2 : 1; }
+  uint32_t levelW(int i) const { return std::max(1u, postW_ >> (i + bloomShift())); }
+  uint32_t levelH(int i) const { return std::max(1u, postH_ >> (i + bloomShift())); }
 
   // Where each post pass finds its two pictures this frame.
   void writePassUniforms() {
@@ -2674,7 +2687,7 @@ class GpuRenderer final : public Renderer {
     };
     Vec4 hdr = part(postW_, postH_, outW_, outH_);
     Vec4 lv[kBloomLevels];
-    for (int i = 0; i < kBloomLevels; ++i) lv[i] = part(levelW(i), levelH(i), outW_ >> (i + 1), outH_ >> (i + 1));
+    for (int i = 0; i < kBloomLevels; ++i) lv[i] = part(levelW(i), levelH(i), std::max(1u, outW_ >> (i + 1)), std::max(1u, outH_ >> (i + 1)));
     Vec4 whole{1, 1, 1, 1};
     PassU u;
     for (int i = 0; i < kBloomLevels; ++i) {  // down: hdr (or the level above) into level i

@@ -26,7 +26,7 @@ struct Frame {
   lampFaces : array<mat4x4f, 12>,  // each mapped lamp's six views (+x -x +y -y +z -z)
   lampValid : vec4f,     // per row: drawn for its lamp (1), or not yet (0: no shadow for a frame)
   shadowFarViewProj : mat4x4f,  // the sun's far shadow (the shadow map's second layer)
-  shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1)
+  shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1); frame blending on (1); w: drawn pixels per shown pixel (1, or less when frame blending upscales)
   cache0 : vec4f,        // the light cache: first probe xyz, spacing
   cache1 : vec4f,        // probes x, y, z; w: on
 };
@@ -151,8 +151,22 @@ fn patternLod(m : Material, p : vec3f, n : vec3f, lod : f32) -> vec3f {
     case 10: { feature = 0.02 / sc; avg = 0.1; }
     default: {}
   }
-  let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
-  return vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
+  // with frame blending, 16 shifted samples a pixel average fine lines the way
+  // the film renderer's many samples do: detail stays until it is several
+  // times smaller than a pixel (a 7 mm mortar line a few metres away: a faint
+  // line, as in the film renderer, not nothing)
+  let lo = select(0.4, 1.2, frame.shadowFar.z > 0.5);
+  let hi = select(1.5, 4.0, frame.shadowFar.z > 0.5);
+  let fade = smoothstep(lo, hi, lod / feature * frame.sh[1].w);
+  // bricks and tiles: their thin mortar and grout fade early, but each brick's
+  // or tile's own colour is as big as the brick or tile, and stays until that
+  // is smaller than a pixel (whole bricks faded with their 7 mm mortar: gone
+  // two metres away)
+  var cellFade = fade;
+  if (kind == 3) { cellFade = smoothstep(lo, hi, lod / (0.075 / sc) * frame.sh[1].w); }
+  if (kind == 2) { cellFade = smoothstep(lo, hi, lod / (0.5 / sc) * frame.sh[1].w); }
+  if (kind == 8) { cellFade = smoothstep(lo, hi, lod / (0.14 / sc) * frame.sh[1].w); }
+  return vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, cellFade * 0.5));
 }
 
 // The pattern's mix (x), height (y) and brightness tint (z), as the cinema renderer.
@@ -462,26 +476,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   }
   var glowScale = 1.0;  // a see-through grid's lines fade at their edges and far away
   if (m.pattern.x > 0.5) {
-    var pv = pattern(m, i.world, n);
     // detail smaller than a pixel fades to its average (no shimmer, no moire)
     let kind = i32(m.pattern.x);
     let sc = max(m.pattern.y, 0.01);
-    var feature = 0.5 / sc;
-    var avg = 0.5;
-    switch (kind) {
-      case 1: { feature = 1.0 / sc; }
-      case 2: { feature = 0.03 / sc; avg = 0.1; }
-      case 3: { feature = 0.008 / sc; avg = 0.15; }
-      case 4: { feature = 0.03 / sc; avg = 0.4; }
-      case 5: { feature = 0.08 / sc; avg = 0.3; }
-      case 6: { feature = 0.12 / sc; }
-      case 7: { feature = 0.06 / sc; avg = 0.3; }
-      case 8: { feature = 0.003 / sc; avg = 0.3; }
-      default: {}
-    }
     let lod = length(abs(slopeWorldX) + abs(slopeWorldY));
-    let fade = smoothstep(0.4, 1.5, lod / feature * frame.sh[1].w);
-    pv = vec3f(mix(pv.x, avg, fade), mix(pv.y, 0.5, fade), mix(pv.z, 1.0, fade * 0.5));
+    var pv = patternLod(m, i.world, n, lod);
     if (kind == 10) {
       pv = vec3f(gridLine(i.world, n, sc), 0.5, 1.0);
       // a see-through grid (opacity under a half): only its lines are drawn
@@ -882,10 +881,14 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   v.nrm = mat3x3f(inst.normal0.xyz, inst.normal1.xyz, inst.normal2.xyz) * (A.nrm * b0.x + B.nrm * b0.y + C.nrm * b0.z);
   v.uv = A.uv * b0.x + B.uv * b0.y + C.uv * b0.z;
   v.mat = inst.material.x;
-  slopeWorldX = px - v.world;
-  slopeWorldY = py - v.world;
-  slopeUvX = A.uv * bx.x + B.uv * bx.y + C.uv * bx.z - v.uv;
-  slopeUvY = A.uv * by.x + B.uv * by.y + C.uv * by.z - v.uv;
+  // the slopes per pixel of the full picture, not of the smaller drawing: frame
+  // blending fills in the detail between, so patterns and pictures keep the
+  // detail the screen shows (they faded out early: your bricks)
+  let perShown = frame.shadowFar.w;
+  slopeWorldX = (px - v.world) * perShown;
+  slopeWorldY = (py - v.world) * perShown;
+  slopeUvX = (A.uv * bx.x + B.uv * bx.y + C.uv * bx.z - v.uv) * perShown;
+  slopeUvY = (A.uv * by.x + B.uv * by.y + C.uv * by.z - v.uv) * perShown;
   // which side the camera sees, as the GPU tells a drawn triangle (counter-
   // clockwise on screen is its front): its corners' turn as seen from the eye,
   // which stays right for big triangles reaching behind the camera
