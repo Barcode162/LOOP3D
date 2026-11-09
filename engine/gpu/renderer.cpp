@@ -125,6 +125,8 @@ struct FrameU {
   Vec4 cache0, cache1;     // the light cache: first probe xyz, spacing; probes x y z, on
   Vec4 ao;                 // ambient occlusion: strength, reach (m), frame number; screen reflections on
   Mat4 prevViewProj;       // last frame's view, unshifted
+  Vec4 prevCam;            // last frame's eye; w: its drawn width
+  Vec4 prevScreen;         // x, y: last frame's drawn size
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -167,7 +169,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1504, "frame layout");
+static_assert(sizeof(FrameU) == 1536, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -688,6 +690,8 @@ class GpuRenderer final : public Renderer {
     const bool ssr = quality_ == Quality::kHigh && upscaling_ && histValid_ && C.render.ssr && !(skip & 16384);
     f.ao = {(skip & 8192) ? 0.0f : C.render.ao, std::max(C.render.aoReach, 0.05f), static_cast<float>(jitterFrame_ % 64), ssr ? 1.0f : 0.0f};
     f.prevViewProj = histValid_ ? prevViewProj_ : steadyViewProj;
+    f.prevCam = {histValid_ ? prevCam_ : cam.position, 0};
+    f.prevScreen = {static_cast<float>(histValid_ ? prevScreen_[0] : width_), static_cast<float>(histValid_ ? prevScreen_[1] : height_), 0, 0};
     f.cache0 = {cache_.origin, cache_.spacing};
     f.cache1 = {static_cast<float>(cache_.nx), static_cast<float>(cache_.ny), static_cast<float>(cache_.nz), cache_.on && cacheTex_[0] ? 1.0f : 0.0f};
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
@@ -697,7 +701,10 @@ class GpuRenderer final : public Renderer {
     f.grid0 = {grid_.origin, grid_.cell};
     f.grid1 = {static_cast<float>(grid_.nx), static_cast<float>(grid_.ny), static_cast<float>(grid_.nz), grid_.on ? 1.0f : 0.0f};
     chooseLampMaps(f);
-    f.params = {static_cast<float>(lightCount()), (skip & 512) ? 0.0f : static_cast<float>(shadowLamps_), static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
+    // with every lamp's shadow shared (High), one lamp fewer is traced on its own: the same rays a pixel
+    const bool sharedShadows = shadowLamps_ > 0 && quality_ == Quality::kHigh && C.render.allLampShadows && !(skip & 32768);
+    const int ownRays = sharedShadows ? std::max(shadowLamps_ - 1, 0) : shadowLamps_;
+    f.params = {static_cast<float>(lightCount()), (skip & 512) ? 0.0f : static_cast<float>(ownRays), static_cast<float>(shadowSize_), cam.autoExposure ? 1.0f : 0.0f};
     f.screen = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_};
     // a first guess for the eyes: the camera's own settings, or a sunny / indoor guess
     float guess = cam.autoExposure ? (sunOn_ && sunLux_ > 1000 ? 1.0f / 6000 : 1.0f / 30) : exposureFromEv100(cam.ev100());
@@ -1062,7 +1069,7 @@ class GpuRenderer final : public Renderer {
         pass.SetBindGroup(0, sceneGroup0_);
         pass.SetBindGroup(1, sceneGroup1_);
         pass.SetBindGroup(2, rayGroup_);
-        pass.SetBindGroup(3, clusterResolveGroup_[histIndex_]);
+        pass.SetBindGroup(3, clusterResolveGroup_[histIndex_ * 2 + shadowIndex_]);
         pass.SetPipeline(resolvePipe_[rays]);
         pass.Draw(3);
         pass.SetPipeline(skyPipe_);
@@ -1070,6 +1077,7 @@ class GpuRenderer final : public Renderer {
         pass.SetPipeline(glassPipe_[rays]);
         drawBatches(pass, true, false);
         pass.End();
+        shadowIndex_ ^= 1;  // this frame's kept shadow is next frame's past
       }
     }, clusterPath && !(skip & 64));
     // frame blending: this frame with the past, into the other picture of
@@ -1110,6 +1118,7 @@ class GpuRenderer final : public Renderer {
       histIndex_ = next;
       histValid_ = true;
       prevViewProj_ = steadyViewProj;
+      prevCam_ = cam.position, prevScreen_[0] = width_, prevScreen_[1] = height_;
     }, clusterPath && upscaling_);
     // the drawing before clusters: each thing drawn and lit where it lands
     graph_.add("forward", {"scene", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr", "depth"}, [&] {
@@ -2257,7 +2266,12 @@ class GpuRenderer final : public Renderer {
       clusterDrawLayout_ = layout({ssbo(0, VF), ssbo(1, wgpu::ShaderStage::Vertex)});
       wgpu::BindGroupLayoutEntry vt = tex(2, F);
       vt.texture.sampleType = wgpu::TextureSampleType::Uint;
-      clusterResolveLayout_ = layout({ssbo(0, F), vt, tex(3, F, true), tex(4, F)});
+      wgpu::BindGroupLayoutEntry shadowOut;
+      shadowOut.binding = 6, shadowOut.visibility = F;
+      shadowOut.storageTexture.access = wgpu::StorageTextureAccess::WriteOnly;
+      shadowOut.storageTexture.format = wgpu::TextureFormat::RGBA16Float;
+      shadowOut.storageTexture.viewDimension = wgpu::TextureViewDimension::e2D;
+      clusterResolveLayout_ = layout({ssbo(0, F), vt, tex(3, F, true), tex(4, F), tex(5, F, false, true), shadowOut});
       cullLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C), ssbo(4, C), ssbo(5, C, true), ssbo(6, C, true), ssbo(7, C, true), ssbo(8, C, true),
                             tex(9, C, false, true), tex(10, C, false, true)});
       // the depth pyramid (phase 4)
@@ -2699,6 +2713,8 @@ class GpuRenderer final : public Renderer {
         depthView_ = target(ow, oh, wgpu::TextureFormat::Depth32Float, 1, attach | wgpu::TextureUsage::TextureBinding, depthTex_);
         for (int i = 0; i < 2; ++i)
           histView_[i] = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopySrc, histTex_[i]);
+        for (int i = 0; i < 2; ++i)
+          shadowHistView_[i] = target(ow, oh, wgpu::TextureFormat::RGBA16Float, 1, wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::StorageBinding, shadowHistTex_[i]);
         histValid_ = false;
         // the depth pyramids (phase 4): half the screen, rounded up to a power of two, every level down to one texel
         uint32_t pw = 1, ph = 1;
@@ -2835,9 +2851,12 @@ class GpuRenderer final : public Renderer {
         td.usage = wgpu::TextureUsage::TextureBinding;
         pastDummyTex_ = device_.CreateTexture(&td);
       }
+      // [past picture][kept shadow]: each pair swaps on its own
       for (int i = 0; i < 2; ++i)
-        clusterResolveGroup_[i] = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_), texE(3, depthView_),
-                                                               texE(4, histView_[i] ? histView_[i] : pastDummyTex_.CreateView())});
+        for (int k = 0; k < 2; ++k)
+          clusterResolveGroup_[i * 2 + k] = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_), texE(3, depthView_),
+                                                                         texE(4, histView_[i] ? histView_[i] : pastDummyTex_.CreateView()),
+                                                                         texE(5, shadowHistView_[k]), texE(6, shadowHistView_[k ^ 1])});
       if (histView_[0])
         for (int i = 0; i < 2; ++i)
           taaGroup_[i] = group(taaLayout_, {bufE(0, taaUbo_), texE(1, hdrView_), texE(2, histView_[i]), texE(3, depthView_), sampE(4, linear_),
@@ -2922,7 +2941,8 @@ class GpuRenderer final : public Renderer {
   wgpu::BindGroupLayout emptyLayout_;  // groups a pipeline has room for but doesn't use
   wgpu::BindGroup emptyGroup_;
   wgpu::ComputePipeline cullPipe_, countPipe_, packPipe_;
-  wgpu::BindGroup clusterResolveGroup_[2];
+  wgpu::BindGroup clusterResolveGroup_[4];
+  int shadowIndex_ = 0;  // which kept-shadow picture is last frame's
   wgpu::Texture pastDummyTex_;
   ClusterList eyeList_, sunList_;
   // ---- what's hidden (phase 4): two depth pyramids, last frame's and this
@@ -3205,6 +3225,12 @@ class GpuRenderer final : public Renderer {
   int histIndex_ = 0;
   bool histValid_ = false;
   Mat4 prevViewProj_;
+  Vec3 prevCam_;
+  uint32_t prevScreen_[2] = {1, 1};
+  // each pixel's shadow answer for the lamps sharing a ray (High), kept and
+  // blended over frames, where that point was: two pictures, swapped each frame
+  wgpu::Texture shadowHistTex_[2];
+  wgpu::TextureView shadowHistView_[2];
   uint32_t jitterFrame_ = 0;
   Vec2 jitterPx_{0, 0};
   // The frame blending upscales: it writes the whole full-size picture from

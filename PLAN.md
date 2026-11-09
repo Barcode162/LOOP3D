@@ -185,11 +185,11 @@ once, fog, blend and upscale, film.
    texels are (it cost 11-23 ms a redraw).
 8. **Upgrades** (started 2026-11-09). *Screen reflections (High, on):* glossy floors and counters reflect what's on
    screen, the room itself (the hall's marble floor now shows its glowing door frames), else the light cache's and
-   sky's reflection (docs/screen_reflections_2026-11-09.png). *Every lamp casts shadows (High, built, off):* the
-   lamps with no shadow of their own share two shadow rays a pixel, given to lamps picked by their light (ReSTIR's
-   first step); right shadows (docs/every_lamp_shadows_2026-11-09.png) but grainy (twice the grain of off), so off
-   until ReSTIR's second step reuses good picks over frames. *Still to do in phase 8:* ReSTIR's reuse (then every-
-   lamp shadows on); ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
+   sky's reflection (docs/screen_reflections_2026-11-09.png). *Every lamp casts shadows (High, done, on):* one lamp is traced on its own and the
+   rest share one shadow ray a pixel, given each frame to one picked by its light; each pixel keeps its answer
+   over the frames where its point was, averaged over up to 32 (ReSTIR's reuse of work over time), so it settles
+   in about a second (grain 4.9 after 80 frames, off 3.9; one ray alone 8.6), for the same rays a pixel as before
+   (docs/every_lamp_shadows_kept_2026-11-09.png). *Still to do in phase 8:* ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
    lowest resolution: their leaves and grass) is now the biggest cost on the phone.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World:** typed relationships and streaming, with rebuild step 12.

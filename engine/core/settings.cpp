@@ -74,7 +74,8 @@ Settings::Settings() {
   I("render.msaa", r.msaa, 1, 4, "multisampling of the scene pass: 1 off, 4 on");
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
   B("render.lightGrid", r.lightGrid, "many lamps cheaply: each pixel works out the lamps near it alone, and far groups of lamps as one lamp each (off: every lamp alone, everywhere)");
-  B("render.allLampShadows", r.allLampShadows, "High: beyond the lamps traced one by one, the rest share two shadow rays a pixel, given to lamps picked by their light (ReSTIR's first step): every lamp casts shadows, grainy until the picks are reused over frames");
+  B("render.allLampShadows", r.allLampShadows, "High: one lamp is traced on its own and the rest share one shadow ray a pixel, given each frame to one picked by its light, each pixel keeping its answer over frames (ReSTIR's reuse): every lamp casts shadows, for the same rays");
+
   B("render.ssr", r.ssr, "High: glossy surfaces reflect what's on screen (the room itself), else the light cache's and the sky's reflection");
   F("render.ao", r.ao, 0, 3, "ambient occlusion, drawing in clusters: how much the soft light darkens in creases, corners and under things (0 off)");
   F("render.aoReach", r.aoReach, 0.05, 3, "how far (m) ambient occlusion looks for what's near a surface");
@@ -110,7 +111,7 @@ Settings::Settings() {
   B("render.passShadow", r.passShadow, "debug: the shadow pass");
   B("render.passDraw", r.passDraw, "debug: the scene pass");
   I("render.prepass", r.prepass, 0, 2, "depth pre-pass, so each pixel is lit once: 0 off, 1 on, 2 automatic (on when 6 or more lamps light the scene)");
-  I("render.view", r.view, 0, 5, "debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work, 5 ambient occlusion");
+  I("render.view", r.view, 0, 6, "debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work, 5 ambient occlusion, 6 kept lamp shadow (High)");
 
   auto& u = c.ultra;
   I("ultra.bounces", u.bounces, 1, 16, "light bounces per path");

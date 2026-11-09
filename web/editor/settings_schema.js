@@ -109,7 +109,7 @@ window.LE = window.LE || {};
         num('render.lampGrouping', 'Lamp grouping distance', 7, E({ min: 1, max: 64, step: 0.5, help: 'How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work.' })),
         sl('render.ao', 'Ambient occlusion', 1, 0, 3, 0.05, E({ unit: 'x', help: 'Drawing in clusters: the soft light darkens where surfaces meet (corners, under tables, round feet), found in the depth picture. 0: off.' })),
         sl('render.aoReach', 'Ambient occlusion reach', 0.6, 0.05, 3, 0.05, E({ unit: 'm', help: 'How far it looks for what is near a surface: small for fine creases, large for whole rooms.' })),
-        tog('render.allLampShadows', 'Every lamp casts shadows (High, grainy for now)', false, E({ help: 'Beyond the lamps traced one by one, the rest share two shadow rays a pixel, given each frame to lamps picked by how much light they give there; frame blending averages them. Still grainy: on by default once the picks are reused over frames (ReSTIR).' })),
+        tog('render.allLampShadows', 'Every lamp casts shadows (High)', true, E({ help: 'One lamp is traced on its own; the rest share one shadow ray a pixel, given each frame to one picked by how much light it gives there, and each pixel keeps its answer over the frames (settles in about a second). Off: two lamps traced on their own, the rest unshadowed.' })),
         tog('render.ssr', 'Screen reflections (High)', true, E({ help: 'Glossy floors and counters reflect what is on screen, the room itself, found in the depth picture and read from the last frame. Where it can\'t be found (off screen, behind things): the light cache\'s and the sky\'s reflection.' })),
         tog('render.lightCache', 'Bounced light from probes', true, E({ help: 'Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky\'s light everywhere, as if every room were open.' })),
         sl('render.lightCacheMs', 'Bounced light: baking time a frame', 3, 0.25, 16, 0.25, E({ unit: 'ms', help: 'More: the bounced light is ready sooner, frames a little longer while it bakes.' })),
@@ -125,7 +125,7 @@ window.LE = window.LE || {};
         en('render.prepass', 'Depth pre-pass', 2, opts([0, 'Off'], [1, 'On'], [2, 'Automatic']), E({ help: 'Depth first, then light each pixel once instead of once per surface drawn over it. Automatic: on when 6 or more lamps light the scene (it pays where lighting is heavy, not in forests of triangles).' })),
       ] },
       { title: 'Debug', items: [
-        en('render.view', 'Debug view', 0, opts([0, 'Final picture'], [1, 'Raw light'], [2, 'Exposure'], [3, 'Bloom'], [4, 'Ray work (blue little, red 200+ steps)'], [5, 'Ambient occlusion (white: open, dark: hidden)']), E()),
+        en('render.view', 'Debug view', 0, opts([0, 'Final picture'], [1, 'Raw light'], [2, 'Exposure'], [3, 'Bloom'], [4, 'Ray work (blue little, red 200+ steps)'], [5, 'Ambient occlusion (white: open, dark: hidden)'], [6, 'Kept lamp shadow, High (red: started afresh)']), E()),
         tog('render.showLights', 'Lamp and sound marks', true, { bind: 'editor', help: 'The editor marks where lamps and sounds are, so they can be picked and moved.' }),
         tog('render.wireframe', 'Wireframe', false, NB('WebGPU has no line mode: needs its own pipeline.')),
       ] },

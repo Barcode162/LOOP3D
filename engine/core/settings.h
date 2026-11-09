@@ -33,7 +33,7 @@ struct Config {
     bool lightGrid = true;     // lamps near a pixel alone, far groups of lamps as one each
     float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
     bool ssr = true;     // screen reflections on High
-    bool allLampShadows = false;  // High: every lamp casts shadows (two picked a pixel, traced); off until the picks are reused over frames (grain)
+    bool allLampShadows = true;  // High: every lamp casts shadows (one picked a pixel, traced, kept over frames)
     float ao = 1;        // ambient occlusion's strength (0 off): creases and corners darken
     float aoReach = 0.6f;  // how far (m) it looks for what's near
     bool lightCache = true;    // bounced light from probes baked by the path tracer (phase 6)

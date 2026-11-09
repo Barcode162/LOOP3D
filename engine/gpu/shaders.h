@@ -31,6 +31,8 @@ struct Frame {
   cache1 : vec4f,        // probes x, y, z; w: on
   ao : vec4f,            // ambient occlusion: strength (0 off), reach (m), frame number; w: screen reflections on (1)
   prevViewProj : mat4x4f,  // last frame's view, unshifted (screen reflections read last frame's picture)
+  prevCam : vec4f,       // last frame's eye
+  prevScreen : vec4f,    // last frame's drawn size
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -117,6 +119,11 @@ var<private> aoTerm : f32 = 1.0;
 // screen by the light pass, and how sure (0: the sky's and the light cache's)
 var<private> ssrColor : vec3f = vec3f(0.0);
 var<private> ssrSeen : f32 = 0.0;
+// the shared lamp shadow (High), kept over frames: this pixel's answer last
+// frame where its point was (-1: none, start afresh), and this frame's
+var<private> shadowPast : f32 = -1.0;
+var<private> shadowNow : f32 = 1.0;
+var<private> shadowCount : f32 = 0.0;  // frames it has been kept (to 32: blended by 1 over that)
 var<private> slopeWorldY : vec3f;
 var<private> slopeUvX : vec2f;
 var<private> slopeUvY : vec2f;
@@ -579,16 +586,16 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     last = first + (packed >> 20u);
   }
   var shadowed = 0u;
-  // High (phase 8, ReSTIR's first step; render.allLampShadows): the lamps
-  // with no shadow of their own add up here, and two of them, picked by how
-  // much light they give this point, are traced: their answer stands for all
-  // of them (each frame picks again; frame blending averages): every lamp
-  // casts shadows for two rays, grainy until the picks are reused over frames
+  // High (phase 8, render.allLampShadows, ReSTIR's idea of reusing work over
+  // time): the lamps with no shadow of their own add up here, and one of them,
+  // picked by how much light it gives this point, is traced; the answer is
+  // blended into this pixel's own over the frames (where its point was: the
+  // light pass keeps them), which stands for all of them: every lamp casts
+  // shadows, for one ray a pixel
   let picking = kLampShadows && frame.lampMaps.z > 0.5;
   var restLight = vec3f(0.0);
   var restW = 0.0;
   var pick = 0xffffffffu;
-  var pick2 = 0xffffffffu;
   var seed = u32(i.clip.x) * 1973u + u32(i.clip.y) * 9277u + u32(frame.ao.z) * 26699u;
   for (var j = first; j < last; j++) {
     var k = j;
@@ -641,15 +648,15 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       restW += w;
       seed = seed * 747796405u + 2891336453u;
       if (f32(seed >> 8u) / 16777216.0 * restW < w) { pick = k; }
-      seed = seed * 747796405u + 2891336453u;
-      if (f32(seed >> 8u) / 16777216.0 * restW < w) { pick2 = k; }
     } else {
       lo += c;
     }
   }
   if (pick != 0xffffffffu) {
-    // two picked (two rays): half the grain
-    lo += restLight * 0.5 * (lampVisibility(i.world + ng * 0.004, lights[pick], i.clip.xy) + lampVisibility(i.world + ng * 0.004, lights[pick2], i.clip.xy));
+    let seenNow = lampVisibility(i.world + ng * 0.004, lights[pick], i.clip.xy);
+    shadowCount = select(1.0, min(shadowCount + 1.0, 32.0), shadowPast >= 0.0);
+    shadowNow = select(seenNow, mix(shadowPast, seenNow, 1.0 / shadowCount), shadowPast >= 0.0);
+    lo += restLight * shadowNow;
   }
   // the sky's light: diffuse from its harmonics, glossy from the blurred sky
   let r = reflect(-v, n);
@@ -903,6 +910,8 @@ struct VisOut {
 @group(3) @binding(2) var visTex : texture_2d<u32>;
 @group(3) @binding(3) var sceneDepth : texture_depth_2d;  // read only in this pass
 @group(3) @binding(4) var pastPicture : texture_2d<f32>;  // last frame's, after blending (screen reflections)
+@group(3) @binding(5) var shadowPastTex : texture_2d<f32>;  // each pixel's kept lamp shadow (x), eye distance (y), frames kept (z), last frame
+@group(3) @binding(6) var shadowOutTex : texture_storage_2d<rgba16float, write>;  // and this frame's
 // Screen reflections: the reflected ray followed across the depth picture (24
 // steps, longer and longer); where it passes just behind what the eye sees,
 // that's what it hits: its colour is read from last frame's picture, where
@@ -1053,9 +1062,25 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
       ssrSeen = found.a;
     }
   }
+  // the kept lamp shadow (High): where this point was last frame, if the
+  // same surface was there (its distance from last frame's eye agrees)
+  let eyeDist = length(v.world - frame.camPos.xyz);
+  if (frame.lampMaps.z > 0.5) {
+    let pc = frame.prevViewProj * vec4f(v.world, 1.0);
+    if (pc.w > 0.0) {
+      let uv = (pc.xy / pc.w) * vec2f(0.5, -0.5) + 0.5;
+      if (all(uv >= vec2f(0.0)) && all(uv < vec2f(1.0))) {
+        let was = textureLoad(shadowPastTex, vec2i(uv * frame.prevScreen.xy), 0);
+        let then = length(v.world - frame.prevCam.xyz);
+        if (abs(was.y - then) < 0.03 * then + 0.02) { shadowPast = was.x; shadowCount = was.z; }
+      }
+    }
+  }
   if (frame.ao.x > 0.0) { aoTerm = ambientSeen(v.world + normalize(ng) * select(-0.01, 0.01, front), normalize(ng) * select(-1.0, 1.0, front), r.clip.xy); }
   let s = shade(v, front);
+  textureStore(shadowOutTex, vec2i(r.clip.xy), vec4f(shadowNow, eyeDist, shadowCount, 0.0));
   if (frame.fixedExposure.z > 4.5 && frame.fixedExposure.z < 5.5) { return vec4f(vec3f(aoTerm), 1.0); }  // ?view=5: the ambient occlusion alone
+  if (frame.fixedExposure.z > 5.5) { return select(vec4f(1.0, 0.0, 0.0, 1.0), vec4f(vec3f(shadowNow), 1.0), shadowPast >= 0.0); }  // ?view=6: the kept lamp shadow (red: started afresh)
   return vec4f(exposed(s.color), 1.0);
 }
 )";

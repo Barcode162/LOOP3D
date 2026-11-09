@@ -120,7 +120,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
 | Ambient occlusion | `render.ao` | 1 | 0 … 3 x | live · script | `setting "render.ao", 1` | Drawing in clusters: the soft light darkens where surfaces meet (corners, under tables, round feet), found in the depth picture. 0: off. |
 | Ambient occlusion reach | `render.aoReach` | 0.6 | 0.05 … 3 m | live · script | `setting "render.aoReach", 0.6` | How far it looks for what is near a surface: small for fine creases, large for whole rooms. |
-| Every lamp casts shadows (High, grainy for now) | `render.allLampShadows` | false |  | live · script | `setting "render.allLampShadows", false` | Beyond the lamps traced one by one, the rest share two shadow rays a pixel, given each frame to lamps picked by how much light they give there; frame blending averages them. Still grainy: on by default once the picks are reused over frames (ReSTIR). |
+| Every lamp casts shadows (High) | `render.allLampShadows` | true |  | live · script | `setting "render.allLampShadows", true` | One lamp is traced on its own; the rest share one shadow ray a pixel, given each frame to one picked by how much light it gives there, and each pixel keeps its answer over the frames (settles in about a second). Off: two lamps traced on their own, the rest unshadowed. |
 | Screen reflections (High) | `render.ssr` | true |  | live · script | `setting "render.ssr", true` | Glossy floors and counters reflect what is on screen, the room itself, found in the depth picture and read from the last frame. Where it can't be found (off screen, behind things): the light cache's and the sky's reflection. |
 | Bounced light from probes | `render.lightCache` | true |  | live · script | `setting "render.lightCache", true` | Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky's light everywhere, as if every room were open. |
 | Bounced light: baking time a frame | `render.lightCacheMs` | 3 | 0.25 … 16 ms | live · script | `setting "render.lightCacheMs", 3` | More: the bounced light is ready sooner, frames a little longer while it bakes. |
@@ -142,7 +142,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
-| Debug view | `render.view` | 0 | 0 / 1 / 2 / 3 / 4 / 5 | live · script | `setting "render.view", 0` | debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work, 5 ambient occlusion |
+| Debug view | `render.view` | 0 | 0 / 1 / 2 / 3 / 4 / 5 / 6 | live · script | `setting "render.view", 0` | debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work, 5 ambient occlusion, 6 kept lamp shadow (High) |
 | Lamp and sound marks | `render.showLights` | true |  | editor |  | The editor marks where lamps and sounds are, so they can be picked and moved. |
 | Wireframe | `render.wireframe` | false |  | not built yet |  | WebGPU has no line mode: needs its own pipeline. |
 

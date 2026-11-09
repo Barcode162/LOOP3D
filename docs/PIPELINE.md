@@ -276,7 +276,12 @@ average 18.2 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10
    *Every lamp's shadow, ReSTIR's first step (High, render.allLampShadows, off):* lamps past the ones traced one by
    one add up, two are picked by their unshadowed light (streaming, a seed a pixel and frame) and traced; the sum
    times their mean visibility. Grain 7.0 (off 3.7, one pick 8.6) on the bar's floor; the bar's score 11.9 off,
-   12.0 on. Next: reservoirs kept a pixel and reused over frames (temporal ReSTIR).
+   12.0 on. *Kept over frames (on):* the light pass keeps each pixel's shared shadow answer in two RGBA16F
+   pictures (answer, eye distance, frames kept) swapped every frame, read where the point was last frame (the
+   frame's `prevCam`, `prevScreen`) if the eye distance agrees within 3%, blended by 1 over the frames kept (to
+   32), written with a storage texture; one pick a pixel; one lamp fewer traced on its own (the same rays).
+   The bar on High after 80 frames: grain 4.9 (off 3.9; one pick unkept 8.6), score 12.0 (off 11.9).
+   ?view=6 shows the kept answer (red: started afresh).
 9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World.** Typed relationships and streaming (with rebuild step 12, world generation).
 

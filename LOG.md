@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Finish next" (ReSTIR): **every lamp casts shadows on High, on**: each pixel keeps its shared
+  shadow answer over the frames (where its point was, averaged over up to 32), so the grain settles in about a
+  second (4.9 after 80 frames; without it 3.9; one ray unkept 8.6), for the same rays a pixel as before (one lamp
+  fewer traced on its own). Debug view 6 shows it. Phase 9 needs nothing new to start (the score, light cache and
+  path tracer are there); phase 8's last item, ReSTIR GI on Ultra, is still open.
+
 - **2026-11-09** · "Go phase 8" (+ your recording: the forests' visibility 10–18 ms even at the lowest resolution):
   phase 8 started. **Screen reflections** on High: glossy floors reflect the room itself (the hall's door frames on
   its marble), else the light cache's and sky's reflection. **Every lamp casts shadows** on High (ReSTIR's first
