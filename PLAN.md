@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · next: phase 5
+## The picture pipeline (your plan, 2026-11-08) · next: phase 6
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -135,7 +135,11 @@ once, fog, blend and upscale, film.
    coarse map five times as far, kept until its box moves (every ~15 m on Phone) or the scene changes;
    moving things left out of it. Checked: with the near map shrunk to 5 m the far one keeps the Woods'
    canopy shadow (0.89 from the reference; 1.97 without it).
-   *Still to do in phase 5:* contact shadows.
+   *Contact shadows (tried 2026-11-09, dropped):* 8 steps across the depth picture towards the sun and the two
+   mapped lamps changed 0.03% of the bar's pixels and almost none of the people scene's, and only as faint
+   outlines round thin things (a walk catching an object's own edge), while costing every lit pixel. The shadow
+   maps already catch what touches at the phone's resolution. Back in reserve, for when something needs it.
+   *Phase 5 is done.* Next: phase 6, bounced light.
 6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient
    occlusion.
 7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the

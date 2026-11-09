@@ -191,6 +191,9 @@ phase is meant to change the look).
    in a uniform), moving things left out, kept by the change tracker ("sun far view"). The shader uses the near
    map inside 80% of its box, the far one beyond 96%, blended between, with the same softness in metres. Skip
    bit 4096 turns the far map off; ?shadowdistance= sets the near box (tests).
+   *Contact shadows, tried and dropped 2026-11-09:* 8 steps over 0.25 m across the depth picture (read only in the
+   light pass) towards the sun and the mapped lamps: 0.03% of the bar's pixels changed, nearly none of the people
+   scene's, and only as outlines round thin things; the maps already catch it at Phone's resolution. In reserve.
 6. **Bounced light** (the second half). Cinema bakes the light cache; live, a few probes a frame are relit, only
    where something changed. Ambient occlusion fills the small creases.
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.

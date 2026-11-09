@@ -10,7 +10,8 @@ One line per request, newest first: the date, what the user asked, what was done
   `tools/shadow_check.js` checks the flicker case. **Sun shadows in steps**: a second, coarse sun shadow
   map 5 times as far beyond the near one (kept until its box moves); with the near map shrunk to 5 m it keeps the
   Woods' canopy shadow (0.89 from the reference, 1.97 without). Tried a sharper, smaller near map too: the leaves'
-  shadow leaked light at 15–25 m in the coarse map, so the near map stays 25 m.
+  shadow leaked light at 15–25 m in the coarse map, so the near map stays 25 m. **Contact shadows** built, measured (0.03% of the bar's pixels, only faint
+  outlines round thin things) and dropped: not worth their cost on every pixel. Phase 5 done; next phase 6.
 
 - **2026-11-08** · "Continue next": **lamp shadows on Phone**: the two main lamps near you cast shadows from
   shadow maps (six views round each bulb, one depth picture), drawn again only when those lamps change (walking
