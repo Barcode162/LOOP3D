@@ -2,7 +2,8 @@
 // stands still is kept and only the movers are drawn on a copy of it each
 // frame. This plays a scene, pauses, and photographs the same moment that way
 // and drawn all again (skip bit 2048): they must match. It also counts how
-// often the whole shadow was drawn while playing.
+// often the whole shadow was drawn while playing, and that the cabin's
+// flickering lamps keep their lamp shadow maps (Phone) while standing still.
 //   serve site/ on a port, then:
 //   xvfb-run -a node tools/shadow_check.js http://localhost:8125 [scene]
 const { chromium } = require('playwright');
@@ -50,5 +51,20 @@ const fs = require('fs');
   const ok = r.share <= 0.1 && r.mean <= 1.5;
   console.log(`${ok ? 'ok  ' : 'FAIL'} kept shadow vs drawn again: mean ${r.mean.toFixed(2)}, ${r.share.toFixed(2)}% of pixels changed`);
   process.exitCode = ok ? 0 : 1;
+  // the cabin's fire and candle flicker: their lamp shadow maps (Phone) must be
+  // kept all the same while standing still (they were once drawn every frame)
+  const q = await b.newPage({ viewport: { width: 320, height: 240 }, deviceScaleFactor: 1 });
+  await q.addInitScript(() => { let shown = null; Object.defineProperty(window, 'loopShown', { configurable: true, get() { return shown && (() => { window.loopFirstFrame = true; shown(); }); }, set(f) { shown = f; } }); });
+  await q.goto(`${base}/?quality=0&res=1&ui=0#cabin`);
+  await q.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 280000 });
+  await q.waitForFunction(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())).clustered === 1, null, { timeout: 280000 });
+  await q.waitForTimeout(5000);
+  const qs = () => q.evaluate(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())));
+  const c1 = await qs();
+  await q.waitForTimeout(5000);
+  const c2 = await qs();
+  const kept = c2.lampShadowDraws === c1.lampShadowDraws && c1.lampShadowDraws > 0;
+  console.log(`${kept ? 'ok  ' : 'FAIL'} the cabin's flickering lamps: lamp maps drawn ${c1.lampShadowDraws} times, then ${c2.lampShadowDraws - c1.lampShadowDraws} in ${c2.frames - c1.frames} frames standing`);
+  if (!kept) process.exitCode = 1;
   await b.close();
 })();

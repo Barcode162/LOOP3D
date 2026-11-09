@@ -115,6 +115,7 @@ struct FrameU {
   Vec4 grid0, grid1;  // the light grid: low corner, cell size; cells x y z, on
   Vec4 lampMaps;      // lamp shadow maps: lamps, tile size, atlas width, height
   Mat4 lampFaces[12]; // each mapped lamp's six views
+  Vec4 lampValid;     // per row: its map is drawn for its lamp (1) or not yet (0)
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -157,7 +158,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1296, "frame layout");
+static_assert(sizeof(FrameU) == 1312, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -743,8 +744,7 @@ class GpuRenderer final : public Renderer {
     const bool occluding = raster && clustersReady() && C.render.occlude && hzbTex_[0] && !(skip & 1024);
     if (!occluding) hzbValid_ = false;
     const std::vector<std::string>& shadowFrom = clustersReady() ? kShadowFrom : kShadowFromAll;
-    static const std::vector<std::string> kLampMapsFrom = {"placements", "shapes", "settings", "lamp maps", "movers"};
-    const bool lampMapsStale = raster && lampMapCount_ > 0 && changes_.stale(lampMapMade_, kLampMapsFrom);
+    const bool lampMapsStale = raster && lampRowDrawing_ >= 0;  // one row a frame (chooseLampMaps)
     const bool shadowStale = changes_.stale(shadowMade_, shadowFrom) || (splitting && !stillDrawn_) || ((skip & 2048) && !movers_.empty());
     // ---- what each pass draws: the copies its view can see
     if (raster) {
@@ -833,10 +833,10 @@ class GpuRenderer final : public Renderer {
     // the main lamps' shadow maps (Phone): each view's pieces chosen, then all
     // twelve views drawn into their tiles of one depth picture
     graph_.add("lamp shadows", {"scene"}, {"lamp maps"}, [&] {
-      const int views = lampMapCount_ * 6;
-      for (int i = 0; i < views; ++i) runCull(enc, lampLists_[i]);
+      const int row = lampRowDrawing_;
+      for (int i = row * 6; i < row * 6 + 6; ++i) runCull(enc, lampLists_[i]);
       wgpu::RenderPassDepthStencilAttachment da;
-      da.view = lampMapView_;
+      da.view = lampLayerView_[row];
       da.depthLoadOp = wgpu::LoadOp::Clear;
       da.depthStoreOp = wgpu::StoreOp::Store;
       da.depthClearValue = 1;
@@ -855,8 +855,8 @@ class GpuRenderer final : public Renderer {
       pass.SetBindGroup(0, sceneGroup0_);
       pass.SetBindGroup(2, emptyGroup_);
       const float S = static_cast<float>(lampMapSize_);
-      for (int i = 0; i < views; ++i) {
-        const float x = static_cast<float>(i % 6) * S, y = static_cast<float>(i / 6) * S;
+      for (int i = row * 6; i < row * 6 + 6; ++i) {
+        const float x = static_cast<float>(i % 6) * S, y = 0;
         pass.SetViewport(x, y, S, S, 0, 1);
         pass.SetScissorRect(static_cast<uint32_t>(x), static_cast<uint32_t>(y), static_cast<uint32_t>(S), static_cast<uint32_t>(S));
         pass.SetBindGroup(1, lampFaceGroup_[i]);
@@ -865,7 +865,9 @@ class GpuRenderer final : public Renderer {
         ++drawCalls_;
       }
       pass.End();
-      changes_.made(lampMapMade_, kLampMapsFrom);
+      const std::string name = "lamp row " + std::to_string(row);
+      changes_.made(lampRowMade_[row], {"placements", "shapes", "settings", "movers", name});
+      lampRowValid_[row] = 1;
       ++lampMapDraws_;
     }, lampMapsStale && lampListsReady());
     // the Ultra quality: the path tracer, then its noise cleaned, keeping edges
@@ -1174,7 +1176,8 @@ class GpuRenderer final : public Renderer {
   uint64_t shadowDraws() const override { return shadowRedraws_; }
   uint64_t lampShadowDraws() const override { return lampMapDraws_; }
   bool lampListsReady() const {
-    for (int i = 0; i < lampMapCount_ * 6; ++i)
+    if (lampRowDrawing_ < 0) return false;
+    for (int i = lampRowDrawing_ * 6; i < lampRowDrawing_ * 6 + 6; ++i)
       if (!lampLists_[i].cullGroup || !lampLists_[i].drawGroup || !lampFaceGroup_[i]) return false;
     return lampMapView_ != nullptr;
   }
@@ -1432,6 +1435,7 @@ class GpuRenderer final : public Renderer {
       rank[i] = {luminance(L.color.xyz()) / std::max(dot(d, d), 0.25f), static_cast<uint32_t>(i)};
     }
     std::stable_sort(rank.begin(), rank.end(), [](auto& a, auto& b) { return a.first > b.first; });
+    keepLampRows(rank);
     sortedLights_.resize(lights_.size());
     for (size_t i = 0; i < rank.size(); ++i) sortedLights_[i] = lights_[rank[i].second];
     queue_.WriteBuffer(lightsBuf_, 0, sortedLights_.data(), sortedLights_.size() * sizeof(LightU));
@@ -1868,7 +1872,9 @@ class GpuRenderer final : public Renderer {
     wgpu::BindGroupLayoutEntry gCells = tex(6, F), gList = tex(7, F);
     gCells.texture.sampleType = gList.texture.sampleType = wgpu::TextureSampleType::Uint;
     gCells.texture.viewDimension = wgpu::TextureViewDimension::e3D;
-    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList, tex(8, F, true)});
+    wgpu::BindGroupLayoutEntry lampArr = tex(8, F, true);
+    lampArr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
+    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList, lampArr});
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
     std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl + kClusterDrawWgsl;
@@ -2610,11 +2616,10 @@ class GpuRenderer final : public Renderer {
   wgpu::BindGroupLayout lampFaceLayout_;
   wgpu::RenderPipeline lampShadowPipe_;
   wgpu::Texture lampMapTex_, lampDummyTex_;
-  wgpu::TextureView lampMapView_, lampDummyView_;
+  wgpu::TextureView lampMapView_, lampDummyView_, lampLayerView_[kLampMapsMost];
   int lampMapSize_ = 0;   // the views' size the picture was made for (0: a 1x1 stand-in)
   int lampMapCount_ = 0;  // lamps mapped this frame
   Mat4 lampFaceMat_[kLampMapsMost * 6];
-  ChangeTracker::Made lampMapMade_;
   uint64_t lampMapDraws_ = 0;
   std::vector<uint32_t> lampSlots_;
   // The depth picture: six views across, a row per lamp (a stand-in when unused).
@@ -2623,11 +2628,20 @@ class GpuRenderer final : public Renderer {
     if (lampMapTex_) lampMapTex_.Destroy();
     if (lampDummyTex_) lampDummyTex_.Destroy();
     wgpu::TextureDescriptor td;
-    td.size = {size ? static_cast<uint32_t>(size) * 6 : 1u, size ? static_cast<uint32_t>(size) * kLampMapsMost : 1u, 1};
+    td.size = {size ? static_cast<uint32_t>(size) * 6 : 1u, size ? static_cast<uint32_t>(size) : 1u, kLampMapsMost};
     td.format = wgpu::TextureFormat::Depth32Float;
     td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding;
     lampMapTex_ = device_.CreateTexture(&td);
-    lampMapView_ = lampMapTex_.CreateView();
+    wgpu::TextureViewDescriptor vd;
+    vd.dimension = wgpu::TextureViewDimension::e2DArray;
+    lampMapView_ = lampMapTex_.CreateView(&vd);
+    for (int l = 0; l < kLampMapsMost; ++l) {  // each lamp's layer, to draw into
+      wgpu::TextureViewDescriptor ld;
+      ld.dimension = wgpu::TextureViewDimension::e2D;
+      ld.baseArrayLayer = static_cast<uint32_t>(l), ld.arrayLayerCount = 1;
+      lampLayerView_[l] = lampMapTex_.CreateView(&ld);
+    }
+    td.size.depthOrArrayLayers = 1;
     td.format = wgpu::TextureFormat::R8Unorm;
     td.usage = wgpu::TextureUsage::RenderAttachment;
     lampDummyTex_ = device_.CreateTexture(&td);
@@ -2635,6 +2649,45 @@ class GpuRenderer final : public Renderer {
     changes_.bump("settings");
     bindGroupsDirty_ = true;
   }
+  // Phone's lamp maps keep their rows: a mapped lamp still among the first
+  // stays in its row (only a newcomer's row is drawn again), the others move up.
+  uint32_t lampRowLamp_[kLampMapsMost] = {~0u, ~0u};
+  void keepLampRows(std::vector<std::pair<float, uint32_t>>& rank) {
+    if (shadowLamps_ > 0) return;
+    const int want = std::clamp(config().render.lampMaps, 0, kLampMapsMost);
+    std::vector<uint32_t> top;
+    for (size_t i = 0; i < rank.size() && static_cast<int>(top.size()) < want; ++i) {
+      if (lights_[rank[i].second].dir.w > 1.5f) break;  // panels go last: no more bulbs
+      top.push_back(rank[i].second);
+    }
+    uint32_t row[kLampMapsMost] = {~0u, ~0u};
+    std::vector<bool> placed(top.size(), false);
+    for (size_t r = 0; r < top.size(); ++r)
+      for (size_t t = 0; t < top.size(); ++t)
+        if (!placed[t] && top[t] == lampRowLamp_[r]) row[r] = top[t], placed[t] = true;
+    for (size_t r = 0; r < top.size(); ++r)
+      for (size_t t = 0; t < top.size() && row[r] == ~0u; ++t)
+        if (!placed[t]) row[r] = top[t], placed[t] = true;
+    for (int r = 0; r < kLampMapsMost; ++r) lampRowLamp_[r] = r < static_cast<int>(top.size()) ? row[r] : ~0u;
+    // the rows' lamps first, in row order, then the rest as they were
+    std::vector<std::pair<float, uint32_t>> out;
+    for (size_t r = 0; r < top.size(); ++r)
+      for (auto& e : rank)
+        if (e.second == row[r]) out.push_back(e);
+    for (auto& e : rank)
+      if (std::find(top.begin(), top.end(), e.second) == top.end()) out.push_back(e);
+    rank.swap(out);
+  }
+  // How far a lamp's map reaches: where its light falls below a quarter of a
+  // lux (a shadow farther out is too faint to see), 2 to 15 m.
+  static float lampMapReach(const LightU& L) {
+    return std::clamp(std::sqrt(std::max(luminance(L.color.xyz()), 0.0f) / 0.25f), 2.0f, 15.0f);
+  }
+  ChangeTracker::Made lampRowMade_[kLampMapsMost];
+  int lampRowDrawing_ = -1;  // the row drawn this frame (one at most: the work spread over frames)
+  float lampRowValid_[kLampMapsMost] = {0, 0};
+  Vec3 lampRowPos_[kLampMapsMost];
+  float lampRowReach_[kLampMapsMost] = {0, 0};
   // Which lamps get maps this frame, and their views (into the frame's constants).
   void chooseLampMaps(FrameU& f) {
     const auto& r = config().render;
@@ -2646,45 +2699,55 @@ class GpuRenderer final : public Renderer {
            sortedLights_[static_cast<size_t>(count)].dir.w < 1.5f)
       ++count;
     lampMapCount_ = count;
-    struct {
-      Vec4 lamp[kLampMapsMost];
-      int count, size;
-    } key{};
-    key.count = count, key.size = size;
     static const Vec3 axis[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    lampRowDrawing_ = -1;
     for (int l = 0; l < count; ++l) {
       const LightU& L = sortedLights_[static_cast<size_t>(l)];
       const Vec3 p = L.pos.xyz();
-      key.lamp[l] = L.pos;
-      Mat4 proj = Mat4::perspective(kPi / 2, 1.0f, std::max(L.pos.w * 1.2f, 0.05f), kLampMapReach);
+      // its reach worked out when it takes the row (a flickering flame keeps it)
+      if (length(lampRowPos_[l] - p) > 0.01f || lampRowReach_[l] <= 0) lampRowPos_[l] = p, lampRowReach_[l] = lampMapReach(L);
+      const float reach = lampRowReach_[l];
+      Mat4 proj = Mat4::perspective(kPi / 2, 1.0f, std::max(L.pos.w * 1.2f, 0.05f), reach);
       for (int a = 0; a < 6; ++a) {
         Vec3 up = a == 2 || a == 3 ? Vec3(0, 0, 1) : Vec3(0, 1, 0);
         lampFaceMat_[l * 6 + a] = proj * Mat4::lookAt(p, p + axis[a], up);
         f.lampFaces[l * 6 + a] = lampFaceMat_[l * 6 + a];
       }
+      // each row kept until its own lamp or the scene changes
+      struct {
+        Vec4 lamp;
+        float reach;
+        int size;
+      } key{L.pos, reach, size};
+      const std::string name = "lamp row " + std::to_string(l);
+      changes_.set(name, key);
+      const bool stale = changes_.stale(lampRowMade_[l], {"placements", "shapes", "settings", "movers", name});
+      if (stale) lampRowValid_[l] = 0;
+      if (stale && lampRowDrawing_ < 0) lampRowDrawing_ = l;
     }
-    f.lampMaps = {static_cast<float>(count), static_cast<float>(std::max(size, 1)), static_cast<float>(std::max(size, 1) * 6),
-                  static_cast<float>(std::max(size, 1) * kLampMapsMost)};
-    changes_.set("lamp maps", key);
+    for (int l = count; l < kLampMapsMost; ++l) lampRowValid_[l] = 0;
+    f.lampMaps = {static_cast<float>(count), static_cast<float>(std::max(size, 1)), 0, 0};
+    f.lampValid = {lampRowValid_[0], lampRowValid_[1], 0, 0};
   }
-  static constexpr float kLampMapReach = 15.0f;  // m: a lamp's map covers this far
-  // Each mapped lamp's six lists: the still copies within its reach.
+  // The row drawn this frame: its six lists, the still copies within its reach.
   void prepareLampMaps() {
-    for (int l = 0; l < lampMapCount_; ++l) {
-      const Vec3 p = sortedLights_[static_cast<size_t>(l)].pos.xyz();
-      lampSlots_.clear();
-      for (uint32_t slot = 0; slot < instData_.size() && slot < instBox_.size(); ++slot) {
-        if (slot < instHidden_.size() && instHidden_[slot]) continue;
-        if (slot < isMover_.size() && isMover_[slot]) continue;
-        const AABB& b = instBox_[slot];
-        if (length(p - vmin(vmax(p, b.lo), b.hi)) > kLampMapReach) continue;
-        lampSlots_.push_back(slot);
-      }
-      for (int a = 0; a < 6; ++a) {
-        prepareSlots(lampLists_[l * 6 + a], lampSlots_, lampFaceMat_[l * 6 + a], p, static_cast<float>(lampMapSize_) * 0.5f);
-        if (!lampFaceUbo_[l * 6 + a]) lampFaceUbo_[l * 6 + a] = buffer(sizeof(Mat4), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst), bindGroupsDirty_ = true;
-        queue_.WriteBuffer(lampFaceUbo_[l * 6 + a], 0, &lampFaceMat_[l * 6 + a], sizeof(Mat4));
-      }
+    const int l = lampRowDrawing_;
+    if (l < 0) return;
+    const LightU& L = sortedLights_[static_cast<size_t>(l)];
+    const Vec3 p = L.pos.xyz();
+    const float reach = lampRowReach_[l];
+    lampSlots_.clear();
+    for (uint32_t slot = 0; slot < instData_.size() && slot < instBox_.size(); ++slot) {
+      if (slot < instHidden_.size() && instHidden_[slot]) continue;
+      if (slot < isMover_.size() && isMover_[slot]) continue;
+      const AABB& b = instBox_[slot];
+      if (length(p - vmin(vmax(p, b.lo), b.hi)) > reach) continue;
+      lampSlots_.push_back(slot);
+    }
+    for (int a = 0; a < 6; ++a) {
+      prepareSlots(lampLists_[l * 6 + a], lampSlots_, lampFaceMat_[l * 6 + a], p, static_cast<float>(lampMapSize_) * 0.5f);
+      if (!lampFaceUbo_[l * 6 + a]) lampFaceUbo_[l * 6 + a] = buffer(sizeof(Mat4), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst), bindGroupsDirty_ = true;
+      queue_.WriteBuffer(lampFaceUbo_[l * 6 + a], 0, &lampFaceMat_[l * 6 + a], sizeof(Mat4));
     }
   }
   ClusterList eyeList2_;  // the second pass: what the first skipped, tried again

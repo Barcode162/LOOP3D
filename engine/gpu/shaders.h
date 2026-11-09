@@ -22,8 +22,9 @@ struct Frame {
   exposure : vec4f,      // the eyes' last exposure (copied in on the GPU each frame: one storage buffer fewer)
   grid0 : vec4f,         // the light grid: low corner xyz, cell size
   grid1 : vec4f,         // cells x, y, z; w: on
-  lampMaps : vec4f,      // lamp shadow maps: how many lamps (the first in the list), tile size, atlas width, height
+  lampMaps : vec4f,      // lamp shadow maps: how many lamps (the first in the list), tile size, -, -
   lampFaces : array<mat4x4f, 12>,  // each mapped lamp's six views (+x -x +y -y +z -z)
+  lampValid : vec4f,     // per row: drawn for its lamp (1), or not yet (0: no shadow for a frame)
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -242,9 +243,9 @@ inline const char* kSceneWgsl = R"(
 // groups of far lamps sent as one lamp each, after them)
 @group(1) @binding(6) var gridCells : texture_3d<u32>;
 @group(1) @binding(7) var gridList : texture_2d<u32>;
-// the main lamps' shadow maps (Phone, where no rays are traced): one row of six
-// views per lamp, in one depth picture
-@group(1) @binding(8) var lampMap : texture_depth_2d;
+// the main lamps' shadow maps (Phone, where no rays are traced): six views in
+// a row, a layer per lamp
+@group(1) @binding(8) var lampMap : texture_depth_2d_array;
 
 // How much of lamp k (one of the first, mapped) a point sees: its depth in the
 // lamp's view that faces it, against the map (the chip blends 2x2 of them).
@@ -261,8 +262,8 @@ fn lampMapSeen(p : vec3f, L : Light, k : u32) -> f32 {
   let tile = frame.lampMaps.y;
   let inset = 1.0 / tile;
   let uv = clamp(ndc.xy * vec2f(0.5, -0.5) + 0.5, vec2f(inset), vec2f(1.0 - inset));
-  let at = (vec2f(f32(face), f32(k)) + uv) * tile / frame.lampMaps.zw;
-  return textureSampleCompareLevel(lampMap, shadowSampler, at, ndc.z);
+  let at = vec2f((f32(face) + uv.x) / 6.0, uv.y);
+  return textureSampleCompareLevel(lampMap, shadowSampler, at, i32(k), ndc.z);
 }
 
 fn srgbToLinear(c : vec3f) -> vec3f {
@@ -527,7 +528,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
     // the main lamps' shadow maps (Phone): only the first few lamps have one
-    if (k < u32(frame.lampMaps.x)) {
+    if (k < u32(frame.lampMaps.x) && frame.lampValid[k] > 0.5) {
       I *= lampMapSeen(i.world + ng * 0.02, L, k);
       if (dot(I, I) == 0.0) { continue; }
     }

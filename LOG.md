@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Ahead do phase 5" (+ your recording: lamp shadows 10–13 ms a redraw in the bar, 2 ms every
+  frame in the cabin): **lamp shadows made cheap**: each lamp keeps its row (only a newcomer's is drawn), one
+  lamp a frame, its map reaching only as far as its light matters (the bar's bulbs: a few metres, not 15); the
+  cabin's flickering fire no longer redraws its map every frame; drawing one lamp no longer wipes the other's
+  (a layer each). Walking the bar: 2 one-lamp redraws where there were 5 two-lamp ones. Pictures 12 of 12;
+  `tools/shadow_check.js` checks the flicker case.
+
 - **2026-11-08** · "Continue next": **lamp shadows on Phone**: the two main lamps near you cast shadows from
   shadow maps (six views round each bulb, one depth picture), drawn again only when those lamps change (walking
   the bar: 5 times). The cabin on Phone now matches High's ray-traced shadows (0.75 apart, was 8.5); the cabin's
