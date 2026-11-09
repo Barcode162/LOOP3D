@@ -62,7 +62,8 @@ Settings::Settings() {
   I("render.framesInFlight", r.framesInFlight, 1, 3, "frames the GPU may work on at once: more hides stalls, fewer means less delay");
   B("render.pauseHidden", r.pauseHidden, "stop drawing while the page is hidden");
   F("render.res", r.res, 0, 1, "0 automatic resolution, else held at this share of full size");
-  F("render.ratioPhone", r.ratioPhone, 0.5, 3, "most pixels per screen point on Phone");
+  F("render.ratioPhone", r.ratioPhone, 0.5, 3, "most pixels per screen point on Phone (the picture's sharpness; frame blending fills it from a smaller drawing)");
+  F("render.sharpen", r.sharpen, 0, 1, "a light sharpening of the picture frame blending upscaled");
   F("render.ratioHigh", r.ratioHigh, 0.5, 3, "most pixels per screen point on High");
   F("render.ratioUltra", r.ratioUltra, 0.5, 3, "most pixels per screen point on Ultra");
   F("render.floor", r.floor, 0.2, 1, "lowest automatic resolution (Phone and High)");

@@ -59,8 +59,9 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Hold resolution | `render.res` | 0 | 0 … 1 | live · script | `setting "render.res", 0` | 0 = automatic (climbs while the GPU keeps up, drops when it doesn't). Any other value holds it there, to compare costs fairly. |
-| Pixel density cap: Phone | `render.ratioPhone` | 1 | 0.5 … 3 x | live · script | `setting "render.ratioPhone", 1` | most pixels per screen point on Phone |
-| Pixel density cap: High | `render.ratioHigh` | 1.5 | 0.5 … 3 x | live · script | `setting "render.ratioHigh", 1.5` | most pixels per screen point on High |
+| Pixel density cap: Phone | `render.ratioPhone` | 2 | 0.5 … 3 x | live · script | `setting "render.ratioPhone", 2` | The picture's sharpness in pixels per screen point. Frame blending fills it in from a smaller drawing, so 2 costs little more than 1 to draw. |
+| Pixel density cap: High | `render.ratioHigh` | 2 | 0.5 … 3 x | live · script | `setting "render.ratioHigh", 2` | most pixels per screen point on High |
+| Sharpening after upscaling | `render.sharpen` | 0.25 | 0 … 1 | live · script | `setting "render.sharpen", 0.25` | A light sharpening of the picture frame blending fills in from a smaller drawing. |
 | Pixel density cap: Ultra | `render.ratioUltra` | 1 | 0.5 … 3 x | live · script | `setting "render.ratioUltra", 1` | most pixels per screen point on Ultra |
 | Lowest automatic resolution | `render.floor` | 0.5 | 0.35 … 1 | live · script | `setting "render.floor", 0.5` | lowest automatic resolution (Phone and High) |
 | Lowest automatic resolution (Ultra) | `render.floorUltra` | 0.35 | 0.35 … 1 | live · script | `setting "render.floorUltra", 0.35` | lowest automatic resolution on Ultra |
@@ -119,7 +120,9 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
 | Screen-space ambient occlusion | `render.ao` | off | off / SSAO / GTAO | not built yet |  | Real contact darkening from the depth buffer. |
 | Reflections | `render.reflections` | sky | sky / ssr | not built yet |  | Screen-space reflections. |
-| Bounced light from probes | `render.gi` | off | off / on | not built yet |  | Light probes for bounced light in the live picture. |
+| Bounced light from probes | `render.lightCache` | true |  | live · script | `setting "render.lightCache", true` | Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky's light everywhere, as if every room were open. |
+| Bounced light: baking time a frame | `render.lightCacheMs` | 3 | 0.25 … 16 ms | live · script | `setting "render.lightCacheMs", 3` | More: the bounced light is ready sooner, frames a little longer while it bakes. |
+| Bounced light: most probes | `render.lightCacheProbes` | 2048 | 64 … 8192 | live · script | `setting "render.lightCacheProbes", 2048` | More: finer bounced light, longer to bake. |
 
 ### Passes
 
@@ -594,4 +597,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 143 live · script · 49 live · 27 not built yet · 15 editor · 6 needs you
+11 project.json · 147 live · script · 49 live · 26 not built yet · 15 editor · 6 needs you

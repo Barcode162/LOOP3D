@@ -148,8 +148,13 @@ once, fog, blend and upscale, film.
    to 25, the cabin 18 to 14); the open-air scenes a little further (the Glade +2, fog +1, courtyard +0.6):
    their probes are 10 m and more apart. *Still to do in phase 6:* finer probes near you outdoors; relighting
    only the probes near a change; ambient occlusion.
-7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the
-   frame graph's timings.
+7. **Final image** (brought forward 2026-11-09, on your word: "high end graphics just to blur it"). *Found:* Phone
+   drew 1 pixel per screen point on a 3-per-point iPhone (430 x 932 stretched onto 1290 x 2796: a ninth of the
+   pixels). *Done:* the picture is now 2 pixels a point (render.ratioPhone 2), and frame blending upscales into it
+   from a smaller drawing (16 shifted spots, each full-size pixel taking the sample that landed nearest, the past
+   read with a sharp Catmull-Rom curve, a light sharpening after): drawn at the old size it comes out with clean
+   edges, 0.91 from a full 2x drawing (the old way 2.13). The automatic resolution chooses how much is drawn.
+   *Still to do:* resolution steered by the frame graph's timings.
 8. **Upgrades:** ReSTIR DI and screen reflections on High; ReSTIR GI on Ultra.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World:** typed relationships and streaming, with rebuild step 12.

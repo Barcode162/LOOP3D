@@ -598,6 +598,11 @@ class GpuRenderer final : public Renderer {
     if (gs_->inFlight == 0) gs_->lastProgress = now;
     ++perfDrawn_;
     resize();
+    {
+      const bool up = quality_ != Quality::kUltra && clustersReady() && eyeList_.cullGroup && blending() && !(skip & 64) && taaGroup_[histIndex_];
+      const uint32_t pw = up ? outW_ : width_, ph = up ? outH_ : height_;
+      if (up != upscaling_ || pw != postW_ || ph != postH_) upscaling_ = up, postW_ = pw, postH_ = ph, passUniformsDirty_ = true, histValid_ = false;
+    }
     wgpu::SurfaceTexture st;
     if (!(skip & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)
       surface_.GetCurrentTexture(&st);
@@ -630,9 +635,13 @@ class GpuRenderer final : public Renderer {
         for (; i > 0; i /= b) f /= b, r += f * (i % b);
         return r;
       };
-      uint32_t k = jitterFrame_++ % 8 + 1;
+      uint32_t k = jitterFrame_++ % 16 + 1;  // 16 spots: the blending upscales, so more places to fill in
       proj.m[2][0] += (halton(k, 2) - 0.5f) * 2.0f / width_;
       proj.m[2][1] += (halton(k, 3) - 0.5f) * 2.0f / height_;
+      // where this frame's samples land, in drawn pixels (x right, y down) from each pixel's middle
+      jitterPx_ = Vec2(halton(k, 2) - 0.5f, -(halton(k, 3) - 0.5f));
+    } else {
+      jitterPx_ = Vec2(0, 0);
     }
     f.viewProj = proj * view;
     f.invViewProj = f.viewProj.inverse();
@@ -691,7 +700,7 @@ class GpuRenderer final : public Renderer {
 
     PostU p{};
     float fixedExp = exposureFromEv100(cam.ev100());
-    p.exposure = {fixedExp, cam.exposureCompensation, cam.autoExposure ? 1.0f : 0.0f, look.sharpen};
+    p.exposure = {fixedExp, cam.exposureCompensation, cam.autoExposure ? 1.0f : 0.0f, look.sharpen + (upscaling_ ? C.render.sharpen : 0.0f)};
     p.look0 = {look.contrast, look.saturation, static_cast<float>(static_cast<int>(look.tonemap)), look.monochrome ? 1.0f : 0.0f};
     Vec3 wb = whiteBalanceGains(look.temperature, look.tint);
     p.wb = {wb, look.distortion};
@@ -705,7 +714,7 @@ class GpuRenderer final : public Renderer {
     queue_.WriteBuffer(postUbo_, 0, &p, sizeof p);
     // eyes adapt between the scene brightnesses cam.minEv .. cam.maxEv (sunlight
     // down to a candle-lit room), at cam.adaptSpeed
-    ExposureU e{{static_cast<float>(width_), static_cast<float>(height_), dt, f.fixedExposure.x},
+    ExposureU e{{static_cast<float>(postW_), static_cast<float>(postH_), dt, f.fixedExposure.x},
                 {exposureFromEv100(C.camera.maxEv), exposureFromEv100(C.camera.minEv), 3.0f * C.camera.adaptSpeed, 1.2f * C.camera.adaptSpeed}};
     queue_.WriteBuffer(expUbo_, 0, &e, sizeof e);
     lastExposure_ = fixedExp;
@@ -1055,11 +1064,14 @@ class GpuRenderer final : public Renderer {
     graph_.add("blend", {"hdr", "depth", "history"}, {"hdr", "history"}, [&] {
       struct {
         Mat4 prev, cur, inv;
-        Vec4 screen, full;
+        Vec4 screen, full, jitter;
       } u;
-      u.prev = histValid_ ? prevViewProj_ : steadyViewProj, u.cur = steadyViewProj, u.inv = f.invViewProj;
+      // the picture written is the full size (outW_ x outH_), its pixels
+      // unshifted: found through the steady view
+      u.prev = histValid_ ? prevViewProj_ : steadyViewProj, u.cur = steadyViewProj, u.inv = steadyViewProj.inverse();
       u.screen = Vec4(static_cast<float>(width_), static_cast<float>(height_), 1.0f / width_, 1.0f / height_);
-      u.full = Vec4(static_cast<float>(hdrTex_.GetWidth()), static_cast<float>(hdrTex_.GetHeight()), 0.1f, histValid_ ? 0.0f : 1.0f);
+      u.full = Vec4(static_cast<float>(outW_), static_cast<float>(outH_), 0.2f, histValid_ ? 0.0f : 1.0f);
+      u.jitter = Vec4(jitterPx_.x, jitterPx_.y, static_cast<float>(hdrTex_.GetWidth()), static_cast<float>(hdrTex_.GetHeight()));
       queue_.WriteBuffer(taaUbo_, 0, &u, sizeof u);
       int next = 1 - histIndex_;
       wgpu::RenderPassColorAttachment ca;
@@ -1073,19 +1085,19 @@ class GpuRenderer final : public Renderer {
       wgpu::PassTimestampWrites tw;
       rp.timestampWrites = stamp(tw);
       wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
-      pass.SetViewport(0, 0, static_cast<float>(width_), static_cast<float>(height_), 0, 1);
+      pass.SetViewport(0, 0, static_cast<float>(outW_), static_cast<float>(outH_), 0, 1);
       pass.SetPipeline(taaPipe_);
       pass.SetBindGroup(0, taaGroup_[histIndex_]);
       pass.Draw(3);
       pass.End();
       wgpu::TexelCopyTextureInfo from, to;
       from.texture = histTex_[next], to.texture = hdrTex_;
-      wgpu::Extent3D size{width_, height_, 1};
+      wgpu::Extent3D size{outW_, outH_, 1};
       enc.CopyTextureToTexture(&from, &to, &size);
       histIndex_ = next;
       histValid_ = true;
       prevViewProj_ = steadyViewProj;
-    }, clusterPath && !(skip & 64) && blending() && taaGroup_[histIndex_]);
+    }, clusterPath && upscaling_);
     // the drawing before clusters: each thing drawn and lit where it lands
     graph_.add("forward", {"scene", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr", "depth"}, [&] {
       wgpu::RenderPassColorAttachment ca;
@@ -2274,7 +2286,7 @@ class GpuRenderer final : public Renderer {
       // frame blending
       wgpu::BindGroupLayoutEntry seen = tex(5, F);  // the visibility picture: which copy each pixel shows
       seen.texture.sampleType = wgpu::TextureSampleType::Uint;
-      taaLayout_ = layout({ubo(0, F), tex(1, F, false, true), tex(2, F), tex(3, F, true), samp(4, F), seen, ssbo(6, F)});
+      taaLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), tex(3, F, true), samp(4, F), seen, ssbo(6, F)});
       {
         wgpu::ShaderModule tm = module(kTaaWgsl, "frame blending");
         wgpu::RenderPipelineDescriptor d;
@@ -2291,7 +2303,7 @@ class GpuRenderer final : public Renderer {
         d.fragment = &fst;
         taaPipe_ = device_.CreateRenderPipeline(&d);
       }
-      if (!taaUbo_) taaUbo_ = buffer(sizeof(Mat4) * 3 + 32, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+      if (!taaUbo_) taaUbo_ = buffer(sizeof(Mat4) * 3 + 48, wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     }
     {
       wgpu::RenderPipelineDescriptor d;
@@ -2651,8 +2663,8 @@ class GpuRenderer final : public Renderer {
   }
 
   // Bloom level i: its full size, and the part of it in use this frame.
-  uint32_t levelW(int i) const { return std::max(1u, width_ >> (i + 1)); }
-  uint32_t levelH(int i) const { return std::max(1u, height_ >> (i + 1)); }
+  uint32_t levelW(int i) const { return std::max(1u, postW_ >> (i + 1)); }
+  uint32_t levelH(int i) const { return std::max(1u, postH_ >> (i + 1)); }
 
   // Where each post pass finds its two pictures this frame.
   void writePassUniforms() {
@@ -2660,7 +2672,7 @@ class GpuRenderer final : public Renderer {
       aw = std::max(1u, aw), ah = std::max(1u, ah);
       return Vec4(static_cast<float>(vw) / aw, static_cast<float>(vh) / ah, (vw - 0.5f) / aw, (vh - 0.5f) / ah);
     };
-    Vec4 hdr = part(width_, height_, outW_, outH_);
+    Vec4 hdr = part(postW_, postH_, outW_, outH_);
     Vec4 lv[kBloomLevels];
     for (int i = 0; i < kBloomLevels; ++i) lv[i] = part(levelW(i), levelH(i), outW_ >> (i + 1), outH_ >> (i + 1));
     Vec4 whole{1, 1, 1, 1};
@@ -3078,6 +3090,12 @@ class GpuRenderer final : public Renderer {
   bool histValid_ = false;
   Mat4 prevViewProj_;
   uint32_t jitterFrame_ = 0;
+  Vec2 jitterPx_{0, 0};
+  // The frame blending upscales: it writes the whole full-size picture from
+  // the smaller one drawn, so every step after it (exposure, bloom, film)
+  // works on the full size. postW_ x postH_: the picture those steps read.
+  bool upscaling_ = false;
+  uint32_t postW_ = 0, postH_ = 0;
   bool blending() const { return clustersReady() && config().render.taa && histView_[0]; }
   std::vector<uint32_t> meshClusterCount_;
   bool bindGroupsDirty_ = true, skyBuilt_ = false;

@@ -58,7 +58,9 @@ const fs = require('fs');
   await q.goto(`${base}/?quality=0&res=1&ui=0&cachems=60000#cabin`);
   await q.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 280000 });
   await q.waitForFunction(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())).clustered === 1, null, { timeout: 280000 });
-  await q.waitForTimeout(5000);
+  // both lamps' maps drawn first (one a frame), then watched
+  await q.waitForFunction(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())).lampShadowDraws >= 2, null, { timeout: 120000 });
+  await q.waitForTimeout(2000);
   const qs = () => q.evaluate(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())));
   const c1 = await qs();
   await q.waitForTimeout(5000);

@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "everything so far didn't make much a difference ... making high end graphics just to blur it":
+  found it: Phone drew 1 pixel per screen point on your 3-per-point iPhone (a ninth of its pixels, stretched).
+  **Phase 7's upscaling brought forward**: the picture is now 2 pixels a point, filled in by frame blending from a
+  smaller drawing (16 shifted spots, sharp history, light sharpening): at the same drawing cost, clean edges and
+  close to a full 2x drawing (0.91 from it; the old way 2.13). Pictures 12 of 12 (the bar renewed).
+
 - **2026-11-09** · "Go next phase" (+ your recording: lamp shadows now 2–5 ms a redraw in the bar, which holds
   59.6 fps): phase 6 started, **the light cache**: probes of bounced light baked by the film renderer on the
   phone's CPU a few ms a frame (the bar ~30 s, the cabin a few s; the meter counts down). Closed rooms are lit by

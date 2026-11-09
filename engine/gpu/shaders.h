@@ -1744,12 +1744,19 @@ fn lum(c : vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
 // (so moving things don't smear), and bright pixels count less (so one hot
 // pixel doesn't flicker).
 inline const char* kTaaWgsl = R"(
+// Frame blending that upscales (phase 7): every pixel of the full-size
+// picture takes the fresh sample that landed nearest it this frame (each
+// frame's view is shifted a fraction of a pixel, so over a few frames the
+// samples fill in every place), trusting it more the nearer it landed, and
+// keeps the rest from its past, read where that point was last frame and
+// kept within the colours round the fresh sample (so nothing smears).
 struct TaaU {
   prevViewProj : mat4x4f,  // last frame's, without its shift
   curViewProj : mat4x4f,   // this frame's, without its shift
-  invViewProj : mat4x4f,   // this frame's, shifted (to find this pixel's point)
+  invViewProj : mat4x4f,   // this frame's, without its shift (the full-size pixels aren't shifted)
   screen : vec4f,          // drawn width, height, 1/width, 1/height
-  full : vec4f,            // the targets' full width, height; this frame's weight; 1: start afresh
+  full : vec4f,            // the full picture's width, height; the fresh sample's most weight; 1: start afresh
+  jitter : vec4f,          // where this frame's samples landed (drawn pixels from their middle); the drawn picture's texture size
 };
 @group(0) @binding(0) var<uniform> tu : TaaU;
 @group(0) @binding(1) var cur : texture_2d<f32>;
@@ -1767,40 +1774,70 @@ fn toYCoCg(c : vec3f) -> vec3f { return vec3f(dot(c, vec3f(0.25, 0.5, 0.25)), do
 fn fromYCoCg(c : vec3f) -> vec3f { return vec3f(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z); }
 fn tame(c : vec3f) -> vec3f { return c / (1.0 + max(c.r, max(c.g, c.b)) * 0.001); }       // brightness counts less (light is stored pre-exposed)
 fn untame(c : vec3f) -> vec3f { return c / max(1.0 - max(c.r, max(c.g, c.b)) * 0.001, 1e-4); }
+// The past read sharply: a Catmull-Rom curve through 4x4 pixels (in 5
+// samples), not a 2x2 blend, which would soften it a little every frame.
+fn histSharp(uv : vec2f) -> vec3f {
+  let size = tu.full.xy;
+  let p = uv * size - 0.5;
+  let f = fract(p);
+  let t = floor(p) + 0.5;
+  let w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+  let w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+  let w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+  let w3 = f * f * (-0.5 + 0.5 * f);
+  let w12 = w1 + w2;
+  let at0 = (t - 1.0) / size;
+  let at3 = (t + 2.0) / size;
+  let at12 = (t + w2 / w12) / size;
+  var c = vec3f(0.0);
+  c += textureSampleLevel(hist, lin, vec2f(at12.x, at0.y), 0.0).rgb * w12.x * w0.y;
+  c += textureSampleLevel(hist, lin, vec2f(at0.x, at12.y), 0.0).rgb * w0.x * w12.y;
+  c += textureSampleLevel(hist, lin, vec2f(at12.x, at12.y), 0.0).rgb * w12.x * w12.y;
+  c += textureSampleLevel(hist, lin, vec2f(at3.x, at12.y), 0.0).rgb * w3.x * w12.y;
+  c += textureSampleLevel(hist, lin, vec2f(at12.x, at3.y), 0.0).rgb * w12.x * w3.y;
+  let wsum = w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y;
+  return max(c / wsum, vec3f(0.0));
+}
 @fragment fn fsTaa(o : Out) -> @location(0) vec4f {
-  let p = vec2i(o.pos.xy);
+  let s = tu.screen.xy / tu.full.xy;          // drawn pixels per full-size pixel
+  let r = o.pos.xy * s;                        // this pixel's middle, in drawn pixels
   let hi = vec2i(tu.screen.xy) - 1;
-  let c = tame(textureLoad(cur, p, 0).rgb);
+  // the drawn pixel whose sample landed nearest (pixel k's sample is at k + 0.5 + jitter)
+  let k = clamp(vec2i(floor(r - tu.jitter.xy)), vec2i(0), hi);
+  let d = r - (vec2f(k) + 0.5 + tu.jitter.xy);
+  let c = tame(textureLoad(cur, k, 0).rgb);
   var lo3 = toYCoCg(c);
   var hi3 = lo3;
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
-      let n = toYCoCg(tame(textureLoad(cur, clamp(p + vec2i(x, y), vec2i(0), hi), 0).rgb));
+      let n = toYCoCg(tame(textureLoad(cur, clamp(k + vec2i(x, y), vec2i(0), hi), 0).rgb));
       lo3 = min(lo3, n);
       hi3 = max(hi3, n);
     }
   }
-  if (tu.full.w > 0.5) { return vec4f(untame(c), 1.0); }
+  // starting afresh: the drawn picture, blended up
+  let fresh = tame(textureSampleLevel(cur, lin, (r - tu.jitter.xy) / tu.jitter.zw, 0.0).rgb);
+  if (tu.full.w > 0.5) { return vec4f(untame(fresh), 1.0); }
   // where this pixel's point was last frame
-  let d = textureLoad(depthTex, p, 0);
-  let ndc = vec2f(o.pos.x * tu.screen.z * 2.0 - 1.0, 1.0 - o.pos.y * tu.screen.w * 2.0);
-  let w4 = tu.invViewProj * vec4f(ndc, d, 1.0);
-  // how far the point moved on screen, measured without the shifts: a still
-  // view reads its past exactly in place (no blur that builds up)
+  let dep = textureLoad(depthTex, k, 0);
+  let uv = o.pos.xy / tu.full.xy;
+  let ndc = vec2f(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+  let w4 = tu.invViewProj * vec4f(ndc, dep, 1.0);
   let wp = vec4f(w4.xyz / w4.w, 1.0);
-  // a thing that moved: where this point of it was last frame (the frame
-  // history's motion; still things and the sky stay where they are)
-  let id = textureLoad(seen, p, 0).x;
+  // a thing that moved: where this point of it was last frame (still things and the sky stay)
+  let id = textureLoad(seen, k, 0).x;
   var was = wp;
   if (id > 0u) { was = back[id - 1u] * wp; }
   let prev = tu.prevViewProj * was;
   let now = tu.curViewProj * wp;
   let motion = vec2f(prev.x / prev.w - now.x / now.w, now.y / now.w - prev.y / prev.w) * 0.5;
-  let puv = o.pos.xy * tu.screen.zw + motion;
-  if (prev.w <= 0.0 || any(puv < vec2f(0.0)) || any(puv > vec2f(1.0))) { return vec4f(untame(c), 1.0); }
-  let h = tame(textureSampleLevel(hist, lin, puv * tu.screen.xy / tu.full.xy, 0.0).rgb);
+  let puv = uv + motion;
+  if (prev.w <= 0.0 || any(puv < vec2f(0.0)) || any(puv > vec2f(1.0))) { return vec4f(untame(fresh), 1.0); }
+  let h = tame(histSharp(puv));
   let kept = fromYCoCg(clamp(toYCoCg(h), lo3, hi3));
-  return vec4f(untame(mix(kept, c, tu.full.z)), 1.0);
+  // the fresh sample counts by how near it landed (a sample half a drawn pixel away: about half)
+  let weight = tu.full.z * exp(-2.8 * dot(d, d));
+  return vec4f(untame(mix(kept, c, weight)), 1.0);
 }
 )";
 

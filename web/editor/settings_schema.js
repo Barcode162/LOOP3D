@@ -60,8 +60,9 @@ window.LE = window.LE || {};
       ] },
       { title: 'Resolution', items: [
         sl('render.res', 'Hold resolution', 0, 0, 1, 0.05, E({ fmt: (v) => (v <= 0 ? 'Automatic' : pct(v)), help: '0 = automatic (climbs while the GPU keeps up, drops when it doesn\'t). Any other value holds it there, to compare costs fairly.' })),
-        sl('render.ratioPhone', 'Pixel density cap: Phone', 1, 0.5, 3, 0.25, E({ unit: 'x' })),
-        sl('render.ratioHigh', 'Pixel density cap: High', 1.5, 0.5, 3, 0.25, E({ unit: 'x' })),
+        sl('render.ratioPhone', 'Pixel density cap: Phone', 2, 0.5, 3, 0.25, E({ unit: 'x', help: 'The picture\'s sharpness in pixels per screen point. Frame blending fills it in from a smaller drawing, so 2 costs little more than 1 to draw.' })),
+        sl('render.ratioHigh', 'Pixel density cap: High', 2, 0.5, 3, 0.25, E({ unit: 'x' })),
+        sl('render.sharpen', 'Sharpening after upscaling', 0.25, 0, 1, 0.05, E({ help: 'A light sharpening of the picture frame blending fills in from a smaller drawing.' })),
         sl('render.ratioUltra', 'Pixel density cap: Ultra', 1, 0.5, 3, 0.25, E({ unit: 'x' })),
         sl('render.floor', 'Lowest automatic resolution', 0.5, 0.35, 1, 0.01, E({ fmt: pct })),
         sl('render.floorUltra', 'Lowest automatic resolution (Ultra)', 0.35, 0.35, 1, 0.01, E({ fmt: pct })),

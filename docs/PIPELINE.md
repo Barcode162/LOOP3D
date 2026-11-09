@@ -228,6 +228,14 @@ bar                       11.9         29.6        1.15
 average 20.8 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
 ```
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.
+   *Upscaling, 2026-11-09:* the picture after frame blending is the full size (outW_ x outH_ at render.ratioPhone
+   2 / render.ratioHigh 2 pixels a point); what's drawn is the automatic resolution's share of it. The blend pass
+   runs at full size: each pixel takes the drawn sample nearest it (pixel k's sample lies at k + 0.5 + this frame's
+   shift; 16 Halton spots), weighted exp(-2.8 d^2) times 0.2, clamps its past (read with a 5-sample Catmull-Rom)
+   to the 3x3 colours round that sample in YCoCg, and starts afresh from the drawing blended up. Exposure, bloom
+   and film then work at full size (postW_); render.sharpen (0.25) adds to the look's own sharpening. On a 3x
+   screen at 430 x 932 points, drawn at 1x: 0.91 from a full 2x drawing (the old stretched 1x: 2.13), edge strength
+   1.20 (full 1.22, old 1.08).
 8. **Upgrades.** ReSTIR DI and screen-space reflections on High; ReSTIR GI on Ultra.
 9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World.** Typed relationships and streaming (with rebuild step 12, world generation).

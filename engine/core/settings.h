@@ -21,7 +21,8 @@ struct Config {
     int targetFps = 60, framesInFlight = 2;
     bool pauseHidden = true;
     float res = 0;  // 0 automatic, else held at this share of full size
-    float ratioPhone = 1, ratioHigh = 1.5f, ratioUltra = 1;
+    float ratioPhone = 2, ratioHigh = 2, ratioUltra = 1;  // with frame blending upscaling: the screen's sharpness, drawn smaller
+    float sharpen = 0.25f;  // a light sharpening after the blending upscales
     float floor = 0.5f, floorUltra = 0.35f;
     float slowGpu = 110, climbUnder = 100;  // % of the frame budget
     float calm = 3;                          // seconds steady before climbing
