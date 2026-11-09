@@ -29,7 +29,8 @@ struct Frame {
   shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1); frame blending on (1); w: drawn pixels per shown pixel (1, or less when frame blending upscales)
   cache0 : vec4f,        // the light cache: first probe xyz, spacing
   cache1 : vec4f,        // probes x, y, z; w: on
-  ao : vec4f,            // ambient occlusion: strength (0 off), reach (m), frame number, -
+  ao : vec4f,            // ambient occlusion: strength (0 off), reach (m), frame number; w: screen reflections on (1)
+  prevViewProj : mat4x4f,  // last frame's view, unshifted (screen reflections read last frame's picture)
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -112,6 +113,10 @@ var<private> slopeWorldX : vec3f;
 // ambient occlusion (phase 6): how much of the soft light reaches this point
 // past what's near it, found by the light pass in the depth picture (1 elsewhere)
 var<private> aoTerm : f32 = 1.0;
+// screen reflections (phase 8, High): what a glossy surface reflects, found on
+// screen by the light pass, and how sure (0: the sky's and the light cache's)
+var<private> ssrColor : vec3f = vec3f(0.0);
+var<private> ssrSeen : f32 = 0.0;
 var<private> slopeWorldY : vec3f;
 var<private> slopeUvX : vec2f;
 var<private> slopeUvY : vec2f;
@@ -574,6 +579,17 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     last = first + (packed >> 20u);
   }
   var shadowed = 0u;
+  // High (phase 8, ReSTIR's first step; render.allLampShadows): the lamps
+  // with no shadow of their own add up here, and two of them, picked by how
+  // much light they give this point, are traced: their answer stands for all
+  // of them (each frame picks again; frame blending averages): every lamp
+  // casts shadows for two rays, grainy until the picks are reused over frames
+  let picking = kLampShadows && frame.lampMaps.z > 0.5;
+  var restLight = vec3f(0.0);
+  var restW = 0.0;
+  var pick = 0xffffffffu;
+  var pick2 = 0xffffffffu;
+  var seed = u32(i.clip.x) * 1973u + u32(i.clip.y) * 9277u + u32(frame.ao.z) * 26699u;
   for (var j = first; j < last; j++) {
     var k = j;
     if (gridOn) { k = textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x; }
@@ -609,14 +625,31 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // a lamp with no shadow of its own: the ambient occlusion stands in for
     // the shadows it would cast in creases and under things (most of a room's
     // lamps on Phone), in part
-    if (!ownShadow) { I *= mix(1.0, aoTerm, 0.7); }
+    let picked = picking && !ownShadow && L.dir.w < 1.5;
+    if (!ownShadow && !picked) { I *= mix(1.0, aoTerm, 0.7); }
     let h = normalize(l + v);
     let nh = max(dot(n, h), 0.0);
     // a bulb's size softens highlights (Karis' sphere-light trick)
     let a2 = clamp(alpha + L.pos.w / (2.0 * sqrt(d2)), 0.0, 1.0);
     let F = schlick(f0, max(dot(v, h), 0.0));
     let spec = D_ggx(nh, a2) * V_smith(nv, nl, a2) * F * (alpha * alpha / (a2 * a2));
-    lo += (diffuseColor * (1.0 - F) / PI + spec) * nl * I;
+    let c = (diffuseColor * (1.0 - F) / PI + spec) * nl * I;
+    if (picked) {
+      // one kept, each with the chance of its share of the light so far
+      let w = dot(c, vec3f(0.3333));
+      restLight += c;
+      restW += w;
+      seed = seed * 747796405u + 2891336453u;
+      if (f32(seed >> 8u) / 16777216.0 * restW < w) { pick = k; }
+      seed = seed * 747796405u + 2891336453u;
+      if (f32(seed >> 8u) / 16777216.0 * restW < w) { pick2 = k; }
+    } else {
+      lo += c;
+    }
+  }
+  if (pick != 0xffffffffu) {
+    // two picked (two rays): half the grain
+    lo += restLight * 0.5 * (lampVisibility(i.world + ng * 0.004, lights[pick], i.clip.xy) + lampVisibility(i.world + ng * 0.004, lights[pick2], i.clip.xy));
   }
   // the sky's light: diffuse from its harmonics, glossy from the blurred sky
   let r = reflect(-v, n);
@@ -628,10 +661,12 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // the sky through openings); reflections of the sky only as bright as the
     // light coming from that way says the sky is seen there
     let seen = clamp(dot(cacheLight(i.world, r), vec3f(0.2126, 0.7152, 0.0722)) / max(dot(shIrradiance(r), vec3f(0.2126, 0.7152, 0.0722)), 1e-4), 0.0, 1.0);
-    lo += (diffuseColor * cacheLight(i.world, n) / PI + envSpec * seen) * occl * aoTerm * frame.sunColor.w;
+    lo += (diffuseColor * cacheLight(i.world, n) / PI + envSpec * seen * (1.0 - ssrSeen)) * occl * aoTerm * frame.sunColor.w;
   } else {
-    lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl * aoTerm * frame.sunColor.w;
+    lo += (diffuseColor * shIrradiance(n) / PI + envSpec * (1.0 - ssrSeen)) * occl * aoTerm * frame.sunColor.w;
   }
+  // what the screen shows in the reflected direction (the room itself, not the sky)
+  lo += ssrColor * envBrdf(f0, rough, nv) * ssrSeen;
   if (m.props.z > 0.0) {  // clear coat: a second, sharp reflection
     let Fc = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
     lo = lo * (1.0 - Fc * m.props.z) + skyRadiance(r, 0.5) * Fc * m.props.z;
@@ -867,6 +902,44 @@ struct VisOut {
 // ---- lighting each pixel once: its triangle, rebuilt exactly
 @group(3) @binding(2) var visTex : texture_2d<u32>;
 @group(3) @binding(3) var sceneDepth : texture_depth_2d;  // read only in this pass
+@group(3) @binding(4) var pastPicture : texture_2d<f32>;  // last frame's, after blending (screen reflections)
+// Screen reflections: the reflected ray followed across the depth picture (24
+// steps, longer and longer); where it passes just behind what the eye sees,
+// that's what it hits: its colour is read from last frame's picture, where
+// that point was then. How sure: less near the picture's edges and on rough
+// surfaces (0: the light cache's or the sky's reflection stays).
+fn reflectionSeen(p : vec3f, n : vec3f, v : vec3f, rough : f32, pix : vec2f) -> vec4f {
+  let r = reflect(-v, n);
+  let size = vec2i(textureDimensions(sceneDepth));
+  let jitter = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))) + frame.ao.z * 0.618034);
+  var t = 0.04 * (0.5 + jitter);
+  for (var k = 0; k < 24; k++) {
+    let q = p + r * t;
+    let c = frame.viewProj * vec4f(q, 1.0);
+    if (c.w <= 0.0) { break; }
+    let ndc = c.xyz / c.w;
+    if (any(abs(ndc.xy) > vec2f(1.0))) { break; }
+    let at = vec2i((ndc.xy * vec2f(0.5, -0.5) + 0.5) * frame.screen.xy);
+    let d = textureLoad(sceneDepth, clamp(at, vec2i(0), size - 1), 0);
+    if (d < 1.0) {
+      let w = frame.invViewProj * vec4f(ndc.xy, d, 1.0);
+      let hit = w.xyz / w.w;
+      let gap = length(q - frame.camPos.xyz) - length(hit - frame.camPos.xyz);
+      if (gap > 0.0 && gap < 0.1 + t * 0.05) {
+        // where that point was in last frame's picture
+        let pc = frame.prevViewProj * vec4f(hit, 1.0);
+        if (pc.w <= 0.0) { break; }
+        let uv = (pc.xy / pc.w) * vec2f(0.5, -0.5) + 0.5;
+        if (any(uv < vec2f(0.0)) || any(uv > vec2f(1.0))) { break; }
+        let col = textureSampleLevel(pastPicture, skySampler, uv, 0.0).rgb / max(preExposure(), 1e-9);
+        let edge = smoothstep(0.0, 0.08, min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y)));
+        return vec4f(col, edge * (1.0 - smoothstep(0.25, 0.5, rough)));
+      }
+    }
+    t *= 1.28;
+  }
+  return vec4f(0.0);
+}
 // Ambient occlusion: 8 points spread over the half-ball above the surface
 // (within the reach, more of them close), each looked up in the depth
 // picture: one hidden behind something nearer the eye (but not far behind:
@@ -971,6 +1044,15 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   // clockwise on screen is its front): its corners' turn as seen from the eye,
   // which stays right for big triangles reaching behind the camera
   let front = dot(ng, frame.camPos.xyz - wa) > 0.0;
+  if (frame.ao.w > 0.5) {
+    let rough0 = materials[v.mat].base.w;
+    if (rough0 < 0.5) {
+      let nf = normalize(ng) * select(-1.0, 1.0, front);
+      let found = reflectionSeen(v.world + nf * 0.01, nf, normalize(frame.camPos.xyz - v.world), rough0, r.clip.xy);
+      ssrColor = found.rgb;
+      ssrSeen = found.a;
+    }
+  }
   if (frame.ao.x > 0.0) { aoTerm = ambientSeen(v.world + normalize(ng) * select(-0.01, 0.01, front), normalize(ng) * select(-1.0, 1.0, front), r.clip.xy); }
   let s = shade(v, front);
   if (frame.fixedExposure.z > 4.5 && frame.fixedExposure.z < 5.5) { return vec4f(vec3f(aoTerm), 1.0); }  // ?view=5: the ambient occlusion alone

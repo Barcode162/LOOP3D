@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Go phase 8" (+ your recording: the forests' visibility 10–18 ms even at the lowest resolution):
+  phase 8 started. **Screen reflections** on High: glossy floors reflect the room itself (the hall's door frames on
+  its marble), else the light cache's and sky's reflection. **Every lamp casts shadows** on High (ReSTIR's first
+  step, two picked lamps traced a pixel): right shadows but grainy, so built and off until its picks are reused over
+  frames (next). Pictures 12 of 12; all checks pass.
+
 - **2026-11-09** · "Go ahead phase 7" (+ your recording, mostly High: the far sun shadow 11–23 ms a redraw, the Glade
   at the resolution floor 0.25): **phase 7 done**. The automatic resolution now reads the step timers: it counts only
   the work that shrinks with the drawing, ignores occasional redraws, and holds its size when shrinking can't help

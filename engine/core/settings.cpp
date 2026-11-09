@@ -74,6 +74,8 @@ Settings::Settings() {
   I("render.msaa", r.msaa, 1, 4, "multisampling of the scene pass: 1 off, 4 on");
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
   B("render.lightGrid", r.lightGrid, "many lamps cheaply: each pixel works out the lamps near it alone, and far groups of lamps as one lamp each (off: every lamp alone, everywhere)");
+  B("render.allLampShadows", r.allLampShadows, "High: beyond the lamps traced one by one, the rest share two shadow rays a pixel, given to lamps picked by their light (ReSTIR's first step): every lamp casts shadows, grainy until the picks are reused over frames");
+  B("render.ssr", r.ssr, "High: glossy surfaces reflect what's on screen (the room itself), else the light cache's and the sky's reflection");
   F("render.ao", r.ao, 0, 3, "ambient occlusion, drawing in clusters: how much the soft light darkens in creases, corners and under things (0 off)");
   F("render.aoReach", r.aoReach, 0.05, 3, "how far (m) ambient occlusion looks for what's near a surface");
   B("render.lightCache", r.lightCache, "bounced light: probes through the scene baked by the film renderer a little each frame (off: the sky's light everywhere, as if every room were open)");

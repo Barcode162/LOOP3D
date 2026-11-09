@@ -120,7 +120,8 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
 | Ambient occlusion | `render.ao` | 1 | 0 … 3 x | live · script | `setting "render.ao", 1` | Drawing in clusters: the soft light darkens where surfaces meet (corners, under tables, round feet), found in the depth picture. 0: off. |
 | Ambient occlusion reach | `render.aoReach` | 0.6 | 0.05 … 3 m | live · script | `setting "render.aoReach", 0.6` | How far it looks for what is near a surface: small for fine creases, large for whole rooms. |
-| Reflections | `render.reflections` | sky | sky / ssr | not built yet |  | Screen-space reflections. |
+| Every lamp casts shadows (High, grainy for now) | `render.allLampShadows` | false |  | live · script | `setting "render.allLampShadows", false` | Beyond the lamps traced one by one, the rest share two shadow rays a pixel, given each frame to lamps picked by how much light they give there; frame blending averages them. Still grainy: on by default once the picks are reused over frames (ReSTIR). |
+| Screen reflections (High) | `render.ssr` | true |  | live · script | `setting "render.ssr", true` | Glossy floors and counters reflect what is on screen, the room itself, found in the depth picture and read from the last frame. Where it can't be found (off screen, behind things): the light cache's and the sky's reflection. |
 | Bounced light from probes | `render.lightCache` | true |  | live · script | `setting "render.lightCache", true` | Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky's light everywhere, as if every room were open. |
 | Bounced light: baking time a frame | `render.lightCacheMs` | 3 | 0.25 … 16 ms | live · script | `setting "render.lightCacheMs", 3` | More: the bounced light is ready sooner, frames a little longer while it bakes. |
 | Bounced light: most probes | `render.lightCacheProbes` | 2048 | 64 … 8192 | live · script | `setting "render.lightCacheProbes", 2048` | More: finer bounced light, longer to bake. |
@@ -598,4 +599,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 149 live · script · 49 live · 25 not built yet · 15 editor · 6 needs you
+11 project.json · 151 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you

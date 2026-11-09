@@ -267,6 +267,16 @@ average 18.2 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10
    split says the next size up fits. Without timers: the old way (all the time scales). The far sun shadow's
    pieces: the near's detail divided by `kFarShadow`.
 8. **Upgrades.** ReSTIR DI and screen-space reflections on High; ReSTIR GI on Ultra.
+   *Screen reflections, 2026-11-09 (High, render.ssr):* in the light pass, for a surface rougher than 0.5 nothing;
+   else the reflected ray stepped 24 times (0.04 m, then 1.28 times longer each) across the depth picture; a step
+   just behind what the eye sees (within 0.1 m + 5% of the way) is the hit, read from last frame's blended picture
+   where that point was (the frame's new `prevViewProj`), divided by the exposure; its weight falls near the
+   picture's edges and with roughness 0.25-0.5; the light cache's or sky's reflection fills the rest. The light
+   pass's group holds both pasts (which is newest flips). Score neutral (thin detail; the score halves pictures).
+   *Every lamp's shadow, ReSTIR's first step (High, render.allLampShadows, off):* lamps past the ones traced one by
+   one add up, two are picked by their unshadowed light (streaming, a seed a pixel and frame) and traced; the sum
+   times their mean visibility. Grain 7.0 (off 3.7, one pick 8.6) on the bar's floor; the bar's score 11.9 off,
+   12.0 on. Next: reservoirs kept a pixel and reused over frames (temporal ReSTIR).
 9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World.** Typed relationships and streaming (with rebuild step 12, world generation).
 

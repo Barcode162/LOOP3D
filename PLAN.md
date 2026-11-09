@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · next: phase 8
+## The picture pipeline (your plan, 2026-11-08) · now: phase 8
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -183,7 +183,14 @@ once, fog, blend and upscale, film.
    holds its size when shrinking can't save the time (your High recording: the Glade sank to its floor, 0.25, for
    a far shadow redraw it couldn't shorten). The far sun shadow (High) picks its pieces 5 times coarser, as its
    texels are (it cost 11-23 ms a redraw).
-8. **Upgrades:** ReSTIR DI and screen reflections on High; ReSTIR GI on Ultra.
+8. **Upgrades** (started 2026-11-09). *Screen reflections (High, on):* glossy floors and counters reflect what's on
+   screen, the room itself (the hall's marble floor now shows its glowing door frames), else the light cache's and
+   sky's reflection (docs/screen_reflections_2026-11-09.png). *Every lamp casts shadows (High, built, off):* the
+   lamps with no shadow of their own share two shadow rays a pixel, given to lamps picked by their light (ReSTIR's
+   first step); right shadows (docs/every_lamp_shadows_2026-11-09.png) but grainy (twice the grain of off), so off
+   until ReSTIR's second step reuses good picks over frames. *Still to do in phase 8:* ReSTIR's reuse (then every-
+   lamp shadows on); ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
+   lowest resolution: their leaves and grass) is now the biggest cost on the phone.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World:** typed relationships and streaming, with rebuild step 12.
 
