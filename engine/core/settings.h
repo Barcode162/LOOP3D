@@ -32,6 +32,8 @@ struct Config {
     bool cull = true;  // skip what a pass can't see
     bool lightGrid = true;     // lamps near a pixel alone, far groups of lamps as one each
     float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
+    float ao = 1;        // ambient occlusion's strength (0 off): creases and corners darken
+    float aoReach = 0.6f;  // how far (m) it looks for what's near
     bool lightCache = true;    // bounced light from probes baked by the path tracer (phase 6)
     float lightCacheMs = 3;    // the probes' baking time a frame (ms)
     int lightCacheProbes = 2048;  // most probes over a scene

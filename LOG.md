@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Keep going": **ambient occlusion** (phase 6): the soft light darkens in corners, under tables
+  and round feet (8 depth-picture points a pixel, smoothed by frame blending), and dims in part the lamps with no
+  shadow of their own. Subtle here (the scenes are mostly lit by lamps and the sun); the cabin a little closer to
+  cinema (14.2 → 13.5). Debug view 5 shows it alone. Pictures 12 of 12; all checks pass.
+
 - **2026-11-09** · "Keep going" (+ your 2x recording: courtyard 60 fps steady; the Woods 32 fps, its far sun
   shadow 54 ms a redraw): the resolution floor now counts from 1 a point; the far sun shadow is High only; sun
   shadows' detail by their own sharpness; bloom from a quarter at 2x. **The bricks**: patterns no longer fade by the

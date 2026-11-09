@@ -146,8 +146,12 @@ once, fog, blend and upscale, film.
    seconds; the meter says how many probes are left), sent to the graphics chip as they finish, baked again when
    things or lamps move. Closer to cinema: 23.5 to 20.9 on average (the materials room 35 to 25, the people 35
    to 25, the cabin 18 to 14); the open-air scenes a little further (the Glade +2, fog +1, courtyard +0.6):
-   their probes are 10 m and more apart. *Still to do in phase 6:* finer probes near you outdoors; relighting
-   only the probes near a change; ambient occlusion.
+   their probes are 10 m and more apart. *Ambient occlusion (done 2026-11-09):* the soft light darkens where
+   surfaces meet (corners, under tables, round feet), from 8 points in the depth picture a pixel; it also dims, in
+   part, the lamps with no shadow of their own (most of the bar's on Phone). Subtle in these scenes (their light
+   is mostly lamps and sun); the cabin 14.2 to 13.5 from cinema; ?view=5 shows it alone
+   (docs/ambient_occlusion_2026-11-09.png). *Still to do in phase 6:* finer probes near you outdoors; relighting
+   only the probes near a change.
 7. **Final image** (brought forward 2026-11-09, on your word: "high end graphics just to blur it"). *Found:* Phone
    drew 1 pixel per screen point on a 3-per-point iPhone (430 x 932 stretched onto 1290 x 2796: a ninth of the
    pixels). *Done:* the picture is now 2 pixels a point (render.ratioPhone 2), and frame blending upscales into it

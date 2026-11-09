@@ -118,7 +118,8 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Lamp shadows on Phone (main lamps) | `render.lampMaps` | 2 | 0 … 2 | live · script | `setting "render.lampMaps", 2` | Phone traces no rays: the main lamps near you (up to 2) cast shadows from shadow maps instead, six views round each bulb, drawn again only when the main lamps change. 0: no lamp shadows on Phone. |
 | Lamp shadow sharpness | `render.lampMapSize` | 256 | 128 / 256 / 512 / 1024 | live · script | `setting "render.lampMapSize", 256` | Pixels square for each of a lamp shadow map's six views: sharper costs memory (256: 3 MB for two lamps, 512: 12 MB). |
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
-| Screen-space ambient occlusion | `render.ao` | off | off / SSAO / GTAO | not built yet |  | Real contact darkening from the depth buffer. |
+| Ambient occlusion | `render.ao` | 1 | 0 … 3 x | live · script | `setting "render.ao", 1` | Drawing in clusters: the soft light darkens where surfaces meet (corners, under tables, round feet), found in the depth picture. 0: off. |
+| Ambient occlusion reach | `render.aoReach` | 0.6 | 0.05 … 3 m | live · script | `setting "render.aoReach", 0.6` | How far it looks for what is near a surface: small for fine creases, large for whole rooms. |
 | Reflections | `render.reflections` | sky | sky / ssr | not built yet |  | Screen-space reflections. |
 | Bounced light from probes | `render.lightCache` | true |  | live · script | `setting "render.lightCache", true` | Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky's light everywhere, as if every room were open. |
 | Bounced light: baking time a frame | `render.lightCacheMs` | 3 | 0.25 … 16 ms | live · script | `setting "render.lightCacheMs", 3` | More: the bounced light is ready sooner, frames a little longer while it bakes. |
@@ -140,7 +141,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
-| Debug view | `render.view` | 0 | 0 / 1 / 2 / 3 / 4 | live · script | `setting "render.view", 0` | debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work |
+| Debug view | `render.view` | 0 | 0 / 1 / 2 / 3 / 4 / 5 | live · script | `setting "render.view", 0` | debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work, 5 ambient occlusion |
 | Lamp and sound marks | `render.showLights` | true |  | editor |  | The editor marks where lamps and sounds are, so they can be picked and moved. |
 | Wireframe | `render.wireframe` | false |  | not built yet |  | WebGPU has no line mode: needs its own pipeline. |
 
@@ -597,4 +598,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 147 live · script · 49 live · 26 not built yet · 15 editor · 6 needs you
+11 project.json · 149 live · script · 49 live · 25 not built yet · 15 editor · 6 needs you

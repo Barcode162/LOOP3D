@@ -29,6 +29,7 @@ struct Frame {
   shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1); frame blending on (1); w: drawn pixels per shown pixel (1, or less when frame blending upscales)
   cache0 : vec4f,        // the light cache: first probe xyz, spacing
   cache1 : vec4f,        // probes x, y, z; w: on
+  ao : vec4f,            // ambient occlusion: strength (0 off), reach (m), frame number, -
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -108,6 +109,9 @@ fn fbm(p0 : vec3f) -> f32 {
 // triangles takes them from the GPU (takeSlopes); the cluster drawing works
 // them out exactly from each triangle (rebuild step 4).
 var<private> slopeWorldX : vec3f;
+// ambient occlusion (phase 6): how much of the soft light reaches this point
+// past what's near it, found by the light pass in the depth picture (1 elsewhere)
+var<private> aoTerm : f32 = 1.0;
 var<private> slopeWorldY : vec3f;
 var<private> slopeUvX : vec2f;
 var<private> slopeUvY : vec2f;
@@ -562,8 +566,10 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
     // the main lamps' shadow maps (Phone): only the first few lamps have one
+    var ownShadow = false;
     if (k < u32(frame.lampMaps.x) && frame.lampValid[k] > 0.5) {
       I *= lampMapSeen(i.world + ng * 0.02, L, k);
+      ownShadow = true;
       if (dot(I, I) == 0.0) { continue; }
     }
     // a real shadow: can this point see the lamp? (rays through the scene)
@@ -573,8 +579,13 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     if (kLampShadows && L.dir.w < 1.5 && shadowed < u32(frame.params.y) && dot(I, vec3f(0.3333)) * preExposure() > 2e-4) {
       shadowed += 1u;
       I *= lampVisibility(i.world + ng * 0.004, L, i.clip.xy);
+      ownShadow = true;
       if (dot(I, I) == 0.0) { continue; }
     }
+    // a lamp with no shadow of its own: the ambient occlusion stands in for
+    // the shadows it would cast in creases and under things (most of a room's
+    // lamps on Phone), in part
+    if (!ownShadow) { I *= mix(1.0, aoTerm, 0.7); }
     let h = normalize(l + v);
     let nh = max(dot(n, h), 0.0);
     // a bulb's size softens highlights (Karis' sphere-light trick)
@@ -593,9 +604,9 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // the sky through openings); reflections of the sky only as bright as the
     // light coming from that way says the sky is seen there
     let seen = clamp(dot(cacheLight(i.world, r), vec3f(0.2126, 0.7152, 0.0722)) / max(dot(shIrradiance(r), vec3f(0.2126, 0.7152, 0.0722)), 1e-4), 0.0, 1.0);
-    lo += (diffuseColor * cacheLight(i.world, n) / PI + envSpec * seen) * occl * frame.sunColor.w;
+    lo += (diffuseColor * cacheLight(i.world, n) / PI + envSpec * seen) * occl * aoTerm * frame.sunColor.w;
   } else {
-    lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl * frame.sunColor.w;
+    lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl * aoTerm * frame.sunColor.w;
   }
   if (m.props.z > 0.0) {  // clear coat: a second, sharp reflection
     let Fc = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
@@ -823,6 +834,41 @@ struct VisOut {
 
 // ---- lighting each pixel once: its triangle, rebuilt exactly
 @group(3) @binding(2) var visTex : texture_2d<u32>;
+@group(3) @binding(3) var sceneDepth : texture_depth_2d;  // read only in this pass
+// Ambient occlusion: 8 points spread over the half-ball above the surface
+// (within the reach, more of them close), each looked up in the depth
+// picture: one hidden behind something nearer the eye (but not far behind:
+// that's a separate thing) blocks its share of the soft light. Turned per
+// pixel and per frame, so frame blending smooths the grain.
+fn ambientSeen(p : vec3f, n : vec3f, pix : vec2f) -> f32 {
+  let reach = frame.ao.y;
+  let size = vec2i(textureDimensions(sceneDepth));
+  let turn = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))) + frame.ao.z * 0.618034) * 6.2831853;
+  let a = select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), abs(n.x) > 0.9);
+  let t = normalize(cross(n, a));
+  let b = cross(n, t);
+  var hidden = 0.0;
+  for (var k = 0; k < 8; k++) {
+    let u = (f32(k) + 0.5) / 8.0;
+    let phi = f32(k) * 2.39996323 + turn;
+    let r = sqrt(u);                          // cosine-weighted over the half-ball
+    let dir = t * (r * cos(phi)) + b * (r * sin(phi)) + n * sqrt(1.0 - u);
+    let q = p + dir * (reach * (0.15 + 0.85 * u * u));
+    let c = frame.viewProj * vec4f(q, 1.0);
+    if (c.w <= 0.0) { continue; }
+    let ndc = c.xyz / c.w;
+    let at = vec2i((ndc.xy * vec2f(0.5, -0.5) + 0.5) * frame.screen.xy);
+    if (any(at < vec2i(0)) || any(at >= size)) { continue; }
+    let d = textureLoad(sceneDepth, at, 0);
+    if (d >= 1.0) { continue; }
+    let w = frame.invViewProj * vec4f(ndc.xy, d, 1.0);
+    let seen = length(w.xyz / w.w - frame.camPos.xyz);
+    let gap = length(q - frame.camPos.xyz) - seen;
+    // only what's near counts: something far in front is a separate thing (no dark rims round it)
+    if (gap > 0.02) { hidden += 1.0 - smoothstep(reach * 0.3, reach, gap); }
+  }
+  return pow(1.0 - hidden / 8.0, frame.ao.x);
+}
 struct ResolveOut { @builtin(position) clip : vec4f };
 @vertex fn vsResolve(@builtin(vertex_index) vi : u32) -> ResolveOut {
   let p = vec2f(f32((vi << 1u) & 2u), f32(vi & 2u));
@@ -893,7 +939,9 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   // clockwise on screen is its front): its corners' turn as seen from the eye,
   // which stays right for big triangles reaching behind the camera
   let front = dot(ng, frame.camPos.xyz - wa) > 0.0;
+  if (frame.ao.x > 0.0) { aoTerm = ambientSeen(v.world + normalize(ng) * select(-0.01, 0.01, front), normalize(ng) * select(-1.0, 1.0, front), r.clip.xy); }
   let s = shade(v, front);
+  if (frame.fixedExposure.z > 4.5 && frame.fixedExposure.z < 5.5) { return vec4f(vec3f(aoTerm), 1.0); }  // ?view=5: the ambient occlusion alone
   return vec4f(exposed(s.color), 1.0);
 }
 )";

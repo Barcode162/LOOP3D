@@ -122,6 +122,7 @@ struct FrameU {
   Mat4 shadowFarViewProj;  // the sun's far shadow (a second, coarser map)
   Vec4 shadowFar;          // the near box's size over the far one's, the far map drawn (1)
   Vec4 cache0, cache1;     // the light cache: first probe xyz, spacing; probes x y z, on
+  Vec4 ao;                 // ambient occlusion: strength, reach (m), frame number
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -164,7 +165,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1424, "frame layout");
+static_assert(sizeof(FrameU) == 1440, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -681,6 +682,7 @@ class GpuRenderer final : public Renderer {
     f.camPos = {cam.position, time};
     f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
     f.sunColor = {sunIllum_, C.render.skyLight};
+    f.ao = {(skip & 8192) ? 0.0f : C.render.ao, std::max(C.render.aoReach, 0.05f), static_cast<float>(jitterFrame_ % 64), 0};
     f.cache0 = {cache_.origin, cache_.spacing};
     f.cache1 = {static_cast<float>(cache_.nx), static_cast<float>(cache_.ny), static_cast<float>(cache_.nz), cache_.on && cacheTex_[0] ? 1.0f : 0.0f};
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
@@ -1042,9 +1044,8 @@ class GpuRenderer final : public Renderer {
         ca.clearValue = {0, 0, 0, 1};
         wgpu::RenderPassDepthStencilAttachment da;
         da.view = depthView_;
-        da.depthLoadOp = wgpu::LoadOp::Load;
-        da.depthStoreOp = wgpu::StoreOp::Store;  // frame blending reads it
-        da.depthClearValue = 1;
+        da.depthReadOnly = true;  // nothing here writes it; the ambient occlusion reads it
+        da.depthClearValue = 1;   // unused, but the browser wants a number
         wgpu::RenderPassDescriptor rp;
         rp.colorAttachmentCount = 1;
         rp.colorAttachments = &ca;
@@ -2180,7 +2181,7 @@ class GpuRenderer final : public Renderer {
       clusterDrawLayout_ = layout({ssbo(0, VF), ssbo(1, wgpu::ShaderStage::Vertex)});
       wgpu::BindGroupLayoutEntry vt = tex(2, F);
       vt.texture.sampleType = wgpu::TextureSampleType::Uint;
-      clusterResolveLayout_ = layout({ssbo(0, F), vt});
+      clusterResolveLayout_ = layout({ssbo(0, F), vt, tex(3, F, true)});
       cullLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C), ssbo(4, C), ssbo(5, C, true), ssbo(6, C, true), ssbo(7, C, true), ssbo(8, C, true),
                             tex(9, C, false, true), tex(10, C, false, true)});
       // the depth pyramid (phase 4)
@@ -2750,7 +2751,7 @@ class GpuRenderer final : public Renderer {
                                         : group(hzbLevelLayout_, {bufE(0, hzbUbo_[l]), texE(2, hzbMip_[i][l - 1])}));
     }
     if (poolVerts_ && visView_ && eyeList_.drawn) {
-      clusterResolveGroup_ = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_)});
+      clusterResolveGroup_ = group(clusterResolveLayout_, {bufE(0, poolVerts_), texE(2, visView_), texE(3, depthView_)});
       if (histView_[0])
         for (int i = 0; i < 2; ++i)
           taaGroup_[i] = group(taaLayout_, {bufE(0, taaUbo_), texE(1, hdrView_), texE(2, histView_[i]), texE(3, depthView_), sampE(4, linear_),
