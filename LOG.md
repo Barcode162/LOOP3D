@@ -7,7 +7,9 @@ One line per request, newest first: the date, what the user asked, what was done
   shadow of their own. Subtle here (the scenes are mostly lit by lamps and the sun); the cabin a little closer to
   cinema (14.2 → 13.5). Debug view 5 shows it alone. Pictures 12 of 12; all checks pass. Then finer probes outdoors, tried and not kept: probes 5 m apart (not
   13-17) took the Woods and the Glade further from cinema; correct probes under trees are darker and expose the
-  real outdoor gap, the sun through the leaves (next). Kept: probes gather no fog (the live fog does that).
+  real outdoor gap, the sun through the leaves (next). Kept: probes gather no fog (the live fog does that). Then **sunlit fog**: the fog glows only where the sun reaches it (8 points
+  a view tested against the sun's shadow): shade and light shafts under trees, much closer to cinema (the fog
+  scene 36.8 → 16.2, the Glade 33.5 → 24.9, average 20.9 → 18.5). Pictures renewed, 12 of 12.
 
 - **2026-11-09** · "Keep going" (+ your 2x recording: courtyard 60 fps steady; the Woods 32 fps, its far sun
   shadow 54 ms a redraw): the resolution floor now counts from 1 a point; the far sun shadow is High only; sun

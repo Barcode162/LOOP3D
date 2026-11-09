@@ -395,6 +395,30 @@ fn sunShadowIn(layer : i32, p : vec4f, spread : f32) -> f32 {
   }
   return s / 12.0;
 }
+// How much of the fog along the view to a point at `dist` the sun reaches:
+// 8 points along the way (nearer ones counting more, as their light is lost
+// less on its way to the eye), each one tap of the near shadow map; turned per
+// pixel and per frame, so frame blending smooths it into shafts.
+fn fogSunlit(dist : f32, toPoint : vec3f, density : f32, pix : vec2f) -> f32 {
+  let start = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))) + frame.ao.z * 0.618034);
+  var lit = 0.0;
+  var total = 0.0;
+  for (var k = 0; k < 8; k++) {
+    let t = dist * (f32(k) + start) / 8.0;
+    let w = exp(-density * t);
+    let q = frame.camPos.xyz + toPoint * t;
+    let p = frame.shadowViewProj * vec4f(q, 1.0);
+    let uv = vec2f(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+    var seen = 1.0;  // beyond the shadow map: sunlit
+    if (all(uv >= vec2f(0.0)) && all(uv <= vec2f(1.0)) && p.z <= 1.0) {
+      seen = textureSampleCompareLevel(shadowMap, shadowSampler, uv, 0, p.z - frame.fogColor.w);
+    }
+    lit += seen * w;
+    total += w;
+  }
+  return lit / max(total, 1e-6);
+}
+
 // The sun's shadow: the sharp near map, and beyond it the far one (with the
 // same softness in metres), blended over the near box's outer edge.
 fn shadowAt(world : vec3f, n : vec3f) -> f32 {
@@ -632,7 +656,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let cosSun = dot(-v, frame.sunDir.xyz);
     let g = frame.fog.z;
     let phase = (1.0 - g * g) / (4.0 * PI * pow(1.0 + g * g - 2.0 * g * cosSun, 1.5));
-    let inscatter = frame.fogColor.rgb * (shIrradiance(vec3f(0.0, 1.0, 0.0)) / (4.0 * PI) + frame.sunColor.rgb * phase * frame.sunDir.w);
+    // the sun lights only the fog it reaches: under trees most of it is in
+    // shade, with shafts of light between (god rays, as the film renderer has)
+    var sunlit = 1.0;
+    if (frame.sunDir.w > 0.5) { sunlit = fogSunlit(dist, -v, frame.fog.x, i.clip.xy); }
+    let inscatter = frame.fogColor.rgb * (shIrradiance(vec3f(0.0, 1.0, 0.0)) / (4.0 * PI) + frame.sunColor.rgb * phase * frame.sunDir.w * sunlit);
     lo = lo * t + inscatter * (1.0 - t);
   }
   return Shaded(lo, outA);

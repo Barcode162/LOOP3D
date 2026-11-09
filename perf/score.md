@@ -9,6 +9,25 @@ left out. **0** is the same picture, **about 2** barely visible side by side, **
 different. *Brightness* is live ÷ cinema before matching (each renderer meters its own exposure). Each phase
 of the pipeline must leave every scene's score no worse (or better, when it means to change the look).
 
+## 2026-11-09: sunlit fog (god rays), with ambient occlusion and 2x upscaling
+
+```
+scene                    score  worst tenth  brightness
+showcase_hall             11.3         16.7        1.44
+showcase_materials        24.7         36.0        1.39
+showcase_light            28.6         76.6        0.52
+showcase_sky               5.0         10.3        1.14
+showcase_fog              16.2         24.3        1.17
+showcase_physics          30.0         87.2        1.26
+showcase_people           24.8         48.0        1.27
+showcase_glade            24.9         45.5        1.12
+courtyard                  9.0         17.3        2.23
+cabin                     13.5         25.8        1.39
+the_woods                 21.7         30.1        1.87
+bar                       12.0         30.0        1.16
+average 18.5 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
+```
+
 ## 2026-11-09: phase 6, the light cache (bounced light from probes)
 
 ```
