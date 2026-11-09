@@ -184,6 +184,13 @@ phase is meant to change the look).
    ("lamp maps": which lamps, the placements, shapes, settings, movers); moving things are left out of them. The
    shader picks the view facing the point and compares (2x2 blended). Checked against High's rays: the cabin 0.75
    apart (8.5 without); the cabin's and the bar's reference pictures renewed.
+   *2026-11-09:* each lamp keeps its row (only a newcomer's is drawn, one lamp a frame); a map reaches only where
+   its lamp gives a quarter of a lux (2-15 m), fixed when the lamp takes the row (a flickering flame keeps its
+   map); a layer per lamp. *Sun shadows in steps:* the shadow map has two layers, the near box as before and a far
+   one `kFarShadow` (5) times its size, in steps of its own eighth, drawn with the lamp-view pipeline (its matrix
+   in a uniform), moving things left out, kept by the change tracker ("sun far view"). The shader uses the near
+   map inside 80% of its box, the far one beyond 96%, blended between, with the same softness in metres. Skip
+   bit 4096 turns the far map off; ?shadowdistance= sets the near box (tests).
 6. **Bounced light** (the second half). Cinema bakes the light cache; live, a few probes a frame are relit, only
    where something changed. Ambient occlusion fills the small creases.
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.

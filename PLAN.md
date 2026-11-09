@@ -131,7 +131,11 @@ once, fog, blend and upscale, film.
    *Lamp shadows on Phone (done 2026-11-08):* the two main lamps near you cast shadows from shadow maps (six
    views round each bulb), drawn again only when those lamps change (the bar: 5 times walking its length; the
    cabin: once). The cabin on Phone now matches High's traced shadows (0.75 apart; it was 8.5).
-   *Still to do in phase 5:* sun shadows in steps (the far sun shadow in a coarser second map); contact shadows.
+   *Sun shadows in steps (done 2026-11-09):* beyond the sharp near map (25 m on Phone, as before) a second,
+   coarse map five times as far, kept until its box moves (every ~15 m on Phone) or the scene changes;
+   moving things left out of it. Checked: with the near map shrunk to 5 m the far one keeps the Woods'
+   canopy shadow (0.89 from the reference; 1.97 without it).
+   *Still to do in phase 5:* contact shadows.
 6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient
    occlusion.
 7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the

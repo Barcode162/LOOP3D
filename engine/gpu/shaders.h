@@ -25,6 +25,8 @@ struct Frame {
   lampMaps : vec4f,      // lamp shadow maps: how many lamps (the first in the list), tile size, -, -
   lampFaces : array<mat4x4f, 12>,  // each mapped lamp's six views (+x -x +y -y +z -z)
   lampValid : vec4f,     // per row: drawn for its lamp (1), or not yet (0: no shadow for a frame)
+  shadowFarViewProj : mat4x4f,  // the sun's far shadow (the shadow map's second layer)
+  shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1)
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -232,7 +234,7 @@ fn pattern(m : Material, p : vec3f, n : vec3f) -> vec3f {
 )";
 
 inline const char* kSceneWgsl = R"(
-@group(1) @binding(0) var shadowMap : texture_depth_2d;
+@group(1) @binding(0) var shadowMap : texture_depth_2d_array;  // the sun's: near (0), far (1)
 @group(1) @binding(1) var shadowSampler : sampler_comparison;
 @group(1) @binding(2) var skyTex : texture_2d<f32>;
 @group(1) @binding(3) var skySampler : sampler;
@@ -340,20 +342,32 @@ fn envBrdf(f0 : vec3f, rough : f32, nv : f32) -> vec3f {
   return f0 * ab.x + ab.y;
 }
 
-fn shadowAt(world : vec3f, n : vec3f) -> f32 {
-  let p = frame.shadowViewProj * vec4f(world + n * 0.03, 1.0);
+// One layer of the sun's shadow: 12 taps of a Poisson disk (soft edges),
+// `spread` uv wide; 1 outside it.
+fn sunShadowIn(layer : i32, p : vec4f, spread : f32) -> f32 {
   let uv = vec2f(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || p.z > 1.0) { return 1.0; }
-  let texel = 1.0 / frame.params.z;
   var s = 0.0;
-  // a 12-tap Poisson disk: soft edges
   let taps = array<vec2f, 12>(vec2f(-0.326, -0.406), vec2f(-0.840, -0.074), vec2f(-0.696, 0.457), vec2f(-0.203, 0.621),
                               vec2f(0.962, -0.195), vec2f(0.473, -0.480), vec2f(0.519, 0.767), vec2f(0.185, -0.893),
                               vec2f(0.507, 0.064), vec2f(0.896, 0.412), vec2f(-0.322, -0.933), vec2f(-0.792, -0.598));
   for (var i = 0; i < 12; i++) {
-    s += textureSampleCompareLevel(shadowMap, shadowSampler, uv + taps[i] * texel * frame.sh[0].w, p.z - frame.fogColor.w);
+    s += textureSampleCompareLevel(shadowMap, shadowSampler, uv + taps[i] * spread, layer, p.z - frame.fogColor.w);
   }
   return s / 12.0;
+}
+// The sun's shadow: the sharp near map, and beyond it the far one (with the
+// same softness in metres), blended over the near box's outer edge.
+fn shadowAt(world : vec3f, n : vec3f) -> f32 {
+  let texel = 1.0 / frame.params.z;
+  let spread = texel * frame.sh[0].w;
+  let p = frame.shadowViewProj * vec4f(world + n * 0.03, 1.0);
+  let edge = max(abs(p.x), abs(p.y));  // 0 at the near box's middle, 1 at its side
+  if (frame.shadowFar.y < 0.5 || (edge < 0.8 && p.z <= 1.0)) { return sunShadowIn(0, p, spread); }
+  let pf = frame.shadowFarViewProj * vec4f(world + n * 0.03 / frame.shadowFar.x, 1.0);
+  let far = sunShadowIn(1, pf, max(spread * frame.shadowFar.x, texel * 0.5));
+  if (edge >= 0.96 || p.z > 1.0) { return far; }
+  return mix(sunShadowIn(0, p, spread), far, (edge - 0.8) / 0.16);
 }
 
 struct Shaded {

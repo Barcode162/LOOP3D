@@ -116,6 +116,8 @@ struct FrameU {
   Vec4 lampMaps;      // lamp shadow maps: lamps, tile size, atlas width, height
   Mat4 lampFaces[12]; // each mapped lamp's six views
   Vec4 lampValid;     // per row: its map is drawn for its lamp (1) or not yet (0)
+  Mat4 shadowFarViewProj;  // the sun's far shadow (a second, coarser map)
+  Vec4 shadowFar;          // the near box's size over the far one's, the far map drawn (1)
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -158,7 +160,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1312, "frame layout");
+static_assert(sizeof(FrameU) == 1392, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -630,6 +632,8 @@ class GpuRenderer final : public Renderer {
     f.viewProj = proj * view;
     f.invViewProj = f.viewProj.inverse();
     // the sun's shadow: a box round what the camera sees nearby, snapped to texels
+    // (two of them: a sharp one near the eye, and a coarse one five times as
+    // far, beyond it: phase 5's sun shadows in steps)
     float R = C.render.shadowDistance > 0 ? C.render.shadowDistance : quality_ == Quality::kPhone ? 25.0f : 40.0f;
     Vec3 fwd = normalize(cam.target - cam.position);
     Vec3 center = cam.position + fwd * (R * 0.6f);
@@ -648,6 +652,18 @@ class GpuRenderer final : public Renderer {
     sunEye_ = Vec3(std::floor(cam.position.x / step + 0.5f), std::floor(cam.position.y / step + 0.5f), std::floor(cam.position.z / step + 0.5f)) * step;
     Mat4 lp = Mat4::ortho(lc.x - B, lc.x + B, lc.y - B, lc.y + B, -lc.z - R * 4, -lc.z + R * 4);
     f.shadowViewProj = lp * lv;
+    {
+      const float RF = R * kFarShadow, BF = RF * 1.125f;
+      const float texelF = 2 * BF / shadowSize_;
+      const float stepF = std::max(1.0f, std::round(RF / 8 / texelF)) * texelF;
+      Vec3 lf = lv.point(cam.position + fwd * (RF * 0.6f));
+      lf.x = std::floor(lf.x / stepF + 0.5f) * stepF, lf.y = std::floor(lf.y / stepF + 0.5f) * stepF;
+      lf.z = std::floor(lf.z / stepF + 0.5f) * stepF;
+      sunFarEye_ = Vec3(std::floor(cam.position.x / stepF + 0.5f), std::floor(cam.position.y / stepF + 0.5f), std::floor(cam.position.z / stepF + 0.5f)) * stepF;
+      sunFarViewProj_ = Mat4::ortho(lf.x - BF, lf.x + BF, lf.y - BF, lf.y + BF, -lf.z - RF * 4, -lf.z + RF * 4) * lv;
+      f.shadowFarViewProj = sunFarViewProj_;
+      f.shadowFar = {B / BF, sunFarValid_ ? 1.0f : 0.0f, 0, 0};
+    }
     f.camPos = {cam.position, time};
     f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
     f.sunColor = {sunIllum_, C.render.skyLight};
@@ -745,6 +761,19 @@ class GpuRenderer final : public Renderer {
     if (!occluding) hzbValid_ = false;
     const std::vector<std::string>& shadowFrom = clustersReady() ? kShadowFrom : kShadowFromAll;
     const bool lampMapsStale = raster && lampRowDrawing_ >= 0;  // one row a frame (chooseLampMaps)
+    // the far sun shadow: with clusters only, moving things left out; kept
+    // until its box (which moves in steps of 5 times the near one's) or the scene changes
+    {
+      struct {
+        Mat4 view;
+        Vec4 eye;
+      } farView{sunFarViewProj_, Vec4(sunFarEye_, static_cast<float>(shadowSize_))};
+      changes_.set("sun far view", farView);
+    }
+    static const std::vector<std::string> kFarFrom = {"placements", "shapes", "settings", "sun far view", "movers"};
+    const bool farWanted = clusterSun && quality_ != Quality::kUltra && !(skip & 4096);  // 4096: no far shadow (tests)
+    const bool farStale = farWanted && changes_.stale(sunFarMade_, kFarFrom);
+    if (!farWanted || farStale) sunFarValid_ = false;
     const bool shadowStale = changes_.stale(shadowMade_, shadowFrom) || (splitting && !stillDrawn_) || ((skip & 2048) && !movers_.empty());
     // ---- what each pass draws: the copies its view can see
     if (raster) {
@@ -757,6 +786,7 @@ class GpuRenderer final : public Renderer {
         if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, sunEye_, perPixel, 0, splitting ? 1 : 0);
         if (splitting) prepareList(sunMovers_, shadowDraws_, f.shadowViewProj, sunEye_, perPixel, 0, 2);
         if (lampMapsStale) prepareLampMaps();
+        if (farStale) prepareSunFar(perPixel);
       }
       if (bindGroupsDirty_) makeBindGroups();
     }
@@ -822,14 +852,45 @@ class GpuRenderer final : public Renderer {
         from.texture = stillTex_, to.texture = shadowTex_;
         wgpu::Extent3D size{static_cast<uint32_t>(shadowSize_), static_cast<uint32_t>(shadowSize_), 1};
         enc.CopyTextureToTexture(&from, &to, &size);
-        shadowPass(shadowView_, false, &sunMovers_);
+        shadowPass(shadowLayerView_[0], false, &sunMovers_);
       } else {
-        shadowPass(shadowView_, true, clusterSun ? &sunList_ : nullptr);
+        shadowPass(shadowLayerView_[0], true, clusterSun ? &sunList_ : nullptr);
         changes_.made(shadowMade_, shadowFrom);
         stillDrawn_ = false;
         ++shadowRedraws_;
       }
     }, raster && !(skip & 32) && (shadowStale || splitting));
+    // the sun's far shadow: its pieces chosen, drawn into the shadow picture's second layer
+    graph_.add("far shadow", {"scene"}, {"far shadow map"}, [&] {
+      runCull(enc, sunFarList_);
+      wgpu::RenderPassDepthStencilAttachment da;
+      da.view = shadowLayerView_[1];
+      da.depthLoadOp = wgpu::LoadOp::Clear;
+      da.depthStoreOp = wgpu::StoreOp::Store;
+      da.depthClearValue = 1;
+      wgpu::RenderPassColorAttachment dc;
+      dc.view = shadowDummy_;
+      dc.loadOp = wgpu::LoadOp::Clear;
+      dc.storeOp = wgpu::StoreOp::Discard;
+      wgpu::RenderPassDescriptor rp;
+      rp.colorAttachmentCount = 1;
+      rp.colorAttachments = &dc;
+      rp.depthStencilAttachment = &da;
+      wgpu::PassTimestampWrites tw;
+      rp.timestampWrites = stamp(tw);
+      wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+      pass.SetPipeline(lampShadowPipe_);
+      pass.SetBindGroup(0, sceneGroup0_);
+      pass.SetBindGroup(1, sunFarGroup_);
+      pass.SetBindGroup(2, emptyGroup_);
+      pass.SetBindGroup(3, sunFarList_.drawGroup);
+      pass.DrawIndirect(sunFarList_.args, 0);
+      ++drawCalls_;
+      pass.End();
+      changes_.made(sunFarMade_, kFarFrom);
+      sunFarValid_ = true;
+      ++shadowRedraws_;
+    }, raster && farStale && sunFarList_.cullGroup && sunFarList_.drawGroup && sunFarGroup_ && lampShadowPipe_);
     // the main lamps' shadow maps (Phone): each view's pieces chosen, then all
     // twelve views drawn into their tiles of one depth picture
     graph_.add("lamp shadows", {"scene"}, {"lamp maps"}, [&] {
@@ -949,7 +1010,7 @@ class GpuRenderer final : public Renderer {
         hzbIndex_ ^= 1;
       }
     }, clusterPath && !(skip & 64));
-    graph_.add("light", {"visibility", "depth", "shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr"}, [&] {
+    graph_.add("light", {"visibility", "depth", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr"}, [&] {
       {
         wgpu::RenderPassColorAttachment ca;
         ca.view = hdrView_;
@@ -1019,7 +1080,7 @@ class GpuRenderer final : public Renderer {
       prevViewProj_ = steadyViewProj;
     }, clusterPath && !(skip & 64) && blending() && taaGroup_[histIndex_]);
     // the drawing before clusters: each thing drawn and lit where it lands
-    graph_.add("forward", {"scene", "shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr", "depth"}, [&] {
+    graph_.add("forward", {"scene", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr", "depth"}, [&] {
       wgpu::RenderPassColorAttachment ca;
       ca.view = g_samples > 1 ? msaaView_ : hdrView_;
       if (g_samples > 1) ca.resolveTarget = hdrView_;
@@ -1874,7 +1935,9 @@ class GpuRenderer final : public Renderer {
     gCells.texture.viewDimension = wgpu::TextureViewDimension::e3D;
     wgpu::BindGroupLayoutEntry lampArr = tex(8, F, true);
     lampArr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
-    scene1Layout_ = layout({tex(0, F, true), samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList, lampArr});
+    wgpu::BindGroupLayoutEntry sunArr = tex(0, F, true);
+    sunArr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
+    scene1Layout_ = layout({sunArr, samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList, lampArr});
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
     std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl + kClusterDrawWgsl;
@@ -2181,11 +2244,23 @@ class GpuRenderer final : public Renderer {
     if (stillTex_) stillTex_.Destroy();
     if (shadowDummyTex_) shadowDummyTex_.Destroy();
     wgpu::TextureDescriptor td;
-    td.size = {static_cast<uint32_t>(shadowSize_), static_cast<uint32_t>(shadowSize_), 1};
+    td.size = {static_cast<uint32_t>(shadowSize_), static_cast<uint32_t>(shadowSize_), 2};  // near, far
     td.format = wgpu::TextureFormat::Depth32Float;
     td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
     shadowTex_ = device_.CreateTexture(&td);
-    shadowView_ = shadowTex_.CreateView();
+    {
+      wgpu::TextureViewDescriptor vd;
+      vd.dimension = wgpu::TextureViewDimension::e2DArray;
+      shadowView_ = shadowTex_.CreateView(&vd);
+      for (uint32_t l = 0; l < 2; ++l) {
+        wgpu::TextureViewDescriptor ld;
+        ld.dimension = wgpu::TextureViewDimension::e2D;
+        ld.baseArrayLayer = l, ld.arrayLayerCount = 1;
+        shadowLayerView_[l] = shadowTex_.CreateView(&ld);
+      }
+    }
+    sunFarValid_ = false;
+    td.size.depthOrArrayLayers = 1;
     // the shadow of what stands still, kept while things move (copied, then the movers drawn on it)
     td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
     stillTex_ = device_.CreateTexture(&td);
@@ -2497,7 +2572,8 @@ class GpuRenderer final : public Renderer {
 
   void makeBindGroups() {
     if (!hdrView_) return;
-    std::vector<ClusterList*> lists = {&eyeList_, &sunList_, &eyeList2_, &sunMovers_};
+    std::vector<ClusterList*> lists = {&eyeList_, &sunList_, &eyeList2_, &sunMovers_, &sunFarList_};
+    if (sunFarUbo_ && lampFaceLayout_) sunFarGroup_ = group(lampFaceLayout_, {bufE(9, sunFarUbo_)});
     for (ClusterList& L : lampLists_) lists.push_back(&L);
     for (int i = 0; i < kLampMapsMost * 6; ++i)
       if (lampFaceUbo_[i] && lampFaceLayout_) lampFaceGroup_[i] = group(lampFaceLayout_, {bufE(9, lampFaceUbo_[i])});
@@ -2586,6 +2662,7 @@ class GpuRenderer final : public Renderer {
   wgpu::Texture shadowTex_, shadowDummyTex_, skyTex_, msaaTex_, depthTex_, hdrTex_, bloomTex_[kBloomLevels];
   wgpu::Buffer passUbo_[2 * kBloomLevels];
   bool passUniformsDirty_ = true;
+  wgpu::TextureView shadowLayerView_[2];
   wgpu::TextureView shadowDummy_, shadowView_, skyView_, msaaView_, depthView_, hdrView_, bloomViews_[kBloomLevels];
   wgpu::BindGroupLayout scene0Layout_, scene1Layout_, postLayout_, expLayout_;
   wgpu::RenderPipeline opaquePipe_[2], depthPipe_, opaqueAfterDepthPipe_[2], glassPipe_[2], skyPipe_, shadowPipe_, downPipe_, upPipe_, finalPipe_;
@@ -2604,6 +2681,28 @@ class GpuRenderer final : public Renderer {
   // ---- what's hidden (phase 4): two depth pyramids, last frame's and this
   // frame's first pass's, each level the farthest depth over a patch
   ClusterList sunMovers_;  // the sun's shadow of what moved lately (drawn every frame on the kept rest)
+  // the sun's far shadow (a second layer, five times the near box, moving things left out)
+  static constexpr float kFarShadow = 5.0f;
+  ClusterList sunFarList_;
+  wgpu::Buffer sunFarUbo_;
+  wgpu::BindGroup sunFarGroup_;
+  Mat4 sunFarViewProj_;
+  Vec3 sunFarEye_;
+  ChangeTracker::Made sunFarMade_;
+  bool sunFarValid_ = false;
+  std::vector<uint32_t> sunFarSlots_;
+  void prepareSunFar(float perPixel) {
+    const Frustum fr = Frustum::fromViewProj(sunFarViewProj_);
+    sunFarSlots_.clear();
+    for (uint32_t slot = 0; slot < instData_.size() && slot < instBox_.size(); ++slot) {
+      if (slot < instHidden_.size() && instHidden_[slot]) continue;
+      if (slot < isMover_.size() && isMover_[slot]) continue;
+      if (fr.visible(instBox_[slot])) sunFarSlots_.push_back(slot);
+    }
+    prepareSlots(sunFarList_, sunFarSlots_, sunFarViewProj_, sunFarEye_, perPixel);
+    if (!sunFarUbo_) sunFarUbo_ = buffer(sizeof(Mat4), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst), bindGroupsDirty_ = true;
+    queue_.WriteBuffer(sunFarUbo_, 0, &sunFarViewProj_, sizeof(Mat4));
+  }
   // ---- the main lamps' shadow maps (Phone, where no rays are traced): the
   // first lamps in the list (the brightest near the eye, panels last) get six
   // views each, in one depth picture; drawn again only when the lamps chosen,
@@ -3058,7 +3157,7 @@ class GpuRenderer final : public Renderer {
   bool fresh_ = true;  // next frame starts a new measurement
   // the frame's steps (draw); what a frame finds already there: the scene and
   // its lists, lamps, sky and rays, last frame's history
-  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history", "shadow map", "depth pyramid", "lamp maps"}};
+  FrameGraph graph_{{"scene", "sun list", "eye list", "lamps", "sky", "rays", "history", "shadow map", "depth pyramid", "lamp maps", "far shadow map"}};
   // what the frame is made from, versioned; the sun's shadow as last drawn
   ChangeTracker changes_;
   ChangeTracker::Made shadowMade_;

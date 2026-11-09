@@ -7,7 +7,10 @@ One line per request, newest first: the date, what the user asked, what was done
   lamp a frame, its map reaching only as far as its light matters (the bar's bulbs: a few metres, not 15); the
   cabin's flickering fire no longer redraws its map every frame; drawing one lamp no longer wipes the other's
   (a layer each). Walking the bar: 2 one-lamp redraws where there were 5 two-lamp ones. Pictures 12 of 12;
-  `tools/shadow_check.js` checks the flicker case.
+  `tools/shadow_check.js` checks the flicker case. **Sun shadows in steps**: a second, coarse sun shadow
+  map 5 times as far beyond the near one (kept until its box moves); with the near map shrunk to 5 m it keeps the
+  Woods' canopy shadow (0.89 from the reference, 1.97 without). Tried a sharper, smaller near map too: the leaves'
+  shadow leaked light at 15–25 m in the coarse map, so the near map stays 25 m.
 
 - **2026-11-08** · "Continue next": **lamp shadows on Phone**: the two main lamps near you cast shadows from
   shadow maps (six views round each bulb, one depth picture), drawn again only when those lamps change (walking
