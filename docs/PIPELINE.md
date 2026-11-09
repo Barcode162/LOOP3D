@@ -196,6 +196,37 @@ phase is meant to change the look).
    scene's, and only as outlines round thin things; the maps already catch it at Phone's resolution. In reserve.
 6. **Bounced light** (the second half). Cinema bakes the light cache; live, a few probes a frame are relit, only
    where something changed. Ambient occlusion fills the small creases.
+   *The light cache, 2026-11-09* (`engine/render/light_cache.h`, 6 tests): at most `render.lightCacheProbes`
+   (2048) probes over every copy's box, at least 1 m apart. Each is baked by the path tracer's probe mode
+   (`PathTracer::probeLight`: lamps and the sun seen straight on left out, the live renderer draws those; with
+   more than 8 lamps, 4 picked at each bounce by lumens over distance squared, the bsdf's rays not counting
+   lamps), 64 rays, 2 bounces, no ray brighter than 8 times the others' average (fireflies); stored as the light
+   on six faces (the first two orders of its spread were tried first: they overstate light from the side, the
+   courtyard's shaded walls turned red); a probe whose rays mostly hit backs is inside something and takes its
+   neighbours' light; each probe blended 2/5 with its neighbours' 1/10 when sent. The renderer bakes
+   `render.lightCacheMs` (3) a frame on the main thread (the phone's page has no threads), nearest the eye first;
+   unbaked probes hold the sky's light (as before); the path tracer (37 MB for the bar) lives only while baking,
+   stops at once when the scene changes (it points into it) and starts again at most every 2 s. The shader reads
+   it for the soft light (6 textures, blended between probes and faces) and dims sky reflections by how much of
+   the sky the probes see that way. `loop score --reuse` scores against saved cinema pictures. Scores (cinema at
+   32 samples):
+
+```
+scene                    score  worst tenth  brightness
+showcase_hall             11.2         15.9        1.44
+showcase_materials        24.6         36.0        1.39
+showcase_light            28.6         76.7        0.52
+showcase_sky               5.0         10.1        1.14
+showcase_fog              36.7         50.8        1.07
+showcase_physics          30.0         87.3        1.26
+showcase_people           24.8         47.9        1.28
+showcase_glade            33.3         53.6        1.24
+courtyard                  9.0         17.3        2.23
+cabin                     13.5         25.7        1.38
+the_woods                 21.0         30.0        1.96
+bar                       11.9         29.6        1.15
+average 20.8 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
+```
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.
 8. **Upgrades.** ReSTIR DI and screen-space reflections on High; ReSTIR GI on Ultra.
 9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.

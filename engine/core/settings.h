@@ -31,6 +31,9 @@ struct Config {
     bool cull = true;  // skip what a pass can't see
     bool lightGrid = true;     // lamps near a pixel alone, far groups of lamps as one each
     float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
+    bool lightCache = true;    // bounced light from probes baked by the path tracer (phase 6)
+    float lightCacheMs = 3;    // the probes' baking time a frame (ms)
+    int lightCacheProbes = 2048;  // most probes over a scene
     int lampMaps = 2;          // where no rays are traced (Phone): the main lamps with shadow maps
     int lampMapSize = 256;     // each of a mapped lamp's six views, pixels square
     bool clusters = true;  // draw from the cook's cluster trees (Nanite's way; off: the triangle drawing)

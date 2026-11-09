@@ -16,7 +16,7 @@ const fs = require('fs');
   const scene = process.argv[3] || 'courtyard';
   const p = await b.newPage({ viewport: { width: 480, height: 320 }, deviceScaleFactor: 1 });
   await p.addInitScript(() => { let shown = null; Object.defineProperty(window, 'loopShown', { configurable: true, get() { return shown && (() => { window.loopFirstFrame = true; shown(); }); }, set(f) { shown = f; } }); });
-  await p.goto(`${base}/?quality=0&res=1&ui=0#${scene}`);
+  await p.goto(`${base}/?quality=0&res=1&ui=0&cachems=60000#${scene}`);
   await p.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 280000 });
   await p.waitForFunction(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())).clustered === 1, null, { timeout: 280000 });
   const opt = (k, v) => p.evaluate(([k, v]) => { const M = window.Module, n = M.lengthBytesUTF8(k) + 1, q = M._malloc(n); M.stringToUTF8(k, q, n); M._loop_set_option(q, v); M._free(q); }, [k, v]);
@@ -55,7 +55,7 @@ const fs = require('fs');
   // kept all the same while standing still (they were once drawn every frame)
   const q = await b.newPage({ viewport: { width: 320, height: 240 }, deviceScaleFactor: 1 });
   await q.addInitScript(() => { let shown = null; Object.defineProperty(window, 'loopShown', { configurable: true, get() { return shown && (() => { window.loopFirstFrame = true; shown(); }); }, set(f) { shown = f; } }); });
-  await q.goto(`${base}/?quality=0&res=1&ui=0#cabin`);
+  await q.goto(`${base}/?quality=0&res=1&ui=0&cachems=60000#cabin`);
   await q.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 280000 });
   await q.waitForFunction(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())).clustered === 1, null, { timeout: 280000 });
   await q.waitForTimeout(5000);

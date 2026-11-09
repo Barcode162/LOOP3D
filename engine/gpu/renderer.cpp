@@ -11,6 +11,7 @@
 #include <thread>
 #include <cstddef>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -20,7 +21,9 @@
 #include "engine/render/frame_cost.h"
 #include "engine/render/change_tracker.h"
 #include "engine/render/frame_graph.h"
+#include "engine/render/light_cache.h"
 #include "engine/render/light_grid.h"
+#include "engine/render/pathtracer.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
 
@@ -118,6 +121,7 @@ struct FrameU {
   Vec4 lampValid;     // per row: its map is drawn for its lamp (1) or not yet (0)
   Mat4 shadowFarViewProj;  // the sun's far shadow (a second, coarser map)
   Vec4 shadowFar;          // the near box's size over the far one's, the far map drawn (1)
+  Vec4 cache0, cache1;     // the light cache: first probe xyz, spacing; probes x y z, on
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -160,7 +164,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1392, "frame layout");
+static_assert(sizeof(FrameU) == 1424, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -605,6 +609,7 @@ class GpuRenderer final : public Renderer {
     if (lastScene_ && cookJob_ && cookJob_->done) wantClusters(*lastScene_);  // the background cook finished: switch over
     if (bindGroupsDirty_) makeBindGroups();
     keepGrid();
+    keepLightCache(cam.position);
     uploadLights(cam.position);
     drawCalls_ = 0;
 
@@ -667,6 +672,8 @@ class GpuRenderer final : public Renderer {
     f.camPos = {cam.position, time};
     f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
     f.sunColor = {sunIllum_, C.render.skyLight};
+    f.cache0 = {cache_.origin, cache_.spacing};
+    f.cache1 = {static_cast<float>(cache_.nx), static_cast<float>(cache_.ny), static_cast<float>(cache_.nz), cache_.on && cacheTex_[0] ? 1.0f : 0.0f};
     for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
     f.sh[0].w = C.render.shadowSoftness, f.sh[1].w = C.world.patternFade;
     f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
@@ -1400,8 +1407,126 @@ class GpuRenderer final : public Renderer {
     bool same = lamps.size() == gridLampsCpu_.size();
     for (size_t k = 0; same && k < lamps.size(); ++k) same = length(lamps[k].position - gridLampsCpu_[k].position) < 0.02f;
     gridLampsCpu_ = std::move(lamps);
-    if (!same) gridKey_ = -1;
+    if (!same) gridKey_ = -1, changes_.bump("lamp places");
   }
+
+  // ---- the light cache (engine/render/light_cache.h, phase 6): probes of the
+  // light that isn't straight from a lamp or the sun, baked by the film
+  // renderer's path tracer a few milliseconds a frame (nearest the eye first)
+  // and sent every few frames. A probe not baked yet holds the sky's light
+  // (as before the cache). Baked again when shapes, placements or lamps move;
+  // the path tracer (tens of MB) lives only while baking.
+  LightCache cache_;
+  std::unique_ptr<PathTracer> tracer_;
+  std::vector<int> cacheOrder_;
+  size_t cacheNext_ = 0;
+  int cacheUnsent_ = 0, cacheFrames_ = 0;
+  ChangeTracker::Made cacheMade_;
+  wgpu::Texture cacheTex_[6];
+  wgpu::TextureView cacheView_[6];
+  uint64_t cacheBaked_ = 0;  // probes baked since the start
+  double cacheStarted_ = -1e9;  // when the bake last started (ms)
+  void makeCacheTextures() {
+    const uint32_t x = cache_.on ? cache_.nx : 1, y = cache_.on ? cache_.ny : 1, z = cache_.on ? cache_.nz : 1;
+    for (int i = 0; i < 6; ++i) {
+      wgpu::TextureDescriptor td;
+      td.size = {x, y, z};
+      td.dimension = wgpu::TextureDimension::e3D;
+      td.format = wgpu::TextureFormat::RGBA16Float;
+      td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+      cacheTex_[i] = device_.CreateTexture(&td);
+      cacheView_[i] = cacheTex_[i].CreateView();
+    }
+    bindGroupsDirty_ = true;
+  }
+  // The sky's light on a surface facing n, from its nine numbers (as
+  // shIrradiance in the shader works it out); a probe not baked yet holds it.
+  Vec3 skyIrradiance(Vec3 n) const {
+    const float c1 = 0.429043f, c2 = 0.511664f, c3 = 0.743125f, c4 = 0.886227f, c5 = 0.247708f;
+    const Vec3* L = sh_;
+    Vec3 e = L[8] * (c1 * (n.x * n.x - n.y * n.y)) + L[6] * (c3 * n.z * n.z) + L[0] * c4 - L[6] * c5 +
+             (L[4] * (n.x * n.y) + L[7] * (n.x * n.z) + L[5] * (n.y * n.z)) * (2 * c1) + (L[3] * n.x + L[1] * n.y + L[2] * n.z) * (2 * c2);
+    return vmax(e, Vec3(0));
+  }
+  void skyProbe(int i) {
+    static const Vec3 axis[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    for (int f = 0; f < 6; ++f) cache_.face[static_cast<size_t>(i)][static_cast<size_t>(f)] = skyIrradiance(axis[f]);
+  }
+  void sendCache() {
+    if (!cache_.on) return;
+    const LightCache sent = smoothed(cache_);
+    std::vector<uint16_t> px[6];
+    const size_t n = static_cast<size_t>(cache_.probes());
+    for (auto& v : px) v.resize(n * 4);
+    for (size_t i = 0; i < n; ++i)
+      for (int f = 0; f < 6; ++f) {
+        uint16_t* o = &px[f][i * 4];
+        const Vec3 e = sent.face[i][static_cast<size_t>(f)];
+        o[0] = toHalf(e.x), o[1] = toHalf(e.y), o[2] = toHalf(e.z), o[3] = 0;
+      }
+    for (int c = 0; c < 6; ++c) {
+      wgpu::TexelCopyTextureInfo dst;
+      dst.texture = cacheTex_[c];
+      wgpu::TexelCopyBufferLayout lay;
+      lay.bytesPerRow = static_cast<uint32_t>(cache_.nx) * 8, lay.rowsPerImage = static_cast<uint32_t>(cache_.ny);
+      wgpu::Extent3D ext{static_cast<uint32_t>(cache_.nx), static_cast<uint32_t>(cache_.ny), static_cast<uint32_t>(cache_.nz)};
+      queue_.WriteTexture(&dst, px[c].data(), px[c].size() * 2, &lay, &ext);
+    }
+    cacheUnsent_ = 0;
+  }
+  void keepLightCache(Vec3 eye) {
+    const auto& r = config().render;
+    if (!r.lightCache || !lastScene_ || quality_ == Quality::kUltra) {
+      if (cache_.on) cache_ = LightCache(), makeCacheTextures();
+      tracer_.reset();
+      return;
+    }
+    static const std::vector<std::string> kFrom = {"shapes", "placements", "lamp places", "settings"};
+    // started again at most every two seconds (a carried lamp moves every
+    // frame); but the old bake stops at once: its path tracer points into the
+    // scene as it was, and a changed scene may have moved or freed that
+    const bool changed = changes_.stale(cacheMade_, kFrom);
+    if (changed) tracer_.reset();
+    if (changed && emscripten_get_now() - cacheStarted_ > 2000) {
+      cacheStarted_ = emscripten_get_now();
+      changes_.made(cacheMade_, kFrom);
+      // the probes over every copy (a probe within reach of the scene's things)
+      AABB box;
+      for (size_t i = 0; i < instBox_.size(); ++i)
+        if (i >= instHidden_.size() || !instHidden_[i]) box.grow(instBox_[i]);
+      LightCache next = layOutLightCache(box, std::clamp(r.lightCacheProbes, 64, 8192), 1.0f);
+      const bool same = next.on && cache_.on && next.nx == cache_.nx && next.ny == cache_.ny && next.nz == cache_.nz &&
+                        length(next.origin - cache_.origin) < 1e-3f && std::fabs(next.spacing - cache_.spacing) < 1e-4f;
+      if (!same) {
+        cache_ = std::move(next);
+        for (int i = 0; i < cache_.probes(); ++i) skyProbe(i);
+        makeCacheTextures();
+        sendCache();
+      } else {
+        std::fill(cache_.state.begin(), cache_.state.end(), LightCache::kWaiting);  // baked again, keeping their light meanwhile
+      }
+      tracer_ = std::make_unique<PathTracer>();
+      tracer_->setScene(*lastScene_);
+      cacheOrder_ = bakeOrder(cache_, eye);
+      cacheNext_ = 0;
+    }
+    if (!tracer_ || !cache_.on) return;
+    // a few milliseconds of probes (at least one), then sent now and then
+    const double start = emscripten_get_now(), budget = std::clamp(r.lightCacheMs, 0.25f, 60000.0f);  // tests: everything at once
+    while (cacheNext_ < cacheOrder_.size()) {
+      const int i = cacheOrder_[cacheNext_++];
+      bakeProbe(cache_, i, *tracer_, 64, 2, static_cast<uint32_t>(cacheBaked_ + 1));
+      ++cacheBaked_, ++cacheUnsent_;
+      if (emscripten_get_now() - start > budget) break;
+    }
+    const bool done = cacheNext_ >= cacheOrder_.size();
+    if (cacheUnsent_ && (++cacheFrames_ % 15 == 0 || done)) {
+      fillInside(cache_);
+      sendCache();
+    }
+    if (done) tracer_.reset();  // its tens of MB back
+  }
+  int lightCacheWaiting() const override { return tracer_ ? static_cast<int>(cacheOrder_.size() - cacheNext_) : 0; }
 
   // ---- the light grid (engine/render/light_grid.h): the lamps in a tree of
   // groups, each group sent as one more lamp (its members' light added up,
@@ -1937,7 +2062,13 @@ class GpuRenderer final : public Renderer {
     lampArr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
     wgpu::BindGroupLayoutEntry sunArr = tex(0, F, true);
     sunArr.texture.viewDimension = wgpu::TextureViewDimension::e2DArray;
-    scene1Layout_ = layout({sunArr, samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList, lampArr});
+    std::vector<wgpu::BindGroupLayoutEntry> s1 = {sunArr, samp(1, F, true), tex(2, F), samp(3, F), arr, samp(5, F), gCells, gList, lampArr};
+    for (uint32_t b = 10; b < 16; ++b) {  // the light cache's probes, a face each (3D)
+      wgpu::BindGroupLayoutEntry c = tex(b, F);
+      c.texture.viewDimension = wgpu::TextureViewDimension::e3D;
+      s1.push_back(c);
+    }
+    scene1Layout_ = layout(s1);
     postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
     expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
     std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl + kClusterDrawWgsl;
@@ -2603,9 +2734,12 @@ class GpuRenderer final : public Renderer {
     sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
     if (!modelView_) uploadModelTextures(Scene());
     if (!gridCellsTex_) layOutGrid();
+    if (!cacheTex_[0]) makeCacheTextures();
     if (!lampMapTex_) makeLampMap(0);
     sceneGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_),
-                                         texE(6, gridCellsView_), texE(7, gridListView_), texE(8, lampMapView_)});
+                                         texE(6, gridCellsView_), texE(7, gridListView_), texE(8, lampMapView_),
+                                         texE(10, cacheView_[0]), texE(11, cacheView_[1]), texE(12, cacheView_[2]),
+                                         texE(13, cacheView_[3]), texE(14, cacheView_[4]), texE(15, cacheView_[5])});
     // each pass reads one texture and writes another; the unused second slot
     // gets a texture that isn't the one being written
     for (int i = 0; i < kBloomLevels - 1; ++i)

@@ -27,6 +27,8 @@ struct Frame {
   lampValid : vec4f,     // per row: drawn for its lamp (1), or not yet (0: no shadow for a frame)
   shadowFarViewProj : mat4x4f,  // the sun's far shadow (the shadow map's second layer)
   shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1)
+  cache0 : vec4f,        // the light cache: first probe xyz, spacing
+  cache1 : vec4f,        // probes x, y, z; w: on
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -248,6 +250,25 @@ inline const char* kSceneWgsl = R"(
 // the main lamps' shadow maps (Phone, where no rays are traced): six views in
 // a row, a layer per lamp
 @group(1) @binding(8) var lampMap : texture_depth_2d_array;
+// the light cache (phase 6): per probe, the light falling on a face turned
+// +x, -x, +y, -y, +z, -z (a picture each)
+@group(1) @binding(10) var cachePX : texture_3d<f32>;
+@group(1) @binding(11) var cacheNX : texture_3d<f32>;
+@group(1) @binding(12) var cachePY : texture_3d<f32>;
+@group(1) @binding(13) var cacheNY : texture_3d<f32>;
+@group(1) @binding(14) var cachePZ : texture_3d<f32>;
+@group(1) @binding(15) var cacheNZ : texture_3d<f32>;
+// The light falling on a surface at p facing n that isn't straight from a
+// lamp or the sun, blended between the probes round it and between the faces.
+fn cacheLight(p : vec3f, n : vec3f) -> vec3f {
+  let dims = frame.cache1.xyz;
+  let half = 0.5 / dims;
+  let uvw = clamp(((p - frame.cache0.xyz) / frame.cache0.w + 0.5) / dims, half, 1.0 - half);
+  let fx = select(textureSampleLevel(cacheNX, skySampler, uvw, 0.0), textureSampleLevel(cachePX, skySampler, uvw, 0.0), n.x > 0.0).rgb;
+  let fy = select(textureSampleLevel(cacheNY, skySampler, uvw, 0.0), textureSampleLevel(cachePY, skySampler, uvw, 0.0), n.y > 0.0).rgb;
+  let fz = select(textureSampleLevel(cacheNZ, skySampler, uvw, 0.0), textureSampleLevel(cachePZ, skySampler, uvw, 0.0), n.z > 0.0).rgb;
+  return fx * n.x * n.x + fy * n.y * n.y + fz * n.z * n.z;
+}
 
 // How much of lamp k (one of the first, mapped) a point sees: its depth in the
 // lamp's view that faces it, against the map (the chip blends 2x2 of them).
@@ -568,7 +589,15 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   let envSpec = skyRadiance(r, rough * 6.0) * envBrdf(f0, rough, nv);
   // a little less sky low down (render.occlusion), all of it times render.skyLight
   let occl = mix(1.0, clamp(0.4 + 0.6 * (n.y * 0.5 + 0.5), 0.0, 1.0), frame.fixedExposure.w);
-  lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl * frame.sunColor.w;
+  if (frame.cache1.w > 0.5) {
+    // the light cache: the soft light that really reaches here (walls, floor,
+    // the sky through openings); reflections of the sky only as bright as the
+    // light coming from that way says the sky is seen there
+    let seen = clamp(dot(cacheLight(i.world, r), vec3f(0.2126, 0.7152, 0.0722)) / max(dot(shIrradiance(r), vec3f(0.2126, 0.7152, 0.0722)), 1e-4), 0.0, 1.0);
+    lo += (diffuseColor * cacheLight(i.world, n) / PI + envSpec * seen) * occl * frame.sunColor.w;
+  } else {
+    lo += (diffuseColor * shIrradiance(n) / PI + envSpec) * occl * frame.sunColor.w;
+  }
   if (m.props.z > 0.0) {  // clear coat: a second, sharp reflection
     let Fc = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
     lo = lo * (1.0 - Fc * m.props.z) + skyRadiance(r, 0.5) * Fc * m.props.z;

@@ -2,6 +2,14 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Go next phase" (+ your recording: lamp shadows now 2–5 ms a redraw in the bar, which holds
+  59.6 fps): phase 6 started, **the light cache**: probes of bounced light baked by the film renderer on the
+  phone's CPU a few ms a frame (the bar ~30 s, the cabin a few s; the meter counts down). Closed rooms are lit by
+  their walls instead of the open sky: closer to cinema 23.5 → 20.9 on average (materials 35→25, people 35→25,
+  cabin 18→14); open-air scenes a little further (Glade +2): next, finer probes near you. Fixed on the way: the
+  path tracer's every-lamp shadow rays (28 ms a probe in the bar → 2 ms), fireflies, and a crash when the
+  editor changed the scene mid-bake. Pictures renewed (12 of 12).
+
 - **2026-11-09** · "Ahead do phase 5" (+ your recording: lamp shadows 10–13 ms a redraw in the bar, 2 ms every
   frame in the cabin): **lamp shadows made cheap**: each lamp keeps its row (only a newcomer's is drawn), one
   lamp a frame, its map reaching only as far as its light matters (the bar's bulbs: a few metres, not 15); the

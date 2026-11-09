@@ -73,6 +73,9 @@ Settings::Settings() {
   I("render.msaa", r.msaa, 1, 4, "multisampling of the scene pass: 1 off, 4 on");
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
   B("render.lightGrid", r.lightGrid, "many lamps cheaply: each pixel works out the lamps near it alone, and far groups of lamps as one lamp each (off: every lamp alone, everywhere)");
+  B("render.lightCache", r.lightCache, "bounced light: probes through the scene baked by the film renderer a little each frame (off: the sky's light everywhere, as if every room were open)");
+  F("render.lightCacheMs", r.lightCacheMs, 0.25, 60000, "milliseconds a frame for baking the light cache's probes (more: done sooner, frames a little longer while it bakes)");
+  I("render.lightCacheProbes", r.lightCacheProbes, 64, 8192, "most probes over a scene (more: finer bounced light, longer to bake)");
   I("render.lampMaps", r.lampMaps, 0, 2, "on Phone (no rays): how many of the main lamps near you cast shadows, from shadow maps");
   I("render.lampMapSize", r.lampMapSize, 64, 1024, "each of a lamp shadow map's six views, pixels square (sharper costs memory: 256 is 3 MB for two lamps)");
   F("render.lampGrouping", r.lampGrouping, 1, 64, "how far (in its own sizes) a group of lamps must be to be worked out as one: more is closer to every lamp alone, and more work");

@@ -59,7 +59,7 @@ int usage() {
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
       "loop budget <script.loop or folder> [--quality phone|high] [--seconds 1] [--size 374x811] [--set name=value]\n"
       "loop score  <script.loop> <live.png> [--filmtime T] [--samples 256] [-o folder]   how far live is from cinema\n"
-      "loop score  tests/pictures [--samples 256] [-o folder]   every picture test's scene, scored\n"
+      "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop settings list    every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -69,6 +69,7 @@ int usage() {
 }
 
 struct Options {
+  bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
   std::string quality, look, out, choices;
   int width = 0, samples = 0, w = 960, h = 540;
   double seconds = 10, filmtime = 0;
@@ -462,7 +463,8 @@ struct Scored {
   PictureScore s;
   double seconds = 0;
 };
-bool scoreScene(const std::string& path, const std::string& livePath, double filmtime, int samples, const std::string& outDir, Scored& out) {
+bool scoreScene(const std::string& path, const std::string& livePath, double filmtime, int samples, const std::string& outDir, Scored& out,
+                bool reuse = false) {
   Image live;
   if (!readPng(livePath, live, true)) {
     std::fprintf(stderr, "can't read %s\n", livePath.c_str());
@@ -486,8 +488,13 @@ bool scoreScene(const std::string& path, const std::string& livePath, double fil
   req.bounces = cc.bounces, req.denoise = cc.denoise, req.dispersion = cc.dispersion, req.motionBlur = false;
   std::string base = path.substr(path.find_last_of('/') + 1);
   base = base.substr(0, base.find('.'));
-  Image cinema = renderStill(sc, cam, live.width, live.height, samples, 0, base, &req);
-  for (Vec4& p : cinema.px) p = Vec4(srgbToLinear(p.x), srgbToLinear(p.y), srgbToLinear(p.z), 1);
+  // --reuse: the cinema picture a run before saved in the -o folder (the cinema side doesn't change)
+  Image cinema;
+  const std::string saved = outDir + "/" + base + "_cinema.png";
+  if (!(reuse && !outDir.empty() && readPng(saved, cinema, true) && cinema.width == live.width && cinema.height == live.height)) {
+    cinema = renderStill(sc, cam, live.width, live.height, samples, 0, base, &req);
+    for (Vec4& p : cinema.px) p = Vec4(srgbToLinear(p.x), srgbToLinear(p.y), srgbToLinear(p.z), 1);
+  }
   out.title = stage.title;
   out.s = scorePictures(live, cinema);
   if (!outDir.empty()) {
@@ -512,7 +519,7 @@ int score(const std::string& target, const Options& o) {
   if (!std::filesystem::is_directory(target)) {
     if (o.live.empty()) return usage();
     Scored r;
-    if (!scoreScene(target, o.live, o.filmtime, samples, o.out, r)) return 1;
+    if (!scoreScene(target, o.live, o.filmtime, samples, o.out, r, o.reuse)) return 1;
     std::printf("%s: %.1f (worst tenth over %.1f; brightness live/cinema %.2f)\n", r.title.c_str(), static_cast<double>(r.s.score),
                 static_cast<double>(r.s.worstTenth), static_cast<double>(r.s.brightness));
     return 0;
@@ -535,7 +542,7 @@ int score(const std::string& target, const Options& o) {
     }
     Scored r;
     double ft = s.has("filmtime") ? s["filmtime"].number() : 0;
-    if (!scoreScene(path, target + "/" + name + ".png", ft, samples, o.out, r)) continue;
+    if (!scoreScene(path, target + "/" + name + ".png", ft, samples, o.out, r, o.reuse)) continue;
     std::printf("%-22s %7.1f %12.1f %11.2f\n", name.c_str(), static_cast<double>(r.s.score), static_cast<double>(r.s.worstTenth),
                 static_cast<double>(r.s.brightness));
     total += r.s.score, ++n;
@@ -560,6 +567,7 @@ int main(int argc, char** argv) {
     else if (a == "--look") o.look = val();
     else if (a == "--width") o.width = std::atoi(val().c_str());
     else if (a == "--samples") o.samples = std::atoi(val().c_str());
+    else if (a == "--reuse") o.reuse = true;
     else if (a == "--seconds") o.seconds = std::atof(val().c_str()), o.secondsGiven = true;
     else if (a == "--filmtime") o.filmtime = std::atof(val().c_str());
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;

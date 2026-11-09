@@ -69,7 +69,7 @@ function serve() {
       Object.defineProperty(window, 'loopShown', { configurable: true, get() { return shown && (() => { window.loopFirstFrame = true; shown(); }); }, set(f) { shown = f; } });
     });
     const started = Date.now();
-    await page.goto(`http://localhost:${port}/?quality=${process.env.QUALITY || config.quality}&res=1&msaa=${config.msaa}&pause=1&ui=0${process.env.PARAMS ? '&' + process.env.PARAMS : ''}#${s.name}`);
+    await page.goto(`http://localhost:${port}/?quality=${process.env.QUALITY || config.quality}&res=1&msaa=${config.msaa}&pause=1&ui=0&cachems=60000${process.env.PARAMS ? '&' + process.env.PARAMS : ''}#${s.name}`);
     const ok = await page.waitForFunction(() => window.loopFirstFrame === true, null, { timeout: 240000 }).then(() => true, () => false);
     if (!ok) { console.log(`FAIL ${s.name}: never showed a frame ${errors.slice(0, 2).join(' | ')}`); failed++; await page.close(); continue; }
     // the eyes settle fast, then wait until the exposure holds still
@@ -94,7 +94,8 @@ function serve() {
       const moved = Math.abs(st.exposure - last) / Math.max(1e-9, Math.abs(last));
       // and, drawing in clusters, until the background cook has switched over
       const switched = !config.clusters || st.clustered || (process.env.PARAMS || '').includes('clusters=0');
-      steady = st.frames - frames0 >= 8 && moved < 0.002 && switched ? steady + 1 : 0;
+      // and until the light cache's probes are all baked
+      steady = st.frames - frames0 >= 8 && moved < 0.002 && switched && !st.cacheWaiting ? steady + 1 : 0;
       last = st.exposure;
     }
     // the frame itself, read back from the GPU (no page buttons on it)

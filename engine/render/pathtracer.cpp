@@ -94,6 +94,8 @@ struct PathTracer::Impl {
   RenderSettings settings;
   float clampLum = kInf;
   std::atomic<uint64_t> rays{0};
+  bool probeFirst = false;  // probeLight: the first stretch skips lamps and the sun seen straight on
+  std::vector<float> lampWeights;  // probeLight's lamp picking
 
   // camera
   Vec3 camPos, camF, camR, camU, camDelta{0};
@@ -319,7 +321,8 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
     return Vec3(ph);
   };
   auto origin = [&](Vec3 wi) { return bsdf ? p + nOff * (dot(wi, nOff) >= 0 ? 1.0f : -1.0f) : p; };
-  for (const LightData& L : lights) {
+  // one lamp's light (mis: weighed against the bsdf's own rays finding it)
+  auto one = [&](const LightData& L, bool mis) -> Vec3 {
     const Light& l = L.light;
     Vec3 wi, Li;
     float dist, lightPdf;
@@ -341,7 +344,7 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
         dist = length(d);
         wi = d / dist;
         float cl = dot(-wi, L.rectN);
-        if (cl <= 0) continue;
+        if (cl <= 0) return Vec3(0);
         Li = L.radiance;
         lightPdf = dist * dist / (cl * std::max(l.size.x * l.size.y, 1e-6f));
         break;
@@ -349,7 +352,7 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
       default: {  // point / spot as a small glowing ball
         Vec3 d = l.position - p;
         float d2 = lengthSq(d), r = std::max(l.radius, 1e-3f);
-        if (d2 <= r * r) continue;
+        if (d2 <= r * r) return Vec3(0);
         float cd = std::sqrt(d2);
         float cosMax = std::sqrt(std::max(0.0f, 1 - r * r / d2));
         Vec3 axis = d / cd, t, b;
@@ -367,14 +370,39 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
         break;
       }
     }
-    if (luminance(Li) <= 0) continue;
+    if (luminance(Li) <= 0) return Vec3(0);
     float bp;
     Vec3 f = scatter(wi, bp);
-    if (luminance(f) <= 0) continue;
+    if (luminance(f) <= 0) return Vec3(0);
     Vec3 T = l.castShadows ? transmittance(origin(wi), wi, dist) : Vec3(1);
-    if (luminance(T) <= 0) continue;
-    if (lightPdf == 0) sum += f * Li * T;
-    else sum += f * Li * T * (powerHeuristic(lightPdf, bp) / lightPdf);
+    if (luminance(T) <= 0) return Vec3(0);
+    if (lightPdf == 0 || !mis) return lightPdf == 0 ? f * Li * T : f * Li * T / lightPdf;
+    return f * Li * T * (powerHeuristic(lightPdf, bp) / lightPdf);
+    };
+  if (probeFirst && lights.size() > 8) {
+    // the light cache's probes: a few lamps picked by how much light they
+    // could give here, each weighed by its chance (the sun always); the
+    // bsdf's rays don't count lamps they hit, so no mixing weights
+    lampWeights.resize(lights.size());
+    float total = 0;
+    for (size_t i = 0; i < lights.size(); ++i) {
+      const Light& l = lights[i].light;
+      float w = 0;
+      if (l.kind != Light::Kind::kSun) w = std::max(l.lumens, 0.0f) / std::max(lengthSq(l.position - p), 0.25f);
+      else sum += one(lights[i], false);
+      total += w;
+      lampWeights[i] = total;
+    }
+    const int picks = 4;
+    if (total > 0)
+      for (int k = 0; k < picks; ++k) {
+        size_t i = std::lower_bound(lampWeights.begin(), lampWeights.end(), rng.uniform() * total) - lampWeights.begin();
+        i = std::min(i, lights.size() - 1);
+        const float pick = (lampWeights[i] - (i ? lampWeights[i - 1] : 0.0f)) / total;
+        if (pick > 0) sum += one(lights[i], false) / (pick * picks);
+      }
+  } else {
+    for (const LightData& L : lights) sum += one(L, true);
   }
   // one glowing triangle, picked by power
   if (!emitters.empty() && emitterPower > 0) {
@@ -463,7 +491,8 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     rays++;
     SceneHit h = geom.closest(ray);
     float tSurf = h.valid() ? h.t : kInf;
-    bool allowLamps = settings.caustics || !sawDiffuse || !lastDelta;
+    const bool skipDirect = probeFirst && ((bounces == 0 && firstHit) || lights.size() > 8);  // many lamps: their light by sampleLights alone
+    bool allowLamps = (settings.caustics || !sawDiffuse || !lastDelta) && !skipDirect;
     float tLamp;
     Vec3 lamp = lampHit(ray, tSurf, lastPdf, lastDelta, allowLamps, tLamp);
 
@@ -499,7 +528,7 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     }
     if (!h.valid()) {
       Vec3 env = sky.radiance(ray.d);
-      if (sunIndex >= 0 && dot(ray.d, sky.sunDirection()) > sunCos && (settings.caustics || !sawDiffuse || !lastDelta)) {
+      if (sunIndex >= 0 && !skipDirect && dot(ray.d, sky.sunDirection()) > sunCos && (settings.caustics || !sawDiffuse || !lastDelta)) {
         float w = lastDelta ? 1.0f : powerHeuristic(lastPdf, 1 / sunSolid);
         env += sunRadiance * w;
       }
@@ -621,6 +650,21 @@ Vec3 PathTracer::tracePixel(float px, float py, int w, int h, uint32_t i) {
   Rng rng(hashCombine(static_cast<uint32_t>(px) * 9781 + static_cast<uint32_t>(py) * 6271, i));
   Ray r = I.cameraRay(px, py, w, h, rng, rng.uniform2());
   return I.trace(r, rng, nullptr, nullptr);
+}
+
+Vec3 PathTracer::probeLight(Vec3 p, Vec3 d, uint32_t seed, int bounces, bool* back) {
+  Impl& I = *impl_;
+  Ray r{p, d};
+  if (back) {
+    SceneHit h = I.geom.closest(r);
+    *back = h.valid() && dot(d, I.geom.triangle(h.inst, h.prim).ng) > 0;
+  }
+  Rng rng(seed);
+  I.settings.maxBounces = std::max(bounces, 1);
+  I.probeFirst = true;
+  Vec3 c = I.trace(r, rng, nullptr, nullptr);
+  I.probeFirst = false;
+  return isFinite(c) ? c : Vec3(0);
 }
 
 RenderOutput PathTracer::render(const RenderSettings& s) {

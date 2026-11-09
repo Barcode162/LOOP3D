@@ -47,6 +47,8 @@ class Renderer {
   virtual uint64_t shadowDraws() const { return 0; }
   // How many times the main lamps' shadow maps have been drawn (Phone).
   virtual uint64_t lampShadowDraws() const { return 0; }
+  // The light cache: probes still to bake (0: done or off).
+  virtual int lightCacheWaiting() const { return 0; }
   virtual float renderScale() const = 0;
   // GPU milliseconds per frame (estimated from the GPU's "done" signals):
   // smoothed, and the latest frame's.

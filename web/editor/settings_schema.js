@@ -108,7 +108,9 @@ window.LE = window.LE || {};
         num('render.lampGrouping', 'Lamp grouping distance', 7, E({ min: 1, max: 64, step: 0.5, help: 'How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work.' })),
         en('render.ao', 'Screen-space ambient occlusion', 'off', opts('off', 'SSAO', 'GTAO'), NB('Real contact darkening from the depth buffer.')),
         en('render.reflections', 'Reflections', 'sky', opts(['sky', 'Sky only'], ['ssr', 'Screen space']), NB('Screen-space reflections.')),
-        en('render.gi', 'Bounced light from probes', 'off', opts('off', 'on'), NB('Light probes for bounced light in the live picture.')),
+        tog('render.lightCache', 'Bounced light from probes', true, E({ help: 'Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky\'s light everywhere, as if every room were open.' })),
+        sl('render.lightCacheMs', 'Bounced light: baking time a frame', 3, 0.25, 16, 0.25, E({ unit: 'ms', help: 'More: the bounced light is ready sooner, frames a little longer while it bakes.' })),
+        num('render.lightCacheProbes', 'Bounced light: most probes', 2048, E({ min: 64, max: 8192, step: 64, help: 'More: finer bounced light, longer to bake.' })),
       ] },
       { title: 'Passes', items: [
         tog('render.passScene', 'Scene lighting', true, E()),

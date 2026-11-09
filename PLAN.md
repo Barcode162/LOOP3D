@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · next: phase 6
+## The picture pipeline (your plan, 2026-11-08) · now: phase 6
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -140,8 +140,14 @@ once, fog, blend and upscale, film.
    outlines round thin things (a walk catching an object's own edge), while costing every lit pixel. The shadow
    maps already catch what touches at the phone's resolution. Back in reserve, for when something needs it.
    *Phase 5 is done.* Next: phase 6, bounced light.
-6. **Bounced light:** cinema bakes the light cache; live, a few probes relit where something changed; ambient
-   occlusion.
+6. **Bounced light** (started 2026-11-09). *The light cache:* probes through the scene hold the light bounced
+   off walls, floors and things (and the sky only where it really gets in), baked by the film renderer on the
+   phone's own CPU a few milliseconds a frame, nearest you first (the bar about half a minute, the cabin a few
+   seconds; the meter says how many probes are left), sent to the graphics chip as they finish, baked again when
+   things or lamps move. Closer to cinema: 23.5 to 20.9 on average (the materials room 35 to 25, the people 35
+   to 25, the cabin 18 to 14); the open-air scenes a little further (the Glade +2, fog +1, courtyard +0.6):
+   their probes are 10 m and more apart. *Still to do in phase 6:* finer probes near you outdoors; relighting
+   only the probes near a change; ambient occlusion.
 7. **Final image:** frame blending grows into upscaling (drawn at two-thirds size); resolution steered by the
    frame graph's timings.
 8. **Upgrades:** ReSTIR DI and screen reflections on High; ReSTIR GI on Ultra.

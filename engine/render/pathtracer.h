@@ -48,6 +48,11 @@ class PathTracer {
   RenderOutput render(const RenderSettings& s);
   // One path's light through pixel (px, py) (for tests).
   Vec3 tracePixel(float px, float py, int w, int h, uint32_t sampleIndex);
+  // The light cache's (engine/render/light_cache.h): the light arriving at `p`
+  // from direction `d`, all but the lamps and the sun seen straight on (the
+  // live renderer works those out itself), over at most `bounces` bounces.
+  // `back`: the ray's first hit was the back of a surface (p is inside it).
+  Vec3 probeLight(Vec3 p, Vec3 d, uint32_t seed, int bounces, bool* back);
   const SkyModel& sky() const;
 
   struct Impl;
