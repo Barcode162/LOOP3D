@@ -1122,14 +1122,15 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
   return out.c_str();
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
-  static char buf[512];
+  static char buf[768];
   if (!g.stage) return "{}";
-  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f,\"frames\":%llu,\"exposure\":%.6g,\"clustered\":%d,\"shadowDraws\":%llu,\"lampShadowDraws\":%llu,\"cacheWaiting\":%d}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
+  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f,\"frames\":%llu,\"exposure\":%.6g,\"clustered\":%d,\"shadowDraws\":%llu,\"lampShadowDraws\":%llu,\"cacheWaiting\":%d,\"cacheRelit\":%llu,\"cacheProbes\":%d}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
                 g.renderer ? g.renderer->renderScale() : 1.0f, g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
                 g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime, g.renderer ? g.renderer->framesInFlight() : 0, g.renderer ? g.renderer->lastGpuMs() : 0.0f,
                 static_cast<unsigned long long>(g.renderer ? g.renderer->presentedFrames() : 0), g.renderer ? g.renderer->currentExposure() : 0.0f, g.renderer && g.renderer->clustered() ? 1 : 0,
                 static_cast<unsigned long long>(g.renderer ? g.renderer->shadowDraws() : 0),
-                static_cast<unsigned long long>(g.renderer ? g.renderer->lampShadowDraws() : 0), g.renderer ? g.renderer->lightCacheWaiting() : 0);
+                static_cast<unsigned long long>(g.renderer ? g.renderer->lampShadowDraws() : 0), g.renderer ? g.renderer->lightCacheWaiting() : 0,
+                static_cast<unsigned long long>(g.renderer ? g.renderer->lightCacheRelit() : 0), g.renderer ? g.renderer->lightCacheProbes() : 0);
   return buf;
 }
 }

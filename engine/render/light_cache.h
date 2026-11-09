@@ -62,4 +62,11 @@ LightCache smoothed(const LightCache& cache);
 // The order to bake in: nearest the eye first.
 std::vector<int> bakeOrder(const LightCache& cache, Vec3 eye);
 
+// Something changed in `box` (a lamp's reach, a thing that moved): its probes
+// are to be baked again (they keep their light meanwhile, marked waiting).
+// Returns how many were marked.
+int markNear(LightCache& cache, const AABB& box);
+// The probes waiting to be baked, nearest the eye first.
+std::vector<int> waitingOrder(const LightCache& cache, Vec3 eye);
+
 }  // namespace loop

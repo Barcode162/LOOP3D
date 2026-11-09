@@ -1448,6 +1448,39 @@ class GpuRenderer final : public Renderer {
   wgpu::Texture cacheTex_[6];
   wgpu::TextureView cacheView_[6];
   uint64_t cacheBaked_ = 0;  // probes baked since the start
+  uint64_t cacheRelit_ = 0;  // probes marked to bake again near a change
+  std::vector<AABB> relight_;  // where something changed since the last relight
+  // each lamp's light, smoothed over about a second (a flickering flame keeps
+  // a steady average; a lamp switched on or off doesn't), and as last baked
+  std::vector<float> lampAvg_, lampBaked_;
+  double lampWatchedAt_ = 0;
+  void watchLampsForCache() {
+    const double nowMs = emscripten_get_now();
+    const float blend = lampWatchedAt_ > 0 ? 1.0f - std::exp(-static_cast<float>(nowMs - lampWatchedAt_) / 700.0f) : 1.0f;  // ~0.7 s
+    lampWatchedAt_ = nowMs;
+    if (lampAvg_.size() != lights_.size()) {
+      lampAvg_.resize(lights_.size());
+      for (size_t k = 0; k < lights_.size(); ++k) lampAvg_[k] = luminance(lights_[k].color.xyz());
+      lampBaked_ = lampAvg_;
+      return;
+    }
+    if (lampBaked_.size() != lights_.size()) lampBaked_ = lampAvg_;
+    for (size_t k = 0; k < lights_.size(); ++k) {
+      const LightU& L = lights_[k];
+      // a panel's light is its brightness times its size
+      const float now = luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w : 1.0f);
+      lampAvg_[k] += (now - lampAvg_[k]) * blend;
+      const float was = lampBaked_[k];
+      if (std::fabs(lampAvg_[k] - was) > 0.35f * std::max(was, 1e-3f)) {
+        // where its light makes a difference: out to half a lux (a candle about
+        // 2 m, a 900 lm fire about 12 m)
+        const float reach = std::clamp(std::sqrt(std::max(lampAvg_[k], was) / 0.5f), 2.0f, 30.0f);
+        relight_.push_back(AABB(L.pos.xyz() - Vec3(reach), L.pos.xyz() + Vec3(reach)));
+        lampBaked_[k] = lampAvg_[k];
+      }
+    }
+  }
+  std::vector<AABB> moverFrom_;  // per place: its box when it started moving
   double cacheStarted_ = -1e9;  // when the bake last started (ms)
   void makeCacheTextures() {
     const uint32_t x = cache_.on ? cache_.nx : 1, y = cache_.on ? cache_.ny : 1, z = cache_.on ? cache_.nz : 1;
@@ -1532,6 +1565,26 @@ class GpuRenderer final : public Renderer {
       tracer_->setScene(*lastScene_);
       cacheOrder_ = bakeOrder(cache_, eye);
       cacheNext_ = 0;
+      relight_.clear();
+      lampBaked_ = lampAvg_;
+    }
+    watchLampsForCache();
+    // relit where something changed (a lamp's light, a thing that moved and
+    // came to rest): only the probes near it, nearest the eye first, with a
+    // fresh path tracer (it holds the lamps and placements as they were);
+    // at most every two seconds, like a full bake
+    if (!relight_.empty() && !changed && emscripten_get_now() - cacheStarted_ > 2000 && cache_.on) {
+      int marked = 0;
+      for (const AABB& box : relight_) marked += markNear(cache_, box);
+      relight_.clear();
+      if (marked > 0 || (tracer_ && cacheNext_ < cacheOrder_.size())) {
+        cacheStarted_ = emscripten_get_now();
+        tracer_ = std::make_unique<PathTracer>();
+        tracer_->setScene(*lastScene_);
+        cacheOrder_ = waitingOrder(cache_, eye);
+        cacheNext_ = 0;
+        cacheRelit_ += static_cast<uint64_t>(marked);
+      }
     }
     if (!tracer_ || !cache_.on) return;
     // a few milliseconds of probes (at least one), then sent now and then
@@ -1550,6 +1603,8 @@ class GpuRenderer final : public Renderer {
     if (done) tracer_.reset();  // its tens of MB back
   }
   int lightCacheWaiting() const override { return tracer_ ? static_cast<int>(cacheOrder_.size() - cacheNext_) : 0; }
+  uint64_t lightCacheRelit() const override { return cacheRelit_; }
+  int lightCacheProbes() const override { return cache_.on ? cache_.probes() : 0; }
 
   // ---- the light grid (engine/render/light_grid.h): the lamps in a tree of
   // groups, each group sent as one more lamp (its members' light added up,
@@ -3046,6 +3101,20 @@ class GpuRenderer final : public Renderer {
     std::sort(next.begin(), next.end());
     next.erase(std::unique(next.begin(), next.end()), next.end());
     if (next != movers_) {
+      // the light cache: a thing that came to rest is relit round where it was
+      // and where it is now
+      if (moverFrom_.size() < instBox_.size()) moverFrom_.resize(instBox_.size());
+      for (uint32_t slot : next)
+        if (!std::binary_search(movers_.begin(), movers_.end(), slot) && slot < instBox_.size()) moverFrom_[slot] = instBox_[slot];
+      for (uint32_t slot : movers_)
+        if (!std::binary_search(next.begin(), next.end(), slot) && slot < instBox_.size()) {
+          AABB b = instBox_[slot];
+          const AABB& from = moverFrom_[slot];
+          // only a real move (a sway or a breath in place changes nothing)
+          if (length((b.lo + b.hi) * 0.5f - (from.lo + from.hi) * 0.5f) < 0.25f) continue;
+          b.grow(from);
+          relight_.push_back(AABB(b.lo - Vec3(1), b.hi + Vec3(1)));
+        }
       movers_.swap(next);
       changes_.bump("movers");
       isMover_.assign(instData_.size(), 0);

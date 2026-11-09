@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "I want to finish part 6 fully": **phase 6 done**. The light cache now re-bakes only the probes
+  near a change: a lamp whose light really changes (a flickering flame doesn't count) or a thing that moved and
+  came to rest (putting out the cabin's candle: 320 of 980 probes; `tools/cache_check.js`). The fog's soft light
+  comes from the light cache (the fog scene 16.2 → 12.5). Over phase 6, from cinema 23.5 → 18.2 on average.
+
 - **2026-11-09** · "Keep going": **ambient occlusion** (phase 6): the soft light darkens in corners, under tables
   and round feet (8 depth-picture points a pixel, smoothed by frame blending), and dims in part the lamps with no
   shadow of their own. Subtle here (the scenes are mostly lit by lamps and the sun); the cabin a little closer to

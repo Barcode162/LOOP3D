@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · now: phase 6
+## The picture pipeline (your plan, 2026-11-08) · next: phase 7's rest (resolution steered by the step timings), then 8
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -140,7 +140,7 @@ once, fog, blend and upscale, film.
    outlines round thin things (a walk catching an object's own edge), while costing every lit pixel. The shadow
    maps already catch what touches at the phone's resolution. Back in reserve, for when something needs it.
    *Phase 5 is done.* Next: phase 6, bounced light.
-6. **Bounced light** (started 2026-11-09). *The light cache:* probes through the scene hold the light bounced
+6. **Bounced light** (done 2026-11-09). *The light cache:* probes through the scene hold the light bounced
    off walls, floors and things (and the sky only where it really gets in), baked by the film renderer on the
    phone's own CPU a few milliseconds a frame, nearest you first (the bar about half a minute, the cabin a few
    seconds; the meter says how many probes are left), sent to the graphics chip as they finish, baked again when
@@ -157,8 +157,11 @@ once, fog, blend and upscale, film.
    is the sun through foliage, not the probes. *Sunlit fog (done 2026-11-09):* the fog glows only where the sun
    reaches it (8 points along each view tested against the sun's shadow), so the woods' haze has shade and
    shafts of light between the trees: the fog scene 36.8 to 16.2 from cinema, the Glade 33.5 to 24.9, the average
-   20.9 to 18.5 (the Woods 21.3 to 21.7: it looks far past the shadow's 25 m). *Still to do in phase 6:*
-   relighting only the probes near a change.
+   20.9 to 18.5 (the Woods 21.3 to 21.7: it looks far past the shadow's 25 m). *Relit near a change (done):* a lamp
+   whose light really changes (on a smoothed average: a flickering flame doesn't count), or a thing that moved and
+   came to rest, has only the probes near it baked again (putting out the cabin's candle: 320 of 980; checked by
+   tools/cache_check.js). *The fog's soft light from the light cache* (a room's haze lit by the room): the fog
+   scene 16.2 to 12.5. **Phase 6 is done:** from cinema 23.5 to 18.2 on average over the phase.
 7. **Final image** (brought forward 2026-11-09, on your word: "high end graphics just to blur it"). *Found:* Phone
    drew 1 pixel per screen point on a 3-per-point iPhone (430 x 932 stretched onto 1290 x 2796: a ninth of the
    pixels). *Done:* the picture is now 2 pixels a point (render.ratioPhone 2), and frame blending upscales into it

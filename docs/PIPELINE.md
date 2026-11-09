@@ -227,6 +227,29 @@ the_woods                 21.0         30.0        1.96
 bar                       11.9         29.6        1.15
 average 20.8 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
 ```
+   *Relit near a change, 2026-11-09:* each lamp's light is smoothed over ~0.7 s; when the average moves more than
+   35% from what was baked, the probes within its half-a-lux reach (2-30 m) are marked to bake again
+   (`markNear`, `waitingOrder`), as are those round a thing that moved over 25 cm and came to rest (where it was
+   and where it is); a fresh path tracer bakes only them, nearest the eye first, at most every 2 s. The cabin's
+   candle put out: 320 of 980 probes (`tools/cache_check.js`); its fire, all of them (its light fills the room).
+   *The fog's soft light* is the light cache's halfway along each view. Phase 6's scores (cinema at 32 samples):
+
+```
+scene                    score  worst tenth  brightness
+showcase_hall             11.3         16.7        1.44
+showcase_materials        24.4         36.4        1.41
+showcase_light            28.6         76.6        0.52
+showcase_sky               5.0         10.3        1.14
+showcase_fog              12.5         23.9        1.28
+showcase_physics          30.0         87.2        1.26
+showcase_people           24.8         48.0        1.27
+showcase_glade            24.9         45.5        1.12
+courtyard                  9.0         17.3        2.23
+cabin                     13.5         25.8        1.39
+the_woods                 21.7         30.1        1.87
+bar                       12.0         30.0        1.16
+average 18.2 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
+```
 7. **Final image.** Frame blending grows into upscaling; dynamic resolution steered by the frame graph's timings.
    *Upscaling, 2026-11-09:* the picture after frame blending is the full size (outW_ x outH_ at render.ratioPhone
    2 / render.ratioHigh 2 pixels a point); what's drawn is the automatic resolution's share of it. The blend pass

@@ -158,6 +158,30 @@ LightCache smoothed(const LightCache& c) {
   return out;
 }
 
+int markNear(LightCache& c, const AABB& box) {
+  if (!c.on) return 0;
+  // the probes round the box (a probe a spacing outside still blends into it)
+  const Vec3 lo = (box.lo - c.origin) / c.spacing - Vec3(1), hi = (box.hi - c.origin) / c.spacing + Vec3(1);
+  const int x0 = std::max(0, static_cast<int>(std::floor(lo.x))), x1 = std::min(c.nx - 1, static_cast<int>(std::ceil(hi.x)));
+  const int y0 = std::max(0, static_cast<int>(std::floor(lo.y))), y1 = std::min(c.ny - 1, static_cast<int>(std::ceil(hi.y)));
+  const int z0 = std::max(0, static_cast<int>(std::floor(lo.z))), z1 = std::min(c.nz - 1, static_cast<int>(std::ceil(hi.z)));
+  int n = 0;
+  for (int z = z0; z <= z1; ++z)
+    for (int y = y0; y <= y1; ++y)
+      for (int x = x0; x <= x1; ++x) {
+        uint8_t& st = c.state[static_cast<size_t>(c.probeAt(x, y, z))];
+        if (st != LightCache::kWaiting) st = LightCache::kWaiting, ++n;
+      }
+  return n;
+}
+
+std::vector<int> waitingOrder(const LightCache& c, Vec3 eye) {
+  std::vector<int> out;
+  for (int i : bakeOrder(c, eye))
+    if (c.state[static_cast<size_t>(i)] == LightCache::kWaiting) out.push_back(i);
+  return out;
+}
+
 std::vector<int> bakeOrder(const LightCache& c, Vec3 eye) {
   std::vector<std::pair<float, int>> d;
   for (int i = 0; i < c.probes(); ++i) {

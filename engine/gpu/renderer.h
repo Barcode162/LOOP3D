@@ -49,6 +49,9 @@ class Renderer {
   virtual uint64_t lampShadowDraws() const { return 0; }
   // The light cache: probes still to bake (0: done or off).
   virtual int lightCacheWaiting() const { return 0; }
+  // How many probes were marked to bake again near a change, and how many there are.
+  virtual uint64_t lightCacheRelit() const { return 0; }
+  virtual int lightCacheProbes() const { return 0; }
   virtual float renderScale() const = 0;
   // GPU milliseconds per frame (estimated from the GPU's "done" signals):
   // smoothed, and the latest frame's.

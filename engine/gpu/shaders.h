@@ -660,7 +660,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // shade, with shafts of light between (god rays, as the film renderer has)
     var sunlit = 1.0;
     if (frame.sunDir.w > 0.5) { sunlit = fogSunlit(dist, -v, frame.fog.x, i.clip.xy); }
-    let inscatter = frame.fogColor.rgb * (shIrradiance(vec3f(0.0, 1.0, 0.0)) / (4.0 * PI) + frame.sunColor.rgb * phase * frame.sunDir.w * sunlit);
+    // its soft light: the light cache's halfway along the view (a closed
+    // room's haze lit by the room, not the open sky), else the sky's
+    var soft = shIrradiance(vec3f(0.0, 1.0, 0.0));
+    if (frame.cache1.w > 0.5) { soft = cacheLight(frame.camPos.xyz - v * (dist * 0.5), vec3f(0.0, 1.0, 0.0)) * frame.sunColor.w; }
+    let inscatter = frame.fogColor.rgb * (soft / (4.0 * PI) + frame.sunColor.rgb * phase * frame.sunDir.w * sunlit);
     lo = lo * t + inscatter * (1.0 - t);
   }
   return Shaded(lo, outA);

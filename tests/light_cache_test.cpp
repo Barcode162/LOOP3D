@@ -152,3 +152,21 @@ TEST(light_cache_smoothing_keeps_even_light_and_calms_a_spike) {
   CHECK(s.face[static_cast<size_t>(mid)][2].x < 40);                          // the spike well down
   CHECK(s.face[static_cast<size_t>(c.probeAt(3, 2, 2))][2].x > 10);           // spread a little to its neighbours
 }
+
+TEST(light_cache_relights_only_near_a_change) {
+  LightCache c = layOutLightCache(AABB({0, 0, 0}, {20, 4, 20}), 2048, 1.0f);
+  std::fill(c.state.begin(), c.state.end(), LightCache::kBaked);
+  // a lamp at (5, 2, 5) changed: its 3 m round it
+  const int n = markNear(c, AABB(Vec3(2, -1, 2), Vec3(8, 5, 8)));
+  CHECK(n > 0 && n < c.probes() / 3);
+  for (int i = 0; i < c.probes(); ++i) {
+    const Vec3 p = c.probePos(i);
+    const bool near = p.x > 0.5f && p.x < 9.5f && p.z > 0.5f && p.z < 9.5f;
+    if (!near) CHECK(c.state[static_cast<size_t>(i)] == LightCache::kBaked);  // far probes keep their light, unbaked again
+  }
+  // they bake nearest the eye first, and only they
+  auto order = waitingOrder(c, Vec3(5, 2, 5));
+  CHECK(static_cast<int>(order.size()) == n);
+  CHECK(length(c.probePos(order[0]) - Vec3(5, 2, 5)) <= c.spacing);
+  CHECK(markNear(c, AABB(Vec3(2, -1, 2), Vec3(8, 5, 8))) == 0);  // already waiting
+}
