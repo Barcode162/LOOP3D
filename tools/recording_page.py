@@ -18,6 +18,9 @@ page keeps one core (a page inside claude.ai can't share memory between
 cores), has no editor, and only the live recorder: no benchmarks.
 """
 import base64
+import datetime
+import hashlib
+import subprocess
 import json
 import pathlib
 import re
@@ -48,11 +51,27 @@ def main():
     page = page.replace("<title>Loop3D Recording</title>\n", '<title>Loop3D Recording</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n', 1)
     page = page.replace("<style>\n  :root {", "<style>\n  :root { color-scheme: dark;", 1)
     page = page.replace('<meta name="loop-build"', '<meta name="loop-models" content="json">\n<meta name="loop-build"', 1)
+    # the build it is, named when published (the site is built before its commit,
+    # so its own stamp named the commit before: every recording looked a step old)
+    head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip() or "dev"
+    dirty = subprocess.run(["git", "status", "--porcelain", "--", "engine", "web", "tools"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    stamp = f"{head}{' +changes' if dirty else ''} {datetime.date.today().isoformat()}"
+    page = re.sub(r'<meta name="loop-build" content="[^"]*">', f'<meta name="loop-build" content="{stamp}">', page, count=1)
+    # the engine's files named by their contents: a new version is always a new
+    # file, so no copy kept by the browser or the app can stand in for it
+    engine = ["loop_ui.js", "isolate.js", "player.js", "player.wasm"]
+    code = hashlib.sha1(b"".join((SITE / f).read_bytes() for f in engine)).hexdigest()[:10]
+    named = {f: re.sub(r"(\.[a-z]+)$", f"-{code}\\1", f) for f in engine}
+    page = page.replace('<meta name="loop-build"', f'<meta name="loop-code" content="{code}">\n<meta name="loop-build"', 1)
+    for f in ("isolate.js", "loop_ui.js"):
+        if f'<script src="{f}"></script>' not in page:
+            raise SystemExit(f"the player's page changed: its {f} tag not found")
+        page = page.replace(f'<script src="{f}"></script>', f'<script src="{named[f]}"></script>', 1)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "index.html").write_text(page)
 
     # published path -> source on disk (relative to the repo)
-    files = {f: f"site/{f}" for f in ["loop_ui.js", "isolate.js", "player.js", "player.wasm"]}
+    files = {named[f]: f"site/{f}" for f in engine}
     models = OUT / "models"
     models.mkdir(exist_ok=True)
     for p in sorted((SITE / "scenes").rglob("*")):

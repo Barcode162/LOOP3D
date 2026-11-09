@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "I haven't had 2 updates worth of work": the build label was one step behind (the site is built
+  before its commit, so it named the commit before), and the engine's files kept the same names, so the app could
+  keep an old copy. Now the recording page is stamped when published, its engine files are named by their contents
+  (a new version is always a new file), and the meter shows the build. (this commit)
 - **2026-11-09** · "Finish next" (ReSTIR): **every lamp casts shadows on High, on**: each pixel keeps its shared
   shadow answer over the frames (where its point was, averaged over up to 32), so the grain settles in about a
   second (4.9 after 80 frames; without it 3.9; one ray unkept 8.6), for the same rays a pixel as before (one lamp

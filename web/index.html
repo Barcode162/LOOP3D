@@ -328,7 +328,7 @@
         // the graphics chip's time, step by step (its own timers, where it has them)
         Object.entries(m.steps || {}).map(([k, ms]) => meterRow('· ' + k, ms, scale)).join('') +
         `<div class="row"><span>memory</span><span style="grid-column: span 2">${m.memUsed.toFixed(0)} MB used of ${m.memReserved.toFixed(0)} · GPU ${m.gpuMem.toFixed(0)} MB</span></div>` +
-        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.cacheWaiting ? 'Baking bounced light: ' + m.cacheWaiting + ' probes to go. ' : ''}${m.clustered ? 'Drawn in clusters' + (m.pieces && m.pieces[0] ? ': ' + (m.pieces[0] + m.pieces[1]).toLocaleString() + ' pieces' + (m.pieces[1] ? ' (' + m.pieces[1].toLocaleString() + ' just come into view)' : '') : '') + '.' : 'Clusters cooking…'}</div>`;
+        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.cacheWaiting ? 'Baking bounced light: ' + m.cacheWaiting + ' probes to go. ' : ''}Build ${document.querySelector('meta[name=loop-build]').content}. ${m.clustered ? 'Drawn in clusters' + (m.pieces && m.pieces[0] ? ': ' + (m.pieces[0] + m.pieces[1]).toLocaleString() + ' pieces' + (m.pieces[1] ? ' (' + m.pieces[1].toLocaleString() + ' just come into view)' : '') : '') + '.' : 'Clusters cooking…'}</div>`;
     } catch (e) {}
     setTimeout(drawMeter, 500);
   }
@@ -497,13 +497,19 @@
   stick(document.getElementById('ls'), (x, y) => M && M._loop_move(x, y), false);
   stick(document.getElementById('rs'), (dx, dy) => { if (M) { const k = LoopUI.setting(M, 'player.touchLook', 1.6); M._loop_look(dx * k, dy * k); } }, true);
 
-  window.Module = { onRuntimeInitialized() { M = window.Module; } };
+  // a page published with its engine files named by their contents (loop-code:
+  // tools/recording_page.py) asks for those names, so no old copy kept by the
+  // browser or the app is ever used for a new version
+  const codeTag = document.querySelector('meta[name=loop-code]');
+  const code = codeTag ? codeTag.content : '';
+  const named = (f) => code ? f.replace(/(\.[a-z]+)$/, '-' + code + '$1') : f;
+  window.Module = { onRuntimeInitialized() { M = window.Module; }, locateFile: (p, prefix) => prefix + named(p) };
   // every core when the browser lets the page share memory between them
   // (web/isolate.js), else one; ?cores=1 asks for one
   (async () => {
     const many = await LoopIsolate.ready() && typeof SharedArrayBuffer !== 'undefined';
     const s = document.createElement('script');
-    s.src = many ? 'player_mt.js' : 'player.js';
+    s.src = named(many ? 'player_mt.js' : 'player.js');
     s.onerror = () => showNote('Couldn\'t load the engine (' + s.src.split('/').pop() + ').', false);
     document.body.appendChild(s);
   })();

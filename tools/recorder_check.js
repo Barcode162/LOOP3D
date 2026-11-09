@@ -32,7 +32,10 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
       res.writeHead(200, { 'Content-Type': 'application/json' }); fs.createReadStream(f).pipe(res); return;
     }
     if (PAGE && url.endsWith('.glb')) { res.writeHead(404); res.end(); return; }  // claude.ai serves none
-    const file = path.join(SITE, url.replace(/\/$/, '/index.html'));
+    // the page's engine files carry their contents' code in their names (loop-code)
+    const code = PAGE && (PAGE.match(/name="loop-code" content="([^"]+)"/) || [])[1];
+    const plain = code ? url.replace('-' + code + '.', '.') : url;
+    const file = path.join(SITE, plain.replace(/\/$/, '/index.html'));
     if (!file.startsWith(SITE) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
     fs.createReadStream(file).pipe(res);
@@ -108,7 +111,7 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
         menu: [...document.getElementById('benchSel').options].map((o) => o.value),
         chip: document.getElementById('rec').textContent,
       }));
-      ok(!look.isolated && !look.worker && look.engine.join() === 'player.js', 'in a frame: one core, no worker, no reload', look);
+      ok(!look.isolated && !look.worker && /^player(-[0-9a-f]+)?\.js$/.test(look.engine.join()), 'in a frame: one core, no worker, no reload', look);
       ok(look.editor === 'none', 'in a frame: no editor link', look.editor);
       ok(look.menu.join() === ',copy', 'in a frame: only "Copy my recording" in the menu', look.menu);
       ok(look.chip.startsWith('● Recording for Claude'), 'the chip says it is saved', look.chip);
