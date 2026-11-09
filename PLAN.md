@@ -150,8 +150,12 @@ once, fog, blend and upscale, film.
    surfaces meet (corners, under tables, round feet), from 8 points in the depth picture a pixel; it also dims, in
    part, the lamps with no shadow of their own (most of the bar's on Phone). Subtle in these scenes (their light
    is mostly lamps and sun); the cabin 14.2 to 13.5 from cinema; ?view=5 shows it alone
-   (docs/ambient_occlusion_2026-11-09.png). *Still to do in phase 6:* finer probes near you outdoors; relighting
-   only the probes near a change.
+   (docs/ambient_occlusion_2026-11-09.png). *Finer probes outdoors (tried 2026-11-09, not kept):* probes over the
+   100 m round you (5 m apart in the Glade and the Woods, not 13-17) took them further from cinema (the Woods 21 to
+   25, the Glade 33 to 35-37), as did not counting leaves' undersides as "inside": correct probes under a canopy
+   are darker, and the live forest then lacks what cinema has, the sun coming through the leaves. Outdoors the gap
+   is the sun through foliage, not the probes: next. *Still to do in phase 6:* relighting only the probes near a
+   change.
 7. **Final image** (brought forward 2026-11-09, on your word: "high end graphics just to blur it"). *Found:* Phone
    drew 1 pixel per screen point on a 3-per-point iPhone (430 x 932 stretched onto 1290 x 2796: a ninth of the
    pixels). *Done:* the picture is now 2 pixels a point (render.ratioPhone 2), and frame blending upscales into it

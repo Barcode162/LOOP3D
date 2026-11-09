@@ -498,7 +498,9 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
 
     // fog: does the light scatter before reaching the surface / lamp?
     const Fog& fog = S.fog;
-    if (fog.density > 0) {
+    // a light-cache probe gathers no fog: the live renderer draws the fog's
+    // glow along each view itself
+    if (fog.density > 0 && !probeFirst) {
       float t0, t1;
       float span = fogDistance(ray.o, ray.d, std::min(tLamp, tSurf), t0, t1);
       if (span > 0) {

@@ -5,7 +5,9 @@ One line per request, newest first: the date, what the user asked, what was done
 - **2026-11-09** · "Keep going": **ambient occlusion** (phase 6): the soft light darkens in corners, under tables
   and round feet (8 depth-picture points a pixel, smoothed by frame blending), and dims in part the lamps with no
   shadow of their own. Subtle here (the scenes are mostly lit by lamps and the sun); the cabin a little closer to
-  cinema (14.2 → 13.5). Debug view 5 shows it alone. Pictures 12 of 12; all checks pass.
+  cinema (14.2 → 13.5). Debug view 5 shows it alone. Pictures 12 of 12; all checks pass. Then finer probes outdoors, tried and not kept: probes 5 m apart (not
+  13-17) took the Woods and the Glade further from cinema; correct probes under trees are darker and expose the
+  real outdoor gap, the sun through the leaves (next). Kept: probes gather no fog (the live fog does that).
 
 - **2026-11-09** · "Keep going" (+ your 2x recording: courtyard 60 fps steady; the Woods 32 fps, its far sun
   shadow 54 ms a redraw): the resolution floor now counts from 1 a point; the far sun shadow is High only; sun
