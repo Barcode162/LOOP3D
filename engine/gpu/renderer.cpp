@@ -23,6 +23,7 @@
 #include "engine/render/frame_graph.h"
 #include "engine/render/light_cache.h"
 #include "engine/render/light_grid.h"
+#include "engine/render/resolution.h"
 #include "engine/render/pathtracer.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
@@ -811,7 +812,7 @@ class GpuRenderer final : public Renderer {
         if (sunOn_ && !(skip & 1) && shadowStale) prepareList(sunList_, shadowDraws_, f.shadowViewProj, sunEye_, shadowPerPixel, 0, splitting ? 1 : 0);
         if (splitting) prepareList(sunMovers_, shadowDraws_, f.shadowViewProj, sunEye_, shadowPerPixel, 0, 2);
         if (lampMapsStale) prepareLampMaps();
-        if (farStale) prepareSunFar(shadowPerPixel);
+        if (farStale) prepareSunFar(shadowPerPixel / kFarShadow);  // its texels are kFarShadow times bigger: so may its pieces' detail be
       }
       if (bindGroupsDirty_) makeBindGroups();
     }
@@ -1365,19 +1366,34 @@ class GpuRenderer final : public Renderer {
       return k;
     };
     bool slowGpu = gpu > budget * cr.slowGpu / 100;
+    // with the chip's timers: only the steps that work per drawn pixel shrink
+    // with the scale (engine/render/resolution.h); the rest (shadow maps, and
+    // since frame blending upscales, blending, bloom and the film) stays
+    const std::vector<FrameGraph::Time> recent = gs_->steps.recent();
+    FrameSplit split = splitFrame(recent, upscaling_);
+    const bool timed = !recent.empty() && split.scaledMs > 0 && split.fixedMs + split.scaledMs > gpu * 0.5f;
     if (stuck || (gpuBound && fps < aim * 0.88f)) {
       if (step_ < lowest && (sinceScale_ > 1.2f || stuck || gpu > budget * 2)) {
         // cost goes with the number of pixels, the square of the scale
         float fit = slowGpu ? kSteps[step_] * std::sqrt(budget * 0.85f / gpu) : kSteps[step_] * 0.9f;
-        int to = stuck ? lowest : std::max(step_ + 1, stepFor(fit));
-        ceilStep_ = std::max(ceilStep_, step_ + 1);  // this size was too much: don't come straight back
+        bool hold = false;
+        if (timed && !stuck) {
+          // the steady work's own fit; when shrinking can't save the time (the
+          // part that doesn't scale fills the budget alone) the size holds
+          // (only a frame over twice the budget still steps down)
+          fit = scaleToFit(split, kSteps[step_], budget * 0.85f);
+          hold = fit >= kSteps[step_] - 1e-3f && gpu <= budget * 2;
+        }
+        int to = stuck ? lowest : hold ? step_ : std::max(step_ + 1, stepFor(fit));
+        if (!hold) ceilStep_ = std::max(ceilStep_, step_ + 1);  // this size was too much: don't come straight back
         step_ = std::min(lowest, to);
         calmSeconds_ = longCalm_ = 0, sinceScale_ = 0;
       }
     } else if (fps >= aim * 0.97f) {
       ++calmSeconds_, ++longCalm_;
       float up = step_ > 0 ? kSteps[step_ - 1] / kSteps[step_] : 1.0f;
-      bool fits = gpu * up * up < budget * cr.climbUnder / 100;
+      bool fits = timed ? msAtScale(split, kSteps[step_], kSteps[std::max(step_ - 1, 0)]) < budget * cr.climbUnder / 100
+                        : gpu * up * up < budget * cr.climbUnder / 100;
       if (calmSeconds_ >= cr.calm && step_ > ceilStep_ && fits) --step_, calmSeconds_ = 0, sinceScale_ = 0;
       // Ultra restarts its picture on every change: it doesn't go looking for more
       if (longCalm_ >= 20 && ceilStep_ > 0 && quality_ != Quality::kUltra) --ceilStep_, longCalm_ = 0;
@@ -1458,17 +1474,18 @@ class GpuRenderer final : public Renderer {
     const double nowMs = emscripten_get_now();
     const float blend = lampWatchedAt_ > 0 ? 1.0f - std::exp(-static_cast<float>(nowMs - lampWatchedAt_) / 700.0f) : 1.0f;  // ~0.7 s
     lampWatchedAt_ = nowMs;
+    // a lamp's light: its brightness (a panel's times its size)
+    auto lightOf = [](const LightU& L) { return luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w : 1.0f); };
     if (lampAvg_.size() != lights_.size()) {
       lampAvg_.resize(lights_.size());
-      for (size_t k = 0; k < lights_.size(); ++k) lampAvg_[k] = luminance(lights_[k].color.xyz());
+      for (size_t k = 0; k < lights_.size(); ++k) lampAvg_[k] = lightOf(lights_[k]);
       lampBaked_ = lampAvg_;
       return;
     }
     if (lampBaked_.size() != lights_.size()) lampBaked_ = lampAvg_;
     for (size_t k = 0; k < lights_.size(); ++k) {
       const LightU& L = lights_[k];
-      // a panel's light is its brightness times its size
-      const float now = luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w : 1.0f);
+      const float now = lightOf(L);
       lampAvg_[k] += (now - lampAvg_[k]) * blend;
       const float was = lampBaked_[k];
       if (std::fabs(lampAvg_[k] - was) > 0.35f * std::max(was, 1e-3f)) {

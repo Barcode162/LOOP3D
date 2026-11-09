@@ -84,7 +84,7 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · next: phase 7's rest (resolution steered by the step timings), then 8
+## The picture pipeline (your plan, 2026-11-08) · next: phase 8
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -162,7 +162,7 @@ once, fog, blend and upscale, film.
    came to rest, has only the probes near it baked again (putting out the cabin's candle: 320 of 980; checked by
    tools/cache_check.js). *The fog's soft light from the light cache* (a room's haze lit by the room): the fog
    scene 16.2 to 12.5. **Phase 6 is done:** from cinema 23.5 to 18.2 on average over the phase.
-7. **Final image** (brought forward 2026-11-09, on your word: "high end graphics just to blur it"). *Found:* Phone
+7. **Final image** (done 2026-11-09; brought forward on your word: "high end graphics just to blur it"). *Found:* Phone
    drew 1 pixel per screen point on a 3-per-point iPhone (430 x 932 stretched onto 1290 x 2796: a ninth of the
    pixels). *Done:* the picture is now 2 pixels a point (render.ratioPhone 2), and frame blending upscales into it
    from a smaller drawing (16 shifted spots, each full-size pixel taking the sample that landed nearest, the past
@@ -177,7 +177,12 @@ once, fog, blend and upscale, film.
    each brick's or tile's or plank's colour by its own size, and with frame blending detail stays until several
    times smaller than a pixel (blending averages it, as the film renderer's many samples do): bricks, wood grain
    and stone now show (docs/detail_2026-11-09.png).
-   *Still to do:* resolution steered by the frame graph's timings.
+   *Resolution steered by the step timings (done, phase 7 complete):* with the chip's timers the automatic
+   resolution counts only the work that shrinks with it (visibility, lighting; with upscaling, blending, bloom and
+   film work on the full picture and don't), leaves out steps that ran only now and then (a shadow redrawn), and
+   holds its size when shrinking can't save the time (your High recording: the Glade sank to its floor, 0.25, for
+   a far shadow redraw it couldn't shorten). The far sun shadow (High) picks its pieces 5 times coarser, as its
+   texels are (it cost 11-23 ms a redraw).
 8. **Upgrades:** ReSTIR DI and screen reflections on High; ReSTIR GI on Ultra.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World:** typed relationships and streaming, with rebuild step 12.

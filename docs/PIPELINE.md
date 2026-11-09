@@ -259,6 +259,13 @@ average 18.2 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10
    and film then work at full size (postW_); render.sharpen (0.25) adds to the look's own sharpening. On a 3x
    screen at 430 x 932 points, drawn at 1x: 0.91 from a full 2x drawing (the old stretched 1x: 2.13), edge strength
    1.20 (full 1.22, old 1.08).
+   *Resolution steered by the step timings, 2026-11-09* (`engine/render/resolution.h`, 3 tests): the frame's
+   steady work split into what goes with the drawn pixels (visibility, light, forward, ultra; and blend, bloom,
+   film when not upscaled) and what doesn't (shadow maps; post on the full picture); steps that missed the
+   latest timed frame left out. Dropping: to the scale where that split fits 85% of the budget, or holding when
+   the part that doesn't scale fills it alone (a frame over twice the budget still steps down). Climbing: when the
+   split says the next size up fits. Without timers: the old way (all the time scales). The far sun shadow's
+   pieces: the near's detail divided by `kFarShadow`.
 8. **Upgrades.** ReSTIR DI and screen-space reflections on High; ReSTIR GI on Ultra.
 9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World.** Typed relationships and streaming (with rebuild step 12, world generation).

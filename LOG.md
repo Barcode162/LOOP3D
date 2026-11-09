@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-09** · "Go ahead phase 7" (+ your recording, mostly High: the far sun shadow 11–23 ms a redraw, the Glade
+  at the resolution floor 0.25): **phase 7 done**. The automatic resolution now reads the step timers: it counts only
+  the work that shrinks with the drawing, ignores occasional redraws, and holds its size when shrinking can't help
+  (`engine/render/resolution.h`, 3 tests). The far sun shadow's pieces 5 times coarser, like its texels. Fixed: panel
+  lamps were noted without their size when first seen, so a needless re-bake of the light cache followed.
+
 - **2026-11-09** · "I want to finish part 6 fully": **phase 6 done**. The light cache now re-bakes only the probes
   near a change: a lamp whose light really changes (a flickering flame doesn't count) or a thing that moved and
   came to rest (putting out the cabin's candle: 320 of 980 probes; `tools/cache_check.js`). The fog's soft light
