@@ -1,0 +1,41 @@
+# door_and_frame · a plain door hung in its frame, closed or swung open
+# door_and_frame(at, width, height, open, leaf, steel) stands it on `at` (the
+# middle of the threshold), facing -z. `width` and `height` are the clear
+# opening; the frame is 0.05 by 0.12 m round it. The leaf is 0.04 m thick with
+# a lever handle on both faces and three hinges down the left side (seen from
+# the front); `open` turns the leaf about those hinges, in degrees (positive
+# swings it towards -z). `leaf` and `steel` are materials, by name or made.
+#
+# kind: piece
+# place: door_and_frame(at: AT, open: 30)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: door, frame, hinge, handle, interior
+# size: chair
+# sockets: open
+
+to door_and_frame(at: vec(0, 0, 0), width: 0.9, height: 2.1, open: 0, leaf: "oak", steel: material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45))
+  let post = 0.05
+  let deep = 0.12
+  let thick = 0.04
+  let gap = 0.004
+  let lw = width - gap * 2
+  let lh = height - gap
+  # the frame: two jambs and a head, with the opening clear between them
+  box size: vec(post, height + post, deep), at: at + vec(-width / 2 - post / 2, (height + post) / 2, 0), material: leaf, round: 0.006
+  box size: vec(post, height + post, deep), at: at + vec(width / 2 + post / 2, (height + post) / 2, 0), material: leaf, round: 0.006
+  box size: vec(width + post * 2, post, deep), at: at + vec(0, height + post / 2, 0), material: leaf, round: 0.006
+  # the leaf swings about the hinge line, its left edge
+  let a = open * 1 deg
+  let across = vec(cos(a), 0, sin(a))
+  let c = at + vec(-width / 2 + gap, 0, 0)
+  box size: vec(lw, lh, thick), at: c + across * (lw / 2) + vec(0, gap + lh / 2, 0), turn: a, material: leaf, round: 0.008
+  # three hinges, then the lever handle on both faces
+  for each y in [0.25, height / 2 + 0.2, height - 0.25]
+    cylinder radius: 0.012, height: 0.1, at: c + vec(0, y, 0), material: steel
+  let hand = c + across * (lw - 0.07) + vec(0, 1.0, 0)
+  for each side in [-1, 1]
+    let face = vec(-across.z, 0, across.x) * (side * (thick / 2 + 0.025))
+    cylinder radius: 0.025, height: 0.012, at: hand + face, tilt: 90 deg, turn: a, material: steel
+    box size: vec(0.12, 0.016, 0.016), at: hand + face * 1.9 + across * -0.045, turn: a, material: steel, round: 0.007
