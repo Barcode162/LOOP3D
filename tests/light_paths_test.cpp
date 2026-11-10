@@ -139,6 +139,6 @@ TEST(a_probe_skips_a_glow_its_lamp_stands_for) {
   std::printf("    a probe looking at the square: %.0f nits plain, %.0f stood for; at the floor: %.1f and %.1f\n", seen, skipped, downA / 400,
               downB / 400);
   CHECK(seen > 1000);
-  CHECK(skipped < 1);
+  CHECK(skipped < 0.01f * seen);  // only the dark square's own faint shine of the floor
   CHECK(downB > 0.8 * downA && downB < 1.25 * downA);
 }

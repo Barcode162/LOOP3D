@@ -440,7 +440,9 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
     float dist = length(d);
     if (dist > 1e-5f) {
       Vec3 wi = d / dist;
-      float cl = std::fabs(dot(wi, e.ng));
+      // a glowing face lights only what it faces (as when a ray meets it: its
+      // front); its back gave light too, so a closed glowing shape lit twice
+      float cl = -dot(wi, e.ng);
       if (cl > 1e-6f) {
         float pSel = e.area * luminance(e.radiance) / emitterPower;
         float lightPdf = pSel * dist * dist / (cl * e.area);
