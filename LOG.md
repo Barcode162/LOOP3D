@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Be critical … a full roadmap to that level … for smaller subagents" (with 16 reference pictures:
+  lofts, landscapes, your desert hill): reviewed the engine against them (foundation 6 of 10, picture 1 to 2: the
+  library has 6 things, surfaces are flat, people are mannequins, no water, no game screens). Written: the roadmap
+  (five stars, ten decisions, twelve tracks, eleven milestones), work orders for small agents, the craft
+  reference, mechanics that draw their own screens, the library plan (the first 400 entries), four agents. No
+  engine code changed. Proposed next: Many hands, then Your Hill. (this commit)
 - **2026-11-10** · "Check we're at a good stopping point": the picture pipeline's phases 1-10 are all done, but GitHub's
   Check had failed on the last four pushes: Ultra's ReSTIR GI switch (`ultra.reuse`) was missing from the editor's
   settings. Added (off, as measured); all checks and the web player build pass. (this commit)

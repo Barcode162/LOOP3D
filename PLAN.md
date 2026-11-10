@@ -14,6 +14,23 @@ phase is done when its "done when" is true on the phone.
   GitHub settings (only you can).
 - **"Switch"**, when you want the live bar to run on Loop3D (phase C).
 
+## The long view (your word, 2026-11-10) · waiting for your go
+*Your words:* be critical; a full roadmap to the level of your 16 pictures; a real library, genuine terrain, real
+people and skeletons, screens that make themselves from the mechanics, real moves, real cameras, presets for any
+game and any film; work that smaller agents can carry out.
+*The review:* as a foundation 6 of 10; as a picture beside your references between 1 and 2. The engine has outrun
+its content: three fifths of the code draws, and the library holds 6 things. Next comes shapes, surfaces and a
+full library, before more light.
+*The pages:* `docs/ROADMAP.md` (the review, five stars, ten decisions, twelve tracks, eleven milestones),
+`docs/WORK_ORDERS.md` (orders cut for small agents), `docs/CRAFT.md` (the craft reference), `docs/MECHANICS_UI.md`
+(mechanics that draw their own screens; the game and film sheets), `docs/LIBRARY_PLAN.md` (the library to grow),
+`.claude/agents/` (builder, asset-smith, judge, checker).
+*The order proposed:* milestone 0 **Many hands** (split the three great files; nothing you see changes), then
+milestone 1 **Your Hill** (the desert slope in your photos: the most reachable star, and you can check it
+against the real one). The rebuild's steps and Phases B to D keep their places inside the tracks (people: P and
+V; films: C; water: A; land: W; the pack: E).
+*Needs you:* your go on that order, or a different first star (The Loft, The Valley).
+
 ## The rebuild (your reins, 2026-11-06) · in progress
 *Your words:* take the engine apart piece by piece and rebuild it, thinking moves ahead like chess; Nanite,
 water, world generation, smart light, a full skeleton, universal animation, films with scenes, physics that fit,
@@ -333,6 +350,9 @@ meter.)
   ahead above; Phase A folded into it.
 - 2026-11-06: **the library**: `library/<kinds>/<name>.loop`, text recipes with a card (credit and licence
   required), found by `use` after the scene's own folder; every goal adds to it.
+- 2026-11-10: **the long view**: content before more light; shapes made by words; surfaces as layered recipes;
+  mechanics declare and screens derive; a game and a film are each a one-page sheet; people "stylised real";
+  movement from free-licence recordings; work cut into orders for four kinds of agent (`docs/ROADMAP.md`).
 - 2026-11-08: **the picture pipeline** (your plan, from your page): six shared foundations, 50 techniques each
   given a role, ten phases measured first; it takes the place of rebuild step 5 (`docs/PIPELINE.md`).
 

@@ -62,7 +62,9 @@ of it in solid, checked steps and report at the end.
 `tools/loop.cpp` (the `loop` command: check, run, play, render, budget, score, project, library, words, settings) ·
 `library/` (what every project shares, growing with every goal) · `projects/`
 (each project's folder; a cover page `name.looped` names it and its first scene) · `tests/` ·
-`docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING, PIPELINE: the picture's plan) · `perf/` (benchmark runs from the phone).
+`docs/` (LANGUAGE, SETTINGS, STORY_GUIDE, TUNING, PIPELINE: the picture's plan; ROADMAP: the long view, with
+WORK_ORDERS, CRAFT, MECHANICS_UI, LIBRARY_PLAN) · `.claude/agents/` (builder, asset-smith, judge, checker: the hands
+that carry out work orders) · `perf/` (benchmark runs from the phone).
 The public player: https://barcode162.github.io/LOOP3D/ (the editor: `editor.html`), published from `gh-pages`.
 The recording page (private, the player inside claude.ai): https://claude.ai/artifact/EPvB3EZadvnepQiTiTUXpT;
 every scene the user plays there is timed and saved in its database (`runs`), read with `ArtifactData`.
