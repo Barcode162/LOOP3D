@@ -1,0 +1,57 @@
+# duct_run · a round air duct hung from the ceiling
+# duct_run(from_at, to_at, across, hangers_every, ceiling, steel) hangs a level
+# galvanised duct between two points (`from_at` and `to_at` are the middles of its
+# ends, level, along x or z), `across` wide: a raised seam ring every 1.2 m,
+# a thin strap hanger up to the height `ceiling` at each `hangers_every`, one
+# round grille on its side and a flat cap on each end. It gives back the duct.
+#
+# kind: piece
+# place: duct_run(AT + vec(0, 5, -3), AT + vec(0, 5, 3), across: 0.4, ceiling: 6)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: duct, air, steel, ceiling, industrial, loft
+# size: sofa
+# sockets: hang
+# seeds: none
+
+let galvanised = material(color: rgb(0.62, 0.64, 0.66), metal: 1, roughness: 0.35)
+
+to duct_run(from_at: vec(0, 5, -3), to_at: vec(0, 5, 3), across: 0.4, hangers_every: 1.5, ceiling: 6, steel: galvanised)
+  let r = across / 2
+  let along_x = abs(to_at.x - from_at.x) > abs(to_at.z - from_at.z)
+  let len = distance(vec(from_at.x, 0, from_at.z), vec(to_at.x, 0, to_at.z))
+  let mid = (from_at + to_at) / 2
+  let yaw = 0
+  if along_x
+    yaw = 90 deg
+  # a point t metres along the run from its middle, `up` above its axis and
+  # `side` to the left of it
+  let u = vec(0, 0, 1)
+  let v = vec(1, 0, 0)
+  if along_x
+    u = vec(1, 0, 0)
+    v = vec(0, 0, 1)
+  let tube = cylinder(r, len, at: mid, tilt: 90 deg, turn: yaw, material: steel)
+  # raised seam rings every 1.2 m, laid out from the middle so the run is even
+  let rings = floor(len / 1.2)
+  for each i in range(0, rings, 1)
+    let t = (i - (rings - 1) / 2) * 1.2
+    cylinder r * 1.025, 0.03, at: mid + u * t, tilt: 90 deg, turn: yaw, material: steel
+  # flat caps, a hair proud of each end
+  for each e in [-1, 1]
+    cylinder r * 1.04, 0.02, at: mid + u * (e * (len / 2 - 0.005)), tilt: 90 deg, turn: yaw, material: steel
+  # hangers: two thin straps up from the duct's shoulders, and a band under it
+  let hangers = max(1, floor(len / hangers_every))
+  let rise = ceiling - mid.y
+  for each i in range(0, hangers, 1)
+    let t = (i - (hangers - 1) / 2) * len / hangers
+    box size: vec(0.04, rise, 0.004), at: mid + u * t + v * (r * 0.9) + vec(0, rise / 2, 0), turn: yaw, material: steel
+    box size: vec(0.04, rise, 0.004), at: mid + u * t - v * (r * 0.9) + vec(0, rise / 2, 0), turn: yaw, material: steel
+    box size: vec(across * 1.1, 0.004, 0.03), at: mid + u * t + vec(0, -r - 0.002, 0), turn: yaw, material: steel
+  # one round grille on one side
+  let face = v
+  let g = mid + face * r
+  cylinder r * 0.55, 0.036, at: g + face * 0.004, tilt: 90 deg, turn: yaw + 90 deg, material: "iron"
+  cylinder r * 0.62, 0.03, at: g, tilt: 90 deg, turn: yaw + 90 deg, material: steel
+  return tube
