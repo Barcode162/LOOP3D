@@ -38,6 +38,12 @@ of it in solid, checked steps and report at the end.
    the commit. Change `PLAN.md` when the order changes.
 7. **Reply short:** what's done, what to look at on the phone, what's next. Never say done or live without checking.
 
+## Which model (the user switches it; docs/MODELS.md)
+Before work that needs a different model tier than the chat is on, say so in one short block and wait: **Switch
+suggested:** `/model <id>`, why, how long, and which to switch back to. Also say when the chat is on a higher tier
+than the work needs. Never switch silently; never do top-tier design on a lower tier without saying the risk.
+Design that sets a format, judging pictures and hard algorithms: top tier. Most orders: the workhorse tier.
+
 ## The engine's rules
 - **One of everything:** one engine, one language, one way to do each thing. Look for what exists before adding.
 - **Phone first:** judged on an iPhone 15 Pro Max in Safari. Smooth beats pretty; every frame fits its budget.
