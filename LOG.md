@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · W9, "Haze by distance and height": distant things now fade into haze by distance and height; the film renderer and the phone use one formula; five-walls score 1.4 (2.0 without haze); 12 of 12 pictures match. Deployed.
 - **2026-11-10** · M2, "The marks: edge and hollow per vertex": every vertex now carries an edge mark and a hollow mark (kept with the cooked mesh); about 200 ms for 99k triangles; a coarse rounded box cannot mark high by design, so that proof uses a finely rounded mesh. Deployed.
 - **2026-11-10** · E9, "library check prints triangle counts": loop library check/list print each entry's triangles and size class; over-budget entries fail. Deployed.
 - **2026-11-10** · G1, "Why the Glade's picture differs": Glade reference picture refreshed: it was stale (leaf, shadow and sharpening fixes of 2026-11-10); steady 2.70 over 3 runs, 12 of 12 pictures pass. Deployed.

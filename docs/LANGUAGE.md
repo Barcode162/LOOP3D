@@ -171,7 +171,8 @@ Every setting has a sensible default; give only what matters.
   - `panel_light(at, facing, size, lumens, kelvin | color)`
   - `sun(elevation, toward (or azimuth), lux, kelvin, size: 0.53 deg)`: a wider sun casts softer shadows
   - `sky("physical", haze, stars, brightness, ground)` or `sky("color", color, nits)`
-  - `fog(density, top, glow, color, from, to)`
+  - `fog(density, top, glow, color, from, to)`: mist you can stand in
+  - `haze(visibility: 60 km, height: 1.5 km)`: distant air, off unless a scene says it. A level sight line `visibility` long leaves 2% of a thing's green; red is lost a quarter slower and blue half as fast again, so far dark things go blue first, then pale, towards the sky's colour at the horizon (a little brighter towards the sun). The air thins with height (`exp(-y / height)`), so from a hill the same distance loses less. Film and phone use the same formula (`hazeAt`)
   - Lights' fields: `.lumens .color .kelvin .position .aim`
 - **Camera and look:**
   - `camera(at, look_at, lens: 35 mm, f_stop (or aperture), focus, shutter, iso, exposure, auto_exposure, sensor: "ff" | "s35" | "apsc" | "m43" | "imax", blades)`

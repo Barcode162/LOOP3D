@@ -82,7 +82,16 @@ struct Sky {
   float starNits = 0;         // > 0 adds a starry night
 };
 
+// Distant air: far things lose their colour to the sky's horizon colour, blue
+// first, and the air thins with height. One formula for the film and the phone
+// (`hazeAt` in sky.h). Off when `visibility` is 0.
+struct Haze {
+  float visibility = 0;       // metres a level sight line goes before 2% of green is left (0 = off)
+  float height = 1500;        // metres: the air thins as exp(-y / height)
+};
+
 struct Fog {
+  Haze haze;                  // rides with the fog so the phone's one copy of it carries both
   float density = 0;          // extinction per metre (0.01 = a light haze)
   Vec3 albedo{0.9f};
   float anisotropy = 0.6f;    // Henyey-Greenstein g: forward-scattering god rays

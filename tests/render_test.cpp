@@ -2,6 +2,7 @@
 #include "engine/render/film.h"
 #include "engine/render/pathtracer.h"
 #include "engine/render/sky.h"
+#include "engine/script/scene_api.h"
 #include "tests/test.h"
 
 using namespace loop;
@@ -212,4 +213,108 @@ TEST(render_small_image_and_denoise) {
     return d;
   };
   CHECK(rough(out.color) <= rough(out.noisy));
+}
+
+// ---- haze (the `haze` word): one formula, `hazeAt`
+
+namespace {
+SkyModel noonSky() {
+  Sky sky;
+  SkyModel m;
+  m.build(sky, normalize(Vec3{0, 1, 0.01f}), 100000);  // the sun high, so the horizon is plain sky
+  return m;
+}
+Haze hazeOf(float visibility, float height = 1500) {
+  Haze h;
+  h.visibility = visibility, h.height = height;
+  return h;
+}
+}  // namespace
+
+TEST(haze_nothing_at_distance_zero_and_off) {
+  SkyModel sky = noonSky();
+  Vec3 c{0.2f, 0.3f, 0.4f};
+  Vec3 same = hazeAt(c, {1, 2, 3}, {1, 2, 3}, sky, hazeOf(60000));
+  CHECK_NEAR(same.x, c.x, 1e-6);
+  CHECK_NEAR(same.y, c.y, 1e-6);
+  CHECK_NEAR(same.z, c.z, 1e-6);
+  Vec3 off = hazeAt(c, {0, 1, 0}, {0, 1, 50000}, sky, hazeOf(0));
+  CHECK_NEAR(off.y, c.y, 1e-6);
+}
+
+TEST(haze_visibility_leaves_two_percent_of_green) {
+  SkyModel sky = noonSky();
+  // a level sight line as long as the visibility: 2% of the thing's own green is left
+  // (the difference of a bright thing and a black one is what is left of the bright one)
+  Vec3 black = hazeAt({0, 0, 0}, {0, 0, 0}, {0, 0, 60000}, sky, hazeOf(60000));
+  Vec3 bright = hazeAt({1000, 1000, 1000}, {0, 0, 0}, {0, 0, 60000}, sky, hazeOf(60000));
+  CHECK_NEAR((bright.y - black.y) / 1000, 0.02f, 0.0005f);
+  CHECK_NEAR((bright.x - black.x) / 1000, std::pow(0.02f, 0.75f), 0.001f);
+}
+
+TEST(haze_from_higher_loses_less) {
+  SkyModel sky = noonSky();
+  Haze h = hazeOf(60000);
+  Vec3 horizon = sky.radiance({0, 0, 1});
+  // a black thing 30 km off: what shows is the horizon, in proportion to what the air took
+  Vec3 low = hazeAt({0, 0, 0}, {0, 1.6f, 0}, {0, 1.6f, 30000}, sky, h);
+  Vec3 high = hazeAt({0, 0, 0}, {0, 3000, 0}, {0, 3000, 30000}, sky, h);
+  CHECK(high.y < low.y);
+  CHECK(low.y < horizon.y);
+}
+
+TEST(haze_far_dark_things_go_blue_first) {
+  SkyModel sky = noonSky();
+  Vec3 c = hazeAt({0, 0, 0}, {0, 1.6f, 0}, {0, 1.6f, 30000}, sky, hazeOf(60000));
+  Vec3 horizon = sky.radiance({0, 0, 1});
+  // the share of the horizon that came in: more of blue than of red
+  CHECK(c.z / horizon.z > c.x / horizon.x * 1.2f);
+  // and a black thing is bluer than it is red, more so than the horizon is
+  CHECK(c.z / c.x > horizon.z / horizon.x);
+}
+
+TEST(haze_ten_times_the_visibility_is_the_horizon) {
+  SkyModel sky = noonSky();
+  Vec3 horizon = sky.radiance({0, 0, 1});
+  Vec3 c = hazeAt({0.5f, 0.5f, 0.5f}, {0, 0, 0}, {0, 0, 600000}, sky, hazeOf(60000));
+  CHECK_NEAR(c.x, horizon.x, horizon.x * 0.01f);
+  CHECK_NEAR(c.y, horizon.y, horizon.y * 0.01f);
+  CHECK_NEAR(c.z, horizon.z, horizon.z * 0.01f);
+}
+
+TEST(haze_word_sets_the_scene_and_the_film_shows_it) {
+  using namespace loop::script;
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  bool ok = vm.load("haze visibility: 60 km, height: 1.5 km\n", "h.loop");
+  for (auto& p : vm.problems()) std::printf("    %s\n", p.text().c_str());
+  CHECK(ok);
+  CHECK_NEAR(st.scene.fog.haze.visibility, 60000, 1);
+  CHECK_NEAR(st.scene.fog.haze.height, 1500, 1);
+  Scene none;
+  CHECK(none.fog.haze.visibility == 0);  // off unless a scene says it
+  // the film: a dark wall 20 km away is paler with the haze on, and the sky's colour shows in it
+  Scene s;
+  s.sky.kind = Sky::Kind::kColor;
+  s.sky.color = Vec3(0.5f, 0.6f, 1.0f);
+  s.sky.colorNits = 3000;
+  Material m;
+  m.baseColor = Vec3(0.05f);
+  m.specular = 0;
+  m.roughness = 1;
+  s.addMaterial(m);
+  s.add(s.addMesh(shapes::box({4000, 4000, 10})), 0, Mat4::translation({0, 0, 20000}));
+  s.camera.position = {0, 5, 0};
+  s.camera.target = {0, 5, 20000};
+  s.camera.fStop = 64;
+  PathTracer pt;
+  pt.setScene(s);
+  Vec3 clear = centre(pt, 64);
+  s.fog.haze = st.scene.fog.haze;
+  pt.setScene(s);
+  Vec3 hazy = centre(pt, 64);
+  CHECK(luminance(hazy) > luminance(clear) * 2);
+  CHECK(hazy.z / std::max(hazy.x, 1e-6f) > clear.z / std::max(clear.x, 1e-6f) * 1.05f);
 }

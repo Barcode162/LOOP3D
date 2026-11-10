@@ -13,3 +13,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | CARDS | M | lead | 60 | 19 | 2026-11-10 |
 | E9 | S | builder | 4 | 2 | 2026-11-10 |
 | M2 | M | builder | 60 | 9 | 2026-11-10 |
+| W9 | S | builder | 4 | 23 | 2026-11-10 |

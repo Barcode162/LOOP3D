@@ -43,4 +43,11 @@ class SkyModel {
   std::vector<Vec3> table_;
 };
 
+// Haze (the `haze` word): what the eye at `eye` sees of a thing at `point`
+// whose own colour is `colour`, after the air between. The air thins with
+// height; red is lost least and blue most; what it is replaced by is the sky
+// at the horizon that way, a little brighter towards the sun. The phone's
+// shader (scene.wgsl.h, `hazeAt`) has the same lines.
+Vec3 hazeAt(Vec3 colour, Vec3 eye, Vec3 point, const SkyModel& sky, const Haze& haze);
+
 }  // namespace loop
