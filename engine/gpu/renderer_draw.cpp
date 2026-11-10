@@ -136,6 +136,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
   f.cache1 = {static_cast<float>(cache_.nx), static_cast<float>(cache_.ny), static_cast<float>(cache_.nz), cache_.on && cacheTex_[0] ? 1.0f : 0.0f};
   for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
   f.sh[0].w = C.render.shadowSoftness, f.sh[1].w = C.world.patternFade;
+  f.sh[2].w = fog_.haze.visibility, f.sh[3].w = fog_.haze.height;  // haze (0: off)
   f.fog = {fog_.density, fog_.top, fog_.anisotropy, fog_.density > 0 ? 1.0f : 0.0f};
   f.fogColor = {fog_.albedo, C.render.shadowBias};
   f.grid0 = {grid_.origin, grid_.cell};
