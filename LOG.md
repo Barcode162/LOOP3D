@@ -3,8 +3,8 @@
 One line per request, newest first: the date, what the user asked, what was done.
 
 - **2026-11-10** · "Start this plan" and "tell me when to switch models": milestone 0 begun. E1 done: the shaders are
-  11 files in `engine/gpu/shaders/` (text byte-for-byte the same; tests and web build pass; one picture test
-  flagged, being re-checked). `docs/MODELS.md` and a rule in `CLAUDE.md`: Claude says when to switch model tier. (this commit)
+  11 files in `engine/gpu/shaders/` (text byte-for-byte the same; tests and web build pass; 12 picture tests: 11 match; the Glade
+  differs 2.70 but does the same, exactly, on the code before this change, so it is older: its reference needs a look). `docs/MODELS.md` and a rule in `CLAUDE.md`: Claude says when to switch model tier. (this commit)
 - **2026-11-10** · "Be critical … a full roadmap to that level … for smaller subagents" (with 16 reference pictures:
   lofts, landscapes, your desert hill): reviewed the engine against them (foundation 6 of 10, picture 1 to 2: the
   library has 6 things, surfaces are flat, people are mannequins, no water, no game screens). Written: the roadmap
