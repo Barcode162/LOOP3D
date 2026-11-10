@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Go ahead, resume" (on Opus): E2 done. The renderer's one 3,639-line file is now a shared header
+  (`renderer_internal.h`) and seven parts by job (setup, scene, draw, light, clusters, shadows, rays), the longest
+  881 lines; every line of every method moved unchanged (checked line by line). Tests and the web build pass;
+  pictures 11 of 12, the Glade's older difference the same (2.71). (this commit)
 - **2026-11-10** · "Start this plan" and "tell me when to switch models": milestone 0 begun. E1 done: the shaders are
   11 files in `engine/gpu/shaders/` (text byte-for-byte the same; tests and web build pass; 12 picture tests: 11 match; the Glade
   differs 2.70 but does the same, exactly, on the code before this change, so it is older: its reference needs a look). `docs/MODELS.md` and a rule in `CLAUDE.md`: Claude says when to switch model tier. (this commit)
