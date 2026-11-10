@@ -1,0 +1,40 @@
+# steel_beam · a blackened steel I-beam laid level between two points, with a bolted end plate at each end
+# steel_beam(from_at, to_at, depth, flange, steel) lays it level, along x or along z (whichever
+# the two points are further apart in). `from_at` and `to_at` are the middles of the tops of its ends.
+# A thin web, two flanges, and at each end a plate with four bolt heads.
+#
+# kind: piece
+# place: steel_beam(AT + vec(-4.5, 3.06, 0), AT + vec(4.5, 3.06, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: steel, beam, girder, loft, industrial
+# size: chair
+# sockets: lie
+
+let web_t = 0.01
+let flange_t = 0.015
+let plate_t = 0.01
+let bolt = 0.026
+
+# a box size with `l` along the beam, `h` up and `w` across it
+to dims(alongx, l, h, w)
+  return vec(l, h, w) if alongx else vec(w, h, l)
+
+to steel_beam(from_at: vec(-4.5, 3.06, 0), to_at: vec(4.5, 3.06, 0), depth: 0.3, flange: 0.15, steel: material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45))
+  let alongx = abs(to_at.x - from_at.x) >= abs(to_at.z - from_at.z)
+  let len = distance(vec(from_at.x, 0, from_at.z), vec(to_at.x, 0, to_at.z))
+  let mid = (from_at + to_at) / 2 - vec(0, depth / 2, 0)
+  let u = (vec(to_at.x - from_at.x, 0, to_at.z - from_at.z)) / len
+  let body = len - plate_t * 2
+  box size: dims(alongx, body, flange_t, flange), at: mid + vec(0, depth / 2 - flange_t / 2, 0), material: steel, round: 0.004
+  box size: dims(alongx, body, flange_t, flange), at: mid - vec(0, depth / 2 - flange_t / 2, 0), material: steel, round: 0.004
+  box size: dims(alongx, body, depth - flange_t * 2, web_t), at: mid, material: steel
+  # an end plate and four bolt heads at each end (side is -1 at from_at, +1 at to_at)
+  for each side in [-1, 1]
+    let end = mid + u * (len / 2 * side)
+    box size: dims(alongx, plate_t, depth, flange), at: end - u * (plate_t / 2 * side), material: steel, round: 0.004
+    for each up in [-1, 1]
+      for each across in [-1, 1]
+        let off = vec(0, up * depth * 0.3, 0) + dims(alongx, 0, 0, across * flange * 0.3)
+        box size: dims(alongx, bolt * 0.5, bolt, bolt), at: end + u * (bolt * 0.25 * side) + off, material: steel
