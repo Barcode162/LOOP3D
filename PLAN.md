@@ -21,6 +21,7 @@ game and any film; work that smaller agents can carry out.
 *The review:* as a foundation 6 of 10; as a picture beside your references between 1 and 2. The engine has outrun
 its content: three fifths of the code draws, and the library holds 6 things. Next comes shapes, surfaces and a
 full library, before more light.
+*Your page:* **Loop3D Long View** (https://claude.ai/artifact/JrZMKpC1FLPVqp5saNLHNe).
 *The pages:* `docs/ROADMAP.md` (the review, five stars, ten decisions, twelve tracks, eleven milestones),
 `docs/WORK_ORDERS.md` (orders cut for small agents), `docs/CRAFT.md` (the craft reference), `docs/MECHANICS_UI.md`
 (mechanics that draw their own screens; the game and film sheets), `docs/LIBRARY_PLAN.md` (the library to grow),
