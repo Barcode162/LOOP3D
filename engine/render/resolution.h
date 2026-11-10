@@ -26,6 +26,28 @@ bool scalesWithResolution(const std::string& step, bool upscaled = true);
 
 FrameSplit splitFrame(const std::vector<FrameGraph::Time>& recent, bool upscaled = true);
 
+// What each step really does when the size changes, learned from its own
+// timings at two sizes (ms = fixed + perPixel x scale^2): your phone's
+// recordings, the forests: "visibility" (their leaves and grass) cost nearly
+// the same at any size, so shrinking for it only blurred the picture.
+// Until a step has been seen at two sizes, its name says (scalesWithResolution).
+class ScaleLearner {
+ public:
+  // The latest timings, at a size held for a while (not just changed).
+  void observe(const std::vector<FrameGraph::Time>& recent, float scale);
+  // The share of a step's time that would shrink with the size, at `scale`
+  // (1 when unknown); at least a fifth, so a noisy fit can't freeze the size.
+  float scaledShare(const std::string& step, float scale) const;
+  void forget() { seen_.clear(); }
+
+ private:
+  struct Seen {
+    std::string step;
+    float scaleA = 0, msA = 0, scaleB = 0, msB = 0;
+  };
+  std::vector<Seen> seen_;
+};
+FrameSplit splitFrame(const std::vector<FrameGraph::Time>& recent, bool upscaled, const ScaleLearner& learned, float scale);
 // The scale at which the frame would take `budgetMs`, from the split at
 // `scaleNow`; when the steady work that doesn't scale fills the budget alone,
 // shrinking can't help: `scaleNow` back (hold).

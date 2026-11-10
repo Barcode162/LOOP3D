@@ -196,6 +196,12 @@ once, fog, blend and upscale, film.
    a quarter of the rays; the score against cinema the same (the cabin 12.8 to 13.2, the others within 0.1). The far
    sun shadow (the Glade 16-22 ms, the Woods 50 at a redraw) is now drawn a part a frame (about 2.5 ms each,
    timed) into a second layer while the old one is shown, then swapped: the same picture, no stall.
+   *Your recording of that (2026-11-10):* the bar on High 45-52 fps (was 22-44), its lighting 7-12 ms; the Glade's far
+   shadow 2-3 ms a frame. *Then, better still:* the shared lamp ray traced by a quarter of the pixels a frame (each
+   of a 2 x 2 square in turn; the bar's picture the same, grain 8.2 to 8.8); the automatic resolution learns from
+   its own timings how much each step really shrinks with the size (the forests' visibility hardly does: it no
+   longer blurs the picture for it); and choosing the pieces ("finding") is timed apart from drawing them, so the
+   next recording says which of the two the forests pay for.
    *Still to do in phase 8:* ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
    lowest resolution: their leaves and grass) is now the biggest cost on the phone.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.

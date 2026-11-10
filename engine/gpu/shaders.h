@@ -653,10 +653,12 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     }
   }
   if (pick != 0xffffffffu) {
-    // a pixel with a settled answer traces every other frame (a checkerboard
-    // turning each frame): its answer is an average over many frames anyway,
-    // and the ray is the light pass's dearest work
-    let rest = shadowPast >= 0.0 && shadowCount >= 4.0 && ((u32(i.clip.x) + u32(i.clip.y) + u32(frame.ao.z)) & 1u) == 1u;
+    // a pixel with a settled answer traces one frame in four (each of a 2 x 2
+    // square in turn): its answer is an average over many frames anyway, and
+    // the ray is the light pass's dearest work (your phone, the bar on High:
+    // half the pixels each frame still cost 12 ms)
+    let corner = (u32(i.clip.x) & 1u) | ((u32(i.clip.y) & 1u) << 1u);
+    let rest = shadowPast >= 0.0 && shadowCount >= 4.0 && corner != (u32(frame.ao.z) & 3u);
     if (rest) {
       shadowNow = shadowPast;
     } else {

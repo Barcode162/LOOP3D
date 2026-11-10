@@ -269,6 +269,7 @@ class GpuRenderer final : public Renderer {
     // seconds): a first frame too heavy for the GPU can then never run so long
     // that the browser takes the GPU away. Ultra starts lower still.
     step_ = q == Quality::kUltra ? 3 : 1, ceilStep_ = 0, calmSeconds_ = 0, sinceScale_ = 0, longCalm_ = 0;
+    scaleLearned_.forget();
     judgedAt_ = 0, perfSkipped_ = perfDrawn_ = 0;
     fresh_ = true;
     renderScale_ = q == Quality::kUltra ? 0.65f : 0.87f;
@@ -372,6 +373,7 @@ class GpuRenderer final : public Renderer {
   void reset() override {
     hzbValid_ = false;
     changes_.bump("shapes"), changes_.bump("placements");
+    scaleLearned_.forget();  // a new scene: its steps cost what they cost
     for (wgpu::Buffer* b : {&poolVerts_, &poolMeshes_})
       if (*b) b->Destroy(), *b = nullptr;
     poolIdx_ = poolClusters_ = nullptr;
@@ -1058,14 +1060,20 @@ class GpuRenderer final : public Renderer {
       // what's hidden (phase 4): the first pass skips what last frame's walls
       // hid; this frame's walls are then made from it, and what was skipped is
       // tried against them, so nothing newly in view goes missing
+      // choosing the pieces (the GPU's culling) timed apart from drawing them:
+      // "finding" costs the same at any size, the drawing doesn't
+      stampAs_ = "finding";
       runCull(enc, eyeList_);
+      stampAs_ = nullptr;
       visPass(eyeList_, true);
       secondDrawn_ = false;
       if (occluding) {
         const bool second = hzbValid_ && eyeList2_.cullGroup && eyeList2_.drawGroup;
         buildHzb(enc);
         if (second) {
+          stampAs_ = "finding";
           runCull(enc, eyeList2_);
+          stampAs_ = nullptr;
           visPass(eyeList2_, false);
           secondDrawn_ = true;
         }
@@ -1410,7 +1418,9 @@ class GpuRenderer final : public Renderer {
     // with the scale (engine/render/resolution.h); the rest (shadow maps, and
     // since frame blending upscales, blending, bloom and the film) stays
     const std::vector<FrameGraph::Time> recent = gs_->steps.recent();
-    FrameSplit split = splitFrame(recent, upscaling_);
+    // each step's own share that shrinks, learned from its timings at the sizes it has had
+    if (sinceScale_ >= 1.0f) scaleLearned_.observe(recent, kSteps[step_]);
+    FrameSplit split = splitFrame(recent, upscaling_, scaleLearned_, kSteps[step_]);
     const bool timed = !recent.empty() && split.scaledMs > 0 && split.fixedMs + split.scaledMs > gpu * 0.5f;
     if (stuck || (gpuBound && fps < aim * 0.88f)) {
       if (step_ < lowest && (sinceScale_ > 1.2f || stuck || gpu > budget * 2)) {
@@ -1992,11 +2002,13 @@ class GpuRenderer final : public Renderer {
   // A pass of the step now running gets the chip's two stamps (its start and
   // end), when the chip has timers and a place to read them back is free;
   // nothing outside a step (a capture) is stamped.
+  // a pass timed under its own name inside a step (the meter, the recordings)
+  const char* stampAs_ = nullptr;
   const wgpu::PassTimestampWrites* stamp(wgpu::PassTimestampWrites& w) {
     if (stampSlot_ < 0 || graph_.current() < 0 || stampSteps_.size() >= kStampPairs) return nullptr;
     uint32_t i = static_cast<uint32_t>(stampSteps_.size());
     w.querySet = stampSet_, w.beginningOfPassWriteIndex = 2 * i, w.endOfPassWriteIndex = 2 * i + 1;
-    stampSteps_.push_back(graph_.steps()[static_cast<size_t>(graph_.current())].name);
+    stampSteps_.push_back(stampAs_ ? std::string(stampAs_) : graph_.steps()[static_cast<size_t>(graph_.current())].name);
     return &w;
   }
 
@@ -3499,6 +3511,7 @@ class GpuRenderer final : public Renderer {
   std::vector<Mat4> lastPlaces_;
   // automatic resolution: fewer pixels when the GPU falls behind
   float renderScale_ = 1, sinceScale_ = 0;
+  ScaleLearner scaleLearned_;
   double judgedAt_ = 0;
   float displayHz_ = 60;
   bool fresh_ = true;  // next frame starts a new measurement

@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Make it better then go on as planned": High's shared lamp ray now a quarter of the pixels a
+  frame (the bar's picture the same); the resolution learns how much each step really shrinks (sharper forests);
+  "finding" the pieces timed on its own. (this commit)
 - **2026-11-10** · Your recording of build 5e083b7: High is lighter. The bar on High: lighting 17-21 ms down to
   7-12, 45-52 fps (was 22-44); the Glade's far shadow 16-22 ms a redraw down to 2-3 a frame, 56 fps walking. Still
   heavy: the bar holds at the smallest drawing size (0.25), the Glade's visibility 6-8 ms. No code change.
