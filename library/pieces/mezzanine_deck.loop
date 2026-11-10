@@ -1,0 +1,44 @@
+# mezzanine_deck · an upper floor: a slab of boards on timber joists, carried by a steel beam and two posts
+# mezzanine_deck(at, width, depth, top, floor, steel) stands it with `at` the middle of its front edge on the
+# floor below; the deck runs from there towards +z. Its top is at height `top`. Joists run front to back under
+# it every 0.45 m; a steel beam under the front edge has a low lip standing above the deck there; two steel
+# posts stand 1.5 m in from each end.
+#
+# kind: piece
+# place: mezzanine_deck(AT + vec(0, 0, 2), width: 9, depth: 4, top: 3.06)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: floor, deck, mezzanine, beam, joists, loft
+# size: room
+# sockets: top, hang
+# seeds: no
+
+let thick = 0.12
+let joist_w = 0.06
+let joist_d = 0.2
+let beam_d = 0.2
+let beam_w = 0.12
+let post = 0.1
+let lip_w = 0.02
+let lip_h = 0.05
+
+to mezzanine_deck(at: vec(0, 0, 0), width: 9, depth: 4, top: 3.06, floor: "floorboards", steel: material(color: 0.04, metal: 1, roughness: 0.45))
+  let under = top - thick
+  # the slab
+  box size: vec(width, thick, depth), at: at + vec(0, top - thick / 2, depth / 2), material: floor, round: 0.005
+  # the joists, front to back, from the beam to the back edge
+  let run = depth - beam_w
+  let n = ceil(width / 0.45 - 0.01)
+  for each i in range(0, n, 1)
+    let x = -width / 2 + joist_w / 2 + (width - joist_w) * i / n
+    box size: vec(joist_w, joist_d, run), at: at + vec(x, under - joist_d / 2, beam_w + run / 2), material: "pine", round: 0.005
+  # the last joist at the far end
+  box size: vec(joist_w, joist_d, run), at: at + vec(width / 2 - joist_w / 2, under - joist_d / 2, beam_w + run / 2), material: "pine", round: 0.005
+  # the beam under the front edge, and its lip above the deck
+  box size: vec(width, beam_d, beam_w), at: at + vec(0, under - beam_d / 2, beam_w / 2), material: steel, round: 0.003
+  box size: vec(width, lip_h, lip_w), at: at + vec(0, top + lip_h / 2, lip_w / 2), material: steel, round: 0.003
+  # the two posts, 1.5 m in from each end
+  let post_h = under - beam_d
+  for each side in [-1, 1]
+    box size: vec(post, post_h, post), at: at + vec(side * (width / 2 - 1.5), post_h / 2, beam_w / 2), material: steel, round: 0.003
