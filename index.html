@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="1ee5aba 2026-11-07">
+<meta name="loop-build" content="5ef93b2 2026-11-10">
 <style>
   :root { --ink: #f2f2f2; --dim: #9a9a9a; --glass: rgba(0, 0, 0, 0.6); --line: rgba(255, 255, 255, 0.18); --amber: #ffffff; --glow: 0 0 16px rgba(255, 255, 255, 0.32); }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -27,6 +27,8 @@
   button.on { border-color: var(--amber); color: var(--amber); box-shadow: var(--glow); text-shadow: 0 0 10px rgba(255, 255, 255, 0.55); }
   #title { font-weight: 650; letter-spacing: 0.02em; }
   #stats { font: 12px ui-monospace, monospace; color: var(--dim); }
+  #rec { font: 12px ui-monospace, monospace; color: var(--dim); }
+  #rec[hidden] { display: none; }
   #note.loading::after { content: ''; display: block; width: 28px; height: 28px; margin: 12px auto 0; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--amber); animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #note { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: min(520px, 86vw); text-align: center; background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 18px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
@@ -68,6 +70,7 @@
 <img id="trailer" alt="The cinema render of this scene">
 <div class="bar top">
   <span class="chip" id="title">Loop3D</span>
+  <span class="chip" id="rec" hidden title="Every scene you play is timed and saved for Claude"></span>
   <span class="chip" id="stats">starting…</span>
 </div>
 <div class="bar bottom">
@@ -78,11 +81,12 @@
   <select id="scene" title="Scene">
     <option value="courtyard">Courtyard</option>
   </select>
-  <a class="chip" href="editor.html" title="Open the Loop3D editor" style="text-decoration:none">Editor</a>
+  <a class="chip" id="editorLink" href="editor.html" title="Open the Loop3D editor" style="text-decoration:none">Editor</a>
   <select id="benchSel" title="Measure how smoothly it runs">
     <option value="">Benchmark…</option>
-    <option value="scene">This scene</option>
-    <option value="story">The whole story (about 30 min)</option>
+    <option value="copy">Copy my recording (this visit)</option>
+    <option value="scene" class="auto">This scene, by itself</option>
+    <option value="story" class="auto">The whole story (about 30 min)</option>
   </select>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
@@ -129,20 +133,46 @@
   const benchChoices = (params.get('choices') || '').split(',').filter((x) => x !== '').map(Number);
   let benchAsked = 0, benchSegments = [], benchScene = null, benchTimer = null, benchUse = null, benchStarted = 0;
   const qualityNames = ['Phone', 'High', 'Ultra'];
+  // the live recorder (LoopUI.recorder): every visit outside a benchmark is
+  // timed scene by scene. Framed (the recording page inside claude.ai) it is
+  // saved where Claude reads it; the page has no editor and no benchmarks
+  // that reload it there.
+  const framed = window.self !== window.top;
+  let rec = null;
+  if (framed) {
+    document.getElementById('editorLink').style.display = 'none';
+    document.querySelectorAll('#benchSel option.auto').forEach((o) => o.remove());
+  }
+  // it starts with the page, before the engine, so a phone without WebGPU is recorded too
+  if (!bench) {
+    const chip = document.getElementById('rec');
+    const store = LoopUI.recordingStore(window, (visit, ok, code) => {
+      chip.hidden = false;
+      chip.textContent = ok ? '● Recording for Claude · ' + Math.max(1, Math.round(visit.summary.seconds / 60)) + ' min' : 'Recording not saved (' + (code || 'error') + ')';
+    });
+    rec = LoopUI.recorder({ getM: () => M, quality: () => qualityNames[+document.getElementById('quality').value], store, device: deviceInfo(),
+                            build: document.querySelector('meta[name=loop-build]').content });
+    document.addEventListener('visibilitychange', () => (document.hidden ? rec.hidden() : rec.shown()));
+    addEventListener('pagehide', () => rec.cut());
+    addEventListener('error', (e) => rec.event('error', (e.message || 'error') + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')));
+    window.loopRecorder = rec;  // for the checks (tools/recorder_check.js)
+  }
   const TRACKER = 'https://claude.ai/artifact/VxhkyF5io1MTR4heDYpGVb';
 
   // a GPU that's gone leaves its last "done" promises rejected: expected, not news
   addEventListener('unhandledrejection', (e) => { if (String(e.reason).includes('external Instance reference')) e.preventDefault(); });
-  window.loopNoGpu = () => { note.style.display = 'block'; note.textContent = M ? 'The graphics card stopped answering twice: this scene may be too heavy for it. Try Phone quality, then reload.' : 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
-  window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; };
+  window.loopNoGpu = () => { if (rec) rec.event(M ? 'gpu-gave-up' : 'no-webgpu', navigator.userAgent); note.style.display = 'block'; note.textContent = M ? 'The graphics card stopped answering twice: this scene may be too heavy for it. Try Phone quality, then reload.' : 'This browser can\'t do WebGPU yet. On iPhone: Safari 26 or newer; on a computer: Chrome, Edge or Safari.'; };
+  window.loopProblems = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent = t; if (rec) rec.event('problem', t); };
   // the loading screen stays until the scene's first frame is on screen
   const showNote = (t, spinning) => { note.textContent = t; note.classList.toggle('loading', !!spinning); note.style.display = 'block'; };
-  window.loopShown = () => { note.style.display = 'none'; fade.in(M); };
-  window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; };
-  window.loopGpuLost = () => showNote('The graphics card restarted. Reconnecting…', true);
+  window.loopShown = () => { note.style.display = 'none'; fade.in(M); if (rec) rec.firstFrame(); };
+  window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; if (rec) rec.event('gpu-problem', t); };
+  window.loopGpuLost = () => { showNote('The graphics card restarted. Reconnecting…', true); if (rec) rec.event('gpu-lost'); };
   window.loopGpuBack = (q) => {
     const sel = document.getElementById('quality');
     const lowered = +sel.value !== q;
+    if (rec) rec.event('gpu-back', 'at ' + qualityNames[q]);
+    if (rec && lowered) rec.quality();
     sel.value = String(q);
     if (lowered) { showNote('Switched to ' + qualityNames[q] + ' so it keeps running smoothly.', false); setTimeout(() => { note.style.display = 'none'; }, 3500); }
     else note.style.display = 'none';
@@ -175,16 +205,22 @@
     M.stringToUTF8(json, ptr, n); M._loop_set_project_settings(ptr); M._free(ptr);
   }
   async function loadScene(name) {
+    if (rec) rec.scene(name);
+    const stage = (t) => { if (rec) rec.stage(t); };
     useProject(name);
     showNote(LoopUI.loadingText(M, titleOf(name)), true);
+    stage('fetching the scene');
     const own = fromEditor && fromEditor.scene === name ? fromEditor.text : await fetchScene(name);
     const text = (await LoopUI.assemble(own, fetchScene)).text;
-    await LoopUI.loadModels(M, text);
+    stage('fetching models');
+    await LoopUI.loadModels(M, text, (done, total) => stage('fetching models ' + done + '/' + total));
+    stage('building the world');
     // let the loading screen reach the screen first: building a world takes a moment
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
     M.stringToUTF8(text, p, n);
     M._loop_run_script(p);
+    stage('waiting for the first picture');
     setTimeout(() => M._free(p), 1000);
     trailer.src = 'scenes/' + encodeURIComponent(name) + '.png';
   }
@@ -215,28 +251,41 @@
   }
   async function deviceInfo() {
     let gpu = {};
-    try { const a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' }); const i = a && (a.info || (a.requestAdapterInfo && await a.requestAdapterInfo())); if (i) gpu = { vendor: i.vendor, architecture: i.architecture, device: i.device, description: i.description }; } catch (e) {}
-    return { gpu, ua: navigator.userAgent, dpr: devicePixelRatio, screen: screen.width + 'x' + screen.height, cores: navigator.hardwareConcurrency || 0 };
+    try {
+      const a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      const i = a && (a.info || (a.requestAdapterInfo && await a.requestAdapterInfo()));
+      if (i) gpu = { vendor: i.vendor, architecture: i.architecture, device: i.device, description: i.description };
+      // what the graphics chip offers (timestamp-query: its own timers, for timing each step of a frame)
+      if (a) gpu.features = [...a.features].sort(), gpu.limits = { storageBuffers: a.limits.maxStorageBuffersPerShaderStage, bufferMB: Math.round(a.limits.maxBufferSize / 1048576) };
+    } catch (e) {}
+    return { gpu, ua: navigator.userAgent, dpr: devicePixelRatio, screen: screen.width + 'x' + screen.height, cores: navigator.hardwareConcurrency || 0,
+             isolated: !!window.crossOriginIsolated };
   }
   async function benchFinish() {
     clearTimeout(benchTimer); clearInterval(benchUse);
     document.getElementById('benchLive').style.display = 'none';
-    const segs = benchSegments, frames = segs.reduce((t, x) => t + x.frames, 0), secs = segs.reduce((t, x) => t + x.seconds, 0);
+    const segs = benchSegments;
     const result = {
       kind: 'loop3d-bench', v: 1, when: new Date().toISOString(), build: document.querySelector('meta[name=loop-build]').content,
       bench, start: sceneName, quality: qualityNames[+document.getElementById('quality').value], msaa: +(params.get('msaa') || 4),
       device: await deviceInfo(),
-      summary: {
-        scenes: segs.length, seconds: +secs.toFixed(1), frames, fps: +(secs ? frames / secs : 0).toFixed(2),
-        worstLow1Fps: Math.min(...segs.map((x) => x.low1Fps)), worstP99Ms: Math.max(...segs.map((x) => x.p99Ms)), maxMs: Math.max(...segs.map((x) => x.maxMs)),
-        hitches: segs.reduce((t, x) => t + x.hitches, 0), avgScale: +(segs.reduce((t, x) => t + x.scaleAvg * x.seconds, 0) / (secs || 1)).toFixed(3),
-        worstLoadMs: Math.max(...segs.map((x) => x.loadMs)),
-      },
+      summary: LoopUI.summary(segs),
       segments: segs,
     };
     try { const h = JSON.parse(localStorage.getItem('loop3d.bench') || '[]'); h.unshift(result); localStorage.setItem('loop3d.bench', JSON.stringify(h.slice(0, 20))); } catch (e) {}
     window.loopBenchResult = result;
     showBench(result);
+  }
+  // the menu's "Copy my recording": this visit so far, to paste in the chat
+  async function copyRecording() {
+    if (!rec) return;
+    rec.cut();
+    const v = rec.visit, text = JSON.stringify(v);
+    const said = v.segments.length ? 'Copied: ' + v.summary.scenes + ' scene(s), ' + Math.max(1, Math.round(v.summary.seconds / 60)) + ' min. Paste it in the chat with Claude.'
+                                   : 'Nothing recorded yet: play for half a minute first.';
+    if (v.segments.length) { try { await navigator.clipboard.writeText(text); } catch (x) { prompt('Copy the recording:', text); } }
+    showNote(said, false);
+    setTimeout(() => { note.style.display = 'none'; }, 4000);
   }
   function showBench(r) {
     const box = document.getElementById('bench'), s = r.summary;
@@ -276,8 +325,10 @@
       const slower = m.gpu > m.cpu ? 'The GPU' : 'The CPU', worst = Math.max(m.cpu, m.gpu);
       meter.innerHTML = parts.map((k) => meterRow(k, m[k], scale)).join('') + meterRow('the rest', other, scale) +
         `<div class="sum">${meterRow('CPU', m.cpu, scale)}${meterRow('GPU', m.gpu, scale)}</div>` +
+        // the graphics chip's time, step by step (its own timers, where it has them)
+        Object.entries(m.steps || {}).map(([k, ms]) => meterRow('· ' + k, ms, scale)).join('') +
         `<div class="row"><span>memory</span><span style="grid-column: span 2">${m.memUsed.toFixed(0)} MB used of ${m.memReserved.toFixed(0)} · GPU ${m.gpuMem.toFixed(0)} MB</span></div>` +
-        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.clustered ? 'Drawn in clusters.' : 'Clusters cooking…'}</div>`;
+        `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.cacheWaiting ? 'Baking bounced light: ' + m.cacheWaiting + ' probes to go. ' : ''}Build ${document.querySelector('meta[name=loop-build]').content}. ${m.clustered ? 'Drawn in clusters' + (m.pieces && m.pieces[0] ? ': ' + (m.pieces[0] + m.pieces[1]).toLocaleString() + ' pieces' + (m.pieces[1] ? ' (' + m.pieces[1].toLocaleString() + ' just come into view)' : '') : '') + '.' : 'Clusters cooking…'}</div>`;
     } catch (e) {}
     setTimeout(drawMeter, 500);
   }
@@ -307,7 +358,7 @@
   window.loopReady = async () => {
     const q = document.getElementById('quality');
     q.value = params.get('quality') || (touch ? '0' : '1');
-    q.onchange = () => { M._loop_set_quality(+q.value); q.blur(); };
+    q.onchange = () => { if (rec) rec.quality(); M._loop_set_quality(+q.value); q.blur(); };
     M._loop_set_quality(+q.value);
     // ?pause=1: the world holds still from its very first moment (picture tests)
     if (params.get('pause') === '1') { const n = M.lengthBytesUTF8('pause') + 1, p = M._malloc(n); M.stringToUTF8('pause', p, n); M._loop_set_option(p, 1); M._free(p); }
@@ -322,6 +373,13 @@
         sc.appendChild(g);
       }
     } catch (e) { /* keep the built-in entry */ }
+    // the recording page is private: the whole bar (the public player's hidden link, #bar) is in its
+    // list, first in the bar's own group (its new room, bar_room, is still being built and is empty)
+    if (framed && ![...sc.options].some((o) => o.value === 'bar')) {
+      const o = document.createElement('option'); o.value = 'bar'; o.textContent = 'The whole bar';
+      const room = [...sc.options].find((x) => x.value === 'bar_room');
+      if (room) { room.parentNode.insertBefore(o, room); room.textContent += ' (new room, empty for now)'; } else sc.appendChild(o);
+    }
     if (![...sc.options].some((o) => o.value === sceneName)) { const o = document.createElement('option'); o.value = o.textContent = sceneName; sc.appendChild(o); }
     if (fromEditor && fromEditor.scene === sceneName) document.getElementById('title').textContent = 'From the editor: ' + sceneName;
     LoopUI.gamepad(() => M, useIt, () => { if (movie) setMode(false); });
@@ -332,6 +390,7 @@
     document.getElementById('benchSel').onchange = (e) => {
       const kind = e.target.value; e.target.value = ''; e.target.blur();
       if (!kind) return;
+      if (kind === 'copy') { copyRecording(); return; }
       useProject(sceneName);
       const u = new URLSearchParams(location.search); u.set('bench', kind); u.set('quality', q.value);
       location.href = location.pathname + '?' + u.toString() + '#' + (kind === 'story' && sceneName.startsWith('ardane_') ? 'ardane_01_home' : sceneName);
@@ -438,13 +497,19 @@
   stick(document.getElementById('ls'), (x, y) => M && M._loop_move(x, y), false);
   stick(document.getElementById('rs'), (dx, dy) => { if (M) { const k = LoopUI.setting(M, 'player.touchLook', 1.6); M._loop_look(dx * k, dy * k); } }, true);
 
-  window.Module = { onRuntimeInitialized() { M = window.Module; } };
+  // a page published with its engine files named by their contents (loop-code:
+  // tools/recording_page.py) asks for those names, so no old copy kept by the
+  // browser or the app is ever used for a new version
+  const codeTag = document.querySelector('meta[name=loop-code]');
+  const code = codeTag ? codeTag.content : '';
+  const named = (f) => code ? f.replace(/(\.[a-z]+)$/, '-' + code + '$1') : f;
+  window.Module = { onRuntimeInitialized() { M = window.Module; }, locateFile: (p, prefix) => prefix + named(p) };
   // every core when the browser lets the page share memory between them
   // (web/isolate.js), else one; ?cores=1 asks for one
   (async () => {
     const many = await LoopIsolate.ready() && typeof SharedArrayBuffer !== 'undefined';
     const s = document.createElement('script');
-    s.src = many ? 'player_mt.js' : 'player.js';
+    s.src = named(many ? 'player_mt.js' : 'player.js');
     s.onerror = () => showNote('Couldn\'t load the engine (' + s.src.split('/').pop() + ').', false);
     document.body.appendChild(s);
   })();

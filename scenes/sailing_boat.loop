@@ -8,6 +8,9 @@
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
 # from: The Lantern Isle (2026-11-06)
+# tags: boat, water, wood, sail, lamp
+# size: sofa
+# sockets: light
 
 let boat_hull = material(like: "old wood", color: rgb(0.3, 0.2, 0.13))
 let boat_deck = material(like: "floorboards", color: rgb(0.42, 0.32, 0.22), roughness: 0.85)

@@ -1,0 +1,12 @@
+# A Grown World: an island 8 km across, made the way nature makes it. Plates
+# drifting together lifted its mountains, rivers carved its valleys while it
+# rose, lakes fill its hollows, the wind from the west rains on the mountains'
+# near side and leaves their far side dry; sand on the shores, grass, forest
+# where it is wet and warm, bare rock high up. The land and trees near you are
+# made as you walk (`world`, rebuild step 12; the map: `loop world 3`). It
+# puts you somewhere good, looking towards the mountains.
+use "grown_island"
+title "A Grown World"
+mode "game"
+grown_island(3)
+look "natural"

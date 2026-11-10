@@ -97,6 +97,11 @@
      "name": "showcase_settings",
      "title": "Settings",
      "still": false
+    },
+    {
+     "name": "showcase_world",
+     "title": "A Grown World",
+     "still": false
     }
    ],
    "library": [
@@ -305,6 +310,26 @@
     "world.drawDistance": 4000,
     "world.lodBias": 0
    },
+   "build": {
+    "scenesDir": "places",
+    "libraryDir": "places"
+   }
+  },
+  {
+   "name": "loft",
+   "title": "The Loft",
+   "description": "",
+   "start": "loft",
+   "scenes": [
+    {
+     "name": "loft",
+     "title": "The Loft",
+     "still": false
+    }
+   ],
+   "library": [],
+   "order": 100,
+   "settings": {},
    "build": {
     "scenesDir": "places",
     "libraryDir": "places"

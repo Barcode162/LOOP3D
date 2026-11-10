@@ -1,0 +1,16 @@
+# The Loft, goal 1: the shell. A bare room two floors high (9 m wide, 6 m
+# high, 12 m deep) with one wall of glass, lit only by a low evening sun
+# through it. Nothing else yet: every later piece is judged against this size.
+use "loft_shell"
+use "glazing_wall"
+title "The Loft"
+mode "game"
+sky "physical", haze: 2
+sun elevation: 9 deg, toward: 340 deg, lux: 30000, kelvin: 4200
+ground 600, material: "grass"
+loft_shell(size: vec(9, 6, 12), floor: "floorboards", walls: "plaster")
+glazing_wall(at: vec(0, 0, -6), width: 9, height: 6, across: 6, up: 4)
+# a mark the height of a person by the glass, to judge the room by (1.8 m)
+box size: vec(0.5, 1.8, 0.05), at: vec(-3.9, 0.9, -5.5), material: "oak"
+camera at: vec(2.5, 1.6, 4.5), look_at: vec(-1, 2.4, -6), lens: 22 mm
+move_player at: vec(2.5, 0, 4.5), look_at: vec(-1, 2.4, -6)

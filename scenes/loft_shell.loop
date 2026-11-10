@@ -1,0 +1,25 @@
+# loft_shell · a bare room two floors high, open at one end for a wall of glass
+# loft_shell(size, floor, walls, ceiling) builds it round the middle of the
+# world: `size` is its inside width, height and depth. The end toward -z is
+# left open (put a glazing_wall there); the other three walls, the floor and
+# the ceiling are solid. No lamps: the light comes in through the open end.
+#
+# kind: room
+# place: loft_shell(size: vec(9, 6, 12))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: room, loft, walls, double height
+# size: room
+# sockets: open, light
+
+to loft_shell(size: vec(9, 6, 12), floor: "floorboards", walls: "plaster", ceiling: "plaster")
+  let w = size.x
+  let h = size.y
+  let d = size.z
+  box size: vec(w + 0.6, 0.2, d + 0.3), at: vec(0, -0.1, 0.15), material: floor
+  box size: vec(w + 0.6, 0.2, d + 0.3), at: vec(0, h + 0.1, 0.15), material: ceiling
+  box size: vec(w + 0.6, h, 0.3), at: vec(0, h / 2, d / 2 + 0.15), material: walls
+  box size: vec(0.3, h, d), at: vec(-w / 2 - 0.15, h / 2, 0), material: walls
+  box size: vec(0.3, h, d), at: vec(w / 2 + 0.15, h / 2, 0), material: walls
+  room size: 0.5, echo: 0.3

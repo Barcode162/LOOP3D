@@ -170,18 +170,37 @@ window.LoopUI = (() => {
     for (const m of text.matchAll(/\bmodel\s*\(?\s*(?:file:\s*)?"([^"]+\.glb)"/g)) names.add(m[1]);
     try { M.FS.mkdirTree('/scene/models'); } catch (e) {}
     if (names.size) names.add('materials.json');  // the models' real values, if the site has them
+    // the recording page (claude.ai serves no model files) has each model as
+    // text beside where it would be: <name>.glb.json = {"glb": "<base64>"}
+    const asText = typeof document !== 'undefined' && !!document.querySelector('meta[name="loop-models"][content="json"]');
     let done = 0;
-    await Promise.all([...names].map(async (name) => {
+    const one = async (name) => {
       const path = '/scene/models/' + name;
       try { M.FS.stat(path); done++; return; } catch (e) {}
       try {
-        const r = await fetch('scenes/models/' + encodeURIComponent(name));
+        const json = asText && name.endsWith('.glb');
+        const r = await fetch('scenes/models/' + encodeURIComponent(name) + (json ? '.json' : ''));
         if (!r.ok) return;  // the script then says which model is missing
-        M.FS.writeFile(path, new Uint8Array(await r.arrayBuffer()));
+        M.FS.writeFile(path, json ? fromBase64(await r.text()) : new Uint8Array(await r.arrayBuffer()));
       } catch (e) {}
       done++;
       if (onProgress) onProgress(done, names.size);
-    }));
+    };
+    const list = [...names];
+    if (!asText) { await Promise.all(list.map(one)); return; }
+    // as text, a model takes several times its size while it is read: four
+    // at a time keeps the bar's 167 from all being in memory at once
+    let next = 0;
+    await Promise.all([0, 1, 2, 3].map(async () => { while (next < list.length) await one(list[next++]); }));
+  }
+
+  // a model as text, {"glb": "<base64>"}, to its bytes (straight to bytes where the browser can)
+  function fromBase64(text) {
+    const b64 = text.slice(text.indexOf('"', text.indexOf(':') + 1) + 1, text.lastIndexOf('"'));
+    if (Uint8Array.fromBase64) return Uint8Array.fromBase64(b64);
+    const bin = atob(b64), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
   }
 
   // What the editor hands to the player: the scene it has open, edits and all
@@ -194,5 +213,151 @@ window.LoopUI = (() => {
     try { return JSON.parse(localStorage.getItem(HANDOFF) || 'null'); } catch (e) { return null; }
   }
 
-  return { setting, showLine, showAsk, loadingText, fader, keyMap, useKey, gamepad, applyPage, pauseWhenHidden, assemble, loadModels, handTo, handed };
+  // A recording's headline numbers, from its scenes (or parts of scenes).
+  function summary(segs) {
+    const frames = segs.reduce((t, x) => t + x.frames, 0), secs = segs.reduce((t, x) => t + x.seconds, 0);
+    const worst = (k, f) => (segs.length ? f(...segs.map((x) => x[k])) : 0);
+    return {
+      scenes: new Set(segs.map((x) => x.scene)).size, parts: segs.length, seconds: +secs.toFixed(1), frames,
+      fps: +(secs ? frames / secs : 0).toFixed(2), worstLow1Fps: worst('low1Fps', Math.min), worstP99Ms: worst('p99Ms', Math.max),
+      maxMs: worst('maxMs', Math.max), hitches: segs.reduce((t, x) => t + x.hitches, 0),
+      avgScale: +(segs.reduce((t, x) => t + x.scaleAvg * x.seconds, 0) / (secs || 1)).toFixed(3), worstLoadMs: worst('loadMs', Math.max),
+    };
+  }
+
+  // The live recorder: whatever is played, as it is played, timed scene by
+  // scene in parts of 30 s (a part is also cut when the quality changes or the
+  // page goes to the background), each part saved as it ends, so a visit
+  // closed halfway still keeps what came before. The engine times the frames
+  // (loop_perf_*); this decides when a part starts and ends.
+  //   o.getM()      the engine (or null while it loads)
+  //   o.quality()   'Phone', 'High' or 'Ultra' now
+  //   o.store       where the visit is saved: { save(visit) }
+  //   o.build, o.device (a promise), o.partMs, o.slowMs, o.clock (tests)
+  // It also keeps what went wrong, saved the moment it happens (visit.events:
+  // a problem on screen, the graphics card lost or back, a scene with no
+  // picture after 20 s and how far its loading got, leaving while it loads),
+  // so a visit that fails on the phone still tells Claude why.
+  function recorder(o) {
+    const clock = o.clock || (() => new Date()), partMs = o.partMs || 30000, slowMs = o.slowMs || 20000;
+    const t0 = clock(), stamp = t0.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
+    const visit = { kind: 'loop3d-bench', v: 1, when: t0.toISOString(), build: o.build || '', bench: 'live', start: null, quality: o.quality(),
+                    device: null, summary: summary([]), segments: [], events: [] };
+    const id = 'live-' + stamp + '-' + Math.random().toString(36).slice(2, 6);
+    let scene = null, part = 0, quality = o.quality(), on = false;
+    let stage = '', loading = false, sceneAt = t0, slow = [];
+    if (o.device) o.device.then((d) => { visit.device = d; }).catch(() => {});
+    const engine = () => { const M = o.getM(); return M && M._loop_perf_part ? M : null; };
+    // the numbers since the last cut, as the next part of this scene
+    function cut() {
+      const M = engine();
+      if (!M || !on || !scene) return false;
+      let s = null;
+      try { s = JSON.parse(M.UTF8ToString(M._loop_perf_part())); } catch (e) { return false; }
+      const label = quality;
+      quality = o.quality();
+      if (!s.frames) return false;
+      visit.segments.push({ ...s, scene, part: part++, quality: label, at: clock().toISOString() });
+      visit.summary = summary(visit.segments);
+      o.store.save(visit, id);
+      return true;
+    }
+    // something worth knowing: kept with the scene, how long it had been
+    // loading or playing, and the engine's memory then; saved at once
+    function event(kind, text) {
+      if (visit.events.length >= 100) return;
+      const e = { at: clock().toISOString(), scene, kind, seconds: +((clock() - sceneAt) / 1000).toFixed(1), quality: o.quality() };
+      if (text) e.text = String(text).slice(0, 500);
+      if (loading) e.stage = stage;
+      const M = o.getM();
+      try { if (M && M._loop_meter) { const m = JSON.parse(M.UTF8ToString(M._loop_meter())); e.memoryMB = Math.round(m.memUsed), e.gpuMemoryMB = Math.round(m.gpuMem); } } catch (x) {}
+      visit.events.push(e);
+      o.store.save(visit, id);
+    }
+    const timer = setInterval(cut, partMs);
+    const r = {
+      id, visit, cut, event,
+      // a scene starts loading: the last one's part ends, the new one's
+      // recording starts with its first frame (so its load time counts)
+      scene(name) {
+        const M = engine();
+        if (!M) return;
+        cut();
+        if (!visit.start) visit.start = name, visit.quality = o.quality();
+        scene = name, part = 0, quality = o.quality(), on = true;
+        loading = true, stage = 'starting', sceneAt = clock();
+        slow.forEach(clearTimeout);
+        slow = [1, 3].map((k) => setTimeout(() => { if (loading && scene === name) event('slow-load'); }, slowMs * k));
+        M._loop_perf_begin();
+      },
+      // how far the scene's loading got (fetching, models n/m, building …)
+      stage(text) { stage = text; },
+      // the scene's first picture is on screen
+      firstFrame() { loading = false; slow.forEach(clearTimeout); },
+      // before the quality changes: the part so far keeps the old one's name
+      quality() { cut(); },
+      // the page goes to the background, and comes back
+      hidden() {
+        if (loading && scene) event('left-while-loading');
+        const M = engine(); if (!M || !on) return; cut(); M._loop_perf_end(); on = false;
+      },
+      shown() { const M = engine(); if (!M || on || !scene) return; M._loop_perf_go(); quality = o.quality(); on = true; },
+      stop() { clearInterval(timer); slow.forEach(clearTimeout); r.hidden(); },
+    };
+    return r;
+  }
+
+  // Where a live recording goes: this browser always (the menu's "Copy my
+  // recording" copies it); and, on the recording page (the player inside a
+  // claude.ai page that keeps a database: window.claude), one row per visit,
+  // runs/<visit id>, which Claude reads. Writes go one at a time, only when a
+  // part was added. A row holds at most 256 KB, so a visit fills rows of 150
+  // parts (75 minutes): <id>, then <id>-2, <id>-3 …, each a run of its own.
+  const PARTS_PER_ROW = 150;
+  function recordingStore(win, onSaved) {
+    win = win || window;
+    let db = null, asked = false, writing = false, pending = null, failed = false, again = false;
+    function ask() {
+      if (asked || !win.claude || !win.claude.use) return;
+      asked = true;
+      win.claude.use('db').then((d) => { db = d; if (pending) flush(); }).catch(() => {});
+    }
+    async function flush() {
+      if (!db || writing || !pending || failed) return;
+      writing = true;
+      const { visit, id } = pending;
+      pending = null;
+      const k = Math.max(0, Math.ceil(visit.segments.length / PARTS_PER_ROW) - 1), rowId = k ? id + '-' + (k + 1) : id;
+      const segs = visit.segments.slice(k * PARTS_PER_ROW);
+      const body = JSON.parse(JSON.stringify({ ...visit, id: rowId, start: segs.length ? segs[0].scene : visit.start, summary: summary(segs), segments: segs,
+                                               events: (visit.events || []).slice(-100) }));
+      let retry = false;
+      try {
+        await db.doc('runs/' + rowId).set(body);
+        if (onSaved) onSaved(visit, true);
+      } catch (e) {
+        // a passing hiccup: once more shortly (the next part writes it all again anyway)
+        if (e && e.code === 'unavailable' && !again) { again = true; retry = !pending; if (retry) pending = { visit, id }; }
+        else if (!(e && e.code === 'unavailable')) { failed = true; if (onSaved) onSaved(visit, false, e && e.code); }
+      }
+      if (!retry) again = false;
+      writing = false;
+      if (pending) setTimeout(flush, retry ? 1000 + Math.random() * 1000 : 0);
+    }
+    ask();
+    return {
+      save(visit, id) {
+        try { win.localStorage.setItem('loop3d.live', JSON.stringify(visit)); } catch (e) {}
+        ask();
+        pending = { visit, id };
+        flush();
+      },
+      get toClaude() { return !!db; },
+    };
+  }
+
+  const api = { setting, showLine, showAsk, loadingText, fader, keyMap, useKey, gamepad, applyPage, pauseWhenHidden, assemble, loadModels, handTo, handed,
+                summary, recorder, recordingStore };
+  if (typeof module !== 'undefined') module.exports = api;
+  return api;
 })();

@@ -20,6 +20,16 @@
   "what": "a small wooden boat with a mast, a sail and a lamp at its bow"
  },
  {
+  "about": "glazing_wall(at, width, height, across, up, bar, material) stands it on `at` (the middle of its foot), facing along z: one sheet of glass, a frame round it, and bars that cut it into `across` panes side by side and `up` panes high. `bar` is how thick the bars are.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "glazing_wall",
+  "place": "glazing_wall(at: AT, width: 9, height: 6)",
+  "what": "a wall of glass divided by thin dark bars"
+ },
+ {
   "about": "lintel(a, b, height, depth, material) lays it between a and b (along x, level, at their middle height) and gives it back.",
   "credit": "J Production, made in Loop3D",
   "from": "the Showcase (2026-11-06)",
@@ -40,6 +50,16 @@
   "what": "a square stand with softened edges, to show something on"
  },
  {
+  "about": "loft_shell(size, floor, walls, ceiling) builds it round the middle of the world: `size` is its inside width, height and depth. The end toward -z is left open (put a glazing_wall there); the other three walls, the floor and the ceiling are solid. No lamps: the light comes in through the open end.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "room",
+  "licence": "our own work, free for every J Production project",
+  "name": "loft_shell",
+  "place": "loft_shell(size: vec(9, 6, 12))",
+  "what": "a bare room two floors high, open at one end for a wall of glass"
+ },
+ {
   "about": "room_shell(size, floor, walls, lumens) builds it round the middle of the world: `size` is its inside width, height and depth; the doorway (2 m wide, 2.6 m high) is in the wall toward +z; it sounds like a small room.",
   "credit": "J Production, made in Loop3D",
   "from": "the Showcase (2026-11-06)",
@@ -48,5 +68,15 @@
   "name": "room_shell",
   "place": "room_shell(size: vec(12, 4.5, 12))",
   "what": "a plain room: a floor, four walls with a doorway, a ceiling with a soft panel light"
+ },
+ {
+  "about": "drifting plates lift its mountain ranges, rivers carve its valleys as it rises, lakes fill its hollows, wind from the west rains on the mountains' near side and leaves their far side dry; sand on the shores, grass, forests where it is wet and warm, bare rock high and steep. Its land and trees are made a chunk at a time round the player as they walk. The player starts on gentle land looking towards the mountains. (any whole number: each grows a different island)",
+  "credit": "J Production, made in Loop3D",
+  "from": "the picture pipeline's phase 10 (2026-11-10)",
+  "kind": "world",
+  "licence": "our own work, free for every J Production project",
+  "name": "grown_island",
+  "place": "grown_island(3)",
+  "what": "an island 8 km across grown the way nature grows land:"
  }
 ]

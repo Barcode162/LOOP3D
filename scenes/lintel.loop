@@ -7,6 +7,9 @@
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
 # from: the Showcase (2026-11-06)
+# tags: stone, beam, doorway, ruin
+# size: hand
+# sockets: hang
 
 to lintel(a, b, height: 0.42, depth: 0.7, material: "ruin stone")
   let mid = (a + b) / 2
