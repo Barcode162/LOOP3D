@@ -1,0 +1,37 @@
+# timber_joists · a ceiling of boards laid on joists, seen from below as ribs
+# timber_joists(at, width, depth, top, spacing, timber, seed) stands under its
+# middle on the floor at `at`. The boards are 25 mm thick and their top is at
+# `top`; the joists (75 by 220 mm) hang under them every `spacing` metres across
+# the width, each running the depth (along z). Edges are rounded 4 mm, and every
+# joist is a few millimetres shorter or longer, a little differently for each seed.
+#
+# kind: piece
+# place: timber_joists(AT, width: 9, depth: 12, top: 6, spacing: 0.6, timber: "oak", seed: 1)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: ceiling, timber, joists, boards, loft
+# size: room
+# sockets: hang
+# seeds: any whole number
+
+to timber_joists(at: vec(0, 0, 0), width: 9, depth: 12, top: 6, spacing: 0.6, timber: "oak", seed: 1)
+  let board = 0.025
+  let jw = 0.075
+  let jh = 0.22
+  let edge = 0.004
+  let plank = 0.35
+  let gap = 0.003
+  # the boards, side by side along z, each running the width
+  let nb = round(depth / (plank + gap))
+  let step = depth / nb
+  for each i in range(0, nb - 1, 1)
+    box size: vec(width, board, step - gap), at: at + vec(0, top - board / 2, -depth / 2 + step * (i + 0.5)), material: timber, round: edge
+  # the joists under them, one every `spacing`, the two outer ones at the walls
+  let n = max(1, round(width / spacing))
+  for each j in range(0, n, 1)
+    let len = depth - 0.01 + (noise(seed * 7.3 + 0.5, j * 1.7 + 0.3, 0.5) - 0.5) * 0.008
+    let x = -width / 2 + width * j / n
+    let edgeIn = jw / 2
+    let cx = clamp(x, -width / 2 + edgeIn, width / 2 - edgeIn)
+    box size: vec(jw, jh, len), at: at + vec(cx, top - board - jh / 2, 0), material: timber, round: edge
