@@ -30,6 +30,8 @@ full library, before more light.
 milestone 1 **Your Hill** (the desert slope in your photos: the most reachable star, and you can check it
 against the real one). The rebuild's steps and Phases B to D keep their places inside the tracks (people: P and
 V; films: C; water: A; land: W; the pack: E).
+*Many agents at once (2026-11-10):* `docs/PARALLEL.md`; say "start lanes …" or "deploy". Milestone 0: E1, E2,
+E3 done; lanes 1-6 ready.
 *Needs you:* your go on that order, or a different first star (The Loft, The Valley).
 
 ## The rebuild (your reins, 2026-11-06) · in progress

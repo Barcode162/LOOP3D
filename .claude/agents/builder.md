@@ -23,7 +23,11 @@ The rules you hold to:
 7. Run the order's proof. Then run the quick checks:
    `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build && ./build/loop_tests && node tests/editor_source_test.js && node tests/recorder_test.js`
 8. Never skip, weaken or delete a test to get a pass. A bug you fix gets a test.
-9. Do not commit or push. The lead does that.
+9. You work on your own branch, `work/<code>`, in your own copy of the repo, so other agents can work at the
+   same time. Before starting, run `python3 tools/claims.py` and make sure your claim exists and no other
+   claim touches your files; if one does, stop and report. When the proof passes, set your claim's status to
+   `done` (or `stuck`, with why) and its note to your report's first line, commit on your branch, and
+   `git push -u origin work/<code>`. Never commit to or push `main`: the deployer does that.
 
 Your last message is the report: what you did; files changed; the proof command and the last lines of its
 output; what you reused; anything odd you saw; anything left undone. Never say "done" without the output. If it

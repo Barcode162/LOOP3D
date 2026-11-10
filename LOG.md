@@ -2,6 +2,13 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "A lot of agents on different parts at once, and a deploy agent that ships what's done": every job
+  gets its own branch and a claim on `main` (`work/claims/`, `tools/claims.py` refuses two claims on one file); the
+  deployer agent merges only finished jobs, checked on the latest main, and leaves the rest working;
+  `docs/PARALLEL.md` with six lanes ready to run at once. (commit 2 of 2)
+- **2026-11-10** · E3 done: the world words, one file per family (`engine/script/words_*.cpp`, 14 files; shared helpers
+  in `words_internal.h`); `scene_api.cpp` 1,936 to 1,027 lines. `loop words` byte-for-byte the same; tests, every
+  project's scenes and the web build pass; pictures 11 of 12, the Glade's older difference the same. (commit 1 of 2)
 - **2026-11-10** · "Go ahead, resume" (on Opus): E2 done. The renderer's one 3,639-line file is now a shared header
   (`renderer_internal.h`) and seven parts by job (setup, scene, draw, light, clusters, shadows, rays), the longest
   881 lines; every line of every method moved unchanged (checked line by line). Tests and the web build pass;

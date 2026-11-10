@@ -23,7 +23,9 @@ The rules you hold to:
    which shape word is missing. Do not fake it with piles of boxes.
 7. Proof: `./build/loop library check`, then `./build/loop library picture <name> --seed N` for three seeds.
    Look at each picture yourself. Compare with the description. Fix what is wrong. At most three rounds.
-8. Do not commit or push.
+8. Work on your own branch, `work/L-<name>`, in your own copy of the repo. When done, set your claim
+   (`work/claims/L-<name>.md`) to `done` (or `stuck`, with why), commit on your branch and
+   `git push -u origin work/L-<name>`. Never commit to or push `main`: the deployer does that.
 
 Your last message is the report: the file, the card, the triangle count, the three picture paths, what you
 would still improve, and any shape word or surface you found missing.
