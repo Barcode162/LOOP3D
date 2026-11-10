@@ -69,6 +69,11 @@ struct Light {
   float innerAngle = 0.4f, outerAngle = 0.6f;  // spot, half-angles (rad)
   Vec2 size{1, 1};            // rect
   bool castShadows = true;
+  // >= 0: this lamp stands for a glowing thing (its number in Scene::instances).
+  // The live renderer lights with the lamp and draws the thing glowing; the
+  // film renderer and the light cache's bake light with the thing's own glow
+  // and skip the lamp, so the same light is never counted twice.
+  int standsFor = -1;
 };
 
 struct Sky {
@@ -182,6 +187,9 @@ struct Scene {
 // A glowing body's colour at `k` kelvin, luminance 1 (1000-40000 K).
 Vec3 kelvin(float k);
 inline float luminance(Vec3 c) { return 0.2126f * c.x + 0.7152f * c.y + 0.0722f * c.z; }
+// The glow (nits) that makes a flat face of `area` m² give `lumens` from one
+// side: what a panel lamp of that size and those lumens shows.
+inline float glowNits(float lumens, float area) { return lumens / (kPi * std::max(area, 1e-8f)); }
 // The camera's exposure multiplier for an EV100.
 inline float exposureFromEv100(float ev) { return 1.0f / (1.2f * std::exp2(ev)); }
 

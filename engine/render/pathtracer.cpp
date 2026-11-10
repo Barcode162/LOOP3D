@@ -95,6 +95,7 @@ struct PathTracer::Impl {
   float clampLum = kInf;
   std::atomic<uint64_t> rays{0};
   bool probeFirst = false;  // probeLight: the first stretch skips lamps and the sun seen straight on
+  std::vector<char> stoodFor;  // per instance: a lamp stands for its glow (Light::standsFor), so a probe's first stretch skips it too
   std::vector<float> lampWeights;  // probeLight's lamp picking
 
   // camera
@@ -160,7 +161,24 @@ void PathTracer::Impl::build(const Scene& s) {
   sunIndex = -1;
   float sunLux = 0, sunAngle = 0.00465f;
   Vec3 sunDir{0, 1, 0}, sunColor{1};
+  // a lamp that stands for a glowing thing: the thing's own triangles (the
+  // emitters above) give its light here, so the lamp is left out
+  stoodFor.assign(geom.instanceCount(), 0);
+  {
+    std::vector<int> geomOf(s.instances.size(), -1);  // SceneBvh skips instances without triangles
+    int g = 0;
+    for (size_t i = 0; i < s.instances.size(); ++i) {
+      const int m = s.instances[i].mesh;
+      if (m < 0 || m >= static_cast<int>(s.meshes.size()) || s.meshes[m].triangleCount() == 0) continue;
+      geomOf[i] = g++;
+    }
+    for (const Light& l : s.lights)
+      if (l.standsFor >= 0 && l.standsFor < static_cast<int>(geomOf.size()) && geomOf[l.standsFor] >= 0 &&
+          geomOf[l.standsFor] < static_cast<int>(stoodFor.size()))
+        stoodFor[geomOf[l.standsFor]] = 1;
+  }
   for (const Light& l : s.lights) {
+    if (l.standsFor >= 0) continue;
     LightData d;
     d.light = l;
     d.light.direction = normalize(l.direction);
@@ -422,7 +440,9 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
     float dist = length(d);
     if (dist > 1e-5f) {
       Vec3 wi = d / dist;
-      float cl = std::fabs(dot(wi, e.ng));
+      // a glowing face lights only what it faces (as when a ray meets it: its
+      // front); its back gave light too, so a closed glowing shape lit twice
+      float cl = -dot(wi, e.ng);
       if (cl > 1e-6f) {
         float pSel = e.area * luminance(e.radiance) / emitterPower;
         float lightPdf = pSel * dist * dist / (cl * e.area);
@@ -575,7 +595,9 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     if (dot(n, wo) <= 1e-4f) n = normalize(n + ng * (1e-4f - dot(n, wo) + 0.01f));
 
     // glowing surfaces
-    if (luminance(M.emission) > 0 && front) {
+    // (a light-cache probe looking straight at a glow a lamp stands for skips
+    // it, as it skips lamps: the live renderer lights with that lamp)
+    if (luminance(M.emission) > 0 && front && !(probeFirst && bounces == 0 && firstHit && stoodFor[h.inst])) {
       if (lastDelta || emissiveIndex < 0) {
         if (settings.caustics || !sawDiffuse || !lastDelta) addLight(beta * M.emission);
       } else {
