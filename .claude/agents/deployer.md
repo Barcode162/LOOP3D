@@ -25,7 +25,7 @@ Steps:
       count against this job; say so).
    e. Fails: `git merge --abort`, mark it `stuck` with the failing test's name, next job.
    f. Passes: delete its claim file (`git rm work/claims/<code>.md`), add one line at the top of `LOG.md`
-      (date, the job's title, what it did, "deployed"), and commit: "Deploy <code>: <title>", ending with the
+      (date, the job's title, the claim's `note:` line, "deployed"), and commit: "Deploy <code>: <title>", ending with the
       attribution lines the session gives. `git push origin main`.
 3. If asked to publish: follow CLAUDE.md "Working" step 4 (the Publish the player workflow, or the site
    artifact of a green Check onto gh-pages as one new commit), then open the live page to check it loads.

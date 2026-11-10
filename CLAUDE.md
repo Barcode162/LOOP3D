@@ -18,6 +18,13 @@ When the user hands over the reins for a bigger goal (2026-11-06: "I give you th
 of it in solid, checked steps and report at the end.
 
 ## Working
+0. **Many chats at once** (`docs/PARALLEL.md`): several chats and agents may be working on the engine at the same
+   time. Before changing anything, `git pull origin main`, run `python3 tools/claims.py`, and write your job's claim
+   in `work/claims/<code>.md` (the files you will touch), refused if another claim holds one of them; push that claim
+   to `main` at once (if the push is refused, pull and check again). Then work only on your own branch and only in
+   your claim's files. **`LOG.md` and `PLAN.md` are the deployer's:** a job puts its log line in its claim's `note:`,
+   and the deployer copies it to `LOG.md` when it ships. Only the deployer merges into `main`. A chat that is the
+   only one working may say so to the user and follow the steps below directly.
 1. **Start:** read `PLAN.md` (the order of work) and the top of `LOG.md` (what happened last). That's all.
 2. **The user asks, you do it.** Ask only when the choice is really theirs (money, making something public,
    deleting their things, a change of direction): one question, your recommendation first.

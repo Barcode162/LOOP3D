@@ -75,8 +75,16 @@ Do:     1. Run `xvfb-run -a node tools/picture_check.js showcase_glade` three ti
 Proof:  the picture test passes 12 of 12, or the report shows three runs' numbers and the diff picture.
 ```
 
+## Different chats on different models
+Each chat has its own model (`/model` in that chat) and its own machine, so a Fable chat and an Opus chat can work
+at the same time. They meet only through `main`: the claims say who holds which files, and the deployer ships
+what is done. A claim is pushed to `main` before any work starts, so the second chat to claim a file is refused.
+What can still go wrong: a job that needs another job's unfinished work must wait for it to be deployed; and a
+claim that was too narrow (the job needed a file it didn't list) comes back `stuck`, to be re-claimed.
+
 ## Rules every parallel agent keeps
 - Read its claim first; touch only its claim's files; stop if another claim holds a file it needs.
 - Work only on its own branch; push only its own branch; never `main`.
 - Mark the claim `done` only with the proof's output in hand; `stuck` with the reason otherwise.
 - The deployer alone merges to `main`, and never force-pushes.
+- `LOG.md` and `PLAN.md` belong to the deployer: a job writes its log line in its claim's `note:`.
