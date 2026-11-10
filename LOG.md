@@ -3,6 +3,9 @@
 One line per request, newest first: the date, what the user asked, what was done.
 
 - **2026-11-10** · G1, "Why the Glade's picture differs": Glade reference picture refreshed: it was stale (leaf, shadow and sharpening fixes of 2026-11-10); steady 2.70 over 3 runs, 12 of 12 pictures pass. Deployed.
+- **2026-11-10** · CARDS, "Full cards for M2 to M10 and W1 to W11": docs/WORK_ORDERS.md has full cards for M2 to M10 (M3 cut into a, b, c; a surface's card form; oak and walnut) and W1 to W11 (W1 and W3 cut in two; four land decisions). Ready with nothing needed: M2, W1a, W9. Deployed (cf1a5d0).
+- **2026-11-10** · M1, "The design of a surface recipe": docs/SURFACES.md fixes the word surface, the fixed stack (base, vary, coat, wear, dirt, detail), fifteen patterns in true sizes, the two marks a vertex, the nine steps of a point, the three baked pictures, the phone's cost, projection and the code seam. Deployed (7405824).
+- **2026-11-10** · E7, "The rubric files and the judge's sheet": docs/rubrics/ (base, hill, loft, valley, person, move, shot, screen, each ten questions with its reference in words, and a README with the marking scale) and perf/judge.md (the sheet, empty until the first marking). Deployed (6251ce2).
 - **2026-11-10** · E6, "The card's new lines": card lines tags/size/sockets/seeds are read and checked, triangle counts and size budgets live in library.cpp; NOTE: loop library check does not yet print the triangle counts, it needs a hook in tools/loop.cpp (now free, E5 is on main). Deployed.
 - **2026-11-10** · E5, "A picture of one library entry": loop library picture <name> [-o out.png] [--seed n]: one entry on a neutral floor, three-quarter 35 mm, 512 square. Deployed.
 - **2026-11-10** · E4, "A word's test in one line": runScene(script) test helper in tests/test.h gives back the stage, with two example tests in tests/words_test.cpp. Deployed.
