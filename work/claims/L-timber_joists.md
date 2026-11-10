@@ -9,5 +9,5 @@ touch:    library/pieces/timber_joists.loop
 pictures: no
 expected: 25
 started:  2026-11-10T16:00Z
-updated:  2026-11-10T16:00Z
-note:     claimed
+updated:  2026-11-10T16:15Z
+note:     waiting for engine build to finish, then proof
