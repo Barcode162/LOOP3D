@@ -9,5 +9,5 @@ touch:    library/pieces/brick_wall_bay.loop
 pictures: no
 expected: 25
 started:  2026-11-10T16:00Z
-updated:  2026-11-10T16:00Z
-note:     claimed
+updated:  2026-11-10T16:16Z
+note:     recipe written, waiting on build
