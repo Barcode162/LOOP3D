@@ -5,3 +5,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | code | size | hand | expected | took | date |
 |---|---|---|---|---|---|
 | E4 | S | builder | 25 | 3 | 2026-11-10 |
+| E5 | S | builder | 25 | 5 | 2026-11-10 |

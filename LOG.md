@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · E5, "A picture of one library entry": loop library picture <name> [-o out.png] [--seed n]: one entry on a neutral floor, three-quarter 35 mm, 512 square. Deployed.
 - **2026-11-10** · E4, "A word's test in one line": runScene(script) test helper in tests/test.h gives back the stage, with two example tests in tests/words_test.cpp. Deployed.
 - **2026-11-10** · "A lot of agents on different parts at once, and a deploy agent that ships what's done": every job
   gets its own branch and a claim on `main` (`work/claims/`, `tools/claims.py` refuses two claims on one file); the

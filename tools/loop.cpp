@@ -18,6 +18,9 @@
 //               cluster tree (Nanite-style levels), how long it took
 //   loop library list|check|json              the library (library/): its entries; check refuses
 //               an entry with no credit or licence; json is for the site and the editor
+//   loop library picture <name> [-o out.png] [--seed n]
+//               one entry placed on a neutral floor under a soft sky and one sun,
+//               seen three-quarter at 35 mm from its size, 512 by 512, quality good
 //   Every command that takes a scene also takes a project's cover page (.looped):
 //   it opens the project's first scene.
 //   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
@@ -68,7 +71,8 @@ int usage() {
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
       "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
-      "loop settings list    every engine setting, its default and range (JSON)\n"
+      "loop library list|check|json|picture <name> [-o out.png] [--seed n]   the library; one entry's picture\n"
+      "loop settings list   every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
       "loop new \"My Game\"         a new project in projects/, copied from projects/template\n"
@@ -78,7 +82,8 @@ int usage() {
 
 struct Options {
   bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
-  std::string quality, look, out, choices;
+  std::string quality, look, out, choices, name;  // name: loop library picture <name>
+  int seed = 0;
   int width = 0, samples = 0, w = 960, h = 540, worldCells = 257;
   double seconds = 10, filmtime = 0;
   bool secondsGiven = false, sizeGiven = false;
@@ -131,6 +136,22 @@ void loadProjectSettings(const std::string& scenePath) {
   if (p.has("mode")) Settings::get().set(Settings::kProject, "project.mode", p["mode"]);
 }
 
+// Loads scene text that is already read: `folder` is where its `use` lines
+// look first (then the library); `label` names it in problems.
+bool loadSource(std::string src, const std::string& folder, const std::string& label, Vm& vm, Stage& stage) {
+  std::vector<std::string> seen;
+  src = expandUses(src, folder, seen);
+  installStandardLibrary(vm);
+  installSceneApi(vm, stage);
+  stage.folder = folder;
+  vm.onSay = [](const std::string& s) { std::printf("%s\n", s.c_str()); };
+  bool ok = vm.load(src, label);
+  printProblems(vm.problems());
+  std::string why;
+  if (stage.decodePictures(&why)) std::fprintf(stderr, "problem: %s\n", why.c_str());
+  return ok;
+}
+
 bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
   loadProjectSettings(path);
   std::string src;
@@ -138,17 +159,7 @@ bool loadScript(const std::string& path, Vm& vm, Stage& stage) {
     std::fprintf(stderr, "can't read %s\n", path.c_str());
     return false;
   }
-  std::vector<std::string> seen;
-  src = expandUses(src, directoryOf(path), seen);
-  installStandardLibrary(vm);
-  installSceneApi(vm, stage);
-  stage.folder = directoryOf(path);
-  vm.onSay = [](const std::string& s) { std::printf("%s\n", s.c_str()); };
-  bool ok = vm.load(src, path);
-  printProblems(vm.problems());
-  std::string why;
-  if (stage.decodePictures(&why)) std::fprintf(stderr, "problem: %s\n", why.c_str());
-  return ok;
+  return loadSource(src, directoryOf(path), path, vm, stage);
 }
 
 Image renderStill(const Scene& scene, const Camera& cam, int w, int h, int samples, uint32_t frame, const std::string& label,
@@ -300,6 +311,81 @@ int playStory(const std::string& first, const Options& o) {
   }
   std::printf("\n%d scenes, %.1f minutes, %d problems\n", scenes, total / 60, failures);
   return failures ? 1 : 0;
+}
+
+// `loop library picture <name>`: the entry's `place:` line on a neutral floor
+// under a soft sky and one sun. The thing is placed once with no camera to
+// measure it; then the camera is put three-quarter, 35 mm, far enough back that
+// the thing fills about two thirds of the picture's width or height.
+int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Options& o) {
+  // the entry's `AT` stands for the middle of the floor
+  std::string place;
+  auto isWord = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; };
+  for (size_t i = 0; i < e.place.size();) {
+    bool word = isWord(e.place[i]);
+    size_t j = i;
+    while (j < e.place.size() && isWord(e.place[j]) == word) ++j;
+    std::string piece = e.place.substr(i, j - i);
+    place += word && piece == "AT" ? "vec(0, 0, 0)" : piece;
+    i = j;
+  }
+  std::string head = "use \"" + e.name + "\"\n";
+  if (o.seed) head += "seed " + std::to_string(o.seed) + "\n";
+  // the folder holding library/ (its `use` lines find the entry there)
+  std::string folder = libFolder;
+  while (folder.size() > 1 && folder.back() == '/') folder.pop_back();
+  folder = directoryOf(folder);
+  auto bounds = [&](const Stage& st) {
+    AABB b;
+    for (const MeshInstance& in : st.scene.instances) {
+      const AABB mb = st.scene.meshes[in.mesh].bounds();
+      if (!mb.valid()) continue;
+      AABB ib;
+      for (int c = 0; c < 8; ++c) ib.grow(in.transform.point(Vec3(c & 1 ? mb.hi.x : mb.lo.x, c & 2 ? mb.hi.y : mb.lo.y, c & 4 ? mb.hi.z : mb.lo.z)));
+      Vec3 ex = ib.extent();
+      if (std::max({ex.x, ex.y, ex.z}) > 1e-5f) b.grow(ib);  // a hidden part is scaled to nothing
+    }
+    return b;
+  };
+  AABB box;
+  {
+    Vm vm;
+    Stage stage;
+    if (!loadSource(head + place + "\n", folder, e.name, vm, stage)) return 1;
+    box = bounds(stage);
+  }
+  if (!box.valid()) {
+    std::fprintf(stderr, "problem: %s: its place line makes nothing to see\n", e.name.c_str());
+    return 1;
+  }
+  // three-quarter: from the front-right, a little above
+  const Vec3 centre = box.center();
+  const Vec3 dir = normalize(Vec3(0.6f, 0.4f, 0.7f));
+  const Vec3 right = normalize(cross(Vec3(0, 1, 0), dir)), up = cross(dir, right);
+  Camera cam;
+  cam.focalLength = 35;
+  const float t = std::tan(cam.fovY() * 0.5f) * (2.0f / 3.0f);
+  float dist = 0;
+  for (int c = 0; c < 8; ++c) {  // every corner must land inside the two thirds
+    Vec3 p = Vec3(c & 1 ? box.hi.x : box.lo.x, c & 2 ? box.hi.y : box.lo.y, c & 4 ? box.hi.z : box.lo.z) - centre;
+    dist = std::max({dist, std::fabs(dot(p, right)) / t + dot(p, dir), std::fabs(dot(p, up)) / t + dot(p, dir)});
+  }
+  cam.position = centre + dir * dist, cam.target = centre;
+  const float floorSize = std::max(200.0f, 40 * length(box.extent()));
+  char setting[256];
+  std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsun elevation: 40 deg, toward: 215 deg, lux: 60000\nsky \"physical\", haze: 1.5\n", floorSize);
+  Vm vm;
+  Stage stage;
+  if (!loadSource(head + setting + place + "\n", folder, e.name, vm, stage)) return 1;
+  int samples = o.samples ? o.samples : o.quality == "draft" ? 16 : o.quality == "cinema" ? 1024 : 128;
+  RenderRequest req;
+  const Config::Cinema& cc = config().cinema;
+  req.bounces = cc.bounces, req.denoise = cc.denoise, req.dispersion = cc.dispersion, req.motionBlur = false;
+  Image pic = renderStill(stage.scene, cam, 512, 512, samples, 0, e.name, &req);
+  std::string out = o.out.empty() ? e.name + ".png" : o.out;
+  writePng(out, pic, true);
+  std::printf("wrote %s\n", out.c_str());
+  return 0;
 }
 
 int demo(const std::string& name, const Options& o) {
@@ -722,6 +808,8 @@ int main(int argc, char** argv) {
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;
     else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h), o.sizeGiven = true;
     else if (a == "-o") o.out = val();
+    else if (a == "--seed") o.seed = std::atoi(val().c_str());
+    else if (cmd == "library" && target == "picture" && a[0] != '-' && o.name.empty()) o.name = a;
     else if (a == "--cells") o.worldCells = std::atoi(val().c_str());
     else if (a == "--choices") o.choices = val();
     else if (a == "--set") {
@@ -751,6 +839,11 @@ int main(int argc, char** argv) {
         all.push(j);
       }
       std::printf("%s\n", all.dump(1).c_str());
+    } else if (target == "picture") {
+      for (const LibraryEntry& e : entries)
+        if (e.name == o.name) return libraryPicture(e, lib, o);
+      std::fprintf(stderr, "problem: no library entry called \"%s\" (loop library list shows them)\n", o.name.c_str());
+      return 1;
     } else if (target == "list" || target == "check") {
       std::string kind;
       for (const LibraryEntry& e : entries) {
