@@ -143,6 +143,7 @@ Every setting has a sensible default; give only what matters.
   - plain: white, black, grey
 - **Shapes** (all take `at`, `turn`, `tilt`, `rotation`, `scale`, `material` (or `made_of`), `name`, and `collide: no` to walk through):
   - `box(size: vec(w, h, d), round)`, `sphere(radius)`, `cylinder(radius, height)`, `cone(radius, height)`, `capsule(radius, height)`, `ring(radius, thickness)`
+  - `lathe(profile: [vec(radius, height), …], segments: 32)`: an outline spun round the up axis, like a vase, bowl or lamp base; a point at radius 0 closes that end. It needs two points or more and no negative radius
   - `ground(size)` (its material also sets what footsteps sound like; `collide: no` is seen but never stood on, like water), `rock(size, seed)`
   - `tree(kind: "oak" | "pine" | "birch" | "bush", at, height, turn, variant, leaves)`
   - A shape's fields can be read and changed any time: `.position .turn .rotation .scale .visible .material`.

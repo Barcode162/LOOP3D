@@ -27,6 +27,28 @@ void registerShapes(Vm& vm) {
     float r = f32(a.num(0, "radius", 0.3)), h = f32(a.num(1, "height", 1.8));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("capsule", {r, h}), [&] { return shapes::capsule(r, h); }), 'c', Vec3(r, h, r));
   }, "capsule(radius, height, at, material)");
+  vm.native("lathe", [](Args& a) {
+    // a list of vec(radius, height) points, spun round the up axis
+    const Value* pv = a.get(0, "profile");
+    List* list = pv ? pv->as<List>() : nullptr;
+    if (!list) a.vm.fail("lathe needs a profile: a list of vec(radius, height) points, like lathe [vec(0.1, 0), vec(0.3, 0.4), vec(0.1, 0.8)]");
+    if (list->items.size() < 2) a.vm.fail("a lathe profile needs at least two points, and this one has " + std::to_string(list->items.size()));
+    std::vector<Vec2> prof;
+    int segments = std::clamp(static_cast<int>(a.num(1, "segments", 32)), 3, 256);
+    std::string key = "lathe " + std::to_string(segments);
+    float maxR = 0, lo = 1e30f, hi = -1e30f;
+    for (size_t i = 0; i < list->items.size(); ++i) {
+      const Value& v = list->items[i];
+      if (!v.isVec()) a.vm.fail("lathe point " + std::to_string(i + 1) + " is not a vec(radius, height)");
+      Vec3 p = v.asVec();
+      if (p.x < 0) a.vm.fail("lathe point " + std::to_string(i + 1) + " has a negative radius (" + std::to_string(p.x) + "); a radius is a distance from the middle, so 0 or more");
+      prof.push_back({p.x, p.y});
+      key += " " + std::to_string(p.x) + " " + std::to_string(p.y);
+      maxR = std::max(maxR, p.x), lo = std::min(lo, p.y), hi = std::max(hi, p.y);
+    }
+    int m = cachedMesh(stageOf(a.vm), key, [&] { return shapes::lathe(prof, segments); });
+    return place(a, m, 'b', Vec3(maxR * 2, hi - lo, maxR * 2));
+  }, "lathe(profile: [vec(radius, height), ...], segments: 32, at, turn, material, name, collide): a vase, bowl or column spun round the up axis from its outline; a point at radius 0 closes that end");
   vm.native("model", [](Args& a) {
     std::string file = a.text(0, "file", "");
     if (file.empty()) a.vm.fail("model needs a file, like model \"stool.glb\", at: vec(0, 0, 0)");
