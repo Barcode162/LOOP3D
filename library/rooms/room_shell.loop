@@ -8,6 +8,9 @@
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
 # from: the Showcase (2026-11-06)
+# tags: room, walls, doorway, ceiling
+# size: room
+# sockets: open, light
 
 to room_shell(size: vec(12, 4.5, 12), floor: "tiles", walls: "plaster", lumens: 6000)
   let w = size.x

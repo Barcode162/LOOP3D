@@ -12,6 +12,9 @@
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
 # from: the picture pipeline's phase 10 (2026-11-10)
+# tags: island, land, mountains, rivers, forest
+# size: land
+# seeds: any whole number
 
 to grown_island(seed)
   world(seed: seed)

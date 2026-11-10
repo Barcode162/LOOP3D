@@ -9,6 +9,9 @@
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
 # from: The Lantern Isle (2026-11-06)
+# tags: lamp, light, stone, glass, fire
+# size: sofa
+# sockets: light
 
 let lantern_stone = material(like: "stone", color: rgb(0.48, 0.46, 0.43))
 let lantern_iron = material(like: "iron", color: rgb(0.12, 0.12, 0.13), roughness: 0.6)

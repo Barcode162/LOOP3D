@@ -7,6 +7,9 @@
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
 # from: the Showcase (2026-11-06)
+# tags: stand, stone, display
+# size: hand
+# sockets: top
 
 to plinth(at, height: 1.0, material: "marble")
   return box(size: vec(0.6, height, 0.6), at: at + vec(0, height / 2, 0), material: material, round: 0.02)
