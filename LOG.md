@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · G1, "Why the Glade's picture differs": Glade reference picture refreshed: it was stale (leaf, shadow and sharpening fixes of 2026-11-10); steady 2.70 over 3 runs, 12 of 12 pictures pass. Deployed.
 - **2026-11-10** · E6, "The card's new lines": card lines tags/size/sockets/seeds are read and checked, triangle counts and size budgets live in library.cpp; NOTE: loop library check does not yet print the triangle counts, it needs a hook in tools/loop.cpp (now free, E5 is on main). Deployed.
 - **2026-11-10** · E5, "A picture of one library entry": loop library picture <name> [-o out.png] [--seed n]: one entry on a neutral floor, three-quarter 35 mm, 512 square. Deployed.
 - **2026-11-10** · E4, "A word's test in one line": runScene(script) test helper in tests/test.h gives back the stage, with two example tests in tests/words_test.cpp. Deployed.
