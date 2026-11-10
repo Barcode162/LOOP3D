@@ -298,6 +298,19 @@ with the same two numbers.
 - **Self-tuning tiers.** Rate every step by how much it lowers the error per millisecond it costs; over budget,
   drop the lowest-rated step first, so the tiers are tuned by measurement, not guesswork.
 
+## What the research found (2026-11-10)
+- **Radiance cascades in a browser** (`loop research cascades`, CPU, our own BVH): three rooms (a window; a red
+  wall; two rooms and a door), every method using the film renderer's rays, scored against 2,048 rays at each of 48
+  points. Plain cascades leak through walls (a coarse level's interval starts beyond a wall the probe never saw:
+  two rooms 41,000% off); with the merge checking that a probe can see where each parent ray starts, they match a
+  0.5 m light cache (one room 13.3% against 13.5%; red wall 17.2% against 17.6%; two rooms 14.5% against 9.7%) for
+  about five times the rays (80,000-360,000 against 36,000-69,000). Not worth it for us: closer light-cache probes
+  win first.
+- **ReSTIR GI on Ultra** (`ultra.reuse`): on the cabin no better than without (see PLAN.md, phase 8).
+- **Bidirectional paths**: light tracing from the bulbs through glass and mirrors (`RenderSettings::lightPaths`):
+  caustics where there were none, energy kept within 3%.
+- **Rooms** (typed relationships): the light cache's probes' links; a lamp's change spreads only along them.
+
 ## Checked against the code (2026-11-08)
 Three lines differ from the page, because the code says otherwise: the live fog is height fog (fog cells would be
 new, technique 45); the bar's 1,894 → 443 was already won by skipping what's off-screen, so occlusion culling's

@@ -78,13 +78,14 @@ where to go. Every step keeps every scene playing and is no slower; what a step 
    step), getting up (roll, push, pull up on something); a "falls" room in the Showcase.
 10. **Films with scenes:** a timeline of shots, people, lines, music and sounds, scrubbed back and forth.
 11. **Water:** waves, splashes, floating, wading; see-through, refraction, foam.
-12. **World generation like nature:** plates, rivers carving, climate and rain shadows, lakes, ground
-    materials, forests that grew; streamed around you.
+12. **World generation like nature** (bare minimum done 2026-11-10, with the picture pipeline's phase 10):
+    plates, rivers carving, climate and rain shadows, lakes, ground materials, forests; streamed around you.
+    Still to come: ridges and gullies on the mountains, water in the rivers, forests that grow.
 13. **Memory that fits:** the iPhone's own compressed pictures, pieces paged in and out.
 
 *Done when:* each step's bare minimum runs smooth on your phone; then we see where to go.
 
-## The picture pipeline (your plan, 2026-11-08) · now: phase 8
+## The picture pipeline (your plan, 2026-11-08) · phases 1-10 done (2026-11-10)
 *Your page:* **Loop3D Pipeline Plan: The Strongest Combination**
 (https://claude.ai/artifact/VZd81mzPbKVqvXGud7Kmjm); the whole plan, checked against the code: `docs/PIPELINE.md`.
 *The idea:* the strongest pipeline is the one closest to the cinema picture inside 16.7 ms on your phone, not the
@@ -202,10 +203,33 @@ once, fog, blend and upscale, film.
    its own timings how much each step really shrinks with the size (the forests' visibility hardly does: it no
    longer blurs the picture for it); and choosing the pieces ("finding") is timed apart from drawing them, so the
    next recording says which of the two the forests pay for.
-   *Still to do in phase 8:* ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
-   lowest resolution: their leaves and grass) is now the biggest cost on the phone.
-9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
-10. **World:** typed relationships and streaming, with rebuild step 12.
+   *ReSTIR GI on Ultra (built, measured, left off):* each pixel keeps the best bounce path it and its neighbours
+   found, reused from frame to frame (`ultra.reuse`). On the cabin, against a 64-frame picture, it came out worse
+   (after 4 frames 15.4 from it against 12.2 without; after 16, 5.9 against 5.4): the cabin's light is mostly its
+   fire and candle seen straight, and the reuse brings a little bias. Off until a scene shows it helping.
+   **Phase 8 is done.** Still the biggest cost on the phone: the forests' "visibility" (their leaves and grass);
+   the next recording says how much of it is "finding" the pieces and how much drawing them.
+9. **Research** (done 2026-11-10). *Radiance cascades against the light cache* (`loop research cascades`, three rooms,
+   the same film-renderer rays for both, against 2,048 rays at each point): as built first they leaked badly (a coarse
+   level's rays start out past a wall: 41,000% off in two rooms); with the published fix (only parent rays this probe
+   can see the start of) they are as close as a light cache with probes 0.5 m apart (13-17% off against 13-18%)
+   for about five times the rays. The light cache stays; its probes closer together would win first.
+   *Bidirectional paths in cinema:* the film renderer now also follows light out of the bulbs, through glass and
+   off mirrors, to where it lands, and joins that to the camera, so glass bends and focuses a lamp (a glass ball
+   over a floor: its bright spot 62.8 against 4.4 with no ball, the light on the floor the same within 3%), where
+   before a bulb's light went straight through glass. On whenever a scene has glass and bulbs.
+10. **World** (done 2026-11-10). *Typed relationships, the rooms:* the light cache's probes find which neighbours
+   they can see (two rays each, so none slips through a seam), so a lamp that changes relights only the probes its
+   light can reach (through a door, into the next room; not through a wall). Tested with two rooms: the box round
+   the lamp took in the room behind the wall, now none of it. *World generation and streaming (rebuild step 12's
+   bare minimum):* `world(seed)` grows an island 8 km across the way nature does (plates lifting ranges, rivers
+   carving while it rises, slopes at rest, lakes, rain shadows, sand, grass, forest, rock, snow), checked against
+   nature's rules (water always finds a way down, rivers of every size, 35 degree slopes, the far side of the
+   mountains dry: 0.70 rain against 0.22); the land and trees are made a chunk at a time round you as you walk and
+   hidden behind you (walking 1.5 km: as much shown at the end as at the start). In the Showcase: "A Grown World";
+   in the library: `grown_island`; the map: `loop world 3` (docs/world_map_2026-11-10.png,
+   docs/world_view_2026-11-10.png). *Next for it:* the mountains are smooth cones of rock (they rest at their
+   steepest everywhere): ridges and gullies, then rivers with water in them, then forests that grew.
 
 *Done when:* phases 1 to 7 run smooth on your phone and every scene's score is no worse than today.
 

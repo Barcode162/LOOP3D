@@ -7,7 +7,7 @@
   "scenes": [
     "showcase_glade", "showcase_hall", "showcase_materials", "showcase_light", "showcase_sky",
     "showcase_fog", "showcase_physics", "showcase_people", "showcase_sound", "showcase_film",
-    "showcase_story", "showcase_settings"
+    "showcase_story", "showcase_settings", "showcase_world"
   ],
   "library": ["showcase_common"],
   "stills": "stills"

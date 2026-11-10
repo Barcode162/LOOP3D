@@ -11,6 +11,9 @@
 #include "engine/geometry/gltf.h"
 #include "engine/geometry/plants.h"
 #include "engine/geometry/terrain.h"
+#include "engine/geometry/world_gen.h"
+#include "engine/geometry/world_stream.h"
+#include "engine/geometry/noise.h"
 #include "engine/render/materials.h"
 
 namespace loop::script {
@@ -112,6 +115,7 @@ void Stage::setListener(const Camera& cam) {
 
 void Stage::update(float dt) {
   if (dt <= 0) return;
+  if (streamed) streamWorld();
   // the music's notes that start now
   music.advance(dt, [this](const audio::Track& t, const audio::Track::Step& st, float seconds) {
     mixer.play(audio::makeNote(t.instrument, static_cast<float>(st.midi), seconds, st.velocity, ++musicSeed), Vec3(0), t.volume, false, false, audio::Category::kMusic);
@@ -822,6 +826,187 @@ Vec3 unitLuminanceOr(Vec3 c) {
   return l > 1e-6f ? c / l : Vec3(1);
 }
 
+// ---- world(): a generated world (engine/geometry/world_gen.h), streamed
+struct StreamedWorld {
+  WorldMap map;
+  WorldStream land, trees;
+  const HeightMap* ground = nullptr;  // the walkable ground, 4 m a sample (in stage.terrains)
+  std::map<std::pair<int, int>, std::vector<int>> landParts, treeParts;  // instances per chunk
+  std::vector<Mat4> shownAt;  // per instance: where it stands when shown (by instance index, sparse)
+  int mat[7] = {0};           // a material per ground (the sea's and lakes' beds: soil)
+  int water = 0, bark = 0, needles = 0, leaves = 0;
+};
+
+namespace {
+// Land quads over [x0, x1] x [z0, z1] every `step` m, one mesh per kind of
+// ground (each quad takes the ground at its middle), heights from `h`.
+std::map<int, Mesh> landMeshes(const StreamedWorld& w, float x0, float z0, float x1, float z1, float step, const std::function<float(float, float)>& h) {
+  std::map<int, Mesh> out;
+  const int nx = std::max(1, static_cast<int>(std::lround((x1 - x0) / step))), nz = std::max(1, static_cast<int>(std::lround((z1 - z0) / step)));
+  for (int j = 0; j < nz; ++j)
+    for (int i = 0; i < nx; ++i) {
+      const float ax = x0 + i * step, az = z0 + j * step, bx = ax + step, bz = az + step;
+      uint8_t g = w.map.groundAt((ax + bx) * 0.5f, (az + bz) * 0.5f);
+      if (g == WorldMap::kSea || g == WorldMap::kLake) g = WorldMap::kSea;  // under water: its bed
+      Mesh& m = out[g];
+      auto v = [&](float x, float z) {
+        const float y = h(x, z);
+        const float e = step;
+        const Vec3 n = normalize(Vec3(h(x - e, z) - h(x + e, z), 2 * e, h(x, z - e) - h(x, z + e)));
+        return m.addVertex({x, y, z}, n, {x * 0.25f, z * 0.25f});
+      };
+      const uint32_t a = v(ax, az), b = v(ax, bz), c = v(bx, bz), d = v(bx, az);
+      m.addQuad(a, b, c, d);
+    }
+  return out;
+}
+}  // namespace
+
+Vec3 makeStreamedWorld(Vm& vm, Stage& s, const WorldSettings& ws) {
+  auto w = std::make_shared<StreamedWorld>();
+  w->map = generateWorld(ws);
+  const WorldMap& m = w->map;
+  // the walkable ground: the map's land, 4 m a sample, with rivers cut into it
+  // and small bumps (rougher on rock)
+  const int res = std::clamp(static_cast<int>(ws.size / 4 * config().world.terrainRes) + 1, 257, 2049);
+  HeightMap g(res, ws.size);
+  noise::Fractal f;
+  f.octaves = 3, f.seed = ws.seed * 13 + 1;
+  for (int z = 0; z < res; ++z)
+    for (int x = 0; x < res; ++x) {
+      const float wx = (static_cast<float>(x) / (res - 1) - 0.5f) * ws.size, wz = (static_cast<float>(z) / (res - 1) - 0.5f) * ws.size;
+      float y = m.heightAt(wx, wz);
+      const float drain = m.sample(m.flow, wx, wz) / (m.cell * m.cell);
+      if (y > 0) y -= std::min({5.0f, 0.15f * std::sqrt(std::max(drain - 20, 0.0f)), std::max(y - 0.5f, 0.0f)});  // a river's bed (never below the sea)
+      const uint8_t gr = m.groundAt(wx, wz);
+      y += noise::fbm(Vec2(wx, wz) / 40.0f, f) * (gr == WorldMap::kRock ? 6.0f : gr == WorldMap::kSand ? 0.4f : 1.5f);
+      g.at(x, z) = y;
+    }
+  s.terrains.push_back(std::move(g));
+  w->ground = &s.terrains.back();
+  s.world.setTerrain(&s.terrains.back());
+  s.world.groundPlane = false;
+  s.groundSurface = "grass";
+  // the materials
+  auto mat = [&](const char* name) { return materialFrom(vm, vm.text(name)); };
+  w->mat[WorldMap::kSea] = mat("soil"), w->mat[WorldMap::kLake] = w->mat[WorldMap::kSea];
+  w->mat[WorldMap::kSand] = mat("sand"), w->mat[WorldMap::kGrass] = mat("grass"), w->mat[WorldMap::kForest] = mat("moss");
+  w->mat[WorldMap::kRock] = mat("granite"), w->mat[WorldMap::kSnow] = mat("snow");
+  w->water = mat("water"), w->bark = mat("bark"), w->needles = mat("needles"), w->leaves = mat("leaves");
+  // the sea, out to the horizon
+  s.scene.add(s.scene.addMesh(shapes::plane({ws.size * 3, ws.size * 3})), w->water);
+  // the whole land seen from afar: the map itself, 32 m a quad, a little lower
+  // so the near chunks always cover it
+  for (auto& [kind, mesh] : landMeshes(*w, -ws.size / 2, -ws.size / 2, ws.size / 2, ws.size / 2, m.cell,
+                                       [&](float x, float z) { return m.heightAt(x, z) - 8; }))
+    s.scene.add(s.scene.addMesh(std::move(mesh)), w->mat[kind]);
+  w->land.half = w->trees.half = ws.size / 2;
+  w->trees.chunk = 128, w->trees.show = 320, w->trees.hide = 400;
+  // a good place to start: the nearest gentle, dry land to the middle
+  Vec3 start(0, 0, 0);
+  float best = 1e30f;
+  for (int z = 0; z < m.n; ++z)
+    for (int x = 0; x < m.n; ++x) {
+      const size_t i = m.at(x, z);
+      const uint8_t gr = m.ground[i];
+      if ((gr != WorldMap::kGrass && gr != WorldMap::kForest) || m.slopeAt(x, z) > 0.15f || m.height[i] < 5) continue;  // up off the shore
+      const Vec2 p = m.place(x, z);
+      if (length(p) < best) best = length(p), start = Vec3(p.x, 0, p.y);
+    }
+  start.y = s.terrains.back().height(start.x, start.z);
+  // facing the mountains: the way the land rises most, 1.5 km out
+  Vec3 look(0, 0, -1);
+  float highest = -1e30f;
+  for (int k = 0; k < 32; ++k) {
+    const float ang = k * kTwoPi / 32;
+    const Vec3 d(std::cos(ang), 0, std::sin(ang));
+    const float y = m.heightAt(start.x + d.x * 1500, start.z + d.z * 1500);
+    if (y > highest) highest = y, look = d;
+  }
+  s.streamed = w;
+  s.playerPos = start;
+  s.teleportTo = start, s.teleportLook = start + look * 40 + Vec3(0, 1.2f, 0), s.teleport = true;
+  s.scene.camera.position = start + Vec3(0, 1.7f, 0);
+  s.scene.camera.target = start + look * 40 + Vec3(0, 1.2f, 0);
+  s.streamWorld();  // the first look round: all the land near the start, at once
+  return start;
+}
+
+void Stage::streamWorld() {
+  StreamedWorld& w = *streamed;
+  const bool first = w.land.chunks.empty();
+  bool changed = false;
+  auto shownAt = [&](int inst, const Mat4& xf) {
+    if (w.shownAt.size() <= static_cast<size_t>(inst)) w.shownAt.resize(static_cast<size_t>(inst) + 1);
+    w.shownAt[static_cast<size_t>(inst)] = xf;
+  };
+  auto showParts = [&](const std::vector<int>& parts, bool on) {
+    for (int i : parts) scene.instances[static_cast<size_t>(i)].transform = on ? w.shownAt[static_cast<size_t>(i)] : Mat4::scale(Vec3(0));
+    changed = true;
+  };
+  const Vec2 at(playerPos.x, playerPos.z);
+  // the land: 256 m chunks, 4 m a quad, out to 1 km
+  WorldStream::Work lw = w.land.update(at, first);
+  for (const auto& c : lw.make) {
+    const float x0 = c.first * w.land.chunk, z0 = c.second * w.land.chunk;
+    std::vector<int>& parts = w.landParts[c];
+    const HeightMap& g = *w.ground;
+    for (auto& [kind, mesh] : landMeshes(w, x0, z0, x0 + w.land.chunk, z0 + w.land.chunk, 4, [&](float x, float z) { return g.height(x, z); })) {
+      scene.add(scene.addMesh(std::move(mesh)), w.mat[kind]);
+      parts.push_back(static_cast<int>(scene.instances.size() - 1));
+      shownAt(parts.back(), Mat4());
+    }
+    // its lakes: water at their level where the map has a lake
+    Mesh lake;
+    for (int j = 0; j < 32; ++j)
+      for (int i = 0; i < 32; ++i) {
+        const float x = x0 + i * 8, z = z0 + j * 8;
+        if (w.map.groundAt(x + 4, z + 4) != WorldMap::kLake) continue;
+        const float y = w.map.sample(w.map.water, x + 4, z + 4);
+        const uint32_t a = lake.addVertex({x, y, z}, {0, 1, 0}, {x, z}), b = lake.addVertex({x, y, z + 8}, {0, 1, 0}, {x, z + 8}),
+                       cc = lake.addVertex({x + 8, y, z + 8}, {0, 1, 0}, {x + 8, z + 8}), d = lake.addVertex({x + 8, y, z}, {0, 1, 0}, {x + 8, z});
+        lake.addQuad(a, b, cc, d);
+      }
+    if (!lake.indices.empty()) {
+      scene.add(scene.addMesh(std::move(lake)), w.water);
+      parts.push_back(static_cast<int>(scene.instances.size() - 1));
+      shownAt(parts.back(), Mat4());
+    }
+    changed = true;
+  }
+  for (const auto& c : lw.show) showParts(w.landParts[c], true);
+  for (const auto& c : lw.hide) showParts(w.landParts[c], false);
+  // the trees: 128 m chunks out to 320 m, grown where the map says forest
+  // (pines where it is cold or high, broad trees where it is warm)
+  WorldStream::Work tw = w.trees.update(at, first);
+  const float density = config().world.foliageDensity;
+  for (const auto& c : tw.make) {
+    std::vector<int>& parts = w.treeParts[c];
+    Rng rng(static_cast<uint64_t>(c.first * 92821 + c.second * 68917 + 7));
+    const float x0 = c.first * w.trees.chunk, z0 = c.second * w.trees.chunk, spacing = 14 / std::sqrt(std::max(density, 0.05f));
+    for (float z = z0; z < z0 + w.trees.chunk; z += spacing)
+      for (float x = x0; x < x0 + w.trees.chunk; x += spacing) {
+        const float px = x + rng.uniform() * spacing, pz = z + rng.uniform() * spacing;
+        const float grow = w.map.sample(w.map.forest, px, pz);
+        if (density <= 0.001f || rng.uniform() > grow * 0.9f) continue;
+        const uint8_t gr = w.map.groundAt(px, pz);
+        if (gr != WorldMap::kForest && gr != WorldMap::kGrass) continue;
+        if (w.ground->slope(px, pz) > 0.35f) continue;
+        const bool cold = w.map.sample(w.map.warmth, px, pz) < 9 || w.ground->height(px, pz) > 220;
+        auto [b, l] = treeMeshes(*this, cold ? "pine" : (rng.uniform() < 0.5f ? "oak" : "birch"), static_cast<int>(rng.uniform() * 4));
+        const Mat4 xf = Mat4::trs({px, w.ground->height(px, pz) - 0.2f, pz}, Quat::axisAngle({0, 1, 0}, rng.uniform() * kTwoPi), Vec3(0.7f + 0.6f * rng.uniform()));
+        scene.add(b, w.bark, xf);
+        parts.push_back(static_cast<int>(scene.instances.size() - 1)), shownAt(parts.back(), xf);
+        scene.add(l, cold ? w.needles : w.leaves, xf);
+        parts.push_back(static_cast<int>(scene.instances.size() - 1)), shownAt(parts.back(), xf);
+      }
+    changed = true;
+  }
+  for (const auto& c : tw.show) showParts(w.treeParts[c], true);
+  for (const auto& c : tw.hide) showParts(w.treeParts[c], false);
+  if (changed) ++version;
+}
+
 void installSceneApi(Vm& vm, Stage& stage) {
   stages()[&vm] = &stage;
   if (stage.scene.findMaterial("default") < 0) stage.scene.addMaterial(Material());
@@ -1175,6 +1360,21 @@ void installSceneApi(Vm& vm, Stage& stage) {
     ++s.version;
     return newGroup(a.vm, s, parts, c);
   }, "fireflies(around, radius, count, height, size, material): glowing motes drifting and twinkling (.visible)");
+
+  // ---- a whole world, made the way nature makes it, streamed round the player
+  vm.native("world", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    WorldSettings ws;
+    ws.size = f32(a.num(-1, "size", 8192));
+    ws.seed = static_cast<uint32_t>(a.num(-1, "seed", 1));
+    ws.mountains = f32(a.num(-1, "mountains", 1));
+    ws.warmth = f32(a.num(-1, "warmth", 14));
+    ws.wind = f32(a.num(-1, "wind", 0));
+    ws.cells = std::clamp(static_cast<int>(a.num(-1, "cells", 257)), 33, 513);
+    Vec3 start = makeStreamedWorld(a.vm, s, ws);
+    ++s.version;
+    return Value::vec(start);
+  }, "world(seed, size: 8192 m, mountains: 1, warmth: 14 C, wind: 0 (from the west)): a world grown like nature (plates lift mountains, rivers carve, lakes fill, rain falls on the windward side; sand, grass, forest, rock, snow), its land and trees made round the player as they go; gives back a good place to start (for move_player)");
 
   // ---- land
   vm.native("terrain", [](Args& a) {

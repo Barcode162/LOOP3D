@@ -38,8 +38,12 @@ struct RenderRequest {
   float at = 0;       // script time to render at (stills)
 };
 
+struct StreamedWorld;  // a generated world, its land and trees streamed round the player (scene_api.cpp)
+
 struct Stage {
   Scene scene;
+  std::shared_ptr<StreamedWorld> streamed;  // world(): made a chunk at a time where the player goes
+  void streamWorld();
   Film film;
   std::vector<RenderRequest> renders;
   std::deque<HeightMap> terrains;  // a deque: physics keeps pointers into it

@@ -1,0 +1,19 @@
+# grown_island · an island 8 km across grown the way nature grows land:
+# drifting plates lift its mountain ranges, rivers carve its valleys as it
+# rises, lakes fill its hollows, wind from the west rains on the mountains'
+# near side and leaves their far side dry; sand on the shores, grass, forests
+# where it is wet and warm, bare rock high and steep. Its land and trees are
+# made a chunk at a time round the player as they walk. The player starts on
+# gentle land looking towards the mountains.
+#
+# kind: world
+# place: grown_island(3)
+# (any whole number: each grows a different island)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the picture pipeline's phase 10 (2026-11-10)
+
+to grown_island(seed)
+  world(seed: seed)
+  sky "physical", haze: 2
+  sun elevation: 35 deg, toward: 210 deg

@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Go on, finish until the 10 step is over": phases 8 to 10 done. ReSTIR GI on Ultra built and
+  measured (no better on the cabin: left off). Phase 9: radiance cascades measured against the light cache
+  (`loop research cascades`: as good as 0.5 m probes, five times the rays: the light cache stays); the film
+  renderer follows light from the bulbs through glass (a glass ball focuses a bulb). Phase 10: rooms in the light
+  cache (a lamp relights its own room); `world(seed)` grows an island the way nature does and streams it round you
+  ("A Grown World" in the Showcase, `grown_island` in the library, `loop world`). (this commit)
 - **2026-11-10** · "Make it better then go on as planned": High's shared lamp ray now a quarter of the pixels a
   frame (the bar's picture the same); the resolution learns how much each step really shrinks (sharper forests);
   "finding" the pieces timed on its own. (this commit)

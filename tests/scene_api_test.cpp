@@ -222,3 +222,40 @@ TEST(scene_api_moves_blend_between_steps) {
   st.takeMoves(0.5f, ids, xfs);
   CHECK(ids.empty());
 }
+
+TEST(scene_api_world_streams_round_the_player) {
+  // world(): the land and trees near the player made, the far ones hidden, as they walk
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  bool ok = vm.load(R"(
+let start = world(seed: 3, size: 4096, cells: 129)
+)", "w.loop");
+  for (auto& p : vm.problems()) std::printf("    %s\n", p.text().c_str());
+  CHECK(ok);
+  CHECK(st.streamed != nullptr);
+  // the start is on land, with the ground under the player
+  CHECK(st.playerPos.y > 0);
+  CHECK(!st.terrains.empty() && std::fabs(st.terrains.back().height(st.playerPos.x, st.playerPos.z) - st.playerPos.y) < 0.01f);
+  const size_t first = st.scene.instances.size();
+  auto shown = [&] {
+    int n = 0;
+    for (const MeshInstance& in : st.scene.instances) n += std::fabs(in.transform.linear().determinant()) > 1e-9f;
+    return n;
+  };
+  const int shownFirst = shown();
+  // walk 1.5 km across the land, a step at a time
+  const Vec3 from = st.playerPos;
+  const Vec3 dir = normalize(Vec3(-from.x, 0, -from.z) + Vec3(1e-3f, 0, 0));
+  for (int i = 0; i < 600; ++i) {
+    st.playerPos = from + dir * (i * 2.5f);
+    st.update(1.0f / 60);
+  }
+  CHECK(st.scene.instances.size() > first);  // new land made ahead
+  // and what was left behind hidden: about as much shown as at the start
+  const int shownNow = shown();
+  std::printf("    shown at the start %d, after 1.5 km %d, made in all %zu\n", shownFirst, shownNow, st.scene.instances.size());
+  CHECK(shownNow < static_cast<int>(st.scene.instances.size()));
+  CHECK(shownNow < shownFirst * 2);
+}
