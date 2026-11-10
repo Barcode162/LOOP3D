@@ -483,6 +483,9 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
   float lastPdf = 0;
   bool lastDelta = true, sawDiffuse = false, firstHit = true;
   float wavelength = 0;  // chosen on the first dispersive glass
+  const Vec3 eye = ray.o;
+  Vec3 firstPoint{0};  // where the sight line first meets a surface (for the haze)
+  bool hazed = false;
   Vec3 insideAbsorb{0};
   int bounces = 0;
   auto addLight = [&](Vec3 c) {
@@ -620,6 +623,7 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     b.finalize(woL);
 
     if (firstHit) {
+      firstPoint = p, hazed = true;
       Vec3 alb = b.diffuse + b.translucent + b.f0 * metal + Vec3(glass);
       if (albedoOut) *albedoOut = vmin(vmax(alb, Vec3(0.02f)), Vec3(1));
       if (normalOut) *normalOut = n;
@@ -649,6 +653,9 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
       beta /= q;
     }
   }
+  // haze: the air along the sight line to the first thing it met (a light-cache
+  // probe is not an eye, and the sky seen straight is left as it is)
+  if (hazed && !probeFirst && S.fog.haze.visibility > 0) L = hazeAt(L, eye, firstPoint, sky, S.fog.haze);
   return L;
 }
 

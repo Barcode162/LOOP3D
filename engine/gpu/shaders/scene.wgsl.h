@@ -98,6 +98,29 @@ fn dirToUv(d : vec3f) -> vec2f {
   return vec2f(az / (2.0 * PI), 1.0 - v);
 }
 fn skyRadiance(d : vec3f, lod : f32) -> vec3f { return textureSampleLevel(skyTex, skySampler, dirToUv(d), lod).rgb; }
+// Haze (the same lines as `hazeAt` in engine/render/sky.cpp): what the eye sees
+// of a point after the distant air, which thins with height. Off at visibility 0.
+fn hazeAt(colour : vec3f, eye : vec3f, point : vec3f) -> vec3f {
+  let visibility = frame.sh[2].w;
+  let to = point - eye;
+  let d = length(to);
+  if (visibility <= 0.0 || d < 0.0001) { return colour; }
+  let h = max(frame.sh[3].w, 1.0);
+  let dy = point.y - eye.y;
+  var air = d * exp(-eye.y / h);
+  if (abs(dy) >= 0.0001 * h) { air = d * h * (exp(-eye.y / h) - exp(-point.y / h)) / dy; }
+  let k = 3.912 / visibility * air;
+  let lost = vec3f(exp(-0.75 * k), exp(-k), exp(-1.5 * k));
+  let dir = to / d;
+  let side = sqrt(dir.x * dir.x + dir.z * dir.z);
+  var flat = vec3f(1.0, 0.0, 0.0);
+  if (side > 0.0001) { flat = vec3f(dir.x / side, 0.0, dir.z / side); }
+  let toSun = max(dot(dir, frame.sunDir.xyz), 0.0);
+  let t2 = toSun * toSun;
+  let glow = 1.0 + 0.5 * t2 * t2 * t2 * t2;
+  let horizon = skyRadiance(flat, 0.0) * glow;
+  return colour * lost + horizon * (vec3f(1.0) - lost);
+}
 fn shIrradiance(n : vec3f) -> vec3f {
   // irradiance from the sky's spherical harmonics (Ramamoorthi & Hanrahan)
   let c1 = 0.429043; let c2 = 0.511664; let c3 = 0.743125; let c4 = 0.886227; let c5 = 0.247708;
@@ -458,6 +481,8 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let inscatter = frame.fogColor.rgb * (soft / (4.0 * PI) + frame.sunColor.rgb * phase * frame.sunDir.w * sunlit);
     lo = lo * t + inscatter * (1.0 - t);
   }
+  // haze: far things fade to the horizon's colour, one formula with the film's
+  lo = hazeAt(lo, frame.camPos.xyz, i.world);
   return Shaded(lo, outA);
 }
 

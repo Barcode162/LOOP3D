@@ -177,6 +177,31 @@ Vec3 SkyModel::radiance(Vec3 d) const {
   return L;
 }
 
+Vec3 hazeAt(Vec3 colour, Vec3 eye, Vec3 point, const SkyModel& sky, const Haze& haze) {
+  if (haze.visibility <= 0) return colour;
+  const Vec3 to = point - eye;
+  const float d = length(to);
+  if (d < 1e-4f) return colour;
+  // the air passed: its thinning with height, summed along the sight line
+  const float h = std::max(haze.height, 1.0f);
+  const float dy = point.y - eye.y;
+  float air;
+  if (std::fabs(dy) < 1e-4f * h) air = d * std::exp(-eye.y / h);
+  else air = d * h * (std::exp(-eye.y / h) - std::exp(-point.y / h)) / dy;
+  // what is lost: green by the visibility's rule, red 0.75 of that, blue 1.5
+  const float k = 3.912f / haze.visibility * air;
+  const Vec3 lost{std::exp(-0.75f * k), std::exp(-k), std::exp(-1.5f * k)};
+  // what is gained: the horizon's colour that way, a little brighter towards the sun
+  const Vec3 dir = to / d;
+  const float side = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+  const Vec3 flat = side > 1e-4f ? Vec3(dir.x / side, 0, dir.z / side) : Vec3(1, 0, 0);
+  const float toSun = std::max(dot(dir, sky.sunDirection()), 0.0f);
+  const float t2 = toSun * toSun, t4 = t2 * t2;
+  const float glow = 1 + 0.5f * t4 * t4;
+  const Vec3 horizon = sky.radiance(flat) * glow;
+  return colour * lost + horizon * (Vec3(1) - lost);
+}
+
 Vec3 SkyModel::radianceWithSun(Vec3 d) const {
   Vec3 L = radiance(d);
   if (kind_ == Sky::Kind::kPhysical && dot(d, sunDir_) > std::cos(sunRadius_)) L += sunDisk_;

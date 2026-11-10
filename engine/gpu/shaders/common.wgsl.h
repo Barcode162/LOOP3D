@@ -11,7 +11,7 @@ struct Frame {
   camPos : vec4f,        // xyz, time
   sunDir : vec4f,        // towards the sun, w = sun on
   sunColor : vec4f,      // illuminance (lux) as rgb, w: sky light strength (render.skyLight)
-  sh : array<vec4f, 9>,  // sky light, spherical harmonics; sh[0].w shadow softness, sh[1].w pattern fade
+  sh : array<vec4f, 9>,  // sky light, spherical harmonics; sh[0].w shadow softness, sh[1].w pattern fade, sh[2].w haze visibility (0 off), sh[3].w haze height
   fog : vec4f,           // density, top, anisotropy, on
   fogColor : vec4f,      // rgb, w: sun shadow depth bias
   params : vec4f,        // light count, lamps with shadow rays, shadow map size, auto exposure

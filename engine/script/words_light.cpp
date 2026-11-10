@@ -82,6 +82,14 @@ void registerLight(Vm& vm) {
     ++s.version;
     return Value();
   }, "fog(density, top, glow, color, from, to)");
+  vm.native("haze", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    s.scene.fog.haze.visibility = f32(a.num(0, "visibility", 60000));
+    s.scene.fog.haze.height = f32(a.num(1, "height", 1500));
+    if (s.scene.fog.haze.visibility < 0 || s.scene.fog.haze.height <= 0) a.vm.fail("haze needs a visibility of 0 or more and a height above 0");
+    ++s.version;
+    return Value();
+  }, "haze(visibility: 60 km, height: 1.5 km): far things fade to the horizon's colour, blue first; the air thins with height");
 }
 
 }  // namespace loop::script::words
