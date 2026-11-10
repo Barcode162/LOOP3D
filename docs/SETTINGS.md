@@ -176,6 +176,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Depth of field | `ultra.dof` | true |  | live · script | `setting "ultra.dof", true` | depth of field |
 | Traced sun shadows | `ultra.sunShadows` | true |  | live · script | `setting "ultra.sunShadows", true` | traced sun shadows |
 | Shadows from every lamp | `ultra.lampShadows` | true |  | live · script | `setting "ultra.lampShadows", true` | shadows from every lamp |
+| Reuse bounced light (ReSTIR GI) | `ultra.reuse` | false |  | live · script | `setting "ultra.reuse", false` | Bounced light shared with last frame and neighbours. Off: measured no better on the cabin yet. |
 
 ## Cinema renderer
 
@@ -599,4 +600,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 151 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you
+11 project.json · 152 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you

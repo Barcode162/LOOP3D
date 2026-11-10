@@ -151,6 +151,7 @@ window.LE = window.LE || {};
         tog('ultra.dof', 'Depth of field', true, E()),
         tog('ultra.sunShadows', 'Traced sun shadows', true, E()),
         tog('ultra.lampShadows', 'Shadows from every lamp', true, E()),
+        tog('ultra.reuse', 'Reuse bounced light (ReSTIR GI)', false, E({ help: 'Bounced light shared with last frame and neighbours. Off: measured no better on the cabin yet.' })),
       ] },
     ] },
 

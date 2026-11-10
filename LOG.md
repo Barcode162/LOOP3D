@@ -2,6 +2,9 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Check we're at a good stopping point": the picture pipeline's phases 1-10 are all done, but GitHub's
+  Check had failed on the last four pushes: Ultra's ReSTIR GI switch (`ultra.reuse`) was missing from the editor's
+  settings. Added (off, as measured); all checks and the web player build pass. (this commit)
 - **2026-11-10** · Your screenshots under a tree in A Grown World (black stair-steps in the leaves, white rims on the
   branches) and "shadow in ground moving constantly": the light pass no longer cuts holes (a leaf seen edge-on could
   be cut where the visibility picture had kept it, leaving black); sharpening no longer overshoots past its
