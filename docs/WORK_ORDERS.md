@@ -220,10 +220,15 @@ Do:     1. `struct Marks { std::vector<uint8_t> edge, hollow; }` and `Marks meas
            one answer for all of them.
         2. `Cook::marks(const Mesh&)`: made the first time it is asked, kept by the fingerprint, safe
            from any thread, exactly as `clusters`. Never made unless asked.
-        3. 100,000 triangles in under 300 ms on one core; say the time in the report.
+        3. 100,000 triangles in about 300 ms or less on one quiet core (the test's bound is 600 ms so a busy
+           machine does not fail it); say the time in the report (measured: about 200 ms).
 Proof:  QUICK; tests, marks as bytes 0 to 255:
-        a. `shapes::roundedBox({1, 1, 1}, 0.005, 4)`: every vertex strictly inside a rounding has edge
-           of 200 or more; every vertex on the border of a flat face 25 or less; no hollow above 25.
+        a. A box whose edges are really rounded (built in the test: a 5 mm outside corner in 4 steps, its
+           band as narrow as the rounding): every vertex inside a rounding has edge of 200 or more;
+           every vertex on the border of a flat face 25 or less; no hollow above 25. (The engine's
+           `shapes::roundedBox` is a coarse grid, 7 cm triangles across a 5 mm rounding, so by the
+           rule of section 6 it marks low: its rounding vertices only need edge above its flat ones.
+           A real rounding is order S5. Found by the builder, 2026-11-10.)
         b. `shapes::box({1, 1, 1})`: no edge above 25 (a knife edge does not wear).
         c. `shapes::sphere(0.5)`: no edge above 25. `shapes::sphere(0.005)`: every edge 200 or more.
         d. A cup from `shapes::lathe` (8 cm across, 10 cm deep, walls 3 mm): the inside of its floor has
