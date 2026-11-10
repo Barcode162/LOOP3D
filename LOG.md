@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Check the new results and go": your recording ran the new build (f214f87). It showed High's
+  two heaviest costs: the bar's lighting 17-21 ms and the far sun shadow 16-22 ms (the Glade) at each redraw. Now
+  High's main lamps use shadow maps and the shared lamp ray is traced by half the pixels a frame (a quarter of the
+  rays, the same score against cinema), and the far shadow is drawn a part a frame while the old one is shown
+  (the same picture). (this commit)
 - **2026-11-09** · "I haven't had 2 updates worth of work": the build label was one step behind (the site is built
   before its commit, so it named the commit before), and the engine's files kept the same names, so the app could
   keep an old copy. Now the recording page is stamped when published, its engine files are named by their contents

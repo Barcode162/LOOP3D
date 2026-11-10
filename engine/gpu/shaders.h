@@ -26,7 +26,7 @@ struct Frame {
   lampFaces : array<mat4x4f, 12>,  // each mapped lamp's six views (+x -x +y -y +z -z)
   lampValid : vec4f,     // per row: drawn for its lamp (1), or not yet (0: no shadow for a frame)
   shadowFarViewProj : mat4x4f,  // the sun's far shadow (the shadow map's second layer)
-  shadowFar : vec4f,     // the near box's size over the far one's, the far map drawn (1); frame blending on (1); w: drawn pixels per shown pixel (1, or less when frame blending upscales)
+  shadowFar : vec4f,     // the near box's size over the far one's, the far map's layer (1 or 2; 0: none); frame blending on (1); w: drawn pixels per shown pixel (1, or less when frame blending upscales)
   cache0 : vec4f,        // the light cache: first probe xyz, spacing
   cache1 : vec4f,        // probes x, y, z; w: on
   ao : vec4f,            // ambient occlusion: strength (0 off), reach (m), frame number; w: screen reflections on (1)
@@ -440,7 +440,7 @@ fn shadowAt(world : vec3f, n : vec3f) -> f32 {
   let edge = max(abs(p.x), abs(p.y));  // 0 at the near box's middle, 1 at its side
   if (frame.shadowFar.y < 0.5 || (edge < 0.8 && p.z <= 1.0)) { return sunShadowIn(0, p, spread); }
   let pf = frame.shadowFarViewProj * vec4f(world + n * 0.03 / frame.shadowFar.x, 1.0);
-  let far = sunShadowIn(1, pf, max(spread * frame.shadowFar.x, texel * 0.5));
+  let far = sunShadowIn(i32(frame.shadowFar.y + 0.5), pf, max(spread * frame.shadowFar.x, texel * 0.5));
   if (edge >= 0.96 || p.z > 1.0) { return far; }
   return mix(sunShadowIn(0, p, spread), far, (edge - 0.8) / 0.16);
 }
@@ -653,9 +653,17 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     }
   }
   if (pick != 0xffffffffu) {
-    let seenNow = lampVisibility(i.world + ng * 0.004, lights[pick], i.clip.xy);
-    shadowCount = select(1.0, min(shadowCount + 1.0, 32.0), shadowPast >= 0.0);
-    shadowNow = select(seenNow, mix(shadowPast, seenNow, 1.0 / shadowCount), shadowPast >= 0.0);
+    // a pixel with a settled answer traces every other frame (a checkerboard
+    // turning each frame): its answer is an average over many frames anyway,
+    // and the ray is the light pass's dearest work
+    let rest = shadowPast >= 0.0 && shadowCount >= 4.0 && ((u32(i.clip.x) + u32(i.clip.y) + u32(frame.ao.z)) & 1u) == 1u;
+    if (rest) {
+      shadowNow = shadowPast;
+    } else {
+      let seenNow = lampVisibility(i.world + ng * 0.004, lights[pick], i.clip.xy);
+      shadowCount = select(1.0, min(shadowCount + 1.0, 32.0), shadowPast >= 0.0);
+      shadowNow = select(seenNow, mix(shadowPast, seenNow, 1.0 / shadowCount), shadowPast >= 0.0);
+    }
     lo += restLight * shadowNow;
   }
   // the sky's light: diffuse from its harmonics, glossy from the blurred sky

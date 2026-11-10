@@ -189,7 +189,14 @@ once, fog, blend and upscale, film.
    rest share one shadow ray a pixel, given each frame to one picked by its light; each pixel keeps its answer
    over the frames where its point was, averaged over up to 32 (ReSTIR's reuse of work over time), so it settles
    in about a second (grain 4.9 after 80 frames, off 3.9; one ray alone 8.6), for the same rays a pixel as before
-   (docs/every_lamp_shadows_kept_2026-11-09.png). *Still to do in phase 8:* ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
+   (docs/every_lamp_shadows_kept_2026-11-09.png). *From your recording (2026-11-10):* High's two heaviest costs made
+   lighter. The bar's lighting (17-21 ms) traced two shadow rays a pixel through its big models: its two main lamps
+   now use the shadow maps Phone has (they matched traced shadows in the cabin), and the shared ray for the other
+   lamps is traced by half the pixels each frame (a turning checkerboard), the rest keeping their averaged answer:
+   a quarter of the rays; the score against cinema the same (the cabin 12.8 to 13.2, the others within 0.1). The far
+   sun shadow (the Glade 16-22 ms, the Woods 50 at a redraw) is now drawn a part a frame (about 2.5 ms each,
+   timed) into a second layer while the old one is shown, then swapped: the same picture, no stall.
+   *Still to do in phase 8:* ReSTIR GI on Ultra. *And from your recording:* the forests' "visibility" (10-18 ms even at the
    lowest resolution: their leaves and grass) is now the biggest cost on the phone.
 9. **Research:** radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World:** typed relationships and streaming, with rebuild step 12.
