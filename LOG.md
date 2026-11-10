@@ -2,6 +2,12 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · Your screenshots under a tree in A Grown World (black stair-steps in the leaves, white rims on the
+  branches) and "shadow in ground moving constantly": the light pass no longer cuts holes (a leaf seen edge-on could
+  be cut where the visibility picture had kept it, leaving black); sharpening no longer overshoots past its
+  neighbours (the white rims); the sun's shadow box follows where you look only once you turn 30 degrees, so
+  looking round no longer redraws it and sweeps its edges over the ground (small turns: 0 redraws, was every
+  few). The Glade and bar references a hair softer (the sharpening). (this commit)
 - **2026-11-10** · Your recording of A Grown World: it runs (High walking 50-53 fps, Ultra 57), but stalled 0.6-0.8 s
   while walking, and the resolution then shrank to its floor for stalls it couldn't help: each new piece of land
   restarted the light cache's bake of the whole 8 km world. Now world() leaves the light cache off (the sky lights

@@ -486,6 +486,7 @@ fn lampVisibility(p : vec3f, L : Light, pix : vec2f) -> f32 {
 // ray code alone would slow every pixel.
 override kLampShadows : bool = true;
 
+var<private> resolving : bool = false;  // shading the visibility picture: never cut holes
 fn shade(i : VsOut, front : bool) -> Shaded {
   let m = materials[i.mat];
   var n = normalize(i.nrm);
@@ -499,7 +500,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   if (m.tex.x >= 0.0) {
     let c = textureSampleGrad(modelTex, modelSampler, i.uv, i32(m.tex.x), slopeUvX, slopeUvY);
     base *= srgbToLinear(c.rgb);
-    if (m.tex2.x > 0.0 && c.a < m.tex2.x) { discard; }
+    if (m.tex2.x > 0.0 && c.a < m.tex2.x && !resolving) { discard; }
   }
   if (m.tex.y >= 0.0) {
     let c = textureSampleGrad(modelTex, modelSampler, i.uv, i32(m.tex.y), slopeUvX, slopeUvY);
@@ -512,7 +513,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let y = 1.0 - i.uv.y;
     let x = (i.uv.x - 0.5) * 2.0;
     let width = sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95;
-    if (abs(x) > width) { discard; }
+    if (abs(x) > width && !resolving) { discard; }
   }
   var glowScale = 1.0;  // a see-through grid's lines fade at their edges and far away
   if (m.pattern.x > 0.5) {
@@ -525,7 +526,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       pv = vec3f(gridLine(i.world, n, sc), 0.5, 1.0);
       // a see-through grid (opacity under a half): only its lines are drawn
       if (m.emission.w < 0.5) {
-        if (pv.x < 0.5) { discard; }
+        if (pv.x < 0.5 && !resolving) { discard; }
         glowScale = smoothstep(0.5, 1.0, pv.x);
       }
     }
@@ -1026,6 +1027,10 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   return w / max(w.x + w.y + w.z, 1e-12);
 }
 @fragment fn fsResolve(r : ResolveOut) -> @location(0) vec4f {
+  // what each pixel shows was settled by the visibility picture (its holes cut
+  // there): working the point out again here can land a hair outside a leaf seen
+  // edge-on, and cutting it then left a black hole (your phone, the world's trees)
+  resolving = true;
   let id = textureLoad(visTex, vec2i(r.clip.xy), 0).rg;
   if (id.x == 0u) { discard; }
   let inst = instances[id.x - 1u];
@@ -1373,7 +1378,13 @@ fn grain(p : vec2f, t : f32) -> f32 {
       let edge = smoothstep(0.5, 2.0, max(lmax, lc) - min(lmin, lc));
       c = mix(c, (c + avg * 2.0) / 3.0, edge);
     }
-    if (post.exposure.w > 0.0) { c = max(c + (c - avg) * post.exposure.w * 2.0, vec3f(0.0)); }
+    // sharpened, but never past its neighbours' own brightness (unbounded, the sky
+    // beside a dark branch overshot to a white rim: your phone, the world's trees)
+    if (post.exposure.w > 0.0) {
+      let lo = min(min(min(n0, n1), min(n2, n3)), c);
+      let hi = max(max(max(n0, n1), max(n2, n3)), c);
+      c = clamp(c + (c - avg) * post.exposure.w * 2.0, lo, hi);
+    }
   }
   // the picture was stored at exposureBuf[1]; the eyes now want exposureBuf[0]
   let ratio = select(1.0, exposureBuf[0] / max(exposureBuf[1], 1e-12), post.exposure.z > 0.5);

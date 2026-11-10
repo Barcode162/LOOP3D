@@ -666,7 +666,13 @@ class GpuRenderer final : public Renderer {
     // (two of them: a sharp one near the eye, and a coarse one five times as
     // far, beyond it: phase 5's sun shadows in steps)
     float R = C.render.shadowDistance > 0 ? C.render.shadowDistance : quality_ == Quality::kPhone ? 25.0f : 40.0f;
-    Vec3 fwd = normalize(cam.target - cam.position);
+    // the box sits ahead of where you look, but follows the look only once it
+    // has turned 30 degrees away: looking round no longer redraws the shadow and
+    // sweeps its edges over the ground (your phone, the world: "the shadows on the
+    // ground moving constantly")
+    const Vec3 lookDir = normalize(cam.target - cam.position);
+    if (dot(lookDir, shadowLook_) < std::cos(30.0f * kPi / 180.0f)) shadowLook_ = lookDir;
+    const Vec3 fwd = shadowLook_;
     Vec3 center = cam.position + fwd * (R * 0.6f);
     Vec3 up = std::fabs(sunDir_.y) > 0.99f ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
     Mat4 lv = Mat4::lookAt(Vec3(0), -sunDir_, up);
@@ -3018,6 +3024,7 @@ class GpuRenderer final : public Renderer {
   wgpu::BindGroup sunFarGroup_;
   Mat4 sunFarViewProj_;
   Vec3 sunFarEye_;
+  Vec3 shadowLook_{0, 0, 0};  // the way the sun's shadow boxes lean (the look, within 30 degrees)
   // The far map is drawn again a part a frame (your phone's recording: a
   // whole redraw cost the Glade 16-22 ms and the Woods 50 at once), into the
   // shadow picture's other far layer, while the one drawn before is still
