@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · E9, "library check prints triangle counts": loop library check/list print each entry's triangles and size class; over-budget entries fail. Deployed.
 - **2026-11-10** · G1, "Why the Glade's picture differs": Glade reference picture refreshed: it was stale (leaf, shadow and sharpening fixes of 2026-11-10); steady 2.70 over 3 runs, 12 of 12 pictures pass. Deployed.
 - **2026-11-10** · CARDS, "Full cards for M2 to M10 and W1 to W11": docs/WORK_ORDERS.md has full cards for M2 to M10 (M3 cut into a, b, c; a surface's card form; oak and walnut) and W1 to W11 (W1 and W3 cut in two; four land decisions). Ready with nothing needed: M2, W1a, W9. Deployed (cf1a5d0).
 - **2026-11-10** · M1, "The design of a surface recipe": docs/SURFACES.md fixes the word surface, the fixed stack (base, vary, coat, wear, dirt, detail), fifteen patterns in true sizes, the two marks a vertex, the nine steps of a point, the three baked pictures, the phone's cost, projection and the code seam. Deployed (7405824).

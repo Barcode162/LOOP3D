@@ -845,11 +845,23 @@ int main(int argc, char** argv) {
       std::fprintf(stderr, "problem: no library entry called \"%s\" (loop library list shows them)\n", o.name.c_str());
       return 1;
     } else if (target == "list" || target == "check") {
+      // each entry's triangles and size class; an entry over its size's budget fails
+      std::vector<size_t> counts;
+      std::vector<std::string> budgetProblems;
+      if (!checkLibraryBudgets(lib, entries, counts, budgetProblems)) ok = false;
+      for (const std::string& p : budgetProblems) std::fprintf(stderr, "problem: %s\n", p.c_str());
       std::string kind;
-      for (const LibraryEntry& e : entries) {
-        if (target == "check") continue;
-        if (e.kind != kind) std::printf("%s%ss\n", kind.empty() ? "" : "\n", (kind = e.kind).c_str());
-        std::printf("  %-16s %s (from %s)\n", e.name.c_str(), e.what.c_str(), e.from.c_str());
+      for (size_t i = 0; i < entries.size(); i++) {
+        const LibraryEntry& e = entries[i];
+        size_t tris = i < counts.size() ? counts[i] : 0, budget = libraryBudget(e.size);
+        std::string sz = e.size.empty() ? "no size" : e.size;
+        if (budget) sz += ", budget " + std::to_string(budget);
+        if (target == "list") {
+          if (e.kind != kind) std::printf("%s%ss\n", kind.empty() ? "" : "\n", (kind = e.kind).c_str());
+          std::printf("  %-16s %s (from %s) · %zu triangles (%s)\n", e.name.c_str(), e.what.c_str(), e.from.c_str(), tris, sz.c_str());
+        } else {
+          std::printf("  %-16s %6zu triangles (%s)\n", e.name.c_str(), tris, sz.c_str());
+        }
       }
       if (target == "check" && ok) std::printf("the library's %zu entries are in order\n", entries.size());
     } else {
