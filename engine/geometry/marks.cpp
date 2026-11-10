@@ -149,7 +149,7 @@ Marks measureMarks(const Mesh& m) {
   // the rays start from (they all point up from it). Its 16 rays are tried
   // against those alone, so an open surface costs next to nothing.
   Bvh bvh;
-  bvh.build(bvhTris);
+  bvh.build(bvhTris, 16);
   const auto& nodes = bvh.nodes();
   const auto& order = bvh.order();
   std::vector<Triangle> near;
