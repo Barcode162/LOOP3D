@@ -2,6 +2,11 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · Your recording of A Grown World: it runs (High walking 50-53 fps, Ultra 57), but stalled 0.6-0.8 s
+  while walking, and the resolution then shrank to its floor for stalls it couldn't help: each new piece of land
+  restarted the light cache's bake of the whole 8 km world. Now world() leaves the light cache off (the sky lights
+  it outdoors), and showing or hiding land and trees is a move the drawing takes cheaply, not a new world to read.
+  (this commit)
 - **2026-11-10** · "Go on, finish until the 10 step is over": phases 8 to 10 done. ReSTIR GI on Ultra built and
   measured (no better on the cabin: left off). Phase 9: radiance cascades measured against the light cache
   (`loop research cascades`: as good as 0.5 m probes, five times the rays: the light cache stays); the film

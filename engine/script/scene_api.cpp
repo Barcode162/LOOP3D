@@ -831,8 +831,7 @@ struct StreamedWorld {
   WorldMap map;
   WorldStream land, trees;
   const HeightMap* ground = nullptr;  // the walkable ground, 4 m a sample (in stage.terrains)
-  std::map<std::pair<int, int>, std::vector<int>> landParts, treeParts;  // instances per chunk
-  std::vector<Mat4> shownAt;  // per instance: where it stands when shown (by instance index, sparse)
+  std::map<std::pair<int, int>, std::vector<int>> landParts, treeParts;  // placed things per chunk
   int mat[7] = {0};           // a material per ground (the sea's and lakes' beds: soil)
   int water = 0, bark = 0, needles = 0, leaves = 0;
 };
@@ -936,13 +935,21 @@ void Stage::streamWorld() {
   StreamedWorld& w = *streamed;
   const bool first = w.land.chunks.empty();
   bool changed = false;
-  auto shownAt = [&](int inst, const Mat4& xf) {
-    if (w.shownAt.size() <= static_cast<size_t>(inst)) w.shownAt.resize(static_cast<size_t>(inst) + 1);
-    w.shownAt[static_cast<size_t>(inst)] = xf;
+  // each part a placed thing, so showing and hiding it is a move (the drawing
+  // takes only what moved), not a new world to read
+  auto place = [&](int mesh, int material, Vec3 at, float yaw, float size) {
+    scene.add(mesh, material, Mat4::trs(at, Quat::euler(yaw, 0, 0), Vec3(size)));
+    Placed p;
+    p.instance = static_cast<int>(scene.instances.size() - 1);
+    p.position = at, p.rotation = Vec3(yaw, 0, 0), p.scale = Vec3(size);
+    placed.push_back(p);
+    return static_cast<int>(placed.size() - 1);
   };
   auto showParts = [&](const std::vector<int>& parts, bool on) {
-    for (int i : parts) scene.instances[static_cast<size_t>(i)].transform = on ? w.shownAt[static_cast<size_t>(i)] : Mat4::scale(Vec3(0));
-    changed = true;
+    for (int i : parts) {
+      placed[static_cast<size_t>(i)].visible = on;
+      updateTransform(i);
+    }
   };
   const Vec2 at(playerPos.x, playerPos.z);
   // the land: 256 m chunks, 4 m a quad, out to 1 km
@@ -951,11 +958,8 @@ void Stage::streamWorld() {
     const float x0 = c.first * w.land.chunk, z0 = c.second * w.land.chunk;
     std::vector<int>& parts = w.landParts[c];
     const HeightMap& g = *w.ground;
-    for (auto& [kind, mesh] : landMeshes(w, x0, z0, x0 + w.land.chunk, z0 + w.land.chunk, 4, [&](float x, float z) { return g.height(x, z); })) {
-      scene.add(scene.addMesh(std::move(mesh)), w.mat[kind]);
-      parts.push_back(static_cast<int>(scene.instances.size() - 1));
-      shownAt(parts.back(), Mat4());
-    }
+    for (auto& [kind, mesh] : landMeshes(w, x0, z0, x0 + w.land.chunk, z0 + w.land.chunk, 4, [&](float x, float z) { return g.height(x, z); }))
+      parts.push_back(place(scene.addMesh(std::move(mesh)), w.mat[kind], Vec3(0), 0, 1));
     // its lakes: water at their level where the map has a lake
     Mesh lake;
     for (int j = 0; j < 32; ++j)
@@ -967,11 +971,7 @@ void Stage::streamWorld() {
                        cc = lake.addVertex({x + 8, y, z + 8}, {0, 1, 0}, {x + 8, z + 8}), d = lake.addVertex({x + 8, y, z}, {0, 1, 0}, {x + 8, z});
         lake.addQuad(a, b, cc, d);
       }
-    if (!lake.indices.empty()) {
-      scene.add(scene.addMesh(std::move(lake)), w.water);
-      parts.push_back(static_cast<int>(scene.instances.size() - 1));
-      shownAt(parts.back(), Mat4());
-    }
+    if (!lake.indices.empty()) parts.push_back(place(scene.addMesh(std::move(lake)), w.water, Vec3(0), 0, 1));
     changed = true;
   }
   for (const auto& c : lw.show) showParts(w.landParts[c], true);
@@ -994,11 +994,10 @@ void Stage::streamWorld() {
         if (w.ground->slope(px, pz) > 0.35f) continue;
         const bool cold = w.map.sample(w.map.warmth, px, pz) < 9 || w.ground->height(px, pz) > 220;
         auto [b, l] = treeMeshes(*this, cold ? "pine" : (rng.uniform() < 0.5f ? "oak" : "birch"), static_cast<int>(rng.uniform() * 4));
-        const Mat4 xf = Mat4::trs({px, w.ground->height(px, pz) - 0.2f, pz}, Quat::axisAngle({0, 1, 0}, rng.uniform() * kTwoPi), Vec3(0.7f + 0.6f * rng.uniform()));
-        scene.add(b, w.bark, xf);
-        parts.push_back(static_cast<int>(scene.instances.size() - 1)), shownAt(parts.back(), xf);
-        scene.add(l, cold ? w.needles : w.leaves, xf);
-        parts.push_back(static_cast<int>(scene.instances.size() - 1)), shownAt(parts.back(), xf);
+        const Vec3 at(px, w.ground->height(px, pz) - 0.2f, pz);
+        const float yaw = rng.uniform() * kTwoPi, size = 0.7f + 0.6f * rng.uniform();
+        parts.push_back(place(b, w.bark, at, yaw, size));
+        parts.push_back(place(l, cold ? w.needles : w.leaves, at, yaw, size));
       }
     changed = true;
   }
@@ -1371,6 +1370,10 @@ void installSceneApi(Vm& vm, Stage& stage) {
     ws.warmth = f32(a.num(-1, "warmth", 14));
     ws.wind = f32(a.num(-1, "wind", 0));
     ws.cells = std::clamp(static_cast<int>(a.num(-1, "cells", 257)), 33, 513);
+    // an open world 8 km across needs no light cache (its probes would be over
+    // 100 m apart, and every new chunk would start its bake again: your phone's
+    // recording, 0.6-0.8 s stalls while walking): the sky's light outdoors
+    setSetting(a.vm, "render.lightCache", Value::boolean(false));
     Vec3 start = makeStreamedWorld(a.vm, s, ws);
     ++s.version;
     return Value::vec(start);

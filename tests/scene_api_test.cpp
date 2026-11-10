@@ -250,7 +250,7 @@ let start = world(seed: 3, size: 4096, cells: 129)
   const Vec3 dir = normalize(Vec3(-from.x, 0, -from.z) + Vec3(1e-3f, 0, 0));
   for (int i = 0; i < 600; ++i) {
     st.playerPos = from + dir * (i * 2.5f);
-    st.update(1.0f / 60);
+    for (int k = 0; k < 4; ++k) st.update(1.0f / 60);  // (a test walks fast: steps enough to keep up)
   }
   CHECK(st.scene.instances.size() > first);  // new land made ahead
   // and what was left behind hidden: about as much shown as at the start
@@ -258,4 +258,13 @@ let start = world(seed: 3, size: 4096, cells: 129)
   std::printf("    shown at the start %d, after 1.5 km %d, made in all %zu\n", shownFirst, shownNow, st.scene.instances.size());
   CHECK(shownNow < static_cast<int>(st.scene.instances.size()));
   CHECK(shownNow < shownFirst * 2);
+  // walking back over land already made: shown again by moving it (cheap for the
+  // drawing), never a whole new world to read (your phone: 0.6-0.8 s stalls)
+  const uint64_t v = st.version, moves = st.transformsVersion;
+  for (int i = 600; i-- > 0;) {
+    st.playerPos = from + dir * (i * 2.5f);
+    st.update(1.0f / 60);
+  }
+  CHECK(st.version == v);
+  CHECK(st.transformsVersion > moves);
 }
