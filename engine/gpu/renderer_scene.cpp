@@ -42,6 +42,7 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
 }
 
 void GpuRenderer::syncLights(const Scene& scene) {
+  changes_.bump("lamps");
   readLights(scene);
   fog_ = scene.fog;
 }

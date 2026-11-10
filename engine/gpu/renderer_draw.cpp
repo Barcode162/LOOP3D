@@ -3,6 +3,44 @@
 
 namespace loop::gpu::impl {
 
+// Resting while still (render.restStill): everything a frame is made from, as
+// one number (the view, the look, the fade, the sizes, the settings, and the
+// change tracker's numbers for the world: shapes, placements, moves, lamps).
+// The same for four seconds (frame blending has settled, the eyes have
+// adjusted) with no work waiting: the next frame would be the last one again.
+bool GpuRenderer::canRest(const Camera& cam, const Look& look, float dt, float fade) {
+  const Config& C = config();
+  uint64_t h = 1469598103934665603ull;
+  auto mix = [&h](const void* p, size_t n) {
+    const unsigned char* b = static_cast<const unsigned char*>(p);
+    for (size_t i = 0; i < n; ++i) h = (h ^ b[i]) * 1099511628211ull;
+  };
+  auto num = [&mix](double v) { mix(&v, sizeof v); };
+  for (const Vec3& v : {cam.position, cam.target, cam.up, cam.positionEnd, look.lift, look.gamma, look.gain, look.shadowTint, look.highlightTint})
+    num(v.x), num(v.y), num(v.z);
+  for (float v : {cam.focalLength, cam.sensor.x, cam.sensor.y, cam.fStop, cam.focusDistance, cam.shutter, cam.iso, cam.bladeRotation, cam.exposureCompensation,
+                  look.contrast, look.saturation, look.temperature, look.tint, look.blackLevel, look.bloom, look.bloomRadius, look.halation, look.vignette,
+                  look.grainSize, look.chromaticAberration, look.distortion, look.sharpen, look.letterbox, fade, renderScale_})
+    num(v);
+  for (double v : {double(cam.blades), double(cam.autoExposure), double(look.tonemap), double(look.monochrome), double(width_), double(height_), double(outW_),
+                   double(outH_), double(quality_), double(skipBits()), double(changes_.sum())})
+    num(v);
+  // settings read straight from the engine's settings each frame (render.* and ultra.* bump "settings")
+  static_assert(std::is_trivially_copyable_v<Config::Camera> && std::is_trivially_copyable_v<Config::World>);
+  mix(&C.camera, sizeof C.camera), mix(&C.world, sizeof C.world);
+  const bool grain = C.render.filmGrain && look.grain > 0;  // grain is new every frame
+  if (h != stillKey_ || grain || !C.render.restStill) {
+    stillKey_ = h, stillFor_ = 0;
+    return false;
+  }
+  stillFor_ += std::clamp(dt, 0.0f, 0.1f);
+  // work spread over frames (a photograph asked for, clusters cooking, light
+  // probes baking, the far shadow's parts, Ultra's adding up) goes on first
+  const bool waiting = captureDone_ || cookJob_ || bindGroupsDirty_ || passUniformsDirty_ || fresh_ || lightCacheWaiting() || farShadowWaiting() ||
+                       quality_ == Quality::kUltra;
+  return stillFor_ > 4.0f && !waiting;
+}
+
 bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time, float fade) {
   const int skip = skipBits();
   const Config& C = config();
@@ -41,6 +79,11 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
     const bool up = quality_ != Quality::kUltra && clustersReady() && eyeList_.cullGroup && blending() && !(skip & 64) && taaGroup_[histIndex_];
     const uint32_t pw = up ? outW_ : width_, ph = up ? outH_ : height_;
     if (up != upscaling_ || pw != postW_ || ph != postH_) upscaling_ = up, postW_ = pw, postH_ = ph, passUniformsDirty_ = true, histValid_ = false;
+  }
+  if (canRest(cam, look, dt, fade)) {
+    // nothing a frame is made from has changed: the last one stays on screen
+    ++rested_;
+    return true;
   }
   wgpu::SurfaceTexture st;
   if (!(skip & 256)) {  // 256: off-screen only (tests in browsers that can't show WebGPU)

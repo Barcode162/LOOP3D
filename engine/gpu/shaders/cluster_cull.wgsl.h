@@ -10,6 +10,8 @@ namespace loop::gpu {
 // cracks), and its sphere is in view. Each copy lists its chosen clusters in
 // its own stretch, in cluster order (cull); a count-up gives every copy where
 // its list starts (count); the lists are then packed in copy order (pack).
+// Each cluster is tested once, its answer kept as a bit, where it used to be
+// tested twice (once to count, once to write): the same clusters chosen.
 inline const char* kClusterCullWgsl = R"(
 struct Instance {
   model : mat4x4f,
@@ -110,16 +112,27 @@ var<workgroup> found : array<u32, 64>;
   let run = (mesh.clusterCount + 63u) / 64u;
   let first = min(li * run, mesh.clusterCount);
   let last = min(first + run, mesh.clusterCount);
+  // the answers of this run's first 256 clusters, a bit each (a mesh would
+  // need more than 16,384 clusters to have longer runs; those are tested again)
+  var kept : array<u32, 8>;
   var mine = 0u;
   for (var i = first; i < last; i++) {
-    if (chosen(m, scale, mesh.clusterFirst + i)) { mine++; }
+    if (chosen(m, scale, mesh.clusterFirst + i)) {
+      mine++;
+      let j = i - first;
+      if (j < 256u) { kept[j >> 5u] |= 1u << (j & 31u); }
+    }
   }
   found[li] = mine;
   workgroupBarrier();
   var at = 0u;
   for (var j = 0u; j < li; j++) { at += found[j]; }
   for (var i = first; i < last; i++) {
-    if (chosen(m, scale, mesh.clusterFirst + i)) {
+    let j = i - first;
+    var pick = false;
+    if (j < 256u) { pick = (kept[j >> 5u] & (1u << (j & 31u))) != 0u; }
+    else { pick = chosen(m, scale, mesh.clusterFirst + i); }
+    if (pick) {
       stretch[c.y + at] = vec2u(c.x, mesh.clusterFirst + i);
       at++;
     }

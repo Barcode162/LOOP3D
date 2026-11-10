@@ -90,6 +90,7 @@ Settings::Settings() {
   B("render.taa", r.taa, "frame blending: the view shifts a fraction of a pixel each frame and each pixel is blended with the frames before (smooth edges, no shimmer); with clusters, in place of multisampling");
   B("render.clusters", r.clusters, "draw every shape in clusters, each at the detail its size on screen needs, chosen and drawn by the GPU in one go (Nanite's way; off: one draw per kind of shape, with multisampling)");
   B("render.occlude", r.occlude, "with clusters: skip the clusters hidden behind nearer ones, tested against the last frame's depth and tried again against this frame's (nothing newly in view goes missing)");
+  B("render.restStill", r.restStill, "draw nothing while the picture can't change: after a few seconds of a still view of a still world the last frame stays on screen and the GPU rests (a cooler phone); anything that moves wakes it the same frame");
   B("render.filmGrain", r.filmGrain, "film grain in the live picture (off: no fizz; stills keep a scene's grain)");
   B("render.sunShadows", r.sunShadows, "the sun casts shadows");
   I("render.sunMapPhone", r.sunMapPhone, 256, 4096, "sun shadow map size on Phone");

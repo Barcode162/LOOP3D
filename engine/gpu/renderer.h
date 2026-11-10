@@ -43,6 +43,8 @@ class Renderer {
   virtual bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) = 0;
   // Frames that reached the screen, and the share of full resolution drawn.
   virtual uint64_t presentedFrames() const = 0;
+  // Frames not drawn because nothing had changed (render.restStill): the last one stayed on screen.
+  virtual uint64_t restedFrames() const { return 0; }
   // How many times the sun's shadow has been drawn (it is kept while nothing it is made from changes).
   virtual uint64_t shadowDraws() const { return 0; }
   // How many times the main lamps' shadow maps have been drawn (Phone).

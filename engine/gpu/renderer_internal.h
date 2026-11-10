@@ -222,6 +222,7 @@ class GpuRenderer final : public Renderer {
   bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) override;
 
   uint64_t presentedFrames() const override { return presented_; }
+  uint64_t restedFrames() const override { return rested_; }
   uint64_t shadowDraws() const override { return shadowRedraws_; }
   uint64_t lampShadowDraws() const override { return lampMapDraws_; }
   bool lampListsReady() const;
@@ -711,6 +712,12 @@ class GpuRenderer final : public Renderer {
   int stampSlot_ = -1;                    // where they're read back (-1: not this frame)
   int perfSkipped_ = 0, perfDrawn_ = 0, calmSeconds_ = 0, longCalm_ = 0, step_ = 0, ceilStep_ = 0;
   uint64_t presented_ = 0;
+  // resting while still (render.restStill): what the last frame was made
+  // from, as one number; how long that has stayed the same; frames not drawn
+  bool canRest(const Camera& cam, const Look& look, float dt, float fade);
+  uint64_t stillKey_ = 0;
+  float stillFor_ = 0;
+  uint64_t rested_ = 0;
   std::function<void(int, int, const uint8_t*)> captureDone_;
 };
 

@@ -43,6 +43,7 @@ struct Config {
     int lampMapSize = 256;     // each of a mapped lamp's six views, pixels square
     bool clusters = true;  // draw from the cook's cluster trees (Nanite's way; off: the triangle drawing)
     bool occlude = true;   // with clusters: skip clusters hidden behind nearer ones (phase 4)
+    bool restStill = false;  // draw nothing while the picture can't change (a still view of a still world)
     float clusterError = 1;  // pixels: the most a simpler cluster may look different from the full shape
     bool taa = true;  // frame blending (with clusters, where it takes multisampling's place)
     bool sunShadows = true;

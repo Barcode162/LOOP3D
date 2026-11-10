@@ -27,6 +27,12 @@ class ChangeTracker {
     std::memcpy(bytes.data(), &value, sizeof(T));
     if (bytes != e.value) e.value = std::move(bytes), ++e.version;
   }
+  // Every thing's number added up: the same as before only if nothing at all was bumped.
+  uint64_t sum() const {
+    uint64_t s = 0;
+    for (const Entry& e : entries_) s += e.version;
+    return s;
+  }
   uint64_t version(const std::string& thing) const {
     for (const Entry& e : entries_)
       if (e.name == thing) return e.version;
