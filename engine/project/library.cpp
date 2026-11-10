@@ -5,6 +5,9 @@
 #include <map>
 
 #include "engine/core/file.h"
+#include "engine/core/settings.h"
+#include "engine/project/project.h"
+#include "engine/script/scene_api.h"
 
 namespace loop {
 
@@ -70,12 +73,28 @@ bool parseLibraryCard(const std::string& text, LibraryEntry& out, std::vector<st
     else if (key == "credit") out.credit = value;
     else if (key == "licence" || key == "license") out.licence = value;
     else if (key == "from") out.from = value;
+    else if (key == "tags") out.tags = value;
+    else if (key == "size") out.size = value;
+    else if (key == "sockets") out.sockets = value;
+    else if (key == "seeds") out.seeds = value;
     else if (!body.empty()) out.about += (out.about.empty() ? "" : " ") + body;
   }
   if (out.name.empty() && problems.size() == before) problems.push_back("it has no card (its first line should be \"# name · what it is\")");
   if (out.what.empty() && problems.size() == before) problems.push_back("its card doesn't say what it is");
   for (auto [field, name] : {std::pair{&out.kind, "kind"}, {&out.place, "place"}, {&out.credit, "credit"}, {&out.licence, "licence"}, {&out.from, "from"}})
     if (field->empty()) problems.push_back(std::string("its card has no \"# ") + name + ": …\" line");
+  if (!out.size.empty() && out.size != "hand" && out.size != "chair" && out.size != "sofa" && out.size != "room" && out.size != "land")
+    problems.push_back("its size \"" + out.size + "\" should be hand, chair, sofa, room or land");
+  // sockets: words split by commas or spaces, each one the plan names
+  for (size_t a = 0; a < out.sockets.size();) {
+    size_t b = out.sockets.find_first_of(", ", a);
+    if (b == std::string::npos) b = out.sockets.size();
+    std::string w = out.sockets.substr(a, b - a);
+    a = b + 1;
+    if (w.empty()) continue;
+    if (w != "seat" && w != "hold" && w != "top" && w != "hang" && w != "open" && w != "light" && w != "lie")
+      problems.push_back("its socket \"" + w + "\" should be seat, hold, top, hang, open, light or lie");
+  }
   return problems.size() == before;
 }
 
@@ -108,6 +127,56 @@ bool readLibrary(const std::string& library, std::vector<LibraryEntry>& out, std
     if (!fresh) why.push_back("another entry is called " + stem + " (" + it->second + "): names must be unique");
     for (const std::string& w : why) problems.push_back(f.string() + ": " + w);
     out.push_back(std::move(e));
+  }
+  return problems.size() == before;
+}
+
+size_t libraryBudget(const std::string& size) {
+  // docs/LIBRARY_PLAN.md section 2: the top of each size's range
+  if (size == "hand") return 2000;
+  if (size == "chair") return 10000;
+  if (size == "sofa") return 30000;
+  if (size == "room") return 100000;
+  return 0;
+}
+
+bool countLibraryTriangles(const std::string& library, const LibraryEntry& e, size_t& triangles, std::string& why) {
+  using namespace script;
+  Settings::get().resetAll();
+  std::string place = e.place;
+  for (size_t at; (at = place.find("AT")) != std::string::npos;) place.replace(at, 2, "vec(0, 0, 0)");
+  // placed as a scene would, so `use` finds the entry in the library
+  std::vector<std::string> seen;
+  std::string src = expandUses("use \"" + e.name + "\"\n" + place + "\n", library, seen);
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  if (!vm.load(src, e.name + ".loop")) {
+    why = "its example won't load";
+    for (const auto& p : vm.problems()) why += ": " + p.text();
+    return false;
+  }
+  for (int i = 0; i < 60; ++i) vm.update(1.0 / 120), st.update(1.0f / 120);
+  triangles = 0;
+  for (const MeshInstance& in : st.scene.instances)
+    if (in.mesh >= 0 && in.mesh < static_cast<int>(st.scene.meshes.size())) triangles += st.scene.meshes[in.mesh].triangleCount();
+  return true;
+}
+
+bool checkLibraryBudgets(const std::string& library, const std::vector<LibraryEntry>& entries, std::vector<size_t>& counts, std::vector<std::string>& problems) {
+  counts.assign(entries.size(), 0);
+  size_t before = problems.size();
+  for (size_t i = 0; i < entries.size(); ++i) {
+    const LibraryEntry& e = entries[i];
+    std::string why;
+    if (!countLibraryTriangles(library, e, counts[i], why)) {
+      problems.push_back(e.path + ": " + why);
+      continue;
+    }
+    size_t budget = libraryBudget(e.size);
+    if (budget && counts[i] > budget)
+      problems.push_back(e.path + ": " + std::to_string(counts[i]) + " triangles is over the " + std::to_string(budget) + " a " + e.size + " may have");
   }
   return problems.size() == before;
 }

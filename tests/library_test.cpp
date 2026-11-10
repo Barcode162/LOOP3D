@@ -70,3 +70,47 @@ TEST(library_entries_place_their_example) {
     CHECK(!st.scene.instances.empty());
   }
 }
+
+TEST(library_card_new_lines_are_read_and_checked) {
+  LibraryEntry e;
+  std::vector<std::string> problems;
+  CHECK(parseLibraryCard("# chair · a chair\n# kind: piece\n# place: chair(AT)\n# credit: J\n# licence: ours\n# from: here\n"
+                         "# tags: seat, wood\n# size: chair\n# sockets: seat, top\n# seeds: 1-9\n\nto chair(at)\n", e, problems));
+  CHECK(e.tags == "seat, wood" && e.size == "chair" && e.sockets == "seat, top" && e.seeds == "1-9");
+  CHECK(e.about.empty());
+  // without them the card is still whole
+  LibraryEntry plain;
+  problems.clear();
+  CHECK(parseLibraryCard("# a · b\n# kind: piece\n# place: a(AT)\n# credit: J\n# licence: ours\n# from: here\n", plain, problems));
+  CHECK(plain.size.empty());
+  // a size or a socket the plan doesn't name is refused
+  LibraryEntry bad;
+  problems.clear();
+  CHECK(!parseLibraryCard("# a · b\n# kind: piece\n# place: a(AT)\n# credit: J\n# licence: ours\n# from: here\n# size: huge\n# sockets: seat, chair\n", bad, problems));
+  CHECK(problems.size() == 2);
+  CHECK(libraryBudget("hand") == 2000 && libraryBudget("chair") == 10000 && libraryBudget("sofa") == 30000 && libraryBudget("room") == 100000);
+  CHECK(libraryBudget("land") == 0 && libraryBudget("") == 0);
+}
+
+TEST(library_entries_are_within_their_size_budget) {
+  std::string lib = findLibrary(".");
+  std::vector<LibraryEntry> entries;
+  std::vector<std::string> problems;
+  CHECK(readLibrary(lib, entries, problems));
+  std::vector<size_t> counts;
+  bool ok = checkLibraryBudgets(lib, entries, counts, problems);
+  for (const std::string& p : problems) std::printf("    %s\n", p.c_str());
+  CHECK(ok);
+  CHECK(counts.size() == entries.size());
+  for (size_t i = 0; i < entries.size(); ++i) std::printf("    %-14s %zu triangles\n", entries[i].name.c_str(), counts[i]);
+  // an entry over its size's budget is refused (the same entry, called a hand when it is bigger)
+  for (size_t i = 0; i < entries.size(); ++i)
+    if (counts[i] > libraryBudget("hand")) {
+      LibraryEntry big = entries[i];
+      big.size = "hand";
+      problems.clear();
+      CHECK(!checkLibraryBudgets(lib, {big}, counts, problems));
+      CHECK(problems.size() == 1 && problems[0].find("over") != std::string::npos);
+      break;
+    }
+}

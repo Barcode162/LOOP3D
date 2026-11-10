@@ -16,7 +16,11 @@
 // The first line is its name and what it is; the lines after, how to use it;
 // then kind (model, room, piece, ...), place (one line that places an example,
 // AT standing for where: the editor puts the view's spot there), credit,
-// licence and where it came from. An entry without a credit or a licence is
+// licence and where it came from. Four lines are optional (docs/LIBRARY_PLAN.md,
+// section 2): `tags:` (words to find it by), `size:` (hand, chair, sofa, room
+// or land: its triangle budget), `sockets:` (what it offers: seat, hold, top,
+// hang, open, light, lie) and `seeds:` (the range of seeds that look right,
+// for a recipe that takes one). An entry without a credit or a licence is
 // refused (CLAUDE.md: no asset without a licence that allows it).
 //
 // A scene brings an entry in by name, as any shared script: `use "lantern"`
@@ -29,6 +33,7 @@ namespace loop {
 struct LibraryEntry {
   std::string name, what, about;  // about: the lines saying how to use it
   std::string kind, place, credit, licence, from;
+  std::string tags, size, sockets, seeds;  // optional card lines ("" when absent)
   std::string path;               // the entry's file
 };
 
@@ -42,5 +47,16 @@ bool parseLibraryCard(const std::string& text, LibraryEntry& out, std::vector<st
 // Every entry of the library, by kind then name. False if any is wrong
 // (a missing card line, two entries with one name); each problem says which.
 bool readLibrary(const std::string& library, std::vector<LibraryEntry>& out, std::vector<std::string>& problems);
+
+// The most triangles an entry of that size may have (hand, chair, sofa, room);
+// 0 for a size with no budget (land: the plan states none) or no size.
+size_t libraryBudget(const std::string& size);
+// Places the entry's example and counts the triangles it makes (every copy
+// counted). False, with why, if it won't load.
+bool countLibraryTriangles(const std::string& library, const LibraryEntry& e, size_t& triangles, std::string& why);
+// The check: counts every entry's triangles into `counts` (same order as
+// `entries`) and adds a problem for each one over its size's budget.
+// False if any is.
+bool checkLibraryBudgets(const std::string& library, const std::vector<LibraryEntry>& entries, std::vector<size_t>& counts, std::vector<std::string>& problems);
 
 }  // namespace loop
