@@ -4,6 +4,9 @@ How several agents work on Loop3D at the same time without getting in each other
 is shipped while unfinished work keeps going. Written 2026-11-10 on the user's word: "a lot of agents on
 different parts instead of waiting so much", and "a deploy agent … keeping what's currently worked on in the works".
 
+*Running a wave of agents as one system (check-ins, waiting, a timer, checks the moment all is done, times
+against expected): `docs/CONDUCTOR.md`.*
+
 ## The idea in four lines
 1. **Every job has its own branch** (`work/<code>`) and its own copy of the code. Nothing an agent does touches
    `main` or anyone else's work.

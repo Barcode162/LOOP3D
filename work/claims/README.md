@@ -1,17 +1,23 @@
-# Claims: who is working on what
+# The board: who is working on what
 
-One file per job in progress, named by its order code (`E4.md`, `L-cholla.md`). The lead writes it on `main`
-before starting an agent, so every other agent and session can see it. The agent works on its own branch,
-`work/<code>`, and changes only its claim's status there. The deployer deletes the claim once the work is on
-`main`. `python3 tools/claims.py` lists them and refuses two claims that touch the same file.
+One file per job, named by its order code (`E4.md`, `L-cholla.md`), made and changed only with
+`python3 tools/claims.py` (`new`, `beat`, `finish`; see `docs/CONDUCTOR.md`). A claim is written on `main` before
+work starts, so every chat can see it; the job's later check-ins go on its own branch, and `--remote` reads them.
+Two claims may never hold the same file. The deployer removes a claim when the job is on `main`.
 
 ```
-code:   E4
-title:  A word's test in one line
-hand:   builder
-branch: work/E4
-status: working        # working | done | stuck | deployed
-touch:  tests/test.h, tests/words_test.cpp
-pictures: no           # yes if the picture could change: the deployer then runs the 12 picture tests
-note:   (the agent writes its report's first line here when done or stuck)
+code:     E4
+title:    A word's test in one line
+hand:     builder
+size:     S
+wave:     w1
+branch:   work/E4
+status:   working          (working | waiting | done | stuck | deployed)
+touch:    tests/test.h, tests/words_test.cpp
+depends:  (codes this job waits for)
+pictures: no               (yes: the deployer also runs the 12 picture tests)
+expected: 25               (minutes, learnt from perf/jobs.md)
+started:  2026-11-10T21:05Z
+updated:  2026-11-10T21:20Z
+note:     the last check-in, or the report's first line
 ```

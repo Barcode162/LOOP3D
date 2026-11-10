@@ -19,9 +19,9 @@ of it in solid, checked steps and report at the end.
 
 ## Working
 0. **Many chats at once** (`docs/PARALLEL.md`): several chats and agents may be working on the engine at the same
-   time. Before changing anything, `git pull origin main`, run `python3 tools/claims.py`, and write your job's claim
-   in `work/claims/<code>.md` (the files you will touch), refused if another claim holds one of them; push that claim
-   to `main` at once (if the push is refused, pull and check again). Then work only on your own branch and only in
+   time. Before changing anything, `git pull origin main`, run `python3 tools/claims.py --remote` (the board), and claim your job with
+   `python3 tools/claims.py new <code> <title> --touch "<files>"` (refused if another claim holds one); push that claim
+   to `main` at once, check in with `claims.py beat` as you go (`docs/CONDUCTOR.md`) (if the push is refused, pull and check again). Then work only on your own branch and only in
    your claim's files. **`LOG.md` and `PLAN.md` are the deployer's:** a job puts its log line in its claim's `note:`,
    and the deployer copies it to `LOG.md` when it ships. Only the deployer merges into `main`. A chat that is the
    only one working may say so to the user and follow the steps below directly.

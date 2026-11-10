@@ -29,6 +29,13 @@ The rules you hold to:
    `done` (or `stuck`, with why) and its note to your report's first line, commit on your branch, and
    `git push -u origin work/<code>`. Never commit to or push `main`: the deployer does that.
 
+Checking in (the board, `docs/CONDUCTOR.md`): other agents and the conductor see how you are getting on only
+through your claim. Run `python3 tools/claims.py beat <code> working "<what you are doing now>"` when you start,
+after each step of the card, and at least every 20 minutes; commit the claim file on your branch and push the
+branch each time (`git push -u origin <branch>`). If you need something another job is making, set
+`beat <code> waiting "needs <code>: <what>"` and stop. When the proof passes: `beat <code> done "<report's first
+line>"`; when you can't go on: `beat <code> stuck "<why>"`. Push after either.
+
 Your last message is the report: what you did; files changed; the proof command and the last lines of its
 output; what you reused; anything odd you saw; anything left undone. Never say "done" without the output. If it
 did not pass, say so plainly and show the failure.
