@@ -1,16 +1,20 @@
-# The Loft, goal 1: the shell. A bare room two floors high (9 m wide, 6 m
-# high, 12 m deep) with one wall of glass, lit only by a low evening sun
-# through it. Nothing else yet: every later piece is judged against this size.
+# The Loft, goal 2: night falls. The same bare room two floors high (9 m wide,
+# 6 m high, 12 m deep) with one wall of glass, but the sun is gone and the sky
+# is near black. One bare 800 lumen bulb hangs in the middle: everything you
+# can see is lit by it, and nothing else is lit at all.
 use "loft_shell"
 use "glazing_wall"
 title "The Loft"
 mode "game"
-sky "physical", haze: 2
-sun elevation: 9 deg, toward: 340 deg, lux: 30000, kelvin: 4200
-ground 600, material: "grass"
+sky "color", color: vec(0.02, 0.03, 0.08), nits: 0.05
 loft_shell(size: vec(9, 6, 12), floor: "floorboards", walls: "plaster")
 glazing_wall(at: vec(0, 0, -6), width: 9, height: 6, across: 6, up: 4)
 # a mark the height of a person by the glass, to judge the room by (1.8 m)
 box size: vec(0.5, 1.8, 0.05), at: vec(-3.9, 0.9, -5.5), material: "oak"
-camera at: vec(2.5, 1.6, 4.5), look_at: vec(-1, 2.4, -6), lens: 22 mm
+# the bulb: a cord from the ceiling, a brass holder, and the light itself
+box size: vec(0.006, 2.3, 0.006), at: vec(0, 4.85, 0), material: "iron"
+cylinder radius: 0.02, height: 0.06, at: vec(0, 3.67, 0), material: "brass"
+light(vec(0, 3.6, 0), lumens: 800, kelvin: 2700, radius: 0.03)
+# the camera's exposure is held still, so dark stays dark (never brightened to help)
+camera at: vec(2.5, 1.6, 4.5), look_at: vec(-1, 2.4, -6), lens: 22 mm, f_stop: 2, shutter: 1 / 50, iso: 1600, auto_exposure: no
 move_player at: vec(2.5, 0, 4.5), look_at: vec(-1, 2.4, -6)
