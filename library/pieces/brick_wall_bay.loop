@@ -1,0 +1,41 @@
+# brick_wall_bay · a bay of brick wall: a thin panel between two piers, with a stone sill band
+# brick_wall_bay(at, width, height, brick, faces) stands it against a wall; `at` is the middle of its foot
+# at the wall's face. faces: "z" looks towards -z (a wall at the back), "x" looks towards -x (a wall at
+# x = +4.5). Join bays side by side, width apart, and the piers meet as one.
+#
+# kind: piece
+# place: brick_wall_bay(at: AT, width: 3, height: 6, faces: "z")
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: brick, wall, pier, loft, bay
+# size: room
+# sockets: hang
+
+let panel_depth = 0.1     # the wall itself
+let pier_width = 0.33
+let pier_proud = 0.11     # how far a pier stands out of the panel
+let band_height = 0.1
+let band_proud = 0.02
+let band_at = 3.0         # height of the stone band
+let edge = 0.008
+
+# one block of the bay: `across` from the middle, `out` from the wall to its middle, `depth` thick
+to bay_part(at, faces, across, out, y, w, h, depth, material)
+  let wide = faces == "z"
+  let p = at + (vec(across, y, -out) if wide else vec(-out, y, across))
+  let s = vec(w, h, depth) if wide else vec(depth, h, w)
+  return box(size: s, at: p, material: material, round: edge)
+
+to brick_wall_bay(at: vec(0, 0, 0), width: 3, height: 6, brick: "brick", faces: "z", stone: "concrete")
+  let inner = width - pier_width * 2
+  let pier_depth = panel_depth + pier_proud
+  # the panel, between the piers' outer edges (it runs behind them)
+  bay_part(at, faces, 0, panel_depth / 2, height / 2, width, height, panel_depth, brick)
+  # a pier each side, standing proud
+  for each side in [-1, 1]
+    bay_part(at, faces, side * (width - pier_width) / 2, pier_depth / 2, height / 2, pier_width, height, pier_depth, brick)
+  # the stone sill band across the bay, a little into each pier
+  let reach = inner + 0.04
+  let thick = band_proud + 0.02   # sunk into the panel so no seam shows
+  bay_part(at, faces, 0, panel_depth + band_proud - thick / 2, band_at, reach, band_height, thick, stone)
