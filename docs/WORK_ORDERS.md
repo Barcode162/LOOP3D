@@ -197,6 +197,8 @@ S23 · Roofs, beams, trusses                                         hand: build
 S24 · Mouldings: skirting, cornice, architrave as swept sections    hand: builder   size: S
 ```
 Each of S5 to S24 is written out as a full card by the lead when it is next, in the same form as S1 to S4.
+S7 is written out in section 13.2. S19, S20, S21 and S23 are made as library recipes instead of words
+(section 13.1, decision 6); one comes back as a word only if its recipe cannot stay under 80 lines.
 
 ## 6. Track M · Surface recipes
 
@@ -1029,3 +1031,465 @@ user; deciding what "one of everything" means when two ways appear.
 
 Signs an order was too big: the agent touched files off its list, invented a second way to do something that
 exists, skipped the proof, or reported "mostly". Cut it in two and run it again.
+
+---
+
+## 13. Milestone 3 · The Loft, empty and lit, at night
+
+Cut 2026-11-10 on the user's word: "it feels better when it's dark outside so there's only light if you have
+real lights, that way we can really push the engine even though it isn't the fastest yet". The rubric is
+`docs/rubrics/loft.md`; the room is `projects/loft/` (9 m wide, 6 m high, 12 m deep, glass at z = -6).
+
+### 13.1 Decided here (no order decides these again)
+
+1. **It is night.** No sun in the Loft. The sky is near black. Every pool of light inside belongs to a lamp
+   someone could point at; outside, the only light is the city's. No fill light, no raised sky light, no
+   glow that lights nothing. A dark corner stays dark.
+2. **The picture is not made brighter to help.** The Loft's cameras hold their exposure still
+   (`auto_exposure: no`, f/2, 1/50 s, ISO 800 to start, tuned once by eye in LOFT2 and then kept).
+3. **A strip of light is one thing with two faces:** a thin glowing rectangle you can see, and a row of
+   panel lamps that *stand for* it where the phone needs lamps (N1). The film renderer lights from the glowing
+   rectangle itself and skips the stand-ins, so film and phone carry the same light and nothing counts twice.
+   Its brightness is given in lumens a metre, as on a real reel of LED strip (300 a metre is a soft accent,
+   1,000 a metre lights a counter).
+4. **Warm inside, cool outside, nothing else:** inside lamps 2,700 to 3,000 K; the city 6,500 K and up.
+5. **Lamps do not all cast shadows.** Hidden strips don't need to (`shadows: no`, N3); pendants and spots do.
+   The phone's two shadow maps go to the lamps that ask.
+6. **Building parts are library recipes, not engine words,** wherever loops of boxes can make them: the stair,
+   the rail, the beams, the glazing wall (it exists). So S19, S20, S21 and S23 of track S are dropped as words
+   and appear below as `L-` orders. Words are added only for what a recipe cannot do (S7 `group`, `strip`).
+7. **Where things stand** (so every piece fits without being turned): x runs across the room (-4.5 to 4.5),
+   z from the glass (-6) to the back wall (+6). The mezzanine covers the back third: z from +2 to +6, the whole
+   width, its top at 3.06 m. The stair climbs along the left wall towards +z: 17 rises of 0.18 m, 16 treads
+   of 0.27 m, 0.95 m wide, its foot at z = -2.32, its top step level with the deck at z = +2. The kitchen will
+   go under the deck, the sofa between the stair's foot and the glass.
+8. **The Loft is high up.** The floor is taken as 40 m above the street: the city's towers start 40 m below
+   the floor, and nothing outside stands at floor level.
+9. **Materials by name for now** (`"oak"`, `"concrete"`, `"brick"`, `"glass"`, or one made at the top of the
+   recipe with `material(...)`, such as a blackened steel: colour 0.04, metal 1, roughness 0.45). Milestone 4
+   swaps them for surface recipes (track M); a piece keeps its materials as arguments so that is one line.
+10. **Until `group` exists (S7)** a piece takes `at:` only and faces the way its card says. After S7, every
+    piece is wrapped in a group and takes `turn:` too; that is one later order for all of them, not each
+    asset-smith's job.
+
+Test scenes go in `projects/samples/` (where the picture tests look a name up). Orders that touch
+`tests/pictures/scenes.json` (N4, N5, N6, A11b) run one after another, not side by side. A new sample also shows
+in the player's scene list: say so in the report; the lead decides whether it stays there.
+
+Named proofs: `LIBPROOF` is section 11's (`./build/loop library check`; `./build/loop library picture <name>`
+for three seeds, or three sizes when it has no seed; the judge's marks on the base rubric's questions 2, 3, 4
+and 6 are 7 or more). `LIGHTPROOF` is the same with `--night` (E10) and the judge's marks on the Loft rubric's
+questions 1, 8 and 10.
+
+### 13.2 The engine's night work (track N, with E10, F1, M60, A11, S7)
+
+```
+E10 · A night picture of one library entry                         hand: builder   size: S
+Read:   tools/loop.cpp (the `library picture` command)
+Touch:  tools/loop.cpp
+Do:     1. `loop library picture <name> --night`: no sun, a black sky, a mid-grey floor and one mid-grey wall
+           3 m behind the thing, the camera's exposure held at f/2, 1/50 s, ISO 800, quality "good".
+        2. An entry whose card says `kind: light` or `kind: sky` is pictured this way without being asked.
+        3. The help line of `loop library` says so.
+Proof:  QUICK; `./build/loop library picture lantern --night -o /tmp/n.png` shows the lantern's own pool of
+        light on the floor and the picture's corners near black (say their brightness in the report).
+Not:    any change to the day picture.
+```
+```
+N1 · A lamp that stands for a glowing thing                        hand: lead      size: M
+Read:   engine/render/scene.h (Light, Material::emission), engine/render/pathtracer.cpp (the glowing
+        triangles gathered as emitters; the three places lamps are sampled), engine/render/light_cache.cpp,
+        engine/gpu/renderer_scene.cpp (how lamps are sent)
+Touch:  engine/render/scene.h, engine/render/pathtracer.cpp, engine/render/light_cache.cpp,
+        tests/light_paths_test.cpp
+Do:     1. `Light::standsFor` (the placed thing's number, -1 for none).
+        2. The film renderer and the light cache's bake skip every lamp that stands for a thing: there the
+           thing's own glowing triangles give the light. The live renderer changes nothing: it uses the lamp
+           and draws the thing glowing.
+        3. A helper beside `kelvin()`: the glow in nits that makes a flat face of a given area give a
+           given number of lumens from one side (lumens over pi times the area).
+        4. A test scene: a white floor, a glowing rectangle 2 m by 12 mm facing down from 0.5 m, 600 lumens.
+           Film A: the rectangle alone, glowing. Film B: no glow, a panel lamp of the same size and lumens.
+           The floor's brightness at five points agrees within 5%.
+Proof:  QUICK; `xvfb-run -a node tools/picture_check.js` says 12 of 12 the same.
+Not:    the word (N2); the shine of long lamps (N6).
+```
+```
+N2 · The word `strip`                                              hand: builder   size: M
+Needs:  N1
+Read:   engine/script/words_light.cpp (`panel_light`), engine/geometry/mesh.h (the flat shapes),
+        section 13.1 decision 3
+Touch:  engine/script/words_light.cpp, docs/LANGUAGE.md, tests/words_test.cpp
+Do:     1. `strip(from, to, lumens: 300, kelvin: 2700, facing: vec(0, -1, 0), width: 0.012, shadows: no,
+           name)`: `lumens` is for each metre of its length.
+        2. It places one thing: a flat rectangle from `from` to `to`, `width` wide, glowing only on the side
+           towards `facing` (N1's helper gives the nits), on a dark channel 2 mm wider and 6 mm deep behind
+           it. If mesh.h has no one-sided rectangle, use a box 1 mm thick and say so in the report.
+        3. It adds panel lamps along it, each at most 0.5 m long and `width` wide, facing `facing`, sharing
+           the lumens by length, each standing for the rectangle, casting shadows only if `shadows: yes`.
+        4. Plain problems: `from` and `to` in the same place; `facing` along the strip; lumens below 0.
+        5. Its help line and one line in docs/LANGUAGE.md under the lights.
+Proof:  QUICK; a test: a strip of 2 m gives one glowing thing and 4 lamps that add up to 600 lumens, each
+        standing for it; N1's film test run through the word agrees within 10%.
+Not:    switching or dimming; curved strips.
+```
+```
+N3 · `shadows:` on every lamp, and the maps go to lamps that ask     hand: builder   size: S
+Needs:  N2 (the same file)
+Read:   engine/script/words_light.cpp, engine/gpu/renderer_shadows.cpp (how the mapped lamps are chosen),
+        docs/PIPELINE.md build step 5, "Lamp shadow maps"
+Touch:  engine/script/words_light.cpp, engine/gpu/renderer_shadows.cpp, docs/LANGUAGE.md, tests/words_test.cpp
+Do:     1. `light(..., shadows: no)` and `panel_light(..., shadows: no)` set `Light::castShadows`.
+        2. A lamp that casts none is never given a shadow map on Phone nor rays on High; the choice among the
+           rest stays as it is (the brightest near the eye).
+Proof:  QUICK; a test that the flag lands on the stage; picture tests 12 of 12 (no old scene uses the word).
+```
+```
+N4 · The Loft at night joins the picture tests                     hand: builder   size: S
+Needs:  LOFT4
+Read:   tools/picture_check.js, tests/pictures/scenes.json
+Touch:  tests/pictures/scenes.json, tests/pictures/loft.png (new)
+Do:     Add the Loft as the 13th scene, from its own camera. Run `./build/loop score` on it and put the
+        score, the worst tenth and the brightness in the report.
+Proof:  `xvfb-run -a node tools/picture_check.js` says 13 of 13, three runs in a row.
+Not:    making the score better (N6, M60 and the goals do that).
+```
+```
+N5 · Dark stays dark: a lit room beside an unlit one               hand: builder   size: M
+Read:   engine/render/light_cache.h, tools/cache_check.js, tests/pictures/scenes.json and one of its scenes
+Touch:  tests/pictures/scenes.json, tests/pictures/two_rooms.png (new), projects/samples/two_rooms.loop (new)
+Do:     1. A scene with no sun and a black sky: two rooms 4 m square side by side, a 0.3 m wall between them,
+           closed all round; one 800 lumen lamp in the first room, none in the second; the camera above,
+           seeing both floors (no ceiling in the picture's way: a ceiling that only shadows are cast by, if
+           the engine has one, else a camera inside each room in two pictures).
+        2. Measure the second room's average brightness against the first's, in film (cinema) and live.
+        3. If live shows the dark room at more than 2% of the lit one, do not fix it: report the numbers and
+           where the light comes in (the light cache's blend across the wall, a lamp's reach through it).
+Proof:  the picture test passes with the new scene, or the report shows the numbers and the picture.
+Not:    changing the light cache (the lead cuts that order from this report).
+```
+```
+N6 · The shine of panels and strips on a polished floor             hand: lead      size: M (two passes)
+Needs:  N2
+Read:   engine/gpu/shaders/scene.wgsl.h (the lamp loop), engine/render/bsdf.cpp, docs/rubrics/loft.md
+        question 2
+Touch:  engine/gpu/shaders/scene.wgsl.h, engine/gpu/shaders/cluster_draw.wgsl.h, tests/pictures/scenes.json,
+        tests/pictures/strip_floor.png (new), projects/samples/strip_floor.loop (new)
+Do:     1. A test scene: a 2 m strip 0.4 m above a polished concrete floor (roughness 0.2), seen low and
+           along the floor. Score live against cinema (`loop score`).
+        2. If a panel's shine is drawn as a point's: use the point on the rectangle nearest the mirrored
+           ray, and widen the roughness by the lamp's size over its distance so no energy is added.
+        3. Score again. Both scores, and `loop budget` of the bar before and after, in the report.
+Proof:  QUICK; the web player builds; the strip scene's score is better; the other 12 pictures are the same
+        or the changed ones are named and renewed.
+Not:    mirror reflections of the room (M60).
+```
+```
+N7 · What a strip costs: 10, 40, 80 and 160 of them                  hand: builder   size: S
+Needs:  N2
+Read:   perf/budget.md, `loop budget` in tools/loop.cpp (read only)
+Touch:  perf/budget.md, projects/samples/many_strips.loop (new)
+Do:     A room 9 by 6 by 12 m with `count` strips of 1 m in rows under shelves (the count from
+        `--set`), walked through for one second. Run `./build/loop budget` at Phone and High for the four
+        counts; add the table (lamps sent, entries a surface, estimated milliseconds) to perf/budget.md.
+Proof:  the four rows at each quality, and one sentence: at which count Phone leaves its frame budget.
+```
+```
+F1 · Film: the view through the Loft's glass is black               hand: lead      size: S
+Needs:  N1 (the same file)
+Read:   LOG.md, the line of 2026-11-10 "Go build the foundation"; engine/render/pathtracer.cpp (glass,
+        `transmittance`, the sky when a ray leaves); library/pieces/glazing_wall.loop
+Touch:  engine/render/pathtracer.cpp, tests/render_test.cpp
+Do:     1. `./build/loop render projects/loft/places/loft.loop --quality good`: see the black glass.
+        2. Find why (a thin box of glass 2 cm thick; the sky and ground behind it; the ground's size).
+        3. Fix the cause. A test: a camera looking through a glass box 2 cm thick at a white wall sees it
+           at more than 85% of its brightness without the glass.
+Proof:  QUICK; the Loft's render shows the evening sky and ground through the glass; picture tests 12 of 12.
+```
+```
+M60 · Night glass, live: the pane shows the room back               hand: lead      size: M (three passes)
+Needs:  F1, LOFT4
+Read:   engine/gpu/shaders/scene.wgsl.h (`fsGlass`), engine/render/frame_graph.h, engine/gpu/renderer_draw.cpp,
+        docs/SETTINGS.md, docs/rubrics/loft.md question 9
+Touch:  engine/gpu/renderer_draw.cpp, engine/gpu/renderer_internal.h, engine/gpu/shaders/scene.wgsl.h,
+        engine/render/frame_graph.cpp, docs/SETTINGS.md and the editor's schema, docs/PIPELINE.md
+Do:     1. A *pane* is a flat glass thing under 5 cm thick and over 1 m square. At most one pane mirrors
+           in a frame: the largest in view.
+        2. A new step in the frame, "mirror": the room drawn once more from the eye mirrored in the pane's
+           plane, at a quarter of the pixels, with the same lamps, shadow maps and light cache, cut off at
+           the pane's plane, without the steps after light (no bloom, no blending of its own).
+        3. `fsGlass` adds that picture times the glass's own reflection (about 4% facing it, rising steeply
+           at a glance) to what is seen through.
+        4. A setting `render.mirrorPane` (on; off for comparing), by the rules of docs/SETTINGS.md.
+        5. Nothing is drawn when no pane is in view; the step's time is counted in the frame's cost.
+Proof:  QUICK; the web player builds; the Loft's score is better with it on than off (both in the report);
+        `./build/loop budget projects/loft --quality phone` before and after; picture tests the same or the
+        changed ones named and renewed.
+Not:    polished floors as mirrors; curved glass; two panes at once.
+```
+```
+A11a · Lit windows: the pattern `windows`, in film                  hand: builder   size: M
+Needs:  F1 (the same file); not at the same time as M3b (the patterns' file)
+Read:   engine/render/pattern.h/.cpp, engine/render/materials.cpp, engine/script/words_materials.cpp
+Touch:  engine/render/pattern.h, engine/render/pattern.cpp, engine/render/pathtracer.cpp,
+        engine/script/words_materials.cpp, docs/LANGUAGE.md, tests/render_test.cpp
+Do:     1. `material(pattern: "windows", floor: 3.2, bay: 2.4, window: vec(1.5, 1.7), lit: 0.35,
+           glow: 40, seed: 1)`: a tower's face cut into cells one floor high and one bay wide, a window in
+           each cell's middle.
+        2. Each window is lit or dark by its cell's number and the seed (`lit` is the share lit). A lit one
+           glows `glow` nits times 0.3 to 1, most of them warm (2,700 to 4,000 K), one in eight cool
+           (6,500 K); a dark one is near black and smooth. Between windows: the material's own colour.
+        3. The pattern multiplies the material's glow, so a lit window gives light in film.
+Proof:  QUICK; a test: over a face of 20 by 20 cells the share of lit windows is within 5% of `lit`, and
+        two seeds differ; picture tests 12 of 12.
+Not:    the live shader (A11b).
+```
+```
+A11b · Lit windows, live                                            hand: builder   size: S
+Needs:  A11a
+Read:   engine/gpu/shaders/scene.wgsl.h (how `grid` is drawn sharp at any distance)
+Touch:  engine/gpu/shaders/scene.wgsl.h, engine/gpu/shaders/cluster_draw.wgsl.h, tests/pictures/scenes.json,
+        tests/pictures/windows.png (new), projects/samples/windows.loop (new)
+Do:     The same cells, the same lit windows and colours as film (the same hash), blended to their average
+        when a window is smaller than a pixel so far towers do not shimmer.
+Proof:  QUICK; the web player builds; the new scene (three towers at 50, 300 and 1,000 m at night) scores
+        under 10 against cinema and holds still over three runs.
+```
+```
+S7 · `group`: many things placed, turned and hidden as one           hand: lead      size: M
+Read:   engine/script/scene_api.cpp (`place`, `Stage::Placed`, `updateTransform`), engine/script/parser.cpp
+        (how `to` and `for each` take their indented lines), library/pieces/glazing_wall.loop
+Touch:  engine/script/words_shapes.cpp, engine/script/scene_api.cpp, engine/script/scene_api.h,
+        docs/LANGUAGE.md, tests/words_test.cpp
+Do:     1. `group at: vec(...), turn: 90 deg, name: "stair"` followed by indented lines: every thing, lamp,
+           strip and sound placed in those lines is measured from the group's place and turn.
+        2. Groups go inside groups. A group gives back one thing with `.position`, `.turn`, `.visible`;
+           changing one moves, turns or hides everything in it, lamps too.
+        3. A library function called inside a group lands in the group: that is how a piece is turned.
+        4. The form of the indented lines is the one `to` and `for each` already use; no new punctuation.
+Proof:  QUICK; tests: a box at vec(1, 0, 0) in a group turned 90 deg lands at vec(0, 0, -1) to 1 mm; a lamp
+        in a moved group moves; `glazing_wall` inside a turned group faces along x.
+Not:    sockets (S8); wrapping the existing pieces (one later order).
+```
+
+### 13.3 The building pieces (asset-smith, one entry each)
+
+All are `kind: piece`, `size: room` unless the card says otherwise, take `at:`, stand as decision 7 says, and
+have no lamps of their own (the strips are added by 13.4's entries and the goals). Each asks for a blackened
+steel and an oak by argument, with those defaults. Proof for each: `LIBPROOF`.
+
+```
+L-mezzanine_deck · the upper floor's slab on its beams              hand: asset-smith
+Touch:  library/pieces/mezzanine_deck.loop
+Do:     `mezzanine_deck(at, width: 9, depth: 4, top: 3.06, floor: "floorboards", steel)`: `at` is the middle
+        of its front edge on the floor below. A deck 0.12 m thick whose top is at `top`; under it timber
+        joists 0.06 by 0.2 m every 0.45 m running front to back; a steel beam 0.2 m deep under the front
+        edge, with a 0.02 m lip standing 0.05 m above the deck's top along that edge; two steel posts 0.1 m
+        square under the beam, 1.5 m in from each end. Rounded edges 3 mm on the steel, 5 mm on the timber.
+```
+```
+L-stair_straight · a straight stair with open treads                hand: asset-smith
+Touch:  library/pieces/stair_straight.loop
+Do:     `stair_straight(at, rises: 17, rise: 0.18, going: 0.27, width: 0.95, tread: "oak", steel)`: `at` is
+        the middle of the first rise's foot; it climbs towards +z. Treads 0.045 m thick, each overhanging
+        the one below by 0.02 m, edges rounded 6 mm; the last rise meets the upper floor (no tread there).
+        Two steel stringers 0.012 by 0.25 m, one each side, sloping with the stair, feet on the floor.
+        No risers: you see through between the treads. The card's `place:` line stands it alone.
+```
+```
+L-steel_rail · a handrail on posts, for a stair or an edge          hand: asset-smith
+Touch:  library/pieces/steel_rail.loop
+Do:     `steel_rail(from, to, height: 0.95, posts_every: 1.1, steel)`: a flat steel bar 0.04 by 0.012 m
+        from `height` above `from` to `height` above `to` (so it slopes with a stair), posts 0.012 by
+        0.04 m under it at each end and at most `posts_every` apart, a second thinner bar halfway up.
+        `size: sofa`. If a sloping bar cannot be turned to lie along the slope with the words that exist,
+        stop and report (it needs S7 or a `turn:` along a line).
+```
+```
+L-glass_balustrade · glass panels along an edge                     hand: asset-smith
+Touch:  library/pieces/glass_balustrade.loop
+Do:     `glass_balustrade(from, to, height: 1.05, panel: 1.2, steel)`: level, from `from` to `to` along x or
+        along z. Panels of glass 0.012 m thick, at most `panel` wide with 0.02 m gaps, standing in a steel
+        shoe 0.05 by 0.1 m on the floor, a steel cap rail 0.04 by 0.012 m on top. `size: sofa`.
+```
+```
+L-steel_beam · an I-beam                                            hand: asset-smith
+Touch:  library/pieces/steel_beam.loop
+Do:     `steel_beam(from, to, depth: 0.3, flange: 0.15, steel)`: level, along x or along z; a web 0.01 m and
+        two flanges 0.015 m thick; a plate 0.01 m thick with four bolt heads at each end. `size: chair`.
+```
+```
+L-column · a steel column from floor to ceiling                     hand: asset-smith
+Touch:  library/pieces/column.loop
+Do:     `column(at, height: 6, side: 0.2, steel)`: an H-section (as the beam, upright), a base plate 0.35 m
+        square and 0.02 m thick with four bolts, a cap plate at the top. `size: chair`.
+```
+```
+L-timber_joists · a ceiling of joists under boards                   hand: asset-smith
+Touch:  library/pieces/timber_joists.loop
+Do:     `timber_joists(at, width: 9, depth: 12, top: 6, every: 0.6, timber: "oak")`: `at` is under its middle
+        on the floor. Boards 0.025 m thick whose top is at `top`; joists 0.075 by 0.22 m every `every` m
+        across the width; edges rounded 4 mm; every joist's length differs by a few mm with the seed.
+```
+```
+L-brick_wall_bay · a bay of brick wall with a pier each side         hand: asset-smith
+Touch:  library/pieces/brick_wall_bay.loop
+Do:     `brick_wall_bay(at, width: 3, height: 6, brick: "brick")`: stands against a wall, facing -z or +x by
+        an argument `faces: "x" | "z"`; a panel 0.1 m thick with two piers 0.33 m wide standing 0.11 m
+        proud, a stone sill band at 3 m. Until surface recipes exist the bricks are the material's pattern.
+```
+```
+L-skirting · a skirting board along a wall                          hand: asset-smith
+Touch:  library/pieces/skirting.loop
+Do:     `skirting(from, to, height: 0.12, timber: "oak")`: level, along x or z, 0.018 m thick, the top
+        edge rounded 6 mm, a 2 mm shadow gap above the floor. `size: chair`.
+```
+```
+L-door_and_frame · a plain door in its frame                        hand: asset-smith
+Touch:  library/pieces/door_and_frame.loop
+Do:     `door_and_frame(at, width: 0.9, height: 2.1, open: 0, leaf: "oak", steel)`: facing -z; a frame
+        0.05 by 0.12 m, a leaf 0.04 m thick with a lever handle and three hinges; `open` in degrees turns
+        the leaf about its hinges (report it if a thing cannot be turned about an edge). `size: chair`.
+```
+```
+L-radiator · a column radiator under a window                       hand: asset-smith
+Touch:  library/pieces/radiator.loop
+Do:     `radiator(at, columns: 14, height: 0.6, steel)`: upright tubes 0.03 m across in pairs front to
+        back, a top and a bottom rail, two feet, a valve at one end; our own design. `size: chair`.
+```
+```
+L-duct_run · a round air duct hung from the ceiling                  hand: asset-smith
+Touch:  library/pieces/duct_run.loop
+Do:     `duct_run(from, to, across: 0.4, hangers_every: 1.5)`: level, along x or z; a galvanised cylinder
+        with a raised seam ring every 1.2 m, a thin strap hanger to the ceiling at each `hangers_every`, one
+        round grille on its side. `size: sofa`. Uses `cylinder` turned to lie level.
+```
+
+### 13.4 The lights and the night outside (asset-smith, after N2 and E10)
+
+Proof for each: `LIGHTPROOF`. Each card's first line says what it lights and with how many lumens.
+
+```
+L-step_strips · a strip of light under every tread of a stair       hand: asset-smith
+Needs:  N2, E10, L-stair_straight
+Touch:  library/lights/step_strips.loop
+Do:     `step_strips(at, rises: 17, rise: 0.18, going: 0.27, width: 0.95, lumens: 250, kelvin: 2700)`: the
+        same numbers as the stair. One strip under each tread's front edge, 0.03 m in from each side, set
+        back 0.02 m and facing down, so the tread hides it from anyone walking up or standing in the room.
+        The picture places the stair too.
+```
+```
+L-cove · a ledge on a wall with a strip hidden on top               hand: asset-smith
+Needs:  N2, E10
+Touch:  library/lights/cove.loop
+Do:     `cove(from, to, lumens: 600, kelvin: 2700, ledge: "plaster")`: level, along x or z, against a wall;
+        a ledge 0.1 m deep with an upstand 0.06 m at its front; the strip lies behind the upstand facing up,
+        so it washes the wall and ceiling above and is never seen from below.
+```
+```
+L-pendant_dome · a metal dome on a cord, light falling in a cone    hand: asset-smith
+Needs:  E10, S1
+Touch:  library/lights/pendant_dome.loop
+Do:     `pendant_dome(at, drop: 1.2, across: 0.35, lumens: 800, kelvin: 2700, shade)`: `at` is the ceiling
+        point. A cord, a dome (dark outside, pale inside), a small glowing bulb high inside it, and one
+        spot `light` aimed down whose angle is the dome's opening, so the dome owns the pool below and no
+        light leaves upward. The dome is a `lathe` (S1).
+```
+```
+L-track_spots · a ceiling track with spotlights                     hand: asset-smith
+Needs:  E10
+Touch:  library/lights/track_spots.loop
+Do:     `track_spots(from, to, count: 4, aims: [vec, ...], lumens: 450, kelvin: 3000)`: a track 0.035 m
+        square, level, along x or z; `count` small cylinder heads spaced along it, each with a spot
+        `light` aimed at its place in `aims` (straight down when not given), angle 25 deg.
+```
+```
+L-city_night · the city at night, in three depths, seen from high up  hand: asset-smith
+Needs:  A11b, E10
+Touch:  library/skies/city_night.loop
+Do:     `city_night(toward: vec(0, 0, -1), eye_height: 40, seed: 1, lit: 0.35)`: kind `sky`.
+        1. The sky: `sky "color"` deep blue-black, about 0.05 nits, a few stars; `haze` so that far towers
+           fade to blue.
+        2. Towers as boxes with the `windows` pattern, their feet `eye_height` below the origin, in a fan
+           60 degrees each side of `toward`: about 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from
+           800 to 1,500 m; heights 30 to 180 m, the tall ones few; none nearer than 100 m.
+        3. A dark street plane at -`eye_height`, and a long low panel of dull orange light lying on it out at
+           300 m (the streets' glow on the haze).
+        4. One cool `panel_light` (7,500 K, about 300 lumens to start, `shadows: no`) as big as a 9 by 6 m
+           window, 1 m outside it, facing in: the city's own light reaching the room. It is the only lamp
+           outside, and the card says so.
+        Three seeds must each give a skyline with one tall group off-centre and gaps of sky.
+```
+
+### 13.5 The goals, in order (the lead, in the user's chat, one at a time)
+
+Each goal changes `projects/loft/places/loft.loop`, is checked with `./build/loop check`, seen in the live
+renderer (`tools/web_check.js` on the built player), shown to the user with its one idea, and waits for the
+user's go before the next. Each ends with `./build/loop budget projects/loft --quality phone` in the log line.
+
+```
+LOFT2 · Night falls                                                 hand: lead      size: S
+Needs:  nothing
+Do:     The sun and the grass go. The sky turns near black. One bare 800 lumen bulb hangs in the middle of
+        the room; the camera's exposure is held (decision 2) and tuned once.
+Idea:   at night nothing is lit unless a lamp lights it; one bulb shows how fast light fades with distance.
+```
+```
+LOFT3 · The upper floor and the stair                               hand: lead      size: S
+Needs:  L-mezzanine_deck, L-stair_straight, L-steel_rail, L-glass_balustrade
+Do:     The deck over the back third, the stair up the left wall, the rail on the stair's open side, the
+        glass balustrade along the deck's edge. Still the one bulb.
+Idea:   a room is built from library pieces set at measured places; the bulb's shadows show the new shapes.
+```
+```
+LOFT4 · The stair lights itself                                     hand: lead      size: S
+Needs:  LOFT3, N2, L-step_strips
+Do:     The bulb goes. A strip under every tread (17 by 250 lumens a metre) and one under the handrail.
+Idea:   a hidden strip: you see the light it throws, never the lamp; many small lamps instead of one big.
+```
+```
+LOFT5 · The bones: beams, columns, joists, brick                    hand: lead      size: S
+Needs:  LOFT4, L-steel_beam, L-column, L-timber_joists, L-brick_wall_bay, L-skirting, L-duct_run
+Do:     Two columns and a beam across the room at the deck's edge; joists under the ceiling; brick bays on
+        the right wall; skirting; one duct. No new lamps.
+Idea:   detail in three sizes; how the same light reads on steel, timber and brick.
+```
+```
+LOFT6 · Pools of warm light                                         hand: lead      size: S
+Needs:  LOFT5, L-cove, L-pendant_dome, L-track_spots, N3
+Do:     A cove washing the brick; three pendants under the deck where the counter will be; a track of four
+        spots on the ceiling aimed at the floor where the sofa will be. The corners stay dark.
+Idea:   pools and darkness: where a lamp is aimed is where you look; the pendants get the two shadow maps.
+```
+```
+LOFT7 · The city outside                                            hand: lead      size: S
+Needs:  LOFT6, L-city_night
+Do:     `city_night` beyond the glass. The floor near the glass takes a little cool light from it.
+Idea:   warm inside against cool outside; far things fade to blue.
+```
+```
+LOFT8 · The room in the glass                                       hand: lead      size: S
+Needs:  LOFT7, M60
+Do:     The pane mirrors the room: the stair's strips and the pendants doubled in it, the city through it.
+Idea:   glass at night is a dim mirror; why this costs the phone a second, smaller drawing of the room.
+```
+```
+LOFT9 · Marked and timed                                            hand: lead      size: S
+Needs:  LOFT8, N4, N6, N7
+Do:     The judge marks the live picture on the Loft rubric (questions 1, 5, 6, 8, 9, 10 count for this
+        milestone); the user plays it on the recording page; the phone's times and the judge's one change
+        become the next orders. Milestone 3 is done when the mark is 7 or more on those six and the phone's
+        time is written down, whatever it is.
+```
+
+### 13.6 What can start now, and what waits
+
+*Ready today, none touching another's files (the first wave, `loft1`):* E10 · N1 · N5 · S1 (section 5) · and
+all twelve pieces of 13.3 (L-steel_rail may come back asking for S7). S7 follows S1 (both change
+`words_shapes.cpp`).
+*After N1:* N2, then N3; F1, then A11a, then A11b. *After N2:* N6, N7. *After N2 and E10:* the lights of 13.4
+(L-city_night after A11b). *After LOFT4:* N4, M60.
+*Not cut yet for this milestone (about fifteen orders):* the phone's speed once N7 and the first recording
+say where the time goes; glare from bright bulbs; a moon; rain on the glass; the pieces of
+`docs/LIBRARY_PLAN.md` section 4 that milestone 4 needs first (kitchen run, island, built-in shelves, bed
+platform, window seat); wrapping every piece in a group after S7.

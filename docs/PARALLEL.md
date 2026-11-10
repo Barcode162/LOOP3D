@@ -50,6 +50,9 @@ design decision), or main moved under it. The lead re-cuts it or re-runs it on t
 
 ## The lanes ready now (2026-11-10)
 
+*The Loft's orders (milestone 3, at night) and which of them can start together: `docs/WORK_ORDERS.md`,
+section 13.6. The table below is the first wave of 2026-11-10, all deployed.*
+
 Each is a full card in `docs/WORK_ORDERS.md` (or below). None touches the same files as another, so all can run
 at once. The tier is from `docs/MODELS.md`.
 

@@ -29,29 +29,22 @@ room shell, loft shell, glazing wall). The surface recipe is designed (M1) and t
 milestone 3 yet.
 *Goal 1, the shell (done 2026-11-10):* `projects/loft/`: a bare room 9 m wide, 6 m high and 12 m deep with one wall
 of glass (library: `loft_shell`, `glazing_wall`), lit by a low evening sun. Open: the film renderer shows the view
-through the glass black. *Next goal proposed:* the mezzanine floor and the stair up to it.
-*The first steps, in order:*
-1. Cut milestone 3's order cards (the shell, the stair, the glass wall, the light strips, the night city): design
-   work, top tier (`docs/MODELS.md`).
-2. The shape words those pieces need (track S), then the pieces themselves, one asset-smith each.
-3. Interior light for the Loft: glowing strips as true lights in the light cache, window light, reflections.
-4. Surfaces (M3 on), then the library in waves of ten entries, each judged against the rubric.
-*Needs you:* your go for step 1.
+through the glass black (order F1).
+*Your word, 2026-11-10: the Loft is at night.* Dark outside, and light only where a real lamp is, so the room
+pushes the engine's lights even before it is fast. Written into the orders as ten decisions
+(`docs/WORK_ORDERS.md`, section 13.1): no sun, no fill light, the picture never brightened to help, strips of
+light that are real lamps, warm inside against a cool city.
+*The orders (cut 2026-11-10):* 38 cards for milestone 3 in `docs/WORK_ORDERS.md`, section 13: the engine's night
+work (strips as true lamps, lamp shadows by asking, the glass as a mirror, lit city windows, things placed and
+turned as one), 12 building pieces, 5 lights and the night city for the library, and 8 goals for you to see in
+order: 2 night falls · 3 the upper floor and the stair · 4 the stair lights itself · 5 beams, columns, brick ·
+6 pools of warm light · 7 the city outside · 8 the room in the glass · 9 marked and timed on your phone.
+About fifteen more are cut once the first phone recording says where the time goes.
+*What can start now:* the first wave of 16 agents (section 13.6), none in another's way; and goal 2, night falls,
+which needs nothing built first.
+*Needs you:* your go for the first wave, and for goal 2.
 
-## Speed ideas from the sandbox (2026-11-10) · built, waiting for a second check
-The Platform plan (`Barcode162/Sandbox`, branch `claude/minimal-engine`, `PLAN.md`) is a side experiment: the
-tiniest engine, to grade ideas one against another. Nothing of it is built there. Its ideas that fit Loop3D
-were built here, on branch `claude/sandbox-changes-fable-f8cps3` (not on `main` until checked again):
-- **Each cluster tested once** when culling, where it was tested twice. 12 of 12 pictures the same.
-- **The depth pyramid reads 4 texels, not 9.** 12 of 12 pictures the same.
-- **Rest while still** (`render.restStill`, off): no frame drawn while nothing changes. Not yet proven in a browser.
-- *Tried, taken out:* a copy wholly in view skipping the six side tests changed the Glade's picture (2.70), which
-  it should not: either some cluster's bounds do not hold its triangles, or something else is wrong. Worth a look.
-- *Not started:* smaller records (a corner is 32 bytes, a copy 128, a cluster 64), 4-byte pictures where 8 are used.
-
-## Where every plan lives (one map; nothing else is a plan)
-| What | Where |
-|---|---|
+---|---|
 | The order of work (this page) | `PLAN.md` |
 | What happened, newest first | `LOG.md` |
 | What is finished, in full | `docs/DONE.md` |

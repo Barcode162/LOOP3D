@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "Get as many cards written up; dark outside, only real lights": the Loft is now at night by ten written decisions, and milestone 3 is cut into 38 order cards (`docs/WORK_ORDERS.md`, section 13): 13 for the engine's night light, 12 building pieces, 5 lights and the night city, 8 goals in order. A first wave of 16 can start at once. No engine code changed.
 - **2026-11-10** · "Go build the foundation" (the Loft, goal 1): a bare room two floors high with one wall of glass, as a new project (`projects/loft/`), from two new library entries (`loft_shell`, `glazing_wall`; the library now holds 8). Checked in the live renderer: the room, the glass and its bars, the evening sun across the floor. Found: the film renderer shows the view through this glass black (the live picture is right); to look at.
 - **2026-11-10** · "The Loft is the top priority; health-check everything; one updated plan, the normal structure": main checked (GitHub's Check green, the board empty, the quick checks and 12 of 12 pictures pass); `PLAN.md` now opens with the Loft, a map of where every plan lives, and the sandbox speed ideas' state; finished steps moved in full to `docs/DONE.md` (369 lines to 239). No engine code changed on main.
 - **2026-11-10** · W9, "Haze by distance and height": distant things now fade into haze by distance and height; the film renderer and the phone use one formula; five-walls score 1.4 (2.0 without haze); 12 of 12 pictures match. Deployed.
