@@ -1625,7 +1625,24 @@ struct Ultra {
   camUp : vec4f,    // xyz, tan(fov y / 2)
   info : vec4u,     // frame index, width, height, max bounces
   extra : vec4u,    // pixel block size (1 full, 2 half), lamps, history cap | firefly clamp x100 << 16,
-                    // flags (1 glossy, 2 glass, 4 depth of field, 8 sun shadows, 16 lamp shadows) | paths per pixel << 8
+                    // flags (1 glossy, 2 glass, 4 depth of field, 8 sun shadows, 16 lamp shadows, 32 reuse) | paths per pixel << 8
+  prevPos : vec4f,  // last frame's camera (to find where a point was)
+  prevFwd : vec4f,
+  prevRight : vec4f,
+  prevUp : vec4f,
+  reuse : vec4u,    // this frame's half of the reservoirs (0 or 1), last frame's usable (1), blocks across, blocks down
+};
+// ReSTIR GI (Ouyang et al. 2021): each pixel keeps one path's bounce, the
+// point its first bounce reached (x2) and the light leaving it towards the
+// pixel's own point (x1), chosen among all the paths it and its neighbours
+// tried, each weighed by its light. Reused from last frame (where the point
+// was) and from three neighbours, the soft bounced light settles in a few
+// frames instead of hundreds, and follows a moving camera.
+struct Res {
+  pos : vec4f,  // x2, and how many paths this one stands for (M)
+  nrm : vec4f,  // x2's surface direction (zero: the sky), and the weight W
+  rad : vec4f,  // the light leaving x2 towards x1; w: 1 when this pixel has one
+  at : vec4f,   // x1 (the pixel's own point), and its direction packed
 };
 struct Px {
   color : vec4f,   // averaged light
@@ -1637,6 +1654,7 @@ struct Px {
 @group(1) @binding(2) var skyTex : texture_2d<f32>;
 @group(1) @binding(3) var skySampler : sampler;
 @group(1) @binding(4) var<uniform> U : Ultra;
+@group(1) @binding(5) var<storage, read_write> res : array<Res>;
 
 var<private> seed : u32;
 fn rand() -> f32 {
@@ -1669,6 +1687,67 @@ fn basis(n : vec3f) -> mat3x3f {
   let a = -1.0 / (s + n.z);
   let b = n.x * n.y * a;
   return mat3x3f(vec3f(1.0 + s * n.x * n.x * a, s * b, -s * n.x), vec3f(b, s + n.y * n.y * a, -n.y), n);
+}
+
+fn octEnc(n : vec3f) -> vec2f {
+  let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
+  if (n.z >= 0.0) { return p; }
+  return (vec2f(1.0) - abs(p.yx)) * select(vec2f(-1.0), vec2f(1.0), p >= vec2f(0.0));
+}
+fn octDec(e : vec2f) -> vec3f {
+  var n = vec3f(e, 1.0 - abs(e.x) - abs(e.y));
+  if (n.z < 0.0) { n = vec3f((vec2f(1.0) - abs(n.yx)) * select(vec2f(-1.0), vec2f(1.0), n.xy >= vec2f(0.0)), n.z); }
+  return normalize(n);
+}
+fn lumOf(c : vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
+// the reservoir being filled: the path kept, and the weights of all it was chosen from
+var<private> rPos : vec3f;
+var<private> rNrm : vec3f;
+var<private> rRad : vec3f;
+var<private> rSum : f32;
+var<private> rM : f32;
+fn rTake(pos : vec3f, nrm : vec3f, rad : vec3f, w : f32, m : f32) {
+  rSum += w;
+  rM += m;
+  if (w > 0.0 && rand() * rSum < w) { rPos = pos; rNrm = nrm; rRad = rad; }
+}
+// how much bigger a reused path's x2 looks from here than from where it was
+// found (the reconnection's Jacobian); 0 when it can't be reused
+fn reuseJ(x1 : vec3f, n1 : vec3f, foundAt : vec3f, q : Res) -> f32 {
+  let x2 = q.pos.xyz;
+  if (dot(n1, x2 - x1) <= 0.0) { return 0.0; }  // behind this surface
+  if (dot(q.nrm.xyz, q.nrm.xyz) < 0.5) { return 1.0; }  // the sky: the same from anywhere near
+  let dNew = x1 - x2;
+  let dOld = foundAt - x2;
+  let cNew = abs(dot(q.nrm.xyz, normalize(dNew)));
+  let cOld = abs(dot(q.nrm.xyz, normalize(dOld)));
+  let j = (cNew / max(cOld, 1e-4)) * (dot(dOld, dOld) / max(dot(dNew, dNew), 1e-8));
+  return select(0.0, j, j > 0.05 && j < 20.0);
+}
+// a reused reservoir into the one being filled
+fn rReuse(x1 : vec3f, n1 : vec3f, q : Res, mCap : f32) {
+  if (q.rad.w < 0.5 || q.pos.w <= 0.0) { return; }
+  let m = min(q.pos.w, mCap);
+  let j = reuseJ(x1, n1, q.at.xyz, q);
+  rTake(q.pos.xyz, q.nrm.xyz, q.rad.rgb, lumOf(q.rad.rgb) * q.nrm.w * m * j, m);
+}
+// is a stored point the same surface as this pixel's (near it, facing the same way)?
+fn samePlace(x1 : vec3f, n1 : vec3f, depth : f32, q : Res) -> bool {
+  if (q.rad.w < 0.5) { return false; }
+  let n = octDec(unpack2x16snorm(bitcast<u32>(q.at.w)));
+  return dot(n, n1) > 0.9 && abs(dot(q.at.xyz - x1, n1)) < 0.02 * depth + 0.01 && length(q.at.xyz - x1) < 0.1 * depth + 0.05;
+}
+// where a point was on last frame's screen, in blocks (-1: not on it)
+fn wasAt(p : vec3f, W : u32, H : u32, B : u32) -> vec2i {
+  let v = p - U.prevPos.xyz;
+  let z = dot(v, U.prevFwd.xyz);
+  if (z <= 1e-4) { return vec2i(-1); }
+  let sx = dot(v, U.prevRight.xyz) / z / U.prevRight.w;
+  let sy = dot(v, U.prevUp.xyz) / z / U.prevUp.w;
+  let px = (sx * 0.5 + 0.5) * f32(W) / f32(B);
+  let py = (0.5 - sy * 0.5) * f32(H) / f32(B);
+  if (px < 0.0 || py < 0.0 || px >= f32(U.reuse.z) || py >= f32(U.reuse.w)) { return vec2i(-1); }
+  return vec2i(i32(px), i32(py));
 }
 
 // light arriving from the sun and one lamp (picked at random, weighted
@@ -1748,8 +1827,27 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   var L = vec3f(0.0);
   var specular = true;
   if (sp == 0u) { firstN = -d; }
+  // ReSTIR GI: on the first path, the pixel's point and its diffuse bounce
+  let reusing = sp == 0u && (flags & 32u) != 0u;
+  var giAt = false;        // the pixel's point is a surface that takes reused light
+  var giPath = false;      // this path's first bounce was diffuse: a new candidate
+  var x1 = vec3f(0.0);
+  var n1 = vec3f(0.0, 1.0, 0.0);
+  var ng1 = n1;
+  var diff1 = vec3f(0.0);  // its diffuse colour over pi
+  var depth1 = 0.0;
+  var pDiff = 1.0;
+  var Lpre = vec3f(0.0);
+  var x2 = vec3f(0.0);
+  var n2 = vec3f(0.0);
+  var got2 = false;
   for (var bounce = 0u; bounce < U.info.w; bounce++) {
     let h = traceRay(o, d, 1e-4, 1e7, false);
+    if (giPath && !got2) {
+      // where the first bounce went (the sky: a point far that way)
+      got2 = true;
+      if (h.tri == 0xffffffffu) { x2 = o + d * 1e5; n2 = vec3f(0.0); }
+    }
     if (h.tri == 0xffffffffu) {
       var c = sky(d);
       if (specular && frame.sunDir.w > 0.5 && dot(d, frame.sunDir.xyz) > 0.99998) { c += frame.sunColor.rgb / 6.8e-5; }
@@ -1764,6 +1862,7 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     let front = dot(d, ng) < 0.0;
     if (!front) { n = -n; ng = -ng; }
     if (dot(n, -d) < 0.0) { n = ng; }
+    if (giPath && bounce == 1u) { x2 = p; n2 = ng; }
     var base = m.base.rgb;
     var rough = m.base.w;
     if (m.pattern.x > 0.5) {
@@ -1807,6 +1906,13 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     // the next bounce: glossy or diffuse, picked by how much each reflects
     let pSpec = select(0.0, clamp(0.1 + 0.9 * max(max(f0.x, f0.y), f0.z) + metal * 0.5, 0.1, 0.95), (flags & 1u) != 0u);
     let b = basis(n);
+    if (reusing && bounce == 0u && diffuseW > 0.0) {
+      // the pixel's diffuse light comes from the reservoirs, not this path
+      giAt = true;
+      x1 = p; n1 = n; ng1 = ng; depth1 = h.t;
+      diff1 = beta * base * diffuseW / PI;
+      pDiff = 1.0 - pSpec;
+    }
     if (rand() < pSpec) {
       // GGX normal (sampled by D), reflected
       let u1 = rand();
@@ -1831,6 +1937,13 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
       d = normalize(b * vec3f(rr * cos(ph), rr * sin(ph), sqrt(max(0.0, 1.0 - r1))));
       beta *= base * diffuseW / (1.0 - pSpec);
       specular = false;
+      if (giAt && bounce == 0u) {
+        // a new candidate: the light along this bounce, counted from 1 again
+        giPath = true;
+        Lpre = L;
+        L = vec3f(0.0);
+        beta = vec3f(1.0);
+      }
     }
     o = p + ng * 1e-3;
     // the bulbs' and sun's light is counted by `direct`, so skip it when hit later
@@ -1843,8 +1956,70 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
   // firefly guard: one sample may be at most a few times brighter than white
   // on screen (rare lucky paths otherwise sparkle as dots)
   L = max(finite3(L), vec3f(0.0));
-  let lum = dot(L, vec3f(0.2126, 0.7152, 0.0722));
   let cap = (f32(U.extra.z >> 16u) / 100.0) / max(preExposure(), 1e-12);
+  if (reusing) {
+    let N = U.reuse.z * U.reuse.w;
+    let here = gid.y * U.reuse.z + gid.x;
+    let now = U.reuse.x * N;
+    let was = (1u - U.reuse.x) * N;
+    var keep = Res(vec4f(0.0), vec4f(0.0), vec4f(0.0), vec4f(0.0));
+    if (giAt) {
+      var Lo = vec3f(0.0);
+      if (giPath) {
+        Lo = L;
+        if (lumOf(Lo) > cap * 4.0) { Lo *= cap * 4.0 / lumOf(Lo); }
+        L = Lpre;
+        if (!got2) { x2 = x1 + d * 1e5; n2 = vec3f(0.0); }
+      }
+      // this frame's candidate (none when the glossy lobe was picked: it still counts)
+      rPos = vec3f(0.0); rNrm = vec3f(0.0); rRad = vec3f(0.0); rSum = 0.0; rM = 0.0;
+      let wi = normalize(x2 - x1);
+      let pdf = pDiff * max(dot(n1, wi), 1e-4) / PI;
+      rTake(x2, n2, Lo, select(0.0, lumOf(Lo) / pdf, giPath), 1.0);
+      // last frame's, where this point was
+      let at = wasAt(x1, W, H, B);
+      if (U.reuse.y == 1u && at.x >= 0) {
+        let q = res[was + u32(at.y) * U.reuse.z + u32(at.x)];
+        if (samePlace(x1, n1, depth1, q)) { rReuse(x1, n1, q, 20.0); }
+      }
+      let pt = select(lumOf(rRad), 0.0, rM <= 0.0);
+      let Wt = select(0.0, rSum / (rM * pt), pt > 0.0 && rM > 0.0);
+      keep = Res(vec4f(rPos, rM), vec4f(rNrm, Wt), vec4f(rRad, 1.0), vec4f(x1, bitcast<f32>(pack2x16snorm(octEnc(n1)))));
+      // and three neighbours' (last frame's, round where this point was)
+      if (U.reuse.y == 1u) {
+        let c = select(vec2f(f32(gid.x), f32(gid.y)), vec2f(at), at.x >= 0);
+        for (var k = 0u; k < 3u; k++) {
+          let a = rand() * 2.0 * PI;
+          let r = 2.0 + rand() * 14.0;
+          let q2 = vec2i(c + vec2f(cos(a), sin(a)) * r);
+          if (q2.x < 0 || q2.y < 0 || q2.x >= i32(U.reuse.z) || q2.y >= i32(U.reuse.w)) { continue; }
+          let q = res[was + u32(q2.y) * U.reuse.z + u32(q2.x)];
+          // a neighbour on the same surface (facing the same way, in the same plane)
+          if (q.rad.w > 0.5 && dot(octDec(unpack2x16snorm(bitcast<u32>(q.at.w))), n1) > 0.9 && abs(dot(q.at.xyz - x1, n1)) < 0.05 * depth1 + 0.02) {
+            rReuse(x1, n1, q, 20.0);
+          }
+        }
+      }
+      // the light it gives, if x2 is really seen from here
+      let ps = lumOf(rRad);
+      if (ps > 0.0 && rM > 0.0) {
+        let Ws = rSum / (rM * ps);
+        let sky = dot(rNrm, rNrm) < 0.5;
+        let toX2 = rPos - x1;
+        let dist = length(toX2);
+        let wi2 = toX2 / max(dist, 1e-6);
+        let cosT = dot(n1, wi2);
+        if (cosT > 0.0) {
+          let far = select(dist - 2e-3, 1e7, sky);
+          if (traceRay(x1 + ng1 * 2e-3, wi2, 1e-4, far, true).tri == 0xffffffffu) {
+            L += diff1 * rRad * cosT * Ws;
+          }
+        }
+      }
+    }
+    res[now + here] = keep;
+  }
+  let lum = dot(L, vec3f(0.2126, 0.7152, 0.0722));
   if (lum > cap) { L *= cap / lum; }
   Lsum += L;
   }

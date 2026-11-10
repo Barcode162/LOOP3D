@@ -125,6 +125,7 @@ Settings::Settings() {
   B("ultra.dof", u.dof, "depth of field");
   B("ultra.sunShadows", u.sunShadows, "traced sun shadows");
   B("ultra.lampShadows", u.lampShadows, "shadows from every lamp");
+  B("ultra.reuse", u.reuse, "bounced light reused from last frame and neighbours (ReSTIR GI)");
 
   auto& ci = c.cinema;
   T("cinema.quality", ci.quality, "draft | good | cinema | ultra (empty = good)");

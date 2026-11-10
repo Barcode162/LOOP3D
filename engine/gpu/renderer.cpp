@@ -154,6 +154,8 @@ struct UltraU {
   Vec4 camPos, camFwd, camRight, camUp;
   uint32_t info[4];
   uint32_t extra[4];
+  Vec4 prevPos, prevFwd, prevRight, prevUp;  // last frame's camera (ReSTIR GI's reuse)
+  uint32_t reuse[4];                         // this frame's half, last frame's usable, blocks across, down
 };
 struct TriU {
   Vec4 v0, e1, e2, n0, n1, n2;
@@ -774,8 +776,22 @@ class GpuRenderer final : public Renderer {
       u.extra[0] = ultraScale_, u.extra[1] = static_cast<uint32_t>(lightCount());
       u.extra[2] = static_cast<uint32_t>(std::clamp(U.history, 0, 65535)) | (static_cast<uint32_t>(std::clamp(U.clamp, 0.5f, 600.0f) * 100) << 16);
       u.extra[3] = (U.glossy ? 1u : 0u) | (U.glass ? 2u : 0u) | (U.dof ? 4u : 0u) | (U.sunShadows ? 8u : 0u) | (U.lampShadows ? 16u : 0u) |
-                   (static_cast<uint32_t>(std::clamp(U.spp, 1, 16)) << 8);
+                   (U.reuse ? 32u : 0u) | (static_cast<uint32_t>(std::clamp(U.spp, 1, 16)) << 8);
+      // ReSTIR GI's reservoirs: two halves (this frame's, last frame's), for the drawn size
+      const uint32_t bw = (width_ + ultraScale_ - 1) / ultraScale_, bh = (height_ + ultraScale_ - 1) / ultraScale_;
+      if (U.reuse && static_cast<size_t>(bw) * bh > resBlocks_) {
+        resBlocks_ = static_cast<size_t>(bw) * bh;
+        resBuf_ = buffer(resBlocks_ * 2 * 64, wgpu::BufferUsage::Storage);
+        ultraGroup_ = group(ultraLayout_, {bufE(0, accumBuf_), texE(1, hdrView_), texE(2, skyView_), sampE(3, linear_), bufE(4, ultraUbo_), bufE(5, resBuf_)});
+        resValid_ = false;
+      }
+      if (bw != resDims_[0] || bh != resDims_[1]) resValid_ = false;
+      resDims_[0] = bw, resDims_[1] = bh;
+      u.prevPos = resPrev_[0], u.prevFwd = resPrev_[1], u.prevRight = resPrev_[2], u.prevUp = resPrev_[3];
+      u.reuse[0] = resHalf_, u.reuse[1] = resValid_ ? 1u : 0u, u.reuse[2] = bw, u.reuse[3] = bh;
       queue_.WriteBuffer(ultraUbo_, 0, &u, sizeof u);
+      resPrev_[0] = u.camPos, resPrev_[1] = u.camFwd, resPrev_[2] = u.camRight, resPrev_[3] = u.camUp;
+      resHalf_ ^= 1u, resValid_ = U.reuse;
       ++ultraFrame_;
     }
     // ---- the sun's shadow is drawn again only when something it is made from
@@ -2195,7 +2211,7 @@ class GpuRenderer final : public Renderer {
       st.storageTexture.access = wgpu::StorageTextureAccess::WriteOnly;
       st.storageTexture.format = wgpu::TextureFormat::RGBA16Float;
       st.storageTexture.viewDimension = wgpu::TextureViewDimension::e2D;
-      ultraLayout_ = layout({ssbo(0, C, true), st, tex(2, C), samp(3, C), ubo(4, C)});
+      ultraLayout_ = layout({ssbo(0, C, true), st, tex(2, C), samp(3, C), ubo(4, C), ssbo(5, C, true)});
       wgpu::BindGroupLayoutEntry st2 = st;
       st2.binding = 4;
       denoiseLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C, true), st2, ssbo(5, C)});
@@ -2927,7 +2943,9 @@ class GpuRenderer final : public Renderer {
     if (!ultraUbo_) ultraUbo_ = buffer(sizeof(UltraU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
     ultraGroup_ = nullptr;
     if (accumBuf_) {
-      ultraGroup_ = group(ultraLayout_, {bufE(0, accumBuf_), texE(1, hdrView_), texE(2, skyView_), sampE(3, linear_), bufE(4, ultraUbo_)});
+      if (!resBuf_) resBuf_ = buffer(2 * 64, wgpu::BufferUsage::Storage), resBlocks_ = 1;
+      ultraGroup_ = group(ultraLayout_, {bufE(0, accumBuf_), texE(1, hdrView_), texE(2, skyView_), sampE(3, linear_), bufE(4, ultraUbo_), bufE(5, resBuf_)});
+      resValid_ = false;
       // passes: average → A, A → B (step 1), B → A (step 2), A → B (step 4, onto the picture)
       wgpu::Buffer srcs[4] = {denoiseB_, denoiseA_, denoiseB_, denoiseA_}, dsts[4] = {denoiseA_, denoiseB_, denoiseA_, denoiseB_};
       for (int k = 0; k < 4; ++k)
@@ -3334,6 +3352,11 @@ class GpuRenderer final : public Renderer {
   const Scene* lastScene_ = nullptr;
   wgpu::BindGroupLayout ultraLayout_;
   wgpu::ComputePipeline ultraPipe_;
+  wgpu::Buffer resBuf_;  // Ultra's ReSTIR GI reservoirs
+  size_t resBlocks_ = 0;
+  uint32_t resDims_[2] = {0, 0}, resHalf_ = 0;
+  bool resValid_ = false;
+  Vec4 resPrev_[4];
   wgpu::Buffer ultraUbo_, accumBuf_, denoiseA_, denoiseB_, denoiseUbo_[4];
   wgpu::BindGroupLayout denoiseLayout_;
   wgpu::ComputePipeline denoisePipe_;

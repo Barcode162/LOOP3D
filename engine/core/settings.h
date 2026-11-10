@@ -64,6 +64,7 @@ struct Config {
     bool denoise = true;
     int denoisePasses = 4;
     bool glossy = true, glass = true, dof = true, sunShadows = true, lampShadows = true;
+    bool reuse = false;  // ReSTIR GI (off until checked): bounced light reused from last frame and neighbours
   } ultra;
   struct Cinema {
     std::string quality = "";  // "" = each word's own (render: good, film: good)

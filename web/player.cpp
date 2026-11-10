@@ -1140,7 +1140,7 @@ int main() {
   gpu::g_skipPasses = EM_ASM_INT({ return +(new URLSearchParams(location.search).get('skip') || 0); });
   // the page's testing switches (?view= ?res= ?msaa= ?clusters= ?lamps= ?rays= ?prepass= ?cull= ?lod=) are settings too
   for (auto [param, id] : {std::pair{"view", "render.view"}, {"res", "render.res"}, {"msaa", "render.msaa"}, {"clusters", "render.clusters"}, {"lightgrid", "render.lightGrid"}, {"lampgrouping", "render.lampGrouping"}, {"lampmaps", "render.lampMaps"}, {"shadowdistance", "render.shadowDistance"}, {"cachems", "render.lightCacheMs"}, {"lightcache", "render.lightCache"}, {"ao", "render.ao"}, {"ssr", "render.ssr"}, {"alllampshadows", "render.allLampShadows"}, {"ratio", "render.ratioPhone"}, {"clustererror", "render.clusterError"}, {"lamps", "render.lamps"}, {"rays", "render.rays"},
-                           {"prepass", "render.prepass"}, {"cull", "render.cull"}, {"lod", "world.lodBias"}}) {
+                           {"prepass", "render.prepass"}, {"cull", "render.cull"}, {"lod", "world.lodBias"}, {"reuse", "ultra.reuse"}, {"denoise", "ultra.denoise"}}) {
     double v = EM_ASM_DOUBLE({ const v = new URLSearchParams(location.search).get(UTF8ToString($0)); return v === null ? NaN : +v; }, param);
     if (!std::isnan(v)) Settings::get().set(Settings::kEditor, id, Json(v));
   }
