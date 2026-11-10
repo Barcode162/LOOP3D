@@ -28,3 +28,6 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | L-duct_run | S | asset-smith | 25 | 24 | 2026-11-10 |
 | N1 | M | lead | 60 | 45 | 2026-11-10 |
 | LOFT2 | S | lead | 25 | 30 | 2026-11-10 |
+| S1 | S | builder | 4 | 4 | 2026-11-10 |
+| F1 | S | lead | 10 | 25 | 2026-11-10 |
+| E10 | S | builder | 4 | 7 | 2026-11-10 |

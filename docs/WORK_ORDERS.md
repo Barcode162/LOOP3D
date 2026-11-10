@@ -1511,6 +1511,8 @@ Do:     1. A card line `pictures:` holds up to three calls (`pictures: stair_str
         2. A card line `view: front | back | left | right | below` (default as now) says where the camera
            stands, for things that stand against a wall or hang.
         3. The floor is always drawn, and a dark thing gets a pale wall behind it so its outline reads.
+        4. E10 lights a night picture by calling the entry's own `light_<name>` recipe when it has one: put that
+           in the card instead (`pictures:` may hold two lines, the second run after the first).
 Proof:  QUICK; pictures of `brick_wall_bay` (its face, not its back) and `steel_beam` (its outline clear).
 ```
 ```
@@ -1526,8 +1528,8 @@ Proof:  QUICK; a test: a box rounded 3 mm has under 200 triangles; `./build/loop
         piece's count the same or lower; picture tests the same or the changed ones named.
 ```
 
-*Deployed 2026-11-10:* N1, LOFT2 and the twelve pieces of 13.3. *Running:* E10, S1, N5.
-*Ready now:* N2 (N1 is in), F1, LOFT3. S7 follows S1 (both change `words_shapes.cpp`), S5 follows S7.
+*Deployed 2026-11-10:* N1, LOFT2, the twelve pieces of 13.3, S1, F1, E10. *Running:* N5.
+*Ready now:* N2, S7, A11a, LOFT3, L-pendant_dome, L-track_spots. S5 follows S7; E11 is free.
 *After N1:* N2, then N3; F1, then A11a, then A11b. *After N2:* N6, N7. *After N2 and E10:* the lights of 13.4
 (L-city_night after A11b). *After LOFT4:* N4, M60.
 *Not cut yet for this milestone (about fifteen orders):* the phone's speed once N7 and the first recording
