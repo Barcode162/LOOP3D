@@ -40,9 +40,13 @@ turned as one), 12 building pieces, 5 lights and the night city for the library,
 order: 2 night falls · 3 the upper floor and the stair · 4 the stair lights itself · 5 beams, columns, brick ·
 6 pools of warm light · 7 the city outside · 8 the room in the glass · 9 marked and timed on your phone.
 About fifteen more are cut once the first phone recording says where the time goes.
-*What can start now:* the first wave of 16 agents (section 13.6), none in another's way; and goal 2, night falls,
-which needs nothing built first.
-*Needs you:* your go for the first wave, and for goal 2.
+*Wave 1 (2026-11-10), shipped:* the twelve building pieces (the library now holds 20), the lamp that stands for a
+glowing strip (N1, with an old fault found and mended: a closed glowing shape lit a room twice in film), and
+**goal 2, night falls**: no sun, a near-black sky, one bare bulb. Still running: the night picture for library
+entries (E10), the shape word `lathe` (S1), the dark-stays-dark check (N5).
+*Next:* the word `strip` (N2), the black glass in film (F1), and **goal 3, the upper floor and the stair**, which
+now has all its pieces.
+*Needs you:* a look at goal 2 on your phone once it is published, and your go for goal 3.
 
 ---|---|
 | The order of work (this page) | `PLAN.md` |

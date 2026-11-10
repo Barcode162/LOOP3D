@@ -57,6 +57,16 @@ new`, checks in with `beat`, and marks itself `done`. Any conductor's `--remote`
 `--depends` on it starts when it is done, and any chat's "deploy" ships it. Chats never message each other
 directly; the board is the one place they meet, so nothing is lost when a chat closes.
 
+## What the first big wave taught (loft1, 2026-11-10: 15 agents on a 4-processor machine)
+- **At most four agents that build the engine at once.** Fifteen builds ran the machine out of memory: compilers
+  were killed, jobs of 4 minutes took an hour, and the chat's own worker restarted and lost three agents.
+- **Agents that only write a recipe must not build.** Build `loop` once on the latest `main` and give every
+  asset-smith its path (`LOOP=/workspace/LOOP3D/build/loop`); then twelve at once is fine.
+- **Each agent gets its own scratch folder** (`/tmp/<code>/`). One shared folder let agents overwrite each other.
+- **Agents push early and often,** and leave no background commands running; an agent lost in a restart is
+  started again from its branch.
+- **A wave's time on the board includes the machine's lost hours:** correct `perf/jobs.md` when that happens.
+
 ## What it can't do
 - It can't make a job faster than the agent doing it; it only notices sooner when one is off course.
 - A timer check-in needs the conductor's chat to still be open (in a cloud chat it wakes itself; in the app,

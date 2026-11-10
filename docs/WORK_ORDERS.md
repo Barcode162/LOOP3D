@@ -1068,6 +1068,12 @@ real lights, that way we can really push the engine even though it isn't the fas
 9. **Materials by name for now** (`"oak"`, `"concrete"`, `"brick"`, `"glass"`, or one made at the top of the
    recipe with `material(...)`, such as a blackened steel: colour 0.04, metal 1, roughness 0.45). Milestone 4
    swaps them for surface recipes (track M); a piece keeps its materials as arguments so that is one line.
+11. **Names a recipe's arguments cannot have** (found by the first wave): `from`, `to` and `every` are the
+    language's own words, and an argument called `seed` or `floor` hides the built-in word of that name inside
+    the recipe. A piece that runs between two points calls them `from_at` and `to_at`; a spacing is `spacing`.
+    A native word (`strip`, `fog`) may still take `from:` and `to:`.
+12. **A sloping or lying shape needs no new word:** `rotation: vec(yaw, pitch, roll)` on a box or cylinder
+    does it (the rail, the stringers and the duct are made so).
 10. **Until `group` exists (S7)** a piece takes `at:` only and faces the way its card says. After S7, every
     piece is wrapped in a group and takes `turn:` too; that is one later order for all of them, not each
     asset-smith's job.
@@ -1125,11 +1131,13 @@ Do:     1. `strip(from, to, lumens: 300, kelvin: 2700, facing: vec(0, -1, 0), wi
         2. It places one thing: a flat rectangle from `from` to `to`, `width` wide, glowing only on the side
            towards `facing` (N1's helper gives the nits), on a dark channel 2 mm wider and 6 mm deep behind
            it. If mesh.h has no one-sided rectangle, use a box 1 mm thick and say so in the report.
-        3. It adds panel lamps along it, each at most 0.5 m long and `width` wide, facing `facing`, sharing
-           the lumens by length, each standing for the rectangle, casting shadows only if `shadows: yes`.
+        3. It adds panel lamps along it, each at most `piece: 0.25` m long and `width` wide, facing `facing`,
+           sharing the lumens by length, each standing for the rectangle (`Light::standsFor`, its number
+           in Scene::instances), casting shadows only if `shadows: yes`. (The live renderer lights from a
+           panel as from one point with a spread, so pieces must be short until N6 lights them as lines.)
         4. Plain problems: `from` and `to` in the same place; `facing` along the strip; lumens below 0.
         5. Its help line and one line in docs/LANGUAGE.md under the lights.
-Proof:  QUICK; a test: a strip of 2 m gives one glowing thing and 4 lamps that add up to 600 lumens, each
+Proof:  QUICK; a test: a strip of 2 m gives one glowing thing and 8 lamps that add up to 600 lumens, each
         standing for it; N1's film test run through the word agrees within 10%.
 Not:    switching or dimming; curved strips.
 ```
@@ -1169,7 +1177,7 @@ Proof:  the picture test passes with the new scene, or the report shows the numb
 Not:    changing the light cache (the lead cuts that order from this report).
 ```
 ```
-N6 · The shine of panels and strips on a polished floor             hand: lead      size: M (two passes)
+N6 · A strip lights as a line: its light and its shine               hand: lead      size: M (two passes)
 Needs:  N2
 Read:   engine/gpu/shaders/scene.wgsl.h (the lamp loop), engine/render/bsdf.cpp, docs/rubrics/loft.md
         question 2
@@ -1177,8 +1185,11 @@ Touch:  engine/gpu/shaders/scene.wgsl.h, engine/gpu/shaders/cluster_draw.wgsl.h,
         tests/pictures/strip_floor.png (new), projects/samples/strip_floor.loop (new)
 Do:     1. A test scene: a 2 m strip 0.4 m above a polished concrete floor (roughness 0.2), seen low and
            along the floor. Score live against cinema (`loop score`).
-        2. If a panel's shine is drawn as a point's: use the point on the rectangle nearest the mirrored
-           ray, and widen the roughness by the lamp's size over its distance so no energy is added.
+        2. The live renderer lights from a panel as from one point (found in N1: `scene.wgsl.h`, the lamp
+           loop). For a long panel: the soft light from the nearest point on its length to the surface,
+           and the shine from the point on the rectangle nearest the mirrored ray, the roughness widened
+           by the lamp's size over its distance so no energy is added. `Light` gains the direction of its
+           long side (film too). Then `strip`'s pieces may be 1 m long: say the lamp count before and after.
         3. Score again. Both scores, and `loop budget` of the bar before and after, in the report.
 Proof:  QUICK; the web player builds; the strip scene's score is better; the other 12 pictures are the same
         or the changed ones are named and renewed.
@@ -1274,6 +1285,11 @@ Not:    sockets (S8); wrapping the existing pieces (one later order).
 
 ### 13.3 The building pieces (asset-smith, one entry each)
 
+*All twelve were made and deployed on 2026-11-10 (wave `loft1`); the library holds 20. Their arguments follow
+decision 11 (`from_at`, `to_at`, `spacing`). Seen and left for later: the stair's stringers hide its treads
+from the side (to judge in LOFT3); the radiator is over its budget at 20 columns; glass shows black in the
+library's film picture (F1).*
+
 All are `kind: piece`, `size: room` unless the card says otherwise, take `at:`, stand as decision 7 says, and
 have no lamps of their own (the strips are added by 13.4's entries and the goals). Each asks for a blackened
 steel and an oak by argument, with those defaults. Proof for each: `LIBPROOF`.
@@ -1284,7 +1300,7 @@ Touch:  library/pieces/mezzanine_deck.loop
 Do:     `mezzanine_deck(at, width: 9, depth: 4, top: 3.06, floor: "floorboards", steel)`: `at` is the middle
         of its front edge on the floor below. A deck 0.12 m thick whose top is at `top`; under it timber
         joists 0.06 by 0.2 m every 0.45 m running front to back; a steel beam 0.2 m deep under the front
-        edge, with a 0.02 m lip standing 0.05 m above the deck's top along that edge; two steel posts 0.1 m
+        edge (0.12 m wide), with a 0.02 m lip standing 0.05 m above the deck's top along that edge; two steel posts 0.1 m
         square under the beam, 1.5 m in from each end. Rounded edges 3 mm on the steel, 5 mm on the timber.
 ```
 ```
@@ -1484,9 +1500,34 @@ Do:     The judge marks the live picture on the Loft rubric (questions 1, 5, 6, 
 
 ### 13.6 What can start now, and what waits
 
-*Ready today, none touching another's files (the first wave, `loft1`):* E10 · N1 · N5 · S1 (section 5) · and
-all twelve pieces of 13.3 (L-steel_rail may come back asking for S7). S7 follows S1 (both change
-`words_shapes.cpp`).
+*What the first wave taught, as two new orders:*
+```
+E11 · The library's picture: which side, which sizes, a floor        hand: builder   size: S
+Needs:  E10 (the same file)
+Read:   tools/loop.cpp (the `library picture` command), the reports of wave loft1 in LOG.md
+Touch:  tools/loop.cpp, docs/LIBRARY_PLAN.md (section 2, the card's lines)
+Do:     1. A card line `pictures:` holds up to three calls (`pictures: stair_straight(AT, rises: 8) | ...`);
+           `loop library picture <name> --case 2` draws that call; with none, the `place:` line as now.
+        2. A card line `view: front | back | left | right | below` (default as now) says where the camera
+           stands, for things that stand against a wall or hang.
+        3. The floor is always drawn, and a dark thing gets a pale wall behind it so its outline reads.
+Proof:  QUICK; pictures of `brick_wall_bay` (its face, not its back) and `steel_beam` (its outline clear).
+```
+```
+S5 · Rounded edges that cost what they show                          hand: builder   size: S
+Read:   engine/geometry/mesh.h (`shapes::roundedBox`), engine/script/words_shapes.cpp (`box`)
+Touch:  engine/geometry/mesh.cpp, engine/geometry/mesh.h, engine/script/words_shapes.cpp, docs/LANGUAGE.md,
+        tests/geometry_test.cpp
+Do:     1. A rounded box costs about 1,200 triangles whatever its size (found by five pieces of wave
+           loft1). Its steps follow the rounding: 1 step under 5 mm, 2 under 20 mm, 4 above (`steps:` to
+           override), with normals that still shade it round.
+        2. `cylinder(..., sides: 64)`: fewer sides for thin tubes (16 under 3 cm across by default).
+Proof:  QUICK; a test: a box rounded 3 mm has under 200 triangles; `./build/loop library check` shows every
+        piece's count the same or lower; picture tests the same or the changed ones named.
+```
+
+*Deployed 2026-11-10:* N1, LOFT2 and the twelve pieces of 13.3. *Running:* E10, S1, N5.
+*Ready now:* N2 (N1 is in), F1, LOFT3. S7 follows S1 (both change `words_shapes.cpp`), S5 follows S7.
 *After N1:* N2, then N3; F1, then A11a, then A11b. *After N2:* N6, N7. *After N2 and E10:* the lights of 13.4
 (L-city_night after A11b). *After LOFT4:* N4, M60.
 *Not cut yet for this milestone (about fifteen orders):* the phone's speed once N7 and the first recording
