@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "engine/geometry/cluster.h"
+#include "engine/geometry/marks.h"
 #include "engine/geometry/mesh.h"
 
 namespace loop {
@@ -25,6 +26,9 @@ class Cook {
   std::shared_ptr<const ClusterTree> clusters(const Mesh& m);
   // `parallel`: its groups over every core (not from inside another job)
   std::shared_ptr<const ClusterTree> clusters(const Mesh& m, bool parallel);
+  // The mesh's marks (edge and hollow per vertex): made the first time it is
+  // asked, never otherwise, kept after. Safe from any thread.
+  std::shared_ptr<const Marks> marks(const Mesh& m);
   // Cooks many meshes at once, spread over every core (those already kept cost nothing).
   void cookAll(const std::vector<Mesh>& meshes);
   void cookAll(const std::vector<const Mesh*>& meshes);
@@ -34,6 +38,7 @@ class Cook {
  private:
   mutable std::mutex m_;
   std::unordered_map<uint64_t, std::shared_ptr<const ClusterTree>> trees_;
+  std::unordered_map<uint64_t, std::shared_ptr<const Marks>> marks_;
 };
 
 }  // namespace loop
