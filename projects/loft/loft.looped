@@ -1,0 +1,4 @@
+# The Loft: a home of two floors under a high ceiling, built one small goal at
+# a time from the library's pieces (PLAN.md, "Now · The Loft").
+project "The Loft"
+start "loft"

@@ -24,9 +24,12 @@ a city at night behind it (`docs/ROADMAP.md`, star 2). Built from a few hundred 
 *Its parts list:* `docs/LIBRARY_PLAN.md`, section 4 (40 building pieces, 25 seats and beds, and the rest by kind).
 *Its rubric:* `docs/rubrics/` (loft). *Its orders:* cut from `docs/WORK_ORDERS.md` (tracks S shapes, M surfaces,
 the library orders).
-*Where it stands today:* the library holds 6 entries; 3 of the Loft's 40 building pieces exist (plinth, lintel,
-room shell). The surface recipe is designed (M1) and the vertex marks are built (M2). No order card is cut for
+*Where it stands today:* the library holds 8 entries; 5 of the Loft's 40 building pieces exist (plinth, lintel,
+room shell, loft shell, glazing wall). The surface recipe is designed (M1) and the vertex marks are built (M2). No order card is cut for
 milestone 3 yet.
+*Goal 1, the shell (done 2026-11-10):* `projects/loft/`: a bare room 9 m wide, 6 m high and 12 m deep with one wall
+of glass (library: `loft_shell`, `glazing_wall`), lit by a low evening sun. Open: the film renderer shows the view
+through the glass black. *Next goal proposed:* the mezzanine floor and the stair up to it.
 *The first steps, in order:*
 1. Cut milestone 3's order cards (the shell, the stair, the glass wall, the light strips, the night city): design
    work, top tier (`docs/MODELS.md`).
