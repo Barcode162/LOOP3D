@@ -24,8 +24,13 @@ Vec3 wavelengthRaw(float nm) {
   float X = 1.056f * g(nm, 599.8f, 37.9f, 31.0f) + 0.362f * g(nm, 442.0f, 16.0f, 26.7f) - 0.065f * g(nm, 501.1f, 20.4f, 26.2f);
   float Y = 0.821f * g(nm, 568.8f, 46.9f, 40.5f) + 0.286f * g(nm, 530.9f, 16.3f, 31.1f);
   float Z = 1.217f * g(nm, 437.0f, 11.8f, 36.0f) + 0.681f * g(nm, 459.0f, 26.0f, 13.8f);
-  return {3.2404542f * X - 1.5371385f * Y - 0.4985314f * Z, -0.9692660f * X + 1.8760108f * Y + 0.0415560f * Z,
-          0.0556434f * X - 0.2040259f * Y + 1.0572252f * Z};
+  // A single wavelength lies outside sRGB, so one of the three comes out below
+  // zero. Light below zero is thrown away further on (addLight), which made
+  // every ray through dispersive glass black; kept at zero instead, and the
+  // normalising below still makes all wavelengths together white.
+  return vmax(Vec3{3.2404542f * X - 1.5371385f * Y - 0.4985314f * Z, -0.9692660f * X + 1.8760108f * Y + 0.0415560f * Z,
+                   0.0556434f * X - 0.2040259f * Y + 1.0572252f * Z},
+              Vec3(0));
 }
 
 struct Spectrum {

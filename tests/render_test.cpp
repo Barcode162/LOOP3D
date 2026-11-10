@@ -75,6 +75,25 @@ TEST(furnace_glass_sphere_loses_nothing) {
   CHECK_NEAR(luminance(c) / 1000, 1.0, 0.05);
 }
 
+// A ray through glass that splits colours carries one wavelength; its light
+// was thrown away (one of its three colours below zero), so the Loft's glass
+// wall showed black in film. All wavelengths together must give back white.
+TEST(furnace_dispersive_glass_sphere_stays_white) {
+  Material m;
+  m.baseColor = Vec3(1);
+  m.transmission = 1;
+  m.roughness = 0;
+  m.dispersion = 0.3f;
+  Scene s = furnace(m);
+  PathTracer pt;
+  pt.setScene(s);
+  Vec3 c = centre(pt, 6000);
+  std::printf("    dispersive glass in a white furnace: %.0f %.0f %.0f of 1000\n", c.x, c.y, c.z);
+  CHECK_NEAR(c.x / 1000, 1.0, 0.08);
+  CHECK_NEAR(c.y / 1000, 1.0, 0.08);
+  CHECK_NEAR(c.z / 1000, 1.0, 0.08);
+}
+
 TEST(point_light_inverse_square) {
   // A grey floor under a bare 1000 lm bulb 2 m up: E = I / d², L = E·ρ/π.
   Scene s;
