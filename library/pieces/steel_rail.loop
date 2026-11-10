@@ -1,0 +1,33 @@
+# steel_rail · a handrail of flat steel on thin posts, for a stair, a mezzanine or any edge
+# steel_rail(from_at, to_at, height, posts_every, steel) runs the rail from `height` above `from_at` to `height`
+# above `to_at`, so it climbs with a stair when the two points are at different heights. Give it the points on the
+# floor (or on the stair's nosing line); posts stand on that line, one at each end and no further apart than
+# `posts_every`, and a thinner bar runs halfway up. Gives back the top rail.
+#
+# kind: piece
+# place: steel_rail(AT + vec(-4.2, 0, -2.32), AT + vec(-4.2, 3.06, 2))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: rail, handrail, steel, stair, balustrade, loft
+# size: sofa
+# sockets: hold
+# seeds: none
+
+let blackened_steel = material(like: "iron", color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+
+to steel_rail(from_at: vec(0, 0, 0), to_at: vec(3, 0, 0), height: 0.95, posts_every: 1.1, steel: blackened_steel)
+  let d = to_at - from_at
+  let run = sqrt(d.x * d.x + d.z * d.z)
+  let len = sqrt(run * run + d.y * d.y)
+  let yaw = atan(-d.z, d.x)       # turns the bar's length (x) to point along the run
+  let climb = atan(d.y, run)      # then lifts it to the slope
+  let lift = vec(0, height, 0)
+  let along = vec(yaw, 0, climb)
+  # the posts: 0.012 along the rail, 0.04 across it, one at each end and one every posts_every or less
+  let n = max(1, ceil(len / posts_every))
+  for each i in range(0, n + 1, 1)
+    box size: vec(0.012, height, 0.04), at: from_at + d * (i / n) + vec(0, height / 2, 0), rotation: vec(yaw, 0, 0), material: steel, round: 0.003
+  # the thinner bar halfway up, then the top rail lying flat on the posts
+  box size: vec(len, 0.008, 0.025), at: from_at + d / 2 + lift / 2, rotation: along, material: steel, round: 0.002
+  return box(size: vec(len + 0.02, 0.012, 0.04), at: from_at + d / 2 + lift, rotation: along, material: steel, round: 0.004)
