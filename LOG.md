@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-10** · "The Loft is the top priority; health-check everything; one updated plan, the normal structure": main checked (GitHub's Check green, the board empty, the quick checks and 12 of 12 pictures pass); `PLAN.md` now opens with the Loft, a map of where every plan lives, and the sandbox speed ideas' state; finished steps moved in full to `docs/DONE.md` (369 lines to 239). No engine code changed on main.
 - **2026-11-10** · W9, "Haze by distance and height": distant things now fade into haze by distance and height; the film renderer and the phone use one formula; five-walls score 1.4 (2.0 without haze); 12 of 12 pictures match. Deployed.
 - **2026-11-10** · M2, "The marks: edge and hollow per vertex": every vertex now carries an edge mark and a hollow mark (kept with the cooked mesh); about 200 ms for 99k triangles; a coarse rounded box cannot mark high by design, so that proof uses a finely rounded mesh. Deployed.
 - **2026-11-10** · E9, "library check prints triangle counts": loop library check/list print each entry's triangles and size class; over-budget entries fail. Deployed.
