@@ -18,9 +18,12 @@
 //               cluster tree (Nanite-style levels), how long it took
 //   loop library list|check|json              the library (library/): its entries; check refuses
 //               an entry with no credit or licence; json is for the site and the editor
-//   loop library picture <name> [-o out.png] [--seed n]
+//   loop library picture <name> [-o out.png] [--seed n] [--night]
 //               one entry placed on a neutral floor under a soft sky and one sun,
-//               seen three-quarter at 35 mm from its size, 512 by 512, quality good
+//               seen three-quarter at 35 mm from its size, 512 by 512, quality good.
+//               --night: no sun, a black sky, a mid-grey floor and one mid-grey wall 3 m
+//               behind the thing, exposure held at f/2, 1/50 s, ISO 800 (an entry whose
+//               card says `kind: light` or `kind: sky` is pictured this way without being asked)
 //   Every command that takes a scene also takes a project's cover page (.looped):
 //   it opens the project's first scene.
 //   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
@@ -71,7 +74,7 @@ int usage() {
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
       "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
-      "loop library list|check|json|picture <name> [-o out.png] [--seed n]   the library; one entry's picture\n"
+      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held)\n"
       "loop settings list   every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -81,6 +84,7 @@ int usage() {
 }
 
 struct Options {
+  bool night = false;  // loop library picture --night
   bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
   std::string quality, look, out, choices, name;  // name: loop library picture <name>
   int seed = 0;
@@ -317,6 +321,9 @@ int playStory(const std::string& first, const Options& o) {
 // under a soft sky and one sun. The thing is placed once with no camera to
 // measure it; then the camera is put three-quarter, 35 mm, far enough back that
 // the thing fills about two thirds of the picture's width or height.
+// At night (--night, or an entry of kind light or sky): no sun, a black sky, a
+// mid-grey floor and one mid-grey wall 3 m behind the thing, and the camera's
+// exposure held at f/2, 1/50 s, ISO 800, so only the thing's own light shows.
 int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Options& o) {
   // the entry's `AT` stands for the middle of the floor
   std::string place;
@@ -372,11 +379,28 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
   }
   cam.position = centre + dir * dist, cam.target = centre;
   const float floorSize = std::max(200.0f, 40 * length(box.extent()));
-  char setting[256];
-  std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsun elevation: 40 deg, toward: 215 deg, lux: 60000\nsky \"physical\", haze: 1.5\n", floorSize);
+  const bool night = o.night || e.kind == "light" || e.kind == "sky";
+  char setting[512];
+  if (night) {
+    // the wall stands across the camera's side of the thing, 3 m behind its far edge
+    const float wallW = std::max(20.0f, 8 * length(box.extent())), wallH = std::max(8.0f, 3 * box.extent().y);
+    std::snprintf(setting, sizeof setting,
+                  "ground %g, material: rgb(0.5, 0.5, 0.5)\nsky \"black\"\nbox size: vec(%g, %g, 0.2), at: vec(%g, %g, %g), material: rgb(0.5, 0.5, 0.5)\n",
+                  floorSize, wallW, wallH, centre.x, wallH / 2, box.lo.z - 3.1f);
+    cam.autoExposure = false, cam.fStop = 2, cam.shutter = 1.0f / 50, cam.iso = 800;
+  } else {
+    std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsun elevation: 40 deg, toward: 215 deg, lux: 60000\nsky \"physical\", haze: 1.5\n", floorSize);
+  }
   Vm vm;
   Stage stage;
-  if (!loadSource(head + setting + place + "\n", folder, e.name, vm, stage)) return 1;
+  // a lamp that comes dark and has a `light_<name>(thing)` word is lit, so its own pool of light shows
+  std::string lit;
+  if (night && place.find('\n') == std::string::npos) {
+    std::string text;
+    if (readText(e.path, text) && text.find("to light_" + e.name + "(") != std::string::npos)
+      lit = "let night_thing = " + place + "\nlight_" + e.name + "(night_thing)\n", place.clear();
+  }
+  if (!loadSource(head + setting + place + (lit.empty() ? "\n" : lit), folder, e.name, vm, stage)) return 1;
   int samples = o.samples ? o.samples : o.quality == "draft" ? 16 : o.quality == "cinema" ? 1024 : 128;
   RenderRequest req;
   const Config::Cinema& cc = config().cinema;
@@ -803,6 +827,7 @@ int main(int argc, char** argv) {
     else if (a == "--width") o.width = std::atoi(val().c_str());
     else if (a == "--samples") o.samples = std::atoi(val().c_str());
     else if (a == "--reuse") o.reuse = true;
+    else if (a == "--night") o.night = true;
     else if (a == "--seconds") o.seconds = std::atof(val().c_str()), o.secondsGiven = true;
     else if (a == "--filmtime") o.filmtime = std::atof(val().c_str());
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;
