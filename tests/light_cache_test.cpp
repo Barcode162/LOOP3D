@@ -170,3 +170,50 @@ TEST(light_cache_relights_only_near_a_change) {
   CHECK(length(c.probePos(order[0]) - Vec3(5, 2, 5)) <= c.spacing);
   CHECK(markNear(c, AABB(Vec3(2, -1, 2), Vec3(8, 5, 8))) == 0);  // already waiting
 }
+
+TEST(light_cache_rooms_keep_a_lamps_change_in_its_room) {
+  // two rooms side by side, 4 m each, a solid wall between (x = 0); a lamp
+  // in the left one changes: its probes are baked again, not the right room's
+  Material white;
+  white.baseColor = Vec3(0.7f);
+  Scene s = skyOnly(1000);
+  int m = s.addMaterial(white);
+  auto slab = [&](Vec3 size, Vec3 at) { s.add(s.addMesh(shapes::box(size)), m, Mat4::translation(at)); };
+  slab({8.4f, 0.2f, 4.4f}, {0, -0.1f, 0});     // floor
+  slab({8.4f, 0.2f, 4.4f}, {0, 3.1f, 0});      // ceiling
+  slab({0.2f, 3, 4.4f}, {-4.1f, 1.5f, 0});     // the ends
+  slab({0.2f, 3, 4.4f}, {4.1f, 1.5f, 0});
+  slab({8.4f, 3, 0.2f}, {0, 1.5f, -2.1f});     // the sides
+  slab({8.4f, 3, 0.2f}, {0, 1.5f, 2.1f});
+  slab({0.2f, 3, 4.4f}, {0, 1.5f, 0});         // the wall between
+  PathTracer pt;
+  pt.setScene(s);
+  LightCache c = layOutLightCache(AABB({-3.5f, 0.5f, -1.5f}, {3.5f, 2.5f, 1.5f}), 512, 0.5f);
+  for (int i = 0; i < c.probes(); ++i) bakeProbe(c, i, pt, 16);
+  // the rooms: every lit probe left of the wall in one, right of it in another
+  std::vector<int> r = rooms(c);
+  int left = -2, right = -2;
+  bool apart = true;
+  for (int i = 0; i < c.probes(); ++i) {
+    if (r[static_cast<size_t>(i)] < 0) continue;
+    const float x = c.probePos(i).x;
+    if (std::fabs(x) < 0.3f) continue;  // in or against the wall
+    int& side = x < 0 ? left : right;
+    if (side == -2) side = r[static_cast<size_t>(i)];
+    apart = apart && side == r[static_cast<size_t>(i)];
+  }
+  CHECK(apart && left >= 0 && right >= 0 && left != right);
+  // a 6 m reach from a lamp near the wall on the left: the box crosses the wall
+  const Vec3 lamp(-1, 2, 0);
+  const AABB reach(lamp - Vec3(6), lamp + Vec3(6));
+  LightCache byBox = c, byRoom = c;
+  const int nb = markNear(byBox, reach), nr = markReached(byRoom, reach, lamp);
+  CHECK(nr > 0 && nr < nb);
+  int rightMarked = 0, leftMarked = 0;
+  for (int i = 0; i < c.probes(); ++i) {
+    if (byRoom.state[static_cast<size_t>(i)] != LightCache::kWaiting) continue;
+    (c.probePos(i).x > 0.3f ? rightMarked : leftMarked)++;
+  }
+  CHECK(rightMarked == 0);
+  CHECK(leftMarked > 0);
+}

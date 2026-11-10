@@ -11,6 +11,7 @@
 //   loop score  tests/pictures [--samples N] [-o folder]
 //               how far the live picture is from the cinema renderer's picture
 //               of the same view (engine/render/score.h): one number per scene
+//   loop research cascades                    radiance cascades against the light cache (phase 9)
 //   loop project <name.looped>                a project's cover page as JSON (its name and first scene)
 //   loop new "My Game"                        a new project in projects/, copied from projects/template
 //   loop cook   <script.loop>                 what the cook makes of a scene's shapes: each mesh's
@@ -41,6 +42,11 @@
 #include "engine/render/film.h"
 #include "engine/render/frame_cost.h"
 #include "engine/render/pathtracer.h"
+#include "engine/geometry/world_gen.h"
+#include "engine/render/light_cache.h"
+#include "engine/render/radiance_cascades.h"
+#include "engine/geometry/mesh.h"
+#include "engine/core/random.h"
 #include "engine/render/score.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
@@ -60,6 +66,8 @@ int usage() {
       "loop budget <script.loop or folder> [--quality phone|high] [--seconds 1] [--size 374x811] [--set name=value]\n"
       "loop score  <script.loop> <live.png> [--filmtime T] [--samples 256] [-o folder]   how far live is from cinema\n"
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
+      "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
+      "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
       "loop settings list    every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -71,7 +79,7 @@ int usage() {
 struct Options {
   bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
   std::string quality, look, out, choices;
-  int width = 0, samples = 0, w = 960, h = 540;
+  int width = 0, samples = 0, w = 960, h = 540, worldCells = 257;
   double seconds = 10, filmtime = 0;
   bool secondsGiven = false, sizeGiven = false;
   std::string live;  // loop score: the live picture
@@ -556,6 +564,147 @@ int budget(const std::string& target, const Options& o) {
   return budgetScene(target, o);
 }
 
+// `loop research cascades`: the picture pipeline's phase 9 experiment. Radiance
+// cascades against the light cache, on the same rooms, with the same ray oracle
+// (the film renderer's): how far each one's soft light is from the truth (many
+// rays at the very point), and how many rays it cost.
+namespace research {
+Scene roomScene(bool twoRooms, bool redWall) {
+  Scene s;
+  s.sky.kind = Sky::Kind::kColor;
+  s.sky.color = Vec3(1);
+  s.sky.colorNits = 5000;
+  Material white, red;
+  white.baseColor = Vec3(0.7f), white.roughness = 1, white.specular = 0;
+  red.baseColor = Vec3(0.8f, 0.05f, 0.05f), red.roughness = 1, red.specular = 0;
+  const int w = s.addMaterial(white), r = s.addMaterial(red);
+  auto slab = [&](Vec3 size, Vec3 at, int m) { s.add(s.addMesh(shapes::box(size)), m, Mat4::translation(at)); };
+  const float L = twoRooms ? 8.0f : 4.0f, t = 0.2f;
+  slab({L + 2 * t, t, 4 + 2 * t}, {0, -t / 2, 0}, w);
+  slab({L + 2 * t, t, 4 + 2 * t}, {0, 3 + t / 2, 0}, w);
+  slab({t, 3, 4}, {-L / 2 - t / 2, 1.5f, 0}, redWall ? r : w);
+  slab({t, 3, 4}, {L / 2 + t / 2, 1.5f, 0}, w);
+  // the long sides, with a window (an opening) in one when there is one room
+  slab({L + 2 * t, 3, t}, {0, 1.5f, -2 - t / 2}, w);
+  if (twoRooms) {
+    slab({L + 2 * t, 3, t}, {0, 1.5f, 2 + t / 2}, w);
+    slab({t, 3, 1.4f}, {0, 1.5f, -1.3f}, w);  // the wall between, with a door 1.2 m wide on +z
+    slab({t, 3, 1.4f}, {0, 1.5f, 1.3f}, w);
+    slab({t, 0.8f, 1.2f}, {0, 2.6f, 0}, w);   // over the door
+  } else {
+    slab({L + 2 * t, 1, t}, {0, 0.5f, 2 + t / 2}, w);  // under the window
+    slab({L + 2 * t, 0.6f, t}, {0, 2.7f, 2 + t / 2}, w);  // over it
+  }
+  Light l;
+  l.position = {twoRooms ? -2.0f : 0.0f, 2.5f, 0};
+  l.lumens = 800;
+  l.radius = 0.05f;
+  s.lights.push_back(l);
+  return s;
+}
+float truth(PathTracer& pt, Vec3 p, Vec3 n, int rays) {
+  // cosine-weighted rays: the light falling on the surface is pi times their average
+  const Vec3 t = std::fabs(n.y) < 0.9f ? normalize(cross(n, Vec3(0, 1, 0))) : normalize(cross(n, Vec3(1, 0, 0))), b = cross(n, t);
+  double sum = 0;
+  Rng rng(77);
+  for (int k = 0; k < rays; ++k) {
+    const float u = rng.uniform(), v = rng.uniform(), r = std::sqrt(u), ph = kTwoPi * v;
+    const Vec3 d = normalize(t * (r * std::cos(ph)) + b * (r * std::sin(ph)) + n * std::sqrt(std::max(0.0f, 1 - u)));
+    sum += luminance(pt.probeLight(p, d, hashCombine(9u, static_cast<uint32_t>(k)), 2, nullptr));
+  }
+  return static_cast<float>(kPi * sum / rays);
+}
+int cascades() {
+  struct Case { const char* name; bool two, red; };
+  const Case cases[] = {{"one room, a window", false, false}, {"one room, a red wall", false, true}, {"two rooms, a door", true, false}};
+  std::printf("%-22s %-34s %10s %8s %9s\n", "room", "method", "rays", "error", "worst");
+  for (const Case& c : cases) {
+    Scene s = roomScene(c.two, c.red);
+    PathTracer pt;
+    pt.setScene(s);
+    const float L = c.two ? 8.0f : 4.0f;
+    const AABB inside(Vec3(-L / 2 + 0.1f, 0.1f, -1.9f), Vec3(L / 2 - 0.1f, 2.9f, 1.9f));
+    // the points: on a grid through the room, each facing the six ways
+    struct Point { Vec3 p, n; float e; };
+    std::vector<Point> pts;
+    Rng rng(5);
+    for (int k = 0; k < 48; ++k) {
+      const Vec3 p(inside.lo.x + rng.uniform() * (inside.hi.x - inside.lo.x), 0.2f + rng.uniform() * 2.6f, -1.8f + rng.uniform() * 3.6f);
+      static const Vec3 ns[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+      pts.push_back({p, ns[k % 6], 0});
+    }
+    for (Point& q : pts) q.e = truth(pt, q.p, q.n, 2048);
+    auto measure = [&](const char* method, uint64_t rays, auto&& at) {
+      double err = 0, worst = 0, ref = 0;
+      for (const Point& q : pts) ref += q.e;
+      ref /= static_cast<double>(pts.size());
+      for (const Point& q : pts) {
+        // the error against the room's average light (a dark corner's small light counts as small)
+        const double d = std::fabs(at(q.p, q.n) - q.e) / std::max(ref, 1e-6);
+        err += d, worst = std::max(worst, d);
+      }
+      std::printf("%-22s %-34s %10llu %7.1f%% %8.1f%%\n", c.name, method, static_cast<unsigned long long>(rays), 100 * err / pts.size(), 100 * worst);
+    };
+    // the light cache as the live renderer has it: 1 m apart, 64 rays a probe, filled and smoothed
+    for (float spacing : {1.0f, 0.5f}) {
+      LightCache lc = layOutLightCache(inside, 4096, spacing);
+      lc.origin = inside.lo;  // (laid out from the room's corner, like the cascades)
+      const uint64_t before = 0;
+      for (int i = 0; i < lc.probes(); ++i) bakeProbe(lc, i, pt, 64, 2);
+      fillInside(lc);
+      LightCache sm = smoothed(lc);
+      char name[64];
+      std::snprintf(name, sizeof name, "light cache, %.1f m, 64 rays", spacing);
+      measure(name, before + static_cast<uint64_t>(lc.probes()) * 64, [&](Vec3 p, Vec3 n) { return luminance(sm.irradiance(p, n)); });
+    }
+    // radiance cascades: level 0 0.5 m apart, 16 or 64 directions, 3 levels
+    for (int dirs : {4, 8}) {
+      RadianceCascades rc = buildCascades(pt, inside, 0.5f, 3, dirs, 0.5f, 2);
+      char name[64];
+      std::snprintf(name, sizeof name, "cascades, 0.5 m, %d dirs, 3 levels", dirs * dirs);
+      measure(name, rc.rays, [&](Vec3 p, Vec3 n) { return luminance(rc.irradiance(p, n)); });
+    }
+  }
+  std::printf("(error: the average difference from the truth, over the room's average light; worst: the largest)\n");
+  return 0;
+}
+// `loop world <seed> [-o map.png] [--size 257]`: a generated world's map
+// (engine/geometry/world_gen.h): its ground in colour, shaded by the sun.
+int worldMap(const std::string& seed, const std::string& out, int cells) {
+  WorldSettings ws;
+  ws.seed = static_cast<uint32_t>(std::atoi(seed.c_str()));
+  ws.cells = cells;
+  Stopwatch sw;
+  WorldMap m = generateWorld(ws);
+  const double secs = sw.seconds();
+  Image img(m.n, m.n, {0, 0, 0, 1});
+  static const Vec3 colour[7] = {{0.10f, 0.22f, 0.42f}, {0.20f, 0.42f, 0.62f}, {0.83f, 0.78f, 0.58f}, {0.45f, 0.62f, 0.30f},
+                                 {0.16f, 0.36f, 0.16f}, {0.52f, 0.49f, 0.45f}, {0.95f, 0.96f, 0.98f}};
+  int kinds[7] = {0};
+  float top = 0;
+  for (int z = 0; z < m.n; ++z)
+    for (int x = 0; x < m.n; ++x) {
+      const size_t i = m.at(x, z);
+      ++kinds[m.ground[i]];
+      top = std::max(top, m.height[i]);
+      Vec3 c = colour[m.ground[i]];
+      if (m.ground[i] != WorldMap::kSea && m.ground[i] != WorldMap::kLake) {
+        // the sun from the north-west
+        const float dx = m.height[m.at(std::min(x + 1, m.n - 1), z)] - m.height[m.at(std::max(x - 1, 0), z)];
+        const float dz = m.height[m.at(x, std::min(z + 1, m.n - 1))] - m.height[m.at(x, std::max(z - 1, 0))];
+        const Vec3 n = normalize(Vec3(-dx, 2 * m.cell, -dz));
+        c *= 0.45f + 0.75f * std::max(0.0f, dot(n, normalize(Vec3(-1, 1.2f, -1))));
+        if (m.flow[i] / (m.cell * m.cell) > 150) c = vlerp(c, colour[1], 0.7f);  // a river
+      }
+      img.at(x, z) = {c, 1};
+    }
+  writePng(out, img, true);
+  std::printf("world %u: %d x %d cells of %.0f m in %.1f s; highest %.0f m; sea %d, lakes %d, sand %d, grass %d, forest %d, rock %d, snow %d -> %s\n",
+              ws.seed, m.n, m.n, m.cell, secs, top, kinds[0], kinds[1], kinds[2], kinds[3], kinds[4], kinds[5], kinds[6], out.c_str());
+  return 0;
+}
+}  // namespace research
+
 int main(int argc, char** argv) {
   if (argc < 3) return usage();
   std::string cmd = argv[1], target = argv[2];
@@ -573,6 +722,7 @@ int main(int argc, char** argv) {
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;
     else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h), o.sizeGiven = true;
     else if (a == "-o") o.out = val();
+    else if (a == "--cells") o.worldCells = std::atoi(val().c_str());
     else if (a == "--choices") o.choices = val();
     else if (a == "--set") {
       std::string kv = val();
@@ -673,6 +823,8 @@ int main(int argc, char** argv) {
   if (cmd == "demo") return demo(target, o);
   if (cmd == "budget") return budget(target, o);
   if (cmd == "score") return score(target, o);
+  if (cmd == "research" && target == "cascades") return research::cascades();
+  if (cmd == "world") return research::worldMap(target, o.out.empty() ? "world.png" : o.out, o.worldCells);
   if (cmd == "words") {
     // `loop words js` writes web/editor/words.js: every word of Looped Script and its help
     Vm vm;

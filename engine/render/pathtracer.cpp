@@ -109,7 +109,11 @@ struct PathTracer::Impl {
   Vec3 trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut);
   // Fraction of light passing from `p` along `d` for `dist` (blockers,
   // cut-outs, thin glass, fog).
-  Vec3 transmittance(Vec3 p, Vec3 d, float dist);
+  Vec3 transmittance(Vec3 p, Vec3 d, float dist, bool glassBlocks = false);
+  // phase 9: light followed from the bulbs through glass and mirrors to the
+  // first rough surface, then to the camera; added to `out` (nits)
+  bool lightPathsOn = false;
+  void lightPass(Image& out, int W, int H, uint64_t paths, uint32_t seed);
   float fogDistance(Vec3 o, Vec3 d, float tmax, float& t0, float& t1) const;
   bool surfaceAlphaCut(int inst, uint32_t prim, float u, float v, Vec3 p) const;
   // Next event estimation from a surface (bsdf) or a fog point (phase g).
@@ -272,7 +276,7 @@ bool PathTracer::Impl::surfaceAlphaCut(int inst, uint32_t prim, float u, float v
   return false;
 }
 
-Vec3 PathTracer::Impl::transmittance(Vec3 p, Vec3 d, float dist) {
+Vec3 PathTracer::Impl::transmittance(Vec3 p, Vec3 d, float dist, bool glassBlocks) {
   Vec3 T{1};
   const Fog& f = scene->fog;
   if (f.density > 0) {
@@ -298,7 +302,7 @@ Vec3 PathTracer::Impl::transmittance(Vec3 p, Vec3 d, float dist) {
         t = h.t + 1e-4f;
         continue;
       }
-      if (m.transmission > 0) {
+      if (m.transmission > 0 && !glassBlocks) {
         // shadows through glass: its tint, minus what the surface reflects
         // (no refraction: true caustics come from `caustics` paths)
         T *= m.baseColor * (0.92f * m.transmission);
@@ -374,7 +378,9 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
     float bp;
     Vec3 f = scatter(wi, bp);
     if (luminance(f) <= 0) return Vec3(0);
-    Vec3 T = l.castShadows ? transmittance(origin(wi), wi, dist) : Vec3(1);
+    // a bulb's light through glass comes from the light paths (lightPass) when they run
+    const bool bulb = l.kind == Light::Kind::kPoint || l.kind == Light::Kind::kSpot;
+    Vec3 T = l.castShadows ? transmittance(origin(wi), wi, dist, lightPathsOn && bulb) : Vec3(1);
     if (luminance(T) <= 0) return Vec3(0);
     if (lightPdf == 0 || !mis) return lightPdf == 0 ? f * Li * T : f * Li * T / lightPdf;
     return f * Li * T * (powerHeuristic(lightPdf, bp) / lightPdf);
@@ -654,6 +660,31 @@ Vec3 PathTracer::tracePixel(float px, float py, int w, int h, uint32_t i) {
   return I.trace(r, rng, nullptr, nullptr);
 }
 
+Vec3 PathTracer::probeInterval(Vec3 p, Vec3 d, float t0, float t1, uint32_t seed, int bounces, bool* through) {
+  Impl& I = *impl_;
+  const Ray r{p + d * t0, d};
+  ++I.rays;
+  const SceneHit h = I.geom.closest(r);
+  if (t1 >= 1e4f) {  // the last stretch goes on forever: the sky too
+    *through = false;
+    return probeLight(r.o, d, seed, bounces, nullptr);
+  }
+  if (!h.valid() || h.t > t1 - t0) {
+    *through = true;
+    return Vec3(0);
+  }
+  *through = false;
+  return probeLight(r.o, d, seed, bounces, nullptr);
+}
+
+bool PathTracer::clear(Vec3 a, Vec3 b) {
+  const Vec3 d = b - a;
+  const float len = length(d);
+  if (len < 1e-6f) return true;
+  ++impl_->rays;
+  return !impl_->geom.occluded({a, d / len}, 1e-4f, len);
+}
+
 Vec3 PathTracer::probeLight(Vec3 p, Vec3 d, uint32_t seed, int bounces, bool* back) {
   Impl& I = *impl_;
   Ray r{p, d};
@@ -676,6 +707,11 @@ RenderOutput PathTracer::render(const RenderSettings& s) {
   I.rays = 0;
   const int W = s.width, H = s.height;
   I.setupCamera(I.scene->camera, W, H);
+  // light paths only where there is glass for a bulb's light to go through
+  I.lightPathsOn = false;
+  if (s.lightPaths && I.hasGlass)
+    for (const LightData& L : I.lights)
+      if (L.light.kind == Light::Kind::kPoint || L.light.kind == Light::Kind::kSpot) I.lightPathsOn = true;
   // Auto clamp: a quick low-resolution look at the scene, then bounces may be
   // at most `clamp` times brighter than its average (kills fireflies).
   I.clampLum = kInf;
@@ -733,11 +769,135 @@ RenderOutput PathTracer::render(const RenderSettings& s) {
     if (s.progress && (d % 16 == 0 || d == tx * ty))
       if (!s.progress(static_cast<float>(d) / (tx * ty))) stop = true;
   }, 1);
+  // the bulbs' light through glass, followed from the bulbs
+  if (I.lightPathsOn && !stop) I.lightPass(out.color, W, H, static_cast<uint64_t>(W) * H * static_cast<uint64_t>(std::max(1, s.samples / 2)), s.seed);
   out.noisy = out.color;
   if (s.denoise && s.samples < 4096) out.color = denoise(out.color, out.albedo, out.normal, variance);
   out.seconds = sw.seconds();
   out.rays = I.rays;
   return out;
+}
+
+// ------------------------------------------------------------- light paths
+// Light tracing, the other half of bidirectional path tracing: each path
+// leaves a bulb (picked by its power), passes through glass (bent by Fresnel
+// and Snell, tinted) and off smooth metal, and where it first lands on a rough
+// surface after at least one of those, that spot is joined to the camera's
+// pupil. The camera's own paths can't find these (a bulb is too small to hit
+// by chance after a bounce), so nothing is counted twice: the bulbs' shadow
+// rays stop at glass while this runs. The landing surface is taken as matte.
+void PathTracer::Impl::lightPass(Image& out, int W, int H, uint64_t paths, uint32_t seed) {
+  const Scene& S = *scene;
+  std::vector<int> bulbs;
+  std::vector<float> cdf;
+  float total = 0;
+  for (size_t i = 0; i < lights.size(); ++i) {
+    const Light& l = lights[i].light;
+    if (l.kind != Light::Kind::kPoint && l.kind != Light::Kind::kSpot) continue;
+    total += std::max(l.lumens, 0.0f) * luminance(l.color);
+    bulbs.push_back(static_cast<int>(i)), cdf.push_back(total);
+  }
+  if (bulbs.empty() || total <= 0 || paths == 0) return;
+  const float A = 4 * tanX * tanY;  // the picture's plane, a metre in front of the pupil
+  const float scale = static_cast<float>(W) * static_cast<float>(H) / static_cast<float>(paths);
+  const int chunks = 64;
+  std::vector<Image> parts(static_cast<size_t>(chunks));
+  JobSystem::shared().parallelFor(chunks, [&](int c) {
+    Image& img = parts[static_cast<size_t>(c)];
+    img = Image(W, H, {0, 0, 0, 0});
+    const uint64_t a = paths * static_cast<uint64_t>(c) / chunks, b = paths * static_cast<uint64_t>(c + 1) / chunks;
+    for (uint64_t k = a; k < b; ++k) {
+      Rng rng(hashCombine(seed * 2654435761u + 17u, static_cast<uint32_t>(k) ^ static_cast<uint32_t>(k >> 32)));
+      // a bulb, by its power, and a direction out of it
+      const float x = rng.uniform() * total;
+      const size_t pick = std::min(static_cast<size_t>(std::lower_bound(cdf.begin(), cdf.end(), x) - cdf.begin()), bulbs.size() - 1);
+      const LightData& L = lights[static_cast<size_t>(bulbs[pick])];
+      const Light& l = L.light;
+      const float pPick = (cdf[pick] - (pick ? cdf[pick - 1] : 0.0f)) / total;
+      const Vec2 u = rng.uniform2();
+      const float z = 1 - 2 * u.x, r = std::sqrt(std::max(0.0f, 1 - z * z)), ph = kTwoPi * u.y;
+      Vec3 d(r * std::cos(ph), z, r * std::sin(ph));
+      // its strength that way (lumens over the sphere, or over a spot's cone), over the chances
+      const float rad = std::max(l.radius, 1e-3f);
+      Vec3 I = L.radiance * (kPi * rad * rad);
+      if (l.kind == Light::Kind::kSpot) I *= smoothstep(L.cosOuter, L.cosInner, dot(d, l.direction));
+      Vec3 beta = I * (4 * kPi) / pPick;
+      if (luminance(beta) <= 0) continue;
+      Ray ray{l.position + d * (rad * 1.01f), d};
+      bool bent = false;
+      for (int bounce = 0; bounce < 12; ++bounce) {
+        ++rays;
+        const SceneHit h = geom.closest(ray);
+        if (!h.valid()) break;
+        const Vec3 p = ray.at(h.t);
+        if (surfaceAlphaCut(h.inst, h.prim, h.u, h.v, p)) {
+          ray.o = p + ray.d * 1e-4f;
+          --bounce;
+          continue;
+        }
+        const TriInfo td = geom.triangle(h.inst, h.prim);
+        static const Material kDefault;
+        const Material& M = td.material >= 0 ? S.materials[td.material] : kDefault;
+        const float w0 = 1 - h.u - h.v;
+        Vec3 ns = normalize(td.n[0] * w0 + td.n[1] * h.u + td.n[2] * h.v);
+        const Vec2 uv = td.uv[0] * w0 + td.uv[1] * h.u + td.uv[2] * h.v;
+        Vec3 ng = td.ng;
+        const bool front = dot(ray.d, ng) < 0;
+        if (!front) ng = -ng, ns = -ns;
+        if (dot(ns, ng) < 0) ns = ng;
+        const Surface sf = shadeSurface(M, S.images, p, ns, uv, &S.textures);
+        const Vec3 n = sf.normal;
+        const float metal = sf.metallic, glass = M.transmission * (1 - metal);
+        if (glass > 0.5f && sf.roughness < 0.05f) {
+          // smooth glass: reflected or bent through, by Fresnel
+          const float eta = front ? 1 / std::max(M.ior, 1.0f) : std::max(M.ior, 1.0f);
+          const float cosI = -dot(ray.d, n);
+          const float F = fresnelDielectric(cosI, eta);
+          if (rng.uniform() < F) {
+            ray = {p + ng * 1e-4f, normalize(ray.d + n * (2 * cosI))};
+          } else {
+            const float s2 = eta * eta * (1 - cosI * cosI);
+            const Vec3 t = ray.d * eta + n * (eta * cosI - std::sqrt(std::max(0.0f, 1 - s2)));
+            ray = {p - ng * 1e-4f, normalize(t)};
+            beta *= sf.base;  // its tint
+          }
+          bent = true;
+          continue;
+        }
+        if (metal > 0.5f && sf.roughness < 0.05f) {
+          // a mirror
+          ray = {p + ng * 1e-4f, normalize(ray.d - n * (2 * dot(ray.d, n)))};
+          beta *= sf.base;
+          bent = true;
+          continue;
+        }
+        if (!bent) break;  // straight from the bulb: the camera's paths have it
+        // landed: joined to the camera's pupil, if it sees this spot
+        const Vec3 v = p - camPos;
+        const float zc = dot(v, camF);
+        if (zc <= 1e-4f) break;
+        const float sx = dot(v, camR) / zc / tanX, sy = dot(v, camU) / zc / tanY;
+        if (std::fabs(sx) >= 1 || std::fabs(sy) >= 1) break;
+        const float dist = length(v);
+        const Vec3 toCam = -v / dist;
+        const float cosX = dot(n, toCam);
+        if (cosX <= 0) break;  // the camera sees the other side
+        ++rays;
+        if (geom.occluded({p + ng * 1e-4f, toCam}, 1e-4f, dist * 0.9999f)) break;
+        const float cosC = zc / dist;
+        const Vec3 f = sf.base * ((1 - metal) * (1 - glass) / kPi);
+        const Vec3 c = beta * f * (cosX / (dist * dist * A * cosC * cosC * cosC)) * scale;
+        if (!isFinite(c)) break;
+        const int px = std::clamp(static_cast<int>((sx * 0.5f + 0.5f) * static_cast<float>(W)), 0, W - 1);
+        const int py = std::clamp(static_cast<int>((0.5f - sy * 0.5f) * static_cast<float>(H)), 0, H - 1);
+        Vec4& o = img.at(px, py);
+        o.x += c.x, o.y += c.y, o.z += c.z;
+        break;
+      }
+    }
+  }, 1);
+  for (const Image& img : parts)
+    for (size_t i = 0; i < out.px.size(); ++i) out.px[i].x += img.px[i].x, out.px[i].y += img.px[i].y, out.px[i].z += img.px[i].z;
 }
 
 // ------------------------------------------------------------- denoiser

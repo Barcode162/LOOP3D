@@ -49,6 +49,7 @@ LightCache layOutLightCache(const AABB& box, int maxProbes, float minSpacing) {
   const size_t n = static_cast<size_t>(c.probes());
   c.face.assign(n, std::array<Vec3, 6>{});
   c.state.assign(n, LightCache::kWaiting);
+  c.open.assign(n, 0), c.tested.assign(n, 0);
   c.on = true;
   return c;
 }
@@ -96,6 +97,94 @@ void bakeProbe(LightCache& cache, int i, PathTracer& pt, int rays, int bounces, 
   }
   cache.face[static_cast<size_t>(i)] = f;
   cache.state[static_cast<size_t>(i)] = LightCache::kBaked;
+  // its links to the neighbours (+x, +y, +z here; the others when they bake theirs)
+  if (cache.open.size() != cache.state.size()) cache.open.assign(cache.state.size(), 0), cache.tested.assign(cache.state.size(), 0);
+  const int x = i % cache.nx, y = (i / cache.nx) % cache.ny, z = i / (cache.nx * cache.ny);
+  for (int d = 0; d < 6; ++d) {
+    const int ax = d / 2, s = d % 2 ? -1 : 1;
+    const int qx = x + (ax == 0 ? s : 0), qy = y + (ax == 1 ? s : 0), qz = z + (ax == 2 ? s : 0);
+    if (qx < 0 || qy < 0 || qz < 0 || qx >= cache.nx || qy >= cache.ny || qz >= cache.nz) continue;
+    const int j = cache.probeAt(qx, qy, qz);
+    // two rays a little apart: one can slip along the seam between two triangles
+    const Vec3 q = cache.probePos(j), off = Vec3(0.031f, 0.047f, 0.023f) * cache.spacing;
+    const bool seen = pt.clear(p, q) && pt.clear(p + off, q + off);
+    const uint8_t bit = static_cast<uint8_t>(1u << d), back = static_cast<uint8_t>(1u << (d ^ 1));
+    cache.tested[static_cast<size_t>(i)] |= bit, cache.tested[static_cast<size_t>(j)] |= back;
+    if (seen) cache.open[static_cast<size_t>(i)] |= bit, cache.open[static_cast<size_t>(j)] |= back;
+    else cache.open[static_cast<size_t>(i)] &= static_cast<uint8_t>(~bit), cache.open[static_cast<size_t>(j)] &= static_cast<uint8_t>(~back);
+  }
+}
+
+namespace {
+// the neighbour of probe i that way, or -1
+int neighbour(const LightCache& c, int i, int d) {
+  const int x = i % c.nx, y = (i / c.nx) % c.ny, z = i / (c.nx * c.ny);
+  const int ax = d / 2, s = d % 2 ? -1 : 1;
+  const int qx = x + (ax == 0 ? s : 0), qy = y + (ax == 1 ? s : 0), qz = z + (ax == 2 ? s : 0);
+  if (qx < 0 || qy < 0 || qz < 0 || qx >= c.nx || qy >= c.ny || qz >= c.nz) return -1;
+  return c.probeAt(qx, qy, qz);
+}
+bool linked(const LightCache& c, int i, int d) {
+  const size_t si = static_cast<size_t>(i);
+  if (si >= c.tested.size() || !(c.tested[si] & (1u << d))) return true;  // not known: as open
+  return (c.open[si] >> d) & 1u;
+}
+}  // namespace
+
+int markReached(LightCache& c, const AABB& box, Vec3 at) {
+  if (!c.on) return 0;
+  // the probes round the box, as markNear
+  const Vec3 lo = (box.lo - c.origin) / c.spacing - Vec3(1), hi = (box.hi - c.origin) / c.spacing + Vec3(1);
+  auto inBox = [&](int i) {
+    const int x = i % c.nx, y = (i / c.nx) % c.ny, z = i / (c.nx * c.ny);
+    return x >= std::floor(lo.x) && x <= std::ceil(hi.x) && y >= std::floor(lo.y) && y <= std::ceil(hi.y) && z >= std::floor(lo.z) && z <= std::ceil(hi.z);
+  };
+  // start: the eight probes round the lamp (those not inside things)
+  Vec3 q = (at - c.origin) / c.spacing;
+  const int x0 = std::clamp(static_cast<int>(std::floor(q.x)), 0, c.nx - 1), y0 = std::clamp(static_cast<int>(std::floor(q.y)), 0, c.ny - 1),
+            z0 = std::clamp(static_cast<int>(std::floor(q.z)), 0, c.nz - 1);
+  std::vector<uint8_t> seen(c.state.size(), 0);
+  std::vector<int> todo;
+  for (int k = 0; k < 8; ++k) {
+    const int x = std::min(x0 + (k & 1), c.nx - 1), y = std::min(y0 + ((k >> 1) & 1), c.ny - 1), z = std::min(z0 + (k >> 2), c.nz - 1);
+    const int i = c.probeAt(x, y, z);
+    if (!seen[static_cast<size_t>(i)] && c.state[static_cast<size_t>(i)] != LightCache::kInside) seen[static_cast<size_t>(i)] = 1, todo.push_back(i);
+  }
+  for (size_t t = 0; t < todo.size(); ++t) {
+    const int i = todo[t];
+    for (int d = 0; d < 6; ++d) {
+      const int j = neighbour(c, i, d);
+      if (j < 0 || seen[static_cast<size_t>(j)] || !inBox(j)) continue;
+      if (c.state[static_cast<size_t>(j)] == LightCache::kInside) {
+        seen[static_cast<size_t>(j)] = 2;  // takes its light from those beside it: marked, not spread through
+        continue;
+      }
+      if (!linked(c, i, d)) continue;
+      seen[static_cast<size_t>(j)] = 1, todo.push_back(j);
+    }
+  }
+  int n = 0;
+  for (size_t i = 0; i < seen.size(); ++i)
+    if (seen[i] && c.state[i] != LightCache::kWaiting) c.state[i] = LightCache::kWaiting, ++n;
+  return n;
+}
+
+std::vector<int> rooms(const LightCache& c) {
+  std::vector<int> room(c.state.size(), -1);
+  int next = 0;
+  for (int s = 0; s < c.probes(); ++s) {
+    if (room[static_cast<size_t>(s)] >= 0 || c.state[static_cast<size_t>(s)] == LightCache::kInside) continue;
+    std::vector<int> todo{s};
+    room[static_cast<size_t>(s)] = next;
+    for (size_t t = 0; t < todo.size(); ++t)
+      for (int d = 0; d < 6; ++d) {
+        const int j = neighbour(c, todo[t], d);
+        if (j < 0 || room[static_cast<size_t>(j)] >= 0 || c.state[static_cast<size_t>(j)] == LightCache::kInside || !linked(c, todo[t], d)) continue;
+        room[static_cast<size_t>(j)] = next, todo.push_back(j);
+      }
+    ++next;
+  }
+  return room;
 }
 
 void fillInside(LightCache& c) {

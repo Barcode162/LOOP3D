@@ -25,6 +25,11 @@ struct RenderSettings {
   bool caustics = false;
   bool dispersion = true; // glass splits light into rainbows (materials with dispersion)  // light focused through glass onto diffuse surfaces (slow to converge)
   float clamp = 0;        // max brightness of a bounce, in multiples of the scene's average; 0 = auto
+  // Light followed out from the bulbs too (phase 9: bidirectional paths): through
+  // glass and off mirrors to what it lands on, then to the camera, so glass
+  // bends and focuses a lamp's light (a candle behind glass) instead of letting
+  // it straight through; with it, the bulbs' shadow rays stop at glass.
+  bool lightPaths = true;
   uint32_t seed = 1;
   // Called now and then with progress 0..1; return false to stop early.
   std::function<bool(float)> progress;
@@ -53,6 +58,12 @@ class PathTracer {
   // live renderer works those out itself), over at most `bounces` bounces.
   // `back`: the ray's first hit was the back of a surface (p is inside it).
   Vec3 probeLight(Vec3 p, Vec3 d, uint32_t seed, int bounces, bool* back);
+  // Radiance cascades (phase 9's experiment): the light from what the ray
+  // meets between `t0` and `t1` along it (as probeLight), and whether it met
+  // nothing there (`through`: the light comes from farther on).
+  Vec3 probeInterval(Vec3 p, Vec3 d, float t0, float t1, uint32_t seed, int bounces, bool* through);
+  // Can `a` see `b` (nothing solid between)? The light cache's rooms.
+  bool clear(Vec3 a, Vec3 b);
   const SkyModel& sky() const;
 
   struct Impl;

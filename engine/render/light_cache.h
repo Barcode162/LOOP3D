@@ -36,6 +36,12 @@ struct LightCache {
   std::vector<std::array<Vec3, 6>> face;
   enum State : uint8_t { kWaiting, kBaked, kInside };
   std::vector<uint8_t> state;
+  // The rooms (the picture pipeline's phase 10, typed relationships): per
+  // probe, which of its six neighbours it was found to see (bit d) and which
+  // were tested at all (bit d of `tested`); light spreads only along links
+  // that are open, so a lamp's change relights its own room (and through an
+  // open door, the next), not the room behind the wall.
+  std::vector<uint8_t> open, tested;
   int probes() const { return nx * ny * nz; }
   Vec3 probePos(int i) const;
   int probeAt(int x, int y, int z) const { return (z * ny + y) * nx + x; }
@@ -66,6 +72,14 @@ std::vector<int> bakeOrder(const LightCache& cache, Vec3 eye);
 // are to be baked again (they keep their light meanwhile, marked waiting).
 // Returns how many were marked.
 int markNear(LightCache& cache, const AABB& box);
+// A lamp at `at` changed, its light reaching `box`: the probes its light can
+// get to (from the probes round it, along open links, inside the box) are to
+// be baked again, and the probes inside things beside them. Links not yet
+// tested count as open (as markNear). Returns how many were marked.
+int markReached(LightCache& cache, const AABB& box, Vec3 at);
+// The rooms: probes joined by open links (and not inside things) numbered
+// alike; -1 for probes inside things.
+std::vector<int> rooms(const LightCache& cache);
 // The probes waiting to be baked, nearest the eye first.
 std::vector<int> waitingOrder(const LightCache& cache, Vec3 eye);
 

@@ -1532,6 +1532,7 @@ class GpuRenderer final : public Renderer {
   uint64_t cacheBaked_ = 0;  // probes baked since the start
   uint64_t cacheRelit_ = 0;  // probes marked to bake again near a change
   std::vector<AABB> relight_;  // where something changed since the last relight
+  std::vector<Vec3> relightFrom_;  // per box: the lamp that changed (its light spreads from there through the rooms), or NaN for a thing that moved
   // each lamp's light, smoothed over about a second (a flickering flame keeps
   // a steady average; a lamp switched on or off doesn't), and as last baked
   std::vector<float> lampAvg_, lampBaked_;
@@ -1558,7 +1559,7 @@ class GpuRenderer final : public Renderer {
         // where its light makes a difference: out to half a lux (a candle about
         // 2 m, a 900 lm fire about 12 m)
         const float reach = std::clamp(std::sqrt(std::max(lampAvg_[k], was) / 0.5f), 2.0f, 30.0f);
-        relight_.push_back(AABB(L.pos.xyz() - Vec3(reach), L.pos.xyz() + Vec3(reach)));
+        relight_.push_back(AABB(L.pos.xyz() - Vec3(reach), L.pos.xyz() + Vec3(reach))), relightFrom_.push_back(L.pos.xyz());
         lampBaked_[k] = lampAvg_[k];
       }
     }
@@ -1648,7 +1649,7 @@ class GpuRenderer final : public Renderer {
       tracer_->setScene(*lastScene_);
       cacheOrder_ = bakeOrder(cache_, eye);
       cacheNext_ = 0;
-      relight_.clear();
+      relight_.clear(), relightFrom_.clear();
       lampBaked_ = lampAvg_;
     }
     watchLampsForCache();
@@ -1658,8 +1659,12 @@ class GpuRenderer final : public Renderer {
     // at most every two seconds, like a full bake
     if (!relight_.empty() && !changed && emscripten_get_now() - cacheStarted_ > 2000 && cache_.on) {
       int marked = 0;
-      for (const AABB& box : relight_) marked += markNear(cache_, box);
-      relight_.clear();
+      // a lamp's light only where it can reach through the rooms (phase 10); a moved thing's box as it is
+      for (size_t k = 0; k < relight_.size(); ++k) {
+        const Vec3 at = k < relightFrom_.size() ? relightFrom_[k] : Vec3(std::numeric_limits<float>::quiet_NaN());
+        marked += std::isnan(at.x) ? markNear(cache_, relight_[k]) : markReached(cache_, relight_[k], at);
+      }
+      relight_.clear(), relightFrom_.clear();
       if (marked > 0 || (tracer_ && cacheNext_ < cacheOrder_.size())) {
         cacheStarted_ = emscripten_get_now();
         tracer_ = std::make_unique<PathTracer>();
@@ -3249,7 +3254,7 @@ class GpuRenderer final : public Renderer {
           // only a real move (a sway or a breath in place changes nothing)
           if (length((b.lo + b.hi) * 0.5f - (from.lo + from.hi) * 0.5f) < 0.25f) continue;
           b.grow(from);
-          relight_.push_back(AABB(b.lo - Vec3(1), b.hi + Vec3(1)));
+          relight_.push_back(AABB(b.lo - Vec3(1), b.hi + Vec3(1))), relightFrom_.push_back(Vec3(std::numeric_limits<float>::quiet_NaN()));
         }
       movers_.swap(next);
       changes_.bump("movers");
