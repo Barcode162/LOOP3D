@@ -39,6 +39,18 @@ std::shared_ptr<const ClusterTree> Cook::clusters(const Mesh& m, bool parallel) 
   return trees_.emplace(key, std::move(tree)).first->second;  // another thread may have kept one first: the same
 }
 
+std::shared_ptr<const Marks> Cook::marks(const Mesh& m) {
+  uint64_t key = fingerprint(m);
+  {
+    std::lock_guard<std::mutex> l(m_);
+    auto it = marks_.find(key);
+    if (it != marks_.end()) return it->second;
+  }
+  auto made = std::make_shared<const Marks>(measureMarks(m));
+  std::lock_guard<std::mutex> l(m_);
+  return marks_.emplace(key, std::move(made)).first->second;  // another thread may have kept one first: the same
+}
+
 void Cook::cookAll(const std::vector<Mesh>& meshes) {
   std::vector<const Mesh*> all;
   for (const Mesh& m : meshes) all.push_back(&m);
@@ -61,12 +73,13 @@ void Cook::cookAll(const std::vector<const Mesh*>& meshes) {
 
 size_t Cook::kept() const {
   std::lock_guard<std::mutex> l(m_);
-  return trees_.size();
+  return trees_.size() + marks_.size();
 }
 
 void Cook::forget() {
   std::lock_guard<std::mutex> l(m_);
   trees_.clear();
+  marks_.clear();
 }
 
 }  // namespace loop
