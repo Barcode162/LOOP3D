@@ -102,7 +102,7 @@ Vec3 unitAxis(int i) { return {i == 0 ? 1.0f : 0.0f, i == 1 ? 1.0f : 0.0f, i == 
 //  - the remaining sign makes the first way, the second and the facing out a right-hand turn, so
 //    seen from outside every side reads as a picture seen from the front: nothing reads mirrored.
 // So with the stretched way along x: +x (-z, y), -x (z, y); +y (x, -z), -y (x, z); +z (x, y), -z (-x, y).
-// The live renderer's sideWays (engine/gpu/shaders/scene.wgsl.h) is the same table.
+// The live renderer's sideOf (engine/gpu/shaders/scene.wgsl.h) is the same table.
 void sideWays(int axis, float sign, int along, Vec3& ax, Vec3& ay) {
   const int a = along == axis || along < 0 || along > 2 ? (axis == 0 ? 2 : 0) : along;
   const int b = 3 - axis - a;
