@@ -240,6 +240,7 @@ int GpuRenderer::skipBits() const {
 
 void GpuRenderer::readLights(const Scene& scene) {
   lights_.clear();
+  lampNoShadow_.clear();
   sunOn_ = false;
   for (const Light& l : scene.lights) {
     if (l.kind == Light::Kind::kSun) {
@@ -268,6 +269,7 @@ void GpuRenderer::readLights(const Scene& scene) {
       u.dir = {0, -1, 0, 0};
     }
     lights_.push_back(u);
+    lampNoShadow_.push_back(l.castShadows ? 0 : 1);
   }
   lightsDirty_ = true;
   // the light grid: laid out again when lamps move (a lamp's light changing
