@@ -24,7 +24,7 @@ a city at night behind it (`docs/ROADMAP.md`, star 2). Built from a few hundred 
 *Its parts list:* `docs/LIBRARY_PLAN.md`, section 4 (40 building pieces, 25 seats and beds, and the rest by kind).
 *Its rubric:* `docs/rubrics/` (loft). *Its orders:* cut from `docs/WORK_ORDERS.md` (tracks S shapes, M surfaces,
 the library orders).
-*Where it stands today:* the library holds 8 entries; 5 of the Loft's 40 building pieces exist (plinth, lintel,
+*Where it stands today:* the library holds 22 entries; 5 of the Loft's 40 building pieces exist (plinth, lintel,
 room shell, loft shell, glazing wall). The surface recipe is designed (M1) and the vertex marks are built (M2). No order card is cut for
 milestone 3 yet.
 *Goal 1, the shell (done 2026-11-10):* `projects/loft/`: a bare room 9 m wide, 6 m high and 12 m deep with one wall
@@ -46,15 +46,18 @@ glowing strip (N1, with an old fault found and mended: a closed glowing shape li
 entries (E10), the shape word `lathe` (S1), the dark-stays-dark check (N5).
 *Also on main since (2026-11-10):* the shape word `lathe` (S1), glass no longer black in film (F1), the night
 picture for library entries (E10).
-*Paused 2026-11-11, finished but not yet on main* (each on its own branch, its claim says done; say "deploy"):
-the word `strip` (N2), the word `group` (S7), the pendant lamp and the track spotlights (the library would hold
-22), and the dark-stays-dark check (N5: the unlit room is 0.0% of the lit one in film, 0.8% live). The branch
-`work/deploy-loft2b` holds the first four merged with a docs line and one more test, **not yet checked**: run the
-quick checks there first. N5 also adds one line to `projects/samples/project.json` (off its card, needed).
+*On main since 2026-11-11 (deployed, checked):* the word `strip` (N2), the word `group` (S7, with its docs line and
+a strip-in-a-group test), the pendant lamp and the track spotlights (the library now holds 22), and the
+dark-stays-dark check (N5: the unlit room is 0.0% of the lit one in film, 0.8% live; the `two_rooms` scene and
+picture). N5 also adds one line to `projects/samples/project.json` (off its card, needed). Held: E11 (the
+library picture takes a view and up to three cases), on branch `claude/admiring-einstein-m5ymeu`, because it
+changes files off its card (`engine/project/library.*`, two library pieces, `tests/library_test.cpp`); widen its
+claim's touch line, then deploy.
+*Known:* the `showcase_glade` picture differs a little (mean 2.34) since the far-grass change; not from this wave.
 *Not published:* the public player still shows the Loft before goal 2.
-*Next:* deploy those five; publish, so goal 2 (night falls) can be seen on the phone; then **goal 3, the upper
-floor and the stair** (all its pieces are in the library), and goal 4 once `strip` is in.
-*Needs you:* "deploy" and "publish" when you are back, and your go for goal 3.
+*Next:* publish, so goal 2 (night falls) can be seen on the phone; then **goal 3, the upper floor and the stair**
+(all its pieces are in the library), and goal 4 now that `strip` is in.
+*Needs you:* "publish", and your go for goal 3.
 
 ---|---|
 | The order of work (this page) | `PLAN.md` |
