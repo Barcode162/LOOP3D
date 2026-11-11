@@ -85,12 +85,22 @@ struct Stage {
   std::vector<Person> people;
   // A model of several parts (a tree's bark and leaves, a flower, a log, a
   // whole meadow of grass): one handle moves or hides them all.
+  // The word `group` makes one too: everything placed in its block (things,
+  // lamps, the groups inside it), measured from its place and turn.
   struct Group {
     std::vector<int> parts;  // placed indices
     Vec3 position{0};
     bool visible = true;
+    float turn = 0;               // about the upright axis (rad)
+    std::vector<int> lights;      // lamps that move, turn and go dark with it
+    std::vector<int> children;    // groups made inside it
+    std::vector<float> litLumens; // the lamps' lumens while it is hidden
+    std::string name;
   };
   std::vector<Group> groups;
+  // Moves and turns a group about its own place: its things, lamps and inner groups.
+  void placeGroup(int group, Vec3 position, float turn);
+  void showGroup(int group, bool visible);
   // Small creatures the engine moves itself each step (no script needed):
   // butterflies (a body and two flapping wings) and fireflies (glowing motes).
   struct Critter {

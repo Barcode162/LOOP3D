@@ -182,6 +182,22 @@ struct Parser {
     if (atKind(Tok::kDedent) || atKind(Tok::kEnd)) return;
     error(peek(), "this line goes on after the statement ended", describeFound() + "; put the rest on its own line");
   }
+  // `group at: …, turn: …` with indented lines under it: the lines become a
+  // function handed to the word as `of:`, which runs it at once. True when a
+  // block was taken (the statement's line end is left for the caller).
+  bool groupBlock(Expr& call, const Token& header) {
+    if (call.kind != Expr::kCall || call.items.empty() || call.items[0]->kind != Expr::kName || call.items[0]->text != "group") return false;
+    if (!atKind(Tok::kNewline) || peek(1).kind != Tok::kIndent) return false;
+    auto e = node(Expr::kLambda, header);
+    e->fn = beginFunction("group", header.line);
+    parseBody(e->fn->body, header);
+    endFunction();
+    --pos;  // the caller's endOfStatement wants a line end; the block ate it
+    toks[pos].kind = Tok::kNewline;
+    call.items.push_back(std::move(e));
+    call.keys.push_back("of");
+    return true;
+  }
   // A function made from a block: every / after / when / task bodies.
   std::shared_ptr<Function> blockFunction(const char* name, const Token& header) {
     auto fn = beginFunction(name, header.line);
@@ -210,6 +226,7 @@ struct Parser {
         s->name = next().text;
         if (!expect("=", "after the name")) return nullptr;
         s->value = expression();
+        if (s->value) groupBlock(*s->value, t);
         s->decl = declare(s->name);  // after the value: `let x = x + 1` reads the outer x
         endOfStatement();
         return s;
@@ -370,6 +387,7 @@ struct Parser {
         call->items.push_back(std::move(callee));
         call->keys.push_back("");
         parseArgs(*call, nullptr);
+        groupBlock(*call, t);
         s->value = std::move(call);
         endOfStatement();
         return s;
@@ -394,6 +412,7 @@ struct Parser {
       }
     }
     auto s = make(Stmt::kExpr, t);
+    groupBlock(*e, t);
     s->value = std::move(e);
     endOfStatement();
     return s;

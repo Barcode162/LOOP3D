@@ -39,6 +39,52 @@ void Stage::updateTransform(int i) {
   ++transformsVersion;
 }
 
+void Stage::placeGroup(int gi, Vec3 to, float turn) {
+  Group& g = groups[gi];
+  const float d = turn - g.turn;
+  const Quat r = Quat::axisAngle({0, 1, 0}, d);
+  const Vec3 from = g.position;
+  for (int i : g.parts) {
+    Placed& p = placed[i];
+    p.position = to + r.rotate(p.position - from);
+    if (p.useQuat) p.quat = r * p.quat;
+    else p.rotation.x += d;  // yaw is the outermost turn (Quat::euler), so adding is exact
+    updateTransform(i);
+  }
+  for (int i : g.lights) {
+    Light& l = scene.lights[i];
+    l.position = to + r.rotate(l.position - from);
+    l.direction = r.rotate(l.direction);
+  }
+  for (int c : g.children) {
+    groups[c].position = to + r.rotate(groups[c].position - from);
+    groups[c].turn += d;
+  }
+  g.position = to, g.turn = turn;
+  if (!g.parts.empty()) collidersDirty = true;
+  if (!g.lights.empty()) ++lightsVersion;
+}
+
+void Stage::showGroup(int gi, bool visible) {
+  Group& g = groups[gi];
+  if (g.visible == visible) return;
+  g.visible = visible;
+  for (int i : g.parts) placed[i].visible = visible, updateTransform(i);
+  // a hidden group's lamps go dark, and come back as bright as they were
+  if (!visible) {
+    g.litLumens.clear();
+    for (int i : g.lights) g.litLumens.push_back(scene.lights[i].lumens), scene.lights[i].lumens = 0;
+  } else {
+    for (size_t k = 0; k < g.lights.size() && k < g.litLumens.size(); ++k) scene.lights[g.lights[k]].lumens = g.litLumens[k];
+  }
+  for (int c : g.children) groups[c].visible = visible;
+  if (!g.lights.empty()) ++lightsVersion;
+  // a creature hidden with its group stops moving too
+  for (auto& c : critters)
+    for (int i : c.parts)
+      if (std::find(g.parts.begin(), g.parts.end(), i) != g.parts.end()) c.visible = visible;
+}
+
 void Stage::takeMoves(float alpha, std::vector<int>& instances, std::vector<Mat4>& transforms) {
   instances.clear(), transforms.clear();
   for (int i : blending_)
@@ -316,7 +362,7 @@ Value getTerrain(Vm& vm, Thing& t, const std::string& f, bool& found);
 const ThingClass kTerrainClass{"terrain", getTerrain, nullptr, {"size", "lowest", "highest"}};
 Value getGroup(Vm& vm, Thing& t, const std::string& f, bool& found);
 bool setGroup(Vm& vm, Thing& t, const std::string& f, const Value& v);
-const ThingClass kGroupClass{"model", getGroup, setGroup, {"position", "at", "visible", "parts"}};
+const ThingClass kGroupClass{"model", getGroup, setGroup, {"position", "at", "turn", "visible", "parts"}};
 Value getCritter(Vm& vm, Thing& t, const std::string& f, bool& found);
 bool setCritter(Vm& vm, Thing& t, const std::string& f, const Value& v);
 const ThingClass kCritterClass{"creature", getCritter, setCritter, {"position", "around", "radius", "visible", "speed"}};
@@ -553,6 +599,7 @@ Value getGroup(Vm& vm, Thing& t, const std::string& f, bool& found) {
   found = true;
   if (f == "position" || f == "at") return Value::vec(g.position);
   if (f == "visible") return Value::boolean(g.visible);
+  if (f == "turn") return Value::number(g.turn);
   if (f == "parts") return Value::number(static_cast<double>(g.parts.size()));
   found = false;
   return {};
@@ -560,18 +607,12 @@ Value getGroup(Vm& vm, Thing& t, const std::string& f, bool& found) {
 bool setGroup(Vm& vm, Thing& t, const std::string& f, const Value& v) {
   Stage& s = stageOf(vm);
   Stage::Group& g = groupOf(vm, t);
-  if (f == "position" || f == "at") {
-    Vec3 to = asVec(vm, v, f), d = to - g.position;
-    g.position = to;
-    for (int i : g.parts) s.placed[i].position += d, s.updateTransform(i);
-  } else if (f == "visible") {
-    g.visible = v.truthy();
-    for (int i : g.parts) s.placed[i].visible = g.visible, s.updateTransform(i);
-    // a creature hidden with its group stops moving too
-    for (auto& c : s.critters)
-      for (int i : c.parts)
-        if (std::find(g.parts.begin(), g.parts.end(), i) != g.parts.end()) c.visible = g.visible;
-  } else return false;
+  if (f == "position" || f == "at") s.placeGroup(t.id, asVec(vm, v, f), g.turn);
+  else if (f == "turn") {
+    if (!v.isNumber()) vm.fail("`turn` is an angle, like 90 deg");
+    s.placeGroup(t.id, g.position, static_cast<float>(v.n));
+  } else if (f == "visible") s.showGroup(t.id, v.truthy());
+  else return false;
   return true;
 }
 Stage::Critter& critterOf(Vm& vm, Thing& t) {
