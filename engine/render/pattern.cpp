@@ -157,7 +157,8 @@ float windowsMeanGlow(const Pattern& pt) {
   return pt.lit * 0.65f * std::min(1.0f, pt.window.x * pt.window.y / (pt.bay * pt.floorHeight));
 }
 
-Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, const std::vector<Texture>* textures) {
+Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, const std::vector<Texture>* textures,
+                     const SurfaceContext* surface) {
   Surface s;
   s.base = m.baseColor;
   s.roughness = m.roughness;
@@ -177,8 +178,16 @@ Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p
       s.metallic = saturate(s.metallic * c.z);
     }
   }
-  // a surface: for now flat, the base layer's colour, roughness and metal (the stack comes with M3c)
-  if (m.surface >= 0) return s;
+  // a surface: the whole stack where we know the point's thing, else its base, flat
+  if (m.surface >= 0) {
+    if (!surface || !surface->recipe) return s;
+    Surface r = surfaceAt(*surface->recipe, m, surface->place, surface->facing, uv, surface->edge, surface->hollow, surface->distance);
+    r.alpha = s.alpha;
+    // the bumped facing back to the world (left as it was where nothing bumped it)
+    bool bumped = r.normal.x != surface->facing.x || r.normal.y != surface->facing.y || r.normal.z != surface->facing.z;
+    r.normal = bumped ? normalize(surface->toWorld * r.normal) : n;
+    return r;
+  }
   s.roughness = std::max(s.roughness, m.roughnessMin);
   if (m.pattern.kind == Pattern::Kind::kNone) return s;
   float mix, h;
