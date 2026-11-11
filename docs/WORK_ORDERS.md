@@ -501,6 +501,199 @@ M11 … M58 · The other forty-eight surfaces, one a card (asset-smith, judged):
      soft: linen, boucle, velvet, wool knit, leather worn, suede, denim, canvas                (M51 to M58)
      (shag pile and felt wait for the fur shell, M61, and take the next free numbers then)
 ```
+
+### 6.1 Every material, as a surface (the user's word, 2026-11-11: "rework every material, with the layers")
+
+The order changes: first every **built-in material name** that should be a surface, so every scene that names
+one gets the new one the day its entry lands (`material: "brick"` finds `library/surfaces/brick.loop`; decision
+11). Glass, crystal, water, ice, skin, hair, leaves, needles, petals, wings and the glowing ones stay as they are
+(decision 12); `white`, `black` and `grey` stay plain (test colours). The planned surfaces of the list above that
+are not built-in names (ash, ebony, basalt with varnish, …) follow after, as M49 onwards, in that list's order.
+
+**For every card below** (with M9 oak and M10 walnut, written above):
+- `Needs: M5, M6, M7, M8` · `Touch: library/surfaces/<file>.loop only` (a name of several words: underscores,
+  `car paint` is `car_paint.loop` with `to car_paint(seed: 1)`) · hand: asset-smith · size: S · `pictures: yes`.
+- **Keep the scene's look:** today's built-in colours (`engine/render/materials.cpp`, written as seen) are the
+  surface's average; a scene that named the material must still read as the same material, only real.
+- **Colours as seen** (`rgb()` takes what the eye sees, as the built-ins' `srgb`); a non-metal's base stays 0.03
+  to 0.9 of the light once made linear (`loop library check` and the word refuse it otherwise). **Metals:** the
+  built-in list holds their reflectance in linear numbers; write them as seen (`linearToSrgb` of each part).
+- **The tile carries what is seen from across a room, `detail` the close look** (docs/SURFACES.md section 8):
+  a thread, a pore, a grain of sand under about 2 mm goes in `detail`, never in the base; choose `tile` so its
+  largest feature fits four times or more. Floors, walls and land (`project: "top"` for land) take
+  `space: "world"` so neighbours meet.
+- **Wear and dirt follow a thing's own rounded edges and creases** (the marks); a pattern's joints (grout,
+  mortar, gaps) gather grime by a `coat` with `sits: "low"`, never by `dirt`.
+- Proof as the surface card above: `./build/loop library check`; `./build/loop library picture <name>` for
+  seeds 1, 2 and 3 and one `--far`; look at each; at most three rounds. The lead looks before it ships and
+  re-makes the picture tests it changes.
+
+```
+M11 · pine         Scots pine, sawn and clear-lacquered matt; shelves, cladding, rustic furniture.
+                   base grain: rings 3 to 8 mm, late wood strongly darker (rgb(0.86,0.70,0.48) / (0.66,0.45,0.25)),
+                   stretched 30 to 40, arching; a knot now and then (a coat: `pores`, 2 to 4 cm, cover 3%, dark
+                   brown, sits any); roughness 0.45; bump 0.1 mm. vary: 1 m, 0.1, a little more yellow.
+                   wear paler and smoother; dirt grey-brown. detail: pores 0.2 mm stretched 8.
+                   tile 2 m, along long. seeds 1-4. tags wood, pale, warm, indoor. size chair.
+M12 · cherry       American cherry, oiled to a satin; fine furniture. Reddish brown (rgb(0.62,0.33,0.20) /
+                   (0.40,0.18,0.10)), fine straight grain, rings 1.5 to 3 mm, the two colours close (a fifth
+                   apart); dark gum flecks (a coat: `speckle` 1 mm, cover 2%); roughness 0.4; bump 0.06 mm.
+                   vary 1 m, 0.08. wear warmer, lighter, a touch shinier; dirt dark brown, sparing.
+                   detail pores 0.15 mm stretched 6. tile 2 m. seeds 1-4. tags wood, warm, red, indoor. size chair.
+M13 · floorboards  Oiled oak boards 140 mm wide and 1.2 to 2.4 m long, ends staggered, a 1 mm dark gap.
+                   base `planks` (140 mm, stretch about 12, piece 0.15: each board its own tone; rgb(0.66,0.47,0.30)
+                   boards, the gap near black); a coat for the grain (`grain`, rings 3 mm stretched 40, cover 0.45,
+                   a third darker); roughness 0.55; bump 0.5 mm (the gaps). vary 1.5 m, 0.1, roughness 0.1 (worn
+                   paths, shinier). detail pores 0.3 mm stretched 6. tile 2.4 m (whole boards), space world.
+                   seeds 1-4. tags wood, floor, warm, indoor. size room.
+M14 · old wood     (old_wood.loop) Untreated timber after years outdoors: silver-grey over brown
+                   (rgb(0.48,0.42,0.34) / (0.27,0.23,0.19)); raised grain, rings 4 mm stretched 30, bump 0.5 mm;
+                   long splits along the grain (a coat: `brushed`, 0.8 mm, stretch 60, cover 6%, near black, sits
+                   low); roughness 0.85. vary 0.8 m, 0.15. wear: the brown beneath, smoother (0.7); dirt dark
+                   green-grey. detail cells 0.5 mm, bump 0.05 mm. tile 2 m. tags wood, old, grey, outdoor. size chair.
+M15 · bark         Rough bark of a broadleaf tree: deep furrows running up the trunk. base `cracks` 4 cm,
+                   stretch 4, along y (rgb(0.36,0.27,0.20) ridges, (0.18,0.13,0.10) furrows), bump 6 mm; roughness
+                   0.95. a coat facing up: green moss (cover 0.15, rough 1). vary 1 m, 0.15. dirt near black in
+                   the furrows' marks. detail cells 1 mm bump 0.2 mm. tile 1 m. tags wood, bark, outdoor. size chair.
+M16 · marble       White marble, polished: near white (rgb(0.93,0.92,0.90)) with soft grey veins
+                   (rgb(0.45,0.46,0.48)): `veins` 8 to 12 cm, contrast 1.2, sharp 0.3; roughness 0.08 (veins 0.12);
+                   subsurface 0.25, subsurface_color warm (as the built-in). vary 1 m, 0.05, warm; small 2 cm 0.03.
+                   wear: edges honed (roughness 0.25); dirt grey, dull, sparing. detail speckle 0.3 mm, bump 0.01 mm.
+                   tile 1.5 m. tags stone, white, polished, indoor. size chair.
+M17 · granite      Grey granite, honed: a speckle of grains (rgb(0.62,0.60,0.58) / (0.25,0.24,0.24)) 3 to 5 mm,
+                   high contrast, sharp; a coat of pinkish feldspar (`cells` 6 mm, cover 0.25, rgb(0.70,0.58,0.55));
+                   roughness 0.4 (dark grains a little shinier). vary 1 m, 0.06. wear smoother (0.25); dirt dark grey.
+                   detail speckle 0.4 mm. tile 0.6 m. tags stone, grey, hard, indoor, outdoor. size chair.
+M18 · stone        Dressed sandstone, as in a wall or a step: beige-grey (rgb(0.55,0.53,0.50) /
+                   (0.38,0.37,0.35)), `strata` beds 3 cm, contrast 0.4, bump 1.5 mm (tooled); roughness 0.85.
+                   vary 1 m, 0.12, a little warmer. wear paler, a touch smoother, on rounded arrises; dirt dark
+                   grey-green. detail speckle 0.5 mm, bump 0.1 mm. tile 1 m, space world. tags stone, building,
+                   outdoor. size room.
+M19 · brick        Red clay brick in running bond, 215 by 65 mm, a 10 mm mortar joint set back: `bricks` 215 mm,
+                   stretch 3.3, piece 0.15 (rgb(0.60,0.30,0.22) bricks, rgb(0.70,0.68,0.64) mortar); roughness 0.85,
+                   mortar 0.95; bump 3 mm. grime in the joints (a coat: noise 20 cm, sits low, cover 0.3, dark
+                   grey). vary 2 m, 0.1, darker. wear paler on rounded edges; dirt dark. detail speckle 0.5 mm,
+                   bump 0.1 mm. tile 2 m, space world. tags brick, building, outdoor, indoor. size room.
+M20 · concrete     Concrete cast against smooth forms: grey (rgb(0.62,0.62,0.60) / (0.52,0.52,0.50)), a soft
+                   mottle (`noise` 25 cm, contrast 0.4); air holes (a coat: `pores` 4 mm, cover 3%, dark, sits low);
+                   roughness 0.85; bump 0.4 mm. vary 1.5 m, 0.12 (the pour's lifts). wear paler on chipped
+                   arrises; dirt dark grey. detail speckle 1 mm (aggregate), bump 0.05 mm. tile 2 m, space world.
+                   tags concrete, grey, building. size room.
+M21 · plaster      Smooth plaster painted in a matt off-white (rgb(0.90,0.88,0.84) / (0.84,0.82,0.78)): trowel
+                   marks (`noise` 40 cm, stretch 3, contrast 0.3, bump 0.2 mm); roughness 0.9. vary 1.2 m, 0.04
+                   (very slight). wear on external corners: greyer, a little shinier (0.75), amount 0.4; dirt grey,
+                   sparing. detail speckle 1 mm (orange peel), bump 0.02 mm. tile 2 m, space world.
+                   tags wall, white, indoor. size room.
+M22 · tiles        Glazed square wall tiles 100 mm, a 2 mm grout line (`tiles` 100 mm, sharp 1, piece 0.05):
+                   glaze rgb(0.92,0.92,0.90), roughness 0.08; grout rgb(0.55,0.54,0.52), roughness 0.9; bump 1 mm.
+                   grime in the grout (a coat: noise 30 cm, sits low, cover 0.3, grey-brown). clearcoat 0.4.
+                   vary 1 m, 0.03. wear none (a hard glaze); dirt grey. tile 1 m, space world. tags tile, white,
+                   kitchen, bathroom. size room.
+M23 · porcelain    Glazed white porcelain (cups, basins): rgb(0.93,0.93,0.92), roughness 0.05, clearcoat 1,
+                   subsurface 0.2; the slightest mottle (`noise` 5 cm, contrast 0.1). wear: chips through the glaze
+                   to the duller body (roughness 0.6, a touch greyer), amount 0.3, ragged 0.8; dirt tea brown in
+                   hollows, amount 0.4. tile 0.5 m. tags ceramic, white, kitchen. size hand.
+M24 · clay         Unglazed terracotta (pots, roof tiles): rgb(0.70,0.42,0.30), grit (`speckle` 0.8 mm, contrast
+                   0.4); white salts here and there (a coat: noise 6 cm, sits high, cover 0.08, pale); roughness 0.8.
+                   vary 0.5 m, 0.12, darker (the firing). wear darker, smoother (0.6); dirt dark soil brown.
+                   detail cells 0.3 mm. tile 0.5 m. tags ceramic, terracotta, garden. size hand.
+M25 · gold         Polished yellow gold: metal 1, reflectance (1.0, 0.766, 0.336) linear; roughness 0.18. vary
+                   0.3 m, roughness 0.05 (handling). wear shinier (0.08); dirt dark brown tarnish (not metal),
+                   amount 0.4. detail brushed 0.05 mm stretch 20, roughness 0.05. tile 0.5 m. tags metal, gold,
+                   precious. size hand.
+M26 · silver       Sterling silver, polished and tarnishing: metal 1, reflectance (0.972, 0.960, 0.915); roughness
+                   0.12; tarnish (a coat: noise 4 cm, sits low, cover 0.2, warm grey-brown, metal 0, roughness 0.4).
+                   wear brightest on edges (0.05); dirt black tarnish in hollows. detail brushed 0.04 mm. tile 0.5 m.
+                   tags metal, silver, precious. size hand.
+M27 · copper       Raw copper, handled: metal 1, reflectance (0.955, 0.637, 0.538); roughness 0.25; uneven darker
+                   oxide (a coat: noise 6 cm, cover 0.25, metal 1, reflectance about two thirds as bright, browner).
+                   vary 0.4 m, 0.15. wear bright pink-orange (0.15); dirt dark brown. detail brushed 0.05 mm.
+                   tile 0.5 m. tags metal, copper, warm. size hand.
+M28 · brass        Satin brass with fingerprints: metal 1, reflectance (0.910, 0.778, 0.423); roughness 0.3.
+                   vary 0.3 m, roughness 0.1 (handling). wear polished bright (0.12); dirt dark brown-green tarnish.
+                   detail brushed 0.03 mm stretch 30, roughness 0.1. tile 0.5 m. tags metal, brass, warm, fittings.
+                   size hand.
+M29 · bronze       Cast bronze with a brown patina: metal 1, reflectance (0.80, 0.55, 0.35); roughness 0.35; patina
+                   (a coat: noise 5 cm, cover 0.6, metal 0, rgb(0.25,0.18,0.12), roughness 0.5); green in the low
+                   places (coat2: noise 3 cm, sits low, cover 0.15, rgb(0.35,0.55,0.45), roughness 0.8). wear the
+                   bright metal on high edges (rubbed); dirt dark. detail speckle 0.3 mm. tile 0.6 m. tags metal,
+                   bronze, sculpture. size chair.
+M30 · iron         Cast iron, dark and a little oily: metal 1, reflectance (0.56, 0.57, 0.58); roughness 0.5; the
+                   casting's grit (`speckle` 1 mm, bump 0.2 mm); spots of rust (a coat: `cells` 1 cm, sits low,
+                   cover 0.08, metal 0, rgb(0.45,0.22,0.10), roughness 0.9). vary 0.5 m, 0.15, darker. wear
+                   brighter (0.3); dirt black. tile 0.5 m. tags metal, iron, dark. size chair.
+M31 · steel        Satin stainless steel: metal 1, reflectance (0.63, 0.62, 0.60); roughness 0.3. vary 0.5 m,
+                   roughness 0.08 (fingerprints). wear smoother (0.2); dirt dark grey, dull. detail brushed 0.02 mm
+                   stretch 50, roughness 0.08. tile 0.5 m. tags metal, steel, kitchen. size chair.
+M32 · chrome       Chrome plating: metal 1, reflectance (0.55, 0.556, 0.554); roughness 0.03; water spots (a coat:
+                   `cells` 4 mm, cover 0.05, metal 1, the same reflectance, roughness 0.15). No wear (it does not
+                   wear paler); dirt dull grey in hollows (metal 0, roughness 0.6). tile 0.3 m. tags metal, chrome,
+                   shiny. size hand.
+M33 · aluminium    Brushed aluminium: metal 1, reflectance (0.913, 0.922, 0.924); roughness 0.35. vary 0.6 m,
+                   roughness 0.05. wear brighter, smoother (0.2); dirt grey. detail brushed 0.05 mm stretch 60,
+                   bump 0.003 mm, roughness 0.1. tile 0.5 m. tags metal, aluminium. size chair.
+M34 · rust         Steel rusted through: rust (rgb(0.45,0.20,0.10) / (0.25,0.12,0.07)) in a mottle (`noise` 2 cm),
+                   roughness 0.9, bump 0.8 mm; lighter flakes (a coat: `cracks` 1.5 cm, sits high, cover 0.3,
+                   rgb(0.60,0.32,0.14)); dark bare steel showing (coat2: noise 8 cm, cover 0.1, metal 1, reflectance
+                   (0.5,0.5,0.5), roughness 0.4). wear: bare dark steel (metal 1, 0.35), amount 0.5; dirt
+                   black-brown. tile 0.6 m. tags metal, rust, old. size chair.
+M35 · fabric       A plain woven cotton-linen upholstery cloth (rgb(0.55,0.55,0.58)): slubs, the yarn thicker
+                   here and there (`noise` 2 cm, stretch 8, contrast 0.3); roughness 0.9; sheen 0.5. wear paler,
+                   fuzzier on edges (roughness 1); dirt grey-brown in creases. detail `weave` 0.5 mm, tile 5 cm,
+                   bump 0.1 mm. tile 0.5 m. tags fabric, soft, indoor. size sofa.
+M36 · velvet       Crimson velvet (rgb(0.30,0.05,0.08)); the pile crushed one way and another (`noise` 10 cm,
+                   stretch 2, contrast 0.4, color2 a little lighter); roughness 0.8; sheen 1. wear: bald and
+                   shinier on edges (0.5), darker; dirt pale grey dust in creases. detail speckle 0.2 mm, bump
+                   0.02 mm. tile 0.5 m. tags fabric, velvet, soft, indoor. size sofa.
+M37 · wool         A chunky wool knit, undyed cream (rgb(0.80,0.76,0.68)): `knit` stitches 5 mm, bump 1 mm;
+                   roughness 1; sheen 0.6. wear: pilled, a little greyer; dirt grey-brown in creases. detail
+                   speckle 0.2 mm (fibres). tile 0.25 m. tags fabric, wool, soft, knit. size sofa.
+M38 · leather      Brown full-grain leather, a little worn (rgb(0.38,0.22,0.13)): the pebble grain (`cells`
+                   1.5 mm, contrast 0.25, bump 0.15 mm); roughness 0.5; clearcoat 0.2. vary 0.4 m, 0.1 (the hide).
+                   wear darker and shinier where rubbed (0.3); dirt dark in creases. detail pores 0.3 mm. tile 0.25 m.
+                   tags leather, brown, soft, indoor. size sofa.
+M39 · rubber       Black rubber (mats, tyres, grips): rgb(0.20,0.20,0.20) (darker is below 0.03: the built-in's
+                   0.08 was too dark); roughness 0.75; a pale bloom (a coat: noise 8 cm, cover 0.2, paler grey,
+                   roughness 0.9). wear darker, shinier (0.5); dirt pale grey dust. detail speckle 0.5 mm,
+                   bump 0.02 mm. tile 0.5 m. tags rubber, black. size hand.
+M40 · plastic      Moulded light grey plastic (rgb(0.80,0.80,0.80)): roughness 0.35; the mould's fine texture in
+                   detail (speckle 0.3 mm, bump 0.01 mm, roughness 0.1). vary 0.5 m, 0.03. wear shinier (0.15);
+                   dirt grey in hollows. tile 0.5 m. tags plastic, grey. size hand.
+M41 · car paint    (car_paint.loop) Solid red paint under a clear coat (rgb(0.55,0.05,0.05)): roughness 0.4;
+                   clearcoat 1. wear: chips to grey primer (rgb(0.60,0.60,0.60), roughness 0.7), amount 0.3,
+                   ragged 0.8; dirt grey road grime in hollows. detail: orange peel (noise 3 mm, bump 0.02 mm).
+                   tile 0.5 m. tags paint, red, glossy, vehicle. size sofa.
+M42 · paper        Plain uncoated paper, off-white (rgb(0.92,0.90,0.85)): a cloudy formation (`noise` 5 mm,
+                   contrast 0.15); roughness 0.9; translucent 0.3. wear: soft greyed edges (1); dirt light grey.
+                   detail speckle 0.1 mm (fibres), bump 0.01 mm. tile 0.3 m. tags paper, white, indoor. size hand.
+M43 · wax          Candle wax, cream (rgb(0.96,0.92,0.82)): the softest mottle (`noise` 3 cm, contrast 0.1);
+                   roughness 0.45; subsurface 0.8, subsurface_color (1, 0.75, 0.45) as the built-in. wear glossier
+                   where melted (0.3); dirt soot grey. tile 0.3 m. tags wax, candle, warm. size hand.
+M44 · soil         Damp crumbly garden soil (rgb(0.36,0.27,0.19) / (0.25,0.19,0.14)): crumbs (`cells` 8 mm, bump
+                   2 mm); small pale stones (a coat: `speckle` 4 mm, sits high, cover 0.05, grey); roughness 0.95.
+                   vary 1 m, 0.15, roughness 0.2 (wetter, darker, shinier patches). detail speckle 0.3 mm.
+                   tile 1 m, project top, space world. tags ground, soil, outdoor. size room.
+M45 · sand         Dry sand (rgb(0.84,0.74,0.56) / (0.76,0.66,0.50)): wind ripples (`noise` 8 cm, stretch 6,
+                   contrast 0.3, bump 3 mm); roughness 0.9. vary 2 m, 0.08. detail speckle 0.3 mm (grains), tile
+                   5 cm. tile 2 m, project top, space world. tags ground, sand, desert, beach. size room.
+M46 · snow         Fresh snow (rgb(0.94,0.95,0.97): a little below the built-in's, which passes 0.9): soft drifts
+                   (`noise` 30 cm, bump 5 mm); roughness 0.6; subsurface 0.5, subsurface_color (0.7, 0.85, 1).
+                   vary 2 m, 0.04. dirt grey in hollows, sparing. detail speckle 0.5 mm, roughness -0.3 (the
+                   sparkle of flakes). tile 2 m, project top, space world. tags ground, snow, winter. size room.
+M47 · moss         Cushion moss (rgb(0.30,0.38,0.12) / (0.20,0.27,0.08)): cushions (`cells` 6 mm, bump 4 mm);
+                   roughness 1; sheen 0.4. vary 0.5 m, 0.15, yellower (drier). dirt brown. detail speckle 0.3 mm
+                   (the tips). tile 0.5 m. tags plant, moss, green, outdoor. size chair.
+M48 · grass        Short turf seen as a ground (the blades themselves are `grass(…)`): green over earth
+                   (rgb(0.30,0.42,0.14) / (0.45,0.38,0.28)), clumps (`noise` 6 cm, contrast 0.5, bump 1.5 mm);
+                   roughness 0.85; sheen 0.3. vary 3 m, 0.15, yellower (dry patches). detail speckle 1 mm.
+                   tile 2 m, project top, space world. tags ground, grass, outdoor. size room.
+```
+
+**Waves:** the Loft's first (oak, walnut, floorboards, plaster, concrete, brick, steel, brass, chrome, leather,
+fabric, velvet, wool, marble: 14), then the rest of the house and the metals (tiles, porcelain, paper, rubber,
+plastic, car paint, wax, aluminium, gold, silver, copper, bronze, iron, rust: 14), then the outdoors (pine,
+cherry, old wood, bark, granite, stone, clay, soil, sand, snow, moss, grass: 12). Asset-smiths only write
+recipes: up to eight at once, each given the path of one `loop` built on the latest main (`docs/CONDUCTOR.md`).
 ```
 M59 · Decals (film, then live)                                     hand: lead      size: M
 M60 · Night glass: a pane that mirrors the room                    hand: lead      size: M
