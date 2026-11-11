@@ -16,6 +16,13 @@ Two things are NOT to be done without the user (say so at the review, with a wri
    That repo keeps the live bar running; plan the split, do not start it.
 2. Anything public (above).
 
+## Shipped since (2026-11-11, by the chat that did SH1)
+LOFT3, L-bed_platform, L-window_seat and **SH1** (the shader, whole: `docs/PIPELINE.md`, phase 8) are on main.
+**N6 is smaller now:** SH1's shader lights any panel as its rectangle (light and shine), its sides by the film's
+rule. What is left of N6: the test scene `strip_floor` with one long piece, its picture, and letting `strip` use
+longer pieces. Its claim says `waiting`; set it `working` to take it.
+The ten unfinished library entries are untouched on their branches.
+
 ## Where wave r1 stands
 Every helper was cut off by the usage limit at about 06:10 UTC. Their work is saved on their branches.
 

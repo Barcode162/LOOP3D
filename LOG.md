@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-11** · SH1, "turn my shader into something splendid, from the lowest to the highest": the live shader lights every material the film renderer's way from every light (lacquer's coat, cloth's sheen, light through leaves and shades, metal, glass); panels (windows, softboxes, strips) lit as the rectangles they are; glossy floors mirror the room, and the sky only where it is seen; the glow made film's (it was six times too strong: a veil over every picture); the sun's shadow sharp where things touch and soft far away (level 2); a new setting, Shader detail (`render.shading`: Lowest, Standard, High, Highest; Phone runs Standard, High runs High); 14 reference pictures renewed, scores in `perf/score.md`; deployed.
+- **2026-11-11** · LOFT3, "The Loft, goal 3: the upper floor and the stair": deck, stair, rail and balustrade placed in the Loft; fits the Phone budget; deployed.
+- **2026-11-11** · L-window_seat, "Library: window_seat": 1620 triangles, drawers, plinth and cushion; deployed.
+- **2026-11-11** · L-bed_platform, "Library: bed_platform": 1488 triangles; deployed.
 - **2026-11-11** · HUB1, The hub: joshuavelasco.com as the front door, and its update card: a new front page around the user's three concept pictures (web/hub/), its update card (docs/HUB.md), a key check that only looks (hub-keys.yml: IONOS and Cloudflare both let us in), and the hidden-link upload now carries the page and checks the live pages itself (joshuavelasco.com/bar/loop3d/hub/); nothing public changed; deployed.
 - **2026-11-11** · L-city_night, "Library sky: city_night": a DRAFT entry (below the rubric bar), 1920 triangles; deployed.
 - **2026-11-11** · Library check fix: a sky lives in skies/ (it said skys); the site build had the same plural fault, mended; deployed.

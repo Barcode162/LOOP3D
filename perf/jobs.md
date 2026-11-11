@@ -37,3 +37,7 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | L-track_spots | S | asset-smith | 24 | 5 | 2026-11-11 |
 | N5 | M | builder | 60 | 482 | 2026-11-11 |
 | HUB1 | S | builder | 240 | 245 | 2026-11-11 |
+| L-bed_platform | S | asset-smith | 24 | 5 | 2026-11-11 |
+| L-window_seat | S | asset-smith | 24 | 7 | 2026-11-11 |
+| LOFT3 | S | builder | 5 | 3 | 2026-11-11 |
+| SH1 | L | lead | 240 | 416 | 2026-11-11 |

@@ -54,6 +54,7 @@ picture). N5 also adds one line to `projects/samples/project.json` (off its card
 library picture takes a view and up to three cases), on branch `claude/admiring-einstein-m5ymeu`, because it
 changes files off its card (`engine/project/library.*`, two library pieces, `tests/library_test.cpp`); widen its
 claim's touch line, then deploy.
+*On main 2026-11-11 (your order: the shader):* SH1, the shader whole (`docs/PIPELINE.md`, phase 8): film's materials from every light, panels as rectangles, reflections that know the sky, the glow as film's, the setting Shader detail (`render.shading`, Lowest to Highest). With it LOFT3 (goal 3 is in the Loft), the platform bed and the window seat (the library holds 27). *Next for the picture:* panel lights are seen glowing in film and unseen live; the light cache's bounce is too red on shaded walls.
 *Known:* the `showcase_glade` picture differs a little (mean 2.34) since the far-grass change; not from this wave.
 *Not published:* the public player still shows the Loft before goal 2.
 *Next:* publish, so goal 2 (night falls) can be seen on the phone; then **goal 3, the upper floor and the stair**
