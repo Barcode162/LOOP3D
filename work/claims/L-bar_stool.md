@@ -9,5 +9,5 @@ touch:    library/models/bar_stool.loop
 pictures: no
 expected: 24
 started:  2026-11-11T05:36Z
-updated:  2026-11-11T05:36Z
-note:     claimed
+updated:  2026-11-11T05:43Z
+note:     recipe written, 752 tris, waiting on pictures

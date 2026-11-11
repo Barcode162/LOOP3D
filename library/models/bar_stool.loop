@@ -1,0 +1,40 @@
+# bar_stool · a round oak seat, slightly dished, on four slim blackened steel legs
+# bar_stool(at, turn, wood, steel) stands one on `at` (the floor under its middle),
+# 0.66 m to the seat, for a kitchen island: a dished oak seat 0.34 m across, four
+# legs splaying outward to a 0.44 m footprint, and a round foot ring at 0.25 m.
+#
+# kind: model
+# place: bar_stool(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: stool, seat, oak, steel, bar, kitchen, interior
+# size: chair
+# sockets: seat
+# seeds: none
+
+let stool_seat_h = 0.66
+let stool_seat_r = 0.17
+let stool_leg_top = 0.12
+let stool_leg_foot = 0.22
+let stool_leg_r = 0.012
+let stool_ring_y = 0.25
+let stool_black = material(like: "steel", color: rgb(0.06, 0.06, 0.065), roughness: 0.5)
+
+to bar_stool(at: vec(0, 0, 0), turn: 0, wood: "oak", steel: stool_black)
+  let top = stool_seat_h - 0.045
+  let rise = top - 0.01
+  let run = stool_leg_foot - stool_leg_top
+  let slope = atan(run / rise)
+  let long = sqrt(rise * rise + run * run)
+  let mid = (stool_leg_foot + stool_leg_top) / 2
+  let ringr = stool_leg_foot - run * stool_ring_y / rise
+  group at: at, turn: turn
+    # the seat: a rounded edge, a thin dish, a little rim, spun from its outline
+    lathe profile: [vec(0, stool_seat_h - 0.028), vec(0.15, stool_seat_h - 0.03), vec(0.17, stool_seat_h - 0.045), vec(0.173, stool_seat_h - 0.065), vec(0.15, stool_seat_h - 0.075), vec(0.13, stool_seat_h - 0.078), vec(0, stool_seat_h - 0.078)], segments: 28, material: material(wood)
+    # four legs, each leaning out from under the seat to the floor
+    for each s in [-1, 1]
+      cylinder radius: stool_leg_r, height: long, at: at + vec(s * mid, 0.01 + rise / 2, 0), rotation: vec(0, 0, s * slope), material: steel, sides: 8
+      cylinder radius: stool_leg_r, height: long, at: at + vec(0, 0.01 + rise / 2, s * mid), rotation: vec(-s * slope, 0, 0), material: steel, sides: 8
+    # the foot ring ties them together (a small rounded loop spun round, not a torus: lighter)
+    lathe profile: [vec(ringr - 0.006, stool_ring_y), vec(ringr - 0.004, stool_ring_y + 0.004), vec(ringr + 0.004, stool_ring_y + 0.004), vec(ringr + 0.006, stool_ring_y), vec(ringr + 0.004, stool_ring_y - 0.004), vec(ringr - 0.004, stool_ring_y - 0.004), vec(ringr - 0.006, stool_ring_y)], segments: 24, at: at, material: steel
