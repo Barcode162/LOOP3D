@@ -1,0 +1,42 @@
+# What a strip costs: a room 9 m wide, 6 m high and 12 m long, with `count` strips of light 1 m long,
+# in rows under shelves, and the camera walking down the middle for one second.
+# Change `count` (10, 40, 80 or 160) and measure:  loop budget projects/samples/many_strips.loop --quality phone
+# (`--set` only reaches engine settings, so the count is the line below.)
+title "Many Strips"
+mode "movie"
+
+let count = 40
+
+# ---- the room: floor, ceiling, four walls
+ground 12, material: "floorboards"
+let wall = material("plaster", roughness: 0.9)
+box size: vec(9, 0.2, 12), at: vec(0, 6.1, 0), material: wall
+box size: vec(9, 6, 0.2), at: vec(0, 3, -6), material: wall
+box size: vec(9, 6, 0.2), at: vec(0, 3, 6), material: wall
+box size: vec(0.2, 6, 12), at: vec(-4.5, 3, 0), material: wall
+box size: vec(0.2, 6, 12), at: vec(4.5, 3, 0), material: wall
+
+# ---- shelves: 4 m long rows, 3 shelf heights, strips of 1 m under each shelf board.
+# Slots are listed level by level, so a smaller count fills the low shelves first.
+let heights = [0.7, 1.4, 2.1, 2.8, 3.5, 4.2, 4.9, 5.6]
+let slots = []
+for each y in heights
+  for each side in [-1, 1]
+    for each row in range(3)
+      for each part in range(4)
+        slots.push(vec(side * 3.6, y, -4.5 + row * 4 + part * 1.0))
+let shelf_wood = material("old wood")
+for each y in heights
+  for each side in [-1, 1]
+    for each row in range(3)
+      box size: vec(0.6, 0.04, 4), at: vec(side * 3.6, y, -4 + row * 4), material: shelf_wood
+let placed = 0
+for each s in slots
+  if placed < count
+    strip(vec(s.x, s.y - 0.03, s.z - 0.5), vec(s.x, s.y - 0.03, s.z + 0.5), lumens: 300, kelvin: 2700)
+    placed = placed + 1
+
+# ---- one second of walking, down the middle of the room
+let cam = camera(at: vec(0, 1.7, 5), look_at: vec(0, 1.7, -6), lens: 28 mm)
+every 1 / 60 s
+  cam.position = vec(0, 1.7, 5 - 1.4 * time())

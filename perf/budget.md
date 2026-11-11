@@ -287,3 +287,33 @@ showcase_settings                      9 > 9     0.01 > 0.01       2 > 2    1.00
 6 of 41 scenes over the Phone budget
 ```
 
+
+## What a strip costs (N7, 2026-11-11)
+
+`projects/samples/many_strips.loop`: a room 9 m wide, 6 m high and 12 m long, `count` strips of 1 m in rows
+under eight levels of shelves, the camera walking down the middle for one second. A 1 m strip is 4 panel lamps
+(`piece` 0.25 m). `--set` reaches only engine settings, so `count` is the file's `let count = 40` line; each
+row was measured with that line changed (10, 40, 80, 160) and nothing else, by
+`./build/loop budget projects/samples/many_strips.loop --quality phone|high`.
+"Lamps sent": lamps the scene gives the frame. "Entries a surface": lamps worked out for each surface (the
+light grid's cell list). "Lamp work": shaded surfaces x entries, per pixel; the budget is 24 on Phone, 60 on
+High. `loop budget` counts work, not time, so it prints no milliseconds; the column is a share of the budget
+(lamp work / budget), the only estimate the tool gives. A phone benchmark (`perf/`) is what sets real
+milliseconds.
+
+| quality | strips | lamps sent | entries a surface | lamp work /pixel | share of budget | over the budget on |
+|---|---|---|---|---|---|---|
+| Phone | 10 | 40 | 16.8 | 17 | 0.70 | fits |
+| Phone | 40 | 160 | 40.0 | 40 | 1.67 | lamp work |
+| Phone | 80 | 320 | 61.1 | 61 | 2.54 | lamp work |
+| Phone | 160 | 640 | 61.1 | 61 | 2.54 | lamp work |
+| High | 10 | 40 | 16.8 | 17 | 0.28 | fits |
+| High | 40 | 160 | 40.0 | 40 | 0.67 | fits |
+| High | 80 | 320 | 61.1 | 61 | 1.02 | lamp work |
+| High | 160 | 640 | 61.1 | 61 | 1.02 | lamp work |
+
+Phone leaves its frame budget between 10 and 40 strips (17 of 24 at 10 strips, 40 at 40): about 15 strips,
+where the work reaches 24. Entries a surface stop growing at 61 from 80 strips on (the light grid's cap), so
+160 strips cost no more per pixel than 80 here, but 640 lamps are sent, and a surface only 61 entries long
+drops lamps that matter (222 lamps give 95% of the light at 160 strips): the picture gets dimmer, not slower.
+Triangles, draw calls and surfaces stay inside the budget at every count; only lamp work goes over.
