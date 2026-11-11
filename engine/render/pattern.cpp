@@ -177,6 +177,8 @@ Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p
       s.metallic = saturate(s.metallic * c.z);
     }
   }
+  // a surface: for now flat, the base layer's colour, roughness and metal (the stack comes with M3c)
+  if (m.surface >= 0) return s;
   s.roughness = std::max(s.roughness, m.roughnessMin);
   if (m.pattern.kind == Pattern::Kind::kNone) return s;
   float mix, h;

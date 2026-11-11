@@ -41,3 +41,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | L-window_seat | S | asset-smith | 24 | 7 | 2026-11-11 |
 | LOFT3 | S | builder | 5 | 3 | 2026-11-11 |
 | SH1 | L | lead | 240 | 416 | 2026-11-11 |
+| M3a | M | builder | 9 | 8 | 2026-11-11 |

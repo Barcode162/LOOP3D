@@ -1,4 +1,7 @@
 // Examples of testing a word with runScene (tests/test.h): run a script, look at the stage.
+#include <filesystem>
+#include <fstream>
+
 #include "tests/test.h"
 
 TEST(words_box_and_light_land_on_the_stage) {
@@ -138,4 +141,158 @@ panel_light at: vec(1, 3, 0)
   CHECK(!ls[2].castShadows && ls[2].kind == loop::Light::Kind::kSpot);
   CHECK(!ls[3].castShadows);
   CHECK(ls[4].castShadows);
+}
+
+// ---- surfaces (docs/SURFACES.md): the word `surface` and where a material's name is looked up
+
+static const char* kOak = R"(
+let oak = surface("oak",
+  tile: 2 m, project: "box", along: "long", seed: 3, sheen: 0.2,
+  base:   {color: rgb(0.42, 0.27, 0.14), color2: rgb(0.27, 0.16, 0.08), roughness: 0.55, roughness2: 0.7,
+           pattern: "grain", size: 6 mm, stretch: 40, bump: 0.15 mm},
+  vary:   {large: 1.2 m, amount: 0.12, tint: rgb(0.50, 0.30, 0.13), roughness: 0.08,
+           small: 5 cm, small_amount: 0.05},
+  coat:   {color: rgb(0.2, 0.3, 0.1), cover: 0.3, facing: "up"},
+  wear:   {color: rgb(0.55, 0.38, 0.22), roughness: 0.35, amount: 0.8, ragged: 0.5},
+  dirt:   {color: rgb(0.10, 0.07, 0.05), roughness: 0.85, amount: 0.6, ragged: 0.6},
+  detail: {pattern: "pores", size: 0.4 mm, stretch: 6, bump: 0.03 mm, tile: 8 cm})
+box size: vec(1, 1, 1), material: oak
+)";
+
+TEST(words_surface_oak_lands_where_section_12_says) {
+  auto r = runScene(kOak);
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  const auto& sc = r->stage.scene;
+  CHECK(sc.surfaces.size() == 1 && sc.instances.size() == 1);
+  if (sc.surfaces.size() != 1 || sc.instances.size() != 1) return;
+  const loop::SurfaceRecipe& s = sc.surfaces[0];
+  CHECK(s.name == "oak");
+  CHECK(s.seed == 3);
+  CHECK_NEAR(s.tile, 2, 1e-6);
+  CHECK(s.project == loop::SurfaceRecipe::Project::kBox);
+  CHECK(!s.worldSpace);
+  CHECK(s.along == -1);
+  CHECK(s.base.on);
+  CHECK_NEAR(s.base.color.x, loop::srgbToLinear(0.42f), 1e-6);  // rgb() is written as seen, kept linear
+  CHECK_NEAR(s.base.color2.z, loop::srgbToLinear(0.08f), 1e-6);
+  CHECK_NEAR(s.base.roughness, 0.55, 1e-6);
+  CHECK_NEAR(s.base.roughness2, 0.7, 1e-6);
+  CHECK(s.base.metal == 0);
+  CHECK(s.base.pattern.kind == loop::SurfacePattern::Kind::kGrain);
+  CHECK_NEAR(s.base.pattern.size, 0.006, 1e-7);
+  CHECK_NEAR(s.base.pattern.stretch, 40, 1e-6);
+  CHECK_NEAR(s.base.bump, 0.00015, 1e-8);
+  CHECK_NEAR(s.varyLarge, 1.2, 1e-6);
+  CHECK_NEAR(s.varyAmount, 0.12, 1e-6);
+  CHECK_NEAR(s.varyTint.x, loop::srgbToLinear(0.5f), 1e-6);
+  CHECK_NEAR(s.varyRoughness, 0.08, 1e-6);
+  CHECK_NEAR(s.varySmall, 0.05, 1e-6);
+  CHECK_NEAR(s.varySmallAmount, 0.05, 1e-6);
+  CHECK(s.coat[0].on && !s.coat[1].on);
+  CHECK(s.coat[0].facing == loop::SurfaceLayer::Facing::kUp);
+  CHECK(s.coat[0].pattern.kind == loop::SurfacePattern::Kind::kNoise);
+  CHECK_NEAR(s.coat[0].cover, 0.3, 1e-6);
+  CHECK(s.wear.on && s.dirt.on);
+  CHECK_NEAR(s.wear.amount, 0.8, 1e-6);
+  CHECK_NEAR(s.wear.roughness, 0.35, 1e-6);
+  CHECK_NEAR(s.dirt.ragged, 0.6, 1e-6);
+  CHECK(s.detail.kind == loop::SurfacePattern::Kind::kPores);
+  CHECK_NEAR(s.detail.size, 0.0004, 1e-8);
+  CHECK_NEAR(s.detail.stretch, 6, 1e-6);
+  CHECK_NEAR(s.detailBump, 0.00003, 1e-9);
+  CHECK_NEAR(s.detailTile, 0.08, 1e-6);
+  CHECK_NEAR(s.detailFade, 2, 1e-6);
+  // the material: the base's colour, roughness and metal; the settings beside the layers
+  const loop::Material& m = sc.materials[sc.instances[0].material];
+  CHECK(m.surface == 0);
+  CHECK_NEAR(m.baseColor.y, loop::srgbToLinear(0.27f), 1e-6);
+  CHECK_NEAR(m.roughness, 0.55, 1e-6);
+  CHECK_NEAR(m.sheen, 0.2, 1e-6);
+  // every number counts
+  loop::SurfaceRecipe t = s;
+  CHECK(t.fingerprint() == s.fingerprint());
+  t.dirt.ragged = 0.61f;
+  CHECK(t.fingerprint() != s.fingerprint());
+  t = s;
+  t.detailFade = 3;
+  CHECK(t.fingerprint() != s.fingerprint());
+}
+
+TEST(words_surface_refuses_by_name) {
+  auto r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5)}, wera: {amount: 0.5})\n");
+  CHECK(r->hasProblem("did you mean `wear`"));
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5)}, wear: {amout: 0.5})\n");
+  CHECK(r->hasProblem("did you mean `amount`"));
+  r = runScene("surface(\"a\", base: {color: vec(0.95, 0.95, 0.95)})\n");
+  CHECK(r->hasProblem("too bright"));
+  r = runScene("surface(\"a\", base: {color: vec(0.01, 0.01, 0.01)})\n");
+  CHECK(r->hasProblem("too dark"));
+  r = runScene("surface(\"a\", base: {color: vec(0.95, 0.95, 0.95), metal: 1})\n");
+  CHECK(r->problems().empty());  // a metal may be bright
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5), metal: 0.5})\n");
+  CHECK(r->hasProblem("a metal or it is not"));
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5), pattern: \"bricks\"})\n");
+  CHECK(r->hasProblem("no `size`"));
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5), pattern: \"brikcs\", size: 5 cm})\n");
+  CHECK(r->hasProblem("did you mean `bricks`"));
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5)}, coat: {facing: \"up\"}, coat2: {facing: \"side\"})\n");
+  CHECK(r->hasProblem("only one coat with a `facing`"));
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5)}, coat: {facing: \"up\"}, coat2: {facing: \"any\"})\n");
+  CHECK(r->problems().empty());
+  r = runScene("surface(\"a\", tile: 2 m)\n");
+  CHECK(r->hasProblem("needs a `base`"));
+  r = runScene("surface(\"a\", base: {color: rgb(0.5, 0.5, 0.5)}, project: \"tpo\")\n");
+  CHECK(r->hasProblem("did you mean \"top\""));
+}
+
+TEST(words_surface_is_found_by_name_in_this_scene_and_the_library) {
+  namespace fs = std::filesystem;
+  fs::path root = fs::temp_directory_path() / "loop_m3a_library";
+  fs::remove_all(root);
+  fs::create_directories(root / "library" / "surfaces");
+  {
+    std::ofstream f(root / "library" / "surfaces" / "zz_test.loop");
+    f << "to zz_test()\n  return surface(\"zz_test\", tile: 1 m, base: {color: rgb(0.2, 0.4, 0.6), roughness: 0.3})\n";
+  }
+  looptest::SceneRun r;
+  r.stage.folder = (root / "scene").string() + "/";
+  loop::script::installStandardLibrary(r.vm);
+  loop::script::installSceneApi(r.vm, r.stage);
+  r.ok = r.vm.load("let names = materials()\nbox size: 1, material: \"zz_test\"\nbox size: 1, material: \"brass\"\nlet again = material(\"zz_test\")\nbox size: 1, material: again\n", "t.loop");
+  CHECK(r.ok);
+  CHECK(r.problems().empty());
+  const auto& sc = r.stage.scene;
+  CHECK(sc.surfaces.size() == 1 && sc.instances.size() == 3);  // made once, kept for the scene
+  if (sc.surfaces.size() != 1 || sc.instances.size() != 3) return;
+  CHECK(sc.surfaces[0].name == "zz_test");
+  CHECK(sc.materials[sc.instances[0].material].surface == 0);
+  CHECK_NEAR(sc.materials[sc.instances[0].material].baseColor.z, loop::srgbToLinear(0.6f), 1e-6);
+  CHECK(sc.materials[sc.instances[1].material].name == "brass");
+  CHECK(sc.materials[sc.instances[1].material].surface == -1);
+  CHECK(sc.materials[sc.instances[2].material].surface == 0);
+  // materials() lists the library's, then the built-in ones
+  const loop::script::List* l = r.vm.global("names").as<loop::script::List>();
+  CHECK(l != nullptr);
+  bool lib = false, builtin = false;
+  if (l)
+    for (const auto& v : l->items) {
+      lib = lib || (v.isString() && v.str() == "zz_test");
+      builtin = builtin || (v.isString() && v.str() == "oak");
+    }
+  CHECK(lib && builtin);
+  fs::remove_all(root);
+  // a surface made here wins over a built-in name
+  auto h = runScene("surface(\"oak\", base: {color: rgb(0.5, 0.4, 0.3)})\nbox size: 1, material: \"oak\"\n");
+  CHECK(h->stage.scene.materials[h->stage.scene.instances[0].material].surface == 0);
+  // and with no library entry the built-in list still answers
+  auto b = runScene("box size: 1, material: \"oak\"\n");
+  CHECK(b->problems().empty() && b->stage.scene.materials[b->stage.scene.instances[0].material].surface == -1);
+}
+
+TEST(words_surface_is_a_listed_word) {
+  auto r = runScene("let w = 1\n");
+  bool found = false;
+  for (auto& [name, help] : r->vm.words()) found = found || name == "surface";
+  CHECK(found);
 }

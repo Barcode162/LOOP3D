@@ -652,11 +652,15 @@ bool setCritter(Vm& vm, Thing& t, const std::string& f, const Value& v) {
   return true;
 }
 
+int surfaceFromLibrary(Vm& vm, const std::string& name);  // words_materials.cpp
+
 int materialFrom(Vm& vm, const Value& v) {
   Stage& s = stageOf(vm);
   if (Thing* t = v.as<Thing>(); t && t->cls == &kMaterialClass) return t->id;
   if (v.isString()) {
     int i = s.scene.findMaterial(v.str());
+    if (i >= 0) return i;
+    i = surfaceFromLibrary(vm, v.str());  // library/surfaces/<name>.loop, before the built-in list
     if (i >= 0) return i;
     Material m;
     if (!materialByName(v.str(), m)) {
