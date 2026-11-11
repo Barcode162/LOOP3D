@@ -1,0 +1,41 @@
+# track_spots · a ceiling track with small spotlights, each making its own pool on the floor
+# track_spots(from_at, to_at, count, aims, lumens, kelvin, steel, beam) hangs a level track under the ceiling
+# from `from_at` to `to_at` (along x or z; its top is at the height of from_at) with `count` heads spaced
+# evenly. Head i aims at aims[i] (a point); with no point it looks straight down.
+#
+# kind: light
+# place: track_spots(from_at: vec(-1.5, 3, 0), to_at: vec(1.5, 3, 0), count: 4, beam: 10)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: spot, track, ceiling, lamp, steel
+# size: chair
+# sockets: light
+# seeds: none
+
+let track_size = 0.035
+let head_radius = 0.03     # 0.06 m across
+let head_length = 0.1
+let head_drop = 0.06       # the head's middle below the track's underside
+let spot_angle = 25
+let blackened_steel = material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+
+to track_spots(from_at: vec(-1.5, 3, 0), to_at: vec(1.5, 3, 0), count: 4, aims: [], lumens: 450, kelvin: 3000, steel: blackened_steel, beam: spot_angle)
+  let mid = (from_at + to_at) / 2 - vec(0, track_size / 2, 0)
+  let along = to_at - from_at
+  let len = length(along)
+  let on_x = abs(along.x) > abs(along.z)
+  box size: (vec(len, track_size, track_size) if on_x else vec(track_size, track_size, len)), at: mid, material: steel, round: 0.006
+  for each i in range(0, count, 1)
+    let t = (i + 0.5) / count
+    let base = from_at + along * t - vec(0, track_size + head_drop, 0)
+    let down = vec(0, -1, 0)
+    if i < aims.length
+      down = normalize(aims[i] - base)
+    let roll = asin(down.x)
+    let pitch = -asin(down.z)
+    let mouth = base + down * (head_length / 2)
+    # the stem from the track to the head, then the head tilted towards its aim
+    cylinder radius: 0.008, height: head_drop, at: base + vec(0, head_drop / 2, 0), material: steel
+    cylinder radius: head_radius, height: head_length, at: base, rotation: vec(0, pitch, roll), material: steel, round: 0.006
+    light(mouth + down * 0.01, lumens: lumens, kelvin: kelvin, radius: 0.025, aim: base + down * 2, angle: beam * 1 deg, softness: 0.3)
