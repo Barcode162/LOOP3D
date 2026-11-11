@@ -31,6 +31,11 @@ at a time, judged, then kept for every project. Today the library holds 6.
 
 1. **The card is whole:** what it is, `kind:`, `place:` (one line that works), `credit:`, `licence:`, `from:`,
    and now `tags:`, `size:`, `sockets:`, `seeds:`.
+   Two optional lines shape the picture (`loop library picture <name> [--case n]`): `pictures:` up to three
+   calls split by `|` (`--case 2` draws the second; with none, the `place:` line), and `view: front | back |
+   left | right | below` says where the camera stands (default three-quarter from the back-right; things face
+   -z, so `front` stands at -z). The floor is always drawn; a thing tagged steel, iron, dark or black, or one with a
+   `view:`, gets a pale wall 3 m behind it so its outline reads.
 2. **Our own work or a licence that allows it,** written on the card. No copyrighted designs copied (a sofa
    in the *style* of a chesterfield, never a named maker's product; no logos, no brand names).
 3. **True size in metres,** standing on the origin, front towards -z.

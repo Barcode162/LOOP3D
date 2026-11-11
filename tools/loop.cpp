@@ -18,7 +18,7 @@
 //               cluster tree (Nanite-style levels), how long it took
 //   loop library list|check|json              the library (library/): its entries; check refuses
 //               an entry with no credit or licence; json is for the site and the editor
-//   loop library picture <name> [-o out.png] [--seed n] [--night]
+//   loop library picture <name> [-o out.png] [--seed n] [--night] [--case n]
 //               one entry placed on a neutral floor under a soft sky and one sun,
 //               seen three-quarter at 35 mm from its size, 512 by 512, quality good.
 //               --night: no sun, a black sky, a mid-grey floor and one mid-grey wall 3 m
@@ -74,7 +74,7 @@ int usage() {
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
       "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
-      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held)\n"
+      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night] [--case n]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held)\n"
       "loop settings list   every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -87,7 +87,7 @@ struct Options {
   bool night = false;  // loop library picture --night
   bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
   std::string quality, look, out, choices, name;  // name: loop library picture <name>
-  int seed = 0;
+  int seed = 0, caseNo = 0;  // caseNo: loop library picture --case n (1 to 3; 0 is the place line)
   int width = 0, samples = 0, w = 960, h = 540, worldCells = 257;
   double seconds = 10, filmtime = 0;
   bool secondsGiven = false, sizeGiven = false;
@@ -326,13 +326,30 @@ int playStory(const std::string& first, const Options& o) {
 // exposure held at f/2, 1/50 s, ISO 800, so only the thing's own light shows.
 int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Options& o) {
   // the entry's `AT` stands for the middle of the floor
+  std::string source = e.place;
+  if (o.caseNo > 0) {  // the card's `pictures:` line holds up to three calls split by |
+    std::vector<std::string> calls;
+    for (size_t a = 0; a <= e.pictures.size();) {
+      size_t b = e.pictures.find('|', a);
+      if (b == std::string::npos) b = e.pictures.size();
+      std::string c = e.pictures.substr(a, b - a);
+      size_t f = c.find_first_not_of(" \t"), l = c.find_last_not_of(" \t");
+      if (f != std::string::npos) calls.push_back(c.substr(f, l - f + 1));
+      a = b + 1;
+    }
+    if (o.caseNo > static_cast<int>(calls.size())) {
+      std::fprintf(stderr, "problem: %s has %zu picture calls on its `pictures:` line, not %d\n", e.name.c_str(), calls.size(), o.caseNo);
+      return 1;
+    }
+    source = calls[o.caseNo - 1];
+  }
   std::string place;
   auto isWord = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; };
-  for (size_t i = 0; i < e.place.size();) {
-    bool word = isWord(e.place[i]);
+  for (size_t i = 0; i < source.size();) {
+    bool word = isWord(source[i]);
     size_t j = i;
-    while (j < e.place.size() && isWord(e.place[j]) == word) ++j;
-    std::string piece = e.place.substr(i, j - i);
+    while (j < source.size() && isWord(source[j]) == word) ++j;
+    std::string piece = source.substr(i, j - i);
     place += word && piece == "AT" ? "vec(0, 0, 0)" : piece;
     i = j;
   }
@@ -367,7 +384,17 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
   }
   // three-quarter: from the front-right, a little above
   const Vec3 centre = box.center();
-  const Vec3 dir = normalize(Vec3(0.6f, 0.4f, 0.7f));
+  // the card's `view:` says where the camera stands (things face -z, so "front" is at -z)
+  Vec3 dir = Vec3(0.6f, 0.4f, 0.7f);
+  if (e.view == "front") dir = Vec3(0.25f, 0.2f, -1.0f);
+  else if (e.view == "back") dir = Vec3(0.25f, 0.2f, 1.0f);
+  else if (e.view == "left") dir = Vec3(-1.0f, 0.2f, 0.25f);
+  else if (e.view == "right") dir = Vec3(1.0f, 0.2f, 0.25f);
+  else if (e.view == "below") dir = Vec3(0.3f, -0.45f, 0.8f);
+  dir = normalize(dir);
+  // the way the camera looks, flattened: the wall stands across the far side of it
+  const bool alongX = e.view == "left" || e.view == "right";
+  const float away = alongX ? (e.view == "right" ? -1.0f : 1.0f) : (e.view == "front" ? 1.0f : -1.0f);
   const Vec3 right = normalize(cross(Vec3(0, 1, 0), dir)), up = cross(dir, right);
   Camera cam;
   cam.focalLength = 35;
@@ -380,16 +407,26 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
   cam.position = centre + dir * dist, cam.target = centre;
   const float floorSize = std::max(200.0f, 40 * length(box.extent()));
   const bool night = o.night || e.kind == "light" || e.kind == "sky";
-  char setting[512];
+  // one wall of that grey across the far side of the thing, 3 m behind its far edge
+  auto wallText = [&](float grey) {
+    const float wallW = std::max(20.0f, 8 * length(box.extent())), wallH = std::max(8.0f, 3 * box.extent().y);
+    char w[256];
+    if (alongX)
+      std::snprintf(w, sizeof w, "box size: vec(0.2, %g, %g), at: vec(%g, %g, %g), material: rgb(%g, %g, %g)\n", wallH, wallW, away > 0 ? box.hi.x + 3.1f : box.lo.x - 3.1f, wallH / 2, centre.z, grey, grey, grey);
+    else
+      std::snprintf(w, sizeof w, "box size: vec(%g, %g, 0.2), at: vec(%g, %g, %g), material: rgb(%g, %g, %g)\n", wallW, wallH, centre.x, wallH / 2, away > 0 ? box.hi.z + 3.1f : box.lo.z - 3.1f, grey, grey, grey);
+    return std::string(w);
+  };
+  char setting[768];
   if (night) {
     // the wall stands across the camera's side of the thing, 3 m behind its far edge
-    const float wallW = std::max(20.0f, 8 * length(box.extent())), wallH = std::max(8.0f, 3 * box.extent().y);
-    std::snprintf(setting, sizeof setting,
-                  "ground %g, material: rgb(0.5, 0.5, 0.5)\nsky \"black\"\nbox size: vec(%g, %g, 0.2), at: vec(%g, %g, %g), material: rgb(0.5, 0.5, 0.5)\n",
-                  floorSize, wallW, wallH, centre.x, wallH / 2, box.lo.z - 3.1f);
+    std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsky \"black\"\n%s", floorSize, wallText(0.5f).c_str());
     cam.autoExposure = false, cam.fStop = 2, cam.shutter = 1.0f / 50, cam.iso = 800;
   } else {
-    std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsun elevation: 40 deg, toward: 215 deg, lux: 60000\nsky \"physical\", haze: 1.5\n", floorSize);
+    // a dark thing (steel, iron, black) or one with a `view:` gets a pale wall behind it so its outline reads
+    const bool dark = e.tags.find("steel") != std::string::npos || e.tags.find("iron") != std::string::npos || e.tags.find("dark") != std::string::npos || e.tags.find("black") != std::string::npos;
+    std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsun elevation: 40 deg, toward: 215 deg, lux: 60000\nsky \"physical\", haze: 1.5\n%s", floorSize,
+                  (dark || !e.view.empty()) && e.view != "below" ? wallText(0.85f).c_str() : "");
   }
   Vm vm;
   Stage stage;
@@ -833,6 +870,7 @@ int main(int argc, char** argv) {
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;
     else if (a == "--size") std::sscanf(val().c_str(), "%dx%d", &o.w, &o.h), o.sizeGiven = true;
     else if (a == "-o") o.out = val();
+    else if (a == "--case") o.caseNo = std::atoi(val().c_str());
     else if (a == "--seed") o.seed = std::atoi(val().c_str());
     else if (cmd == "library" && target == "picture" && a[0] != '-' && o.name.empty()) o.name = a;
     else if (a == "--cells") o.worldCells = std::atoi(val().c_str());

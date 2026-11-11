@@ -77,6 +77,8 @@ bool parseLibraryCard(const std::string& text, LibraryEntry& out, std::vector<st
     else if (key == "size") out.size = value;
     else if (key == "sockets") out.sockets = value;
     else if (key == "seeds") out.seeds = value;
+    else if (key == "pictures") out.pictures = value;
+    else if (key == "view") out.view = value;
     else if (!body.empty()) out.about += (out.about.empty() ? "" : " ") + body;
   }
   if (out.name.empty() && problems.size() == before) problems.push_back("it has no card (its first line should be \"# name · what it is\")");
@@ -85,6 +87,9 @@ bool parseLibraryCard(const std::string& text, LibraryEntry& out, std::vector<st
     if (field->empty()) problems.push_back(std::string("its card has no \"# ") + name + ": …\" line");
   if (!out.size.empty() && out.size != "hand" && out.size != "chair" && out.size != "sofa" && out.size != "room" && out.size != "land")
     problems.push_back("its size \"" + out.size + "\" should be hand, chair, sofa, room or land");
+  if (!out.view.empty() && out.view != "front" && out.view != "back" && out.view != "left" && out.view != "right" && out.view != "below")
+    problems.push_back("its view \"" + out.view + "\" should be front, back, left, right or below");
+  if (std::count(out.pictures.begin(), out.pictures.end(), '|') > 2) problems.push_back("its pictures line holds more than three calls");
   // sockets: words split by commas or spaces, each one the plan names
   for (size_t a = 0; a < out.sockets.size();) {
     size_t b = out.sockets.find_first_of(", ", a);
