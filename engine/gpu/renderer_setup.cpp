@@ -51,6 +51,7 @@ GpuRenderer::GpuRenderer(std::string canvas, wgpu::Instance inst, wgpu::Surface 
   rs.maxAnisotropy = 4;
   repeat_ = device_.CreateSampler(&rs);
   g_samples = config().render.msaa > 1 && !config().render.clusters ? 4 : 1;
+  g_shading = config().render.shading >= 0 ? std::min(config().render.shading, 3) : quality_ == Quality::kHigh ? 2 : 1;
   for (auto& u : passUbo_) u = buffer(sizeof(PassU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
   buildPipelines();
   makeShadowMap();
@@ -115,7 +116,10 @@ void GpuRenderer::applySettings() {
   int samples = r.msaa > 1 && !r.clusters ? 4 : 1;  // clusters: frame blending's job (rebuild step 4)
   if (lastScene_) wantClusters(*lastScene_);
   if (r.clusters != !!visView_) outW_ = 0, bindGroupsDirty_ = true;  // the visibility picture made or dropped
-  if (samples != g_samples) {
+  // how much the shader does (render.shading: -1 the quality's own, Phone 1, High 2), compiled into the pipelines
+  int shading = r.shading >= 0 ? std::min(r.shading, 3) : q == Quality::kHigh ? 2 : 1;
+  if (samples != g_samples || shading != g_shading) {
+    g_shading = shading;
     g_samples = samples;
     buildPipelines();
     outW_ = 0;
@@ -274,12 +278,15 @@ void GpuRenderer::buildPipelines() {
     fst.entryPoint = fs;
     fst.targetCount = 1;
     fst.targets = &ct;
-    wgpu::ConstantEntry ce;
-    if (lampShadows >= 0) {
-      ce.key = "kLampShadows";
-      ce.value = lampShadows;
-      fst.constantCount = 1;
-      fst.constants = &ce;
+    // compiled in: how much the shader does (render.shading), and whether lamps trace shadow rays
+    wgpu::ConstantEntry ce[2];
+    if (lampShadows >= 0) {  // the passes that light (the others never read these)
+      ce[0].key = "kLampShadows";
+      ce[0].value = lampShadows;
+      ce[1].key = "kShading";
+      ce[1].value = g_shading;
+      fst.constantCount = 2;
+      fst.constants = ce;
     }
     d.fragment = &fst;
     d.primitive.cullMode = wgpu::CullMode::None;
@@ -404,11 +411,13 @@ void GpuRenderer::buildPipelines() {
       fst.entryPoint = "fsResolve";
       fst.targetCount = 1;
       fst.targets = &ct;
-      wgpu::ConstantEntry ce;
-      ce.key = "kLampShadows";
-      ce.value = r;
-      fst.constantCount = 1;
-      fst.constants = &ce;
+      wgpu::ConstantEntry ce[2];
+      ce[0].key = "kLampShadows";
+      ce[0].value = r;
+      ce[1].key = "kShading";
+      ce[1].value = g_shading;
+      fst.constantCount = 2;
+      fst.constants = ce;
       d.fragment = &fst;
       wgpu::DepthStencilState ds;
       ds.format = wgpu::TextureFormat::Depth32Float;

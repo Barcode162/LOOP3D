@@ -9,6 +9,29 @@ left out. **0** is the same picture, **about 2** barely visible side by side, **
 different. *Brightness* is live ÷ cinema before matching (each renderer meters its own exposure). Each phase
 of the pipeline must leave every scene's score no worse (or better, when it means to change the look).
 
+## 2026-11-11: the shader, whole (SH1): film's materials from every light, panels as rectangles, the glow as film's
+
+The average rises (see docs/PIPELINE.md, phase 8: the veil's greying scored well); brightness is now within 0.8 to 1.2 of cinema.
+
+```
+scene                    score  worst tenth  brightness
+showcase_hall             12.6         20.6        1.11
+showcase_materials        28.3         42.2        1.05
+showcase_light            30.7         77.3        0.43
+showcase_sky               5.6         10.1        1.00
+showcase_fog              10.9         23.9        0.92
+showcase_physics          31.1         88.6        1.15
+showcase_people           26.3         50.4        1.16
+showcase_glade            27.8         52.7        0.81
+courtyard                 14.1         31.0        1.04
+cabin                     14.7         26.4        0.95
+the_woods                 24.0         33.6        1.17
+bar                       13.0         29.9        0.90
+two_rooms                  0.5          1.1        0.93
+windows                    1.4          3.7        1.08
+average 17.2 over 14 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
+```
+
 ## 2026-11-09: phase 6 done (fog lit by the light cache)
 
 ```

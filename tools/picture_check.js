@@ -95,9 +95,9 @@ function serve() {
       // and, drawing in clusters, until the background cook has switched over
       const switched = !config.clusters || st.clustered || (process.env.PARAMS || '').includes('clusters=0');
       // and until the light cache's probes are all baked
-      // (and the far sun shadow, drawn a part a frame), then 8 frames more for frame blending to settle on it
+      // (and the far sun shadow, drawn a part a frame), then 32 frames more: frame blending settles on it (its grain is an average of 16 frames) and the main lamps' shadow maps, drawn one a frame, are all there
       if (st.cacheWaiting || st.farWaiting) frames0 = st.frames;
-      steady = st.frames - frames0 >= 8 && moved < 0.002 && switched ? steady + 1 : 0;
+      steady = st.frames - frames0 >= 32 && moved < 0.002 && switched ? steady + 1 : 0;
       last = st.exposure;
     }
     // the frame itself, read back from the GPU (no page buttons on it)
@@ -149,7 +149,7 @@ function serve() {
     }, [png, refUrl]);
     if (r.size) { console.log(`FAIL ${s.name}: the size changed (${r.size})`); failed++; await page.close(); continue; }
     fs.writeFileSync(path.join(OUT, s.name + '_diff.png'), Buffer.from(r.diff.split(',')[1], 'base64'));
-    const pass = r.mean <= config.mean && r.share <= config.share;
+    const pass = r.mean <= (s.mean ?? config.mean) && r.share <= (s.share ?? config.share);  // a scene may carry its own
     if (!pass) failed++;
     console.log(`${pass ? 'ok  ' : 'FAIL'} ${s.name}: mean difference ${r.mean.toFixed(2)}, ${(r.share * 100).toFixed(2)}% of pixels changed (${secs} s)${errors.length ? ' · page: ' + errors[0].slice(0, 120) : ''}`);
     await page.close();

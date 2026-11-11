@@ -1,5 +1,5 @@
 {
-  "about": "Picture tests (tools/picture_check.js): each scene photographed by the live player at Phone quality, held still from its first moment, compared with its reference here; a film at its filmtime (seconds into its shots). mean: the most the pictures may differ on average (0..255 per channel); share: the most pixels that may differ by more than 24.",
+  "about": "Picture tests (tools/picture_check.js): each scene photographed by the live player at Phone quality, held still from its first moment, compared with its reference here; a film at its filmtime (seconds into its shots). mean: the most the pictures may differ on average (0..255 per channel); share: the most pixels that may differ by more than 24. A scene may carry its own mean or share, with why.",
   "size": [288, 512],
   "quality": 0,
   "msaa": 1,
@@ -16,7 +16,7 @@
     {"name": "showcase_people"},
     {"name": "showcase_glade", "filmtime": 5},
     {"name": "courtyard", "filmtime": 3},
-    {"name": "cabin", "filmtime": 2},
+    {"name": "cabin", "filmtime": 2, "share": 0.06, "why": "its fire flickers 30 times a second: the picture lands on one of two steps of it (mean 1.8 apart, 4.5% of pixels)"},
     {"name": "the_woods", "filmtime": 5},
     {"name": "bar"},
     {"name": "two_rooms"},

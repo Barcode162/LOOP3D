@@ -48,6 +48,7 @@ LightCache layOutLightCache(const AABB& box, int maxProbes, float minSpacing) {
   c.origin = (box.lo + box.hi) * 0.5f - span * 0.5f;
   const size_t n = static_cast<size_t>(c.probes());
   c.face.assign(n, std::array<Vec3, 6>{});
+  c.sky.assign(n, std::array<float, 6>{1, 1, 1, 1, 1, 1});
   c.state.assign(n, LightCache::kWaiting);
   c.open.assign(n, 0), c.tested.assign(n, 0);
   c.on = true;
@@ -60,6 +61,7 @@ void bakeProbe(LightCache& cache, int i, PathTracer& pt, int rays, int bounces, 
   const uint32_t h = hashCombine(static_cast<uint32_t>(i) * 2654435761u, seed);
   const float turn = toUnit(h) * kTwoPi;
   std::vector<Vec3> dirs(static_cast<size_t>(rays)), light(static_cast<size_t>(rays));
+  std::vector<uint8_t> openSky(static_cast<size_t>(rays));
   int back = 0;
   for (int k = 0; k < rays; ++k) {
     const float z = 1 - (2 * k + 1.0f) / static_cast<float>(rays);
@@ -69,6 +71,7 @@ void bakeProbe(LightCache& cache, int i, PathTracer& pt, int rays, int bounces, 
     bool inside = false;
     light[static_cast<size_t>(k)] = pt.probeLight(p, dirs[static_cast<size_t>(k)], hashCombine(h, static_cast<uint32_t>(k)), bounces, &inside);
     back += inside;
+    openSky[static_cast<size_t>(k)] = pt.seesSky(p, dirs[static_cast<size_t>(k)]);
   }
   // a rare ray that found something very bright by chance (a "firefly") would
   // light the whole probe: none may be brighter than 8 times the others' average
@@ -81,21 +84,32 @@ void bakeProbe(LightCache& cache, int i, PathTracer& pt, int rays, int bounces, 
   for (size_t k = 0; k < keep; ++k) rest += sorted[k];
   const float cap = keep ? 8.0f * static_cast<float>(rest / static_cast<double>(keep)) : kInf;
   std::array<Vec3, 6> f{};
+  std::array<float, 6> sky{}, all{};  // each face's view: the open part, and all of it
   const float w = 4 * kPi / static_cast<float>(rays);  // each ray's share of the sphere
   for (size_t k = 0; k < light.size(); ++k) {
     Vec3 L = light[k];
     if (lum[k] > cap && cap > 0) L *= cap / lum[k];
     const Vec3 d = dirs[k];
     for (int ax = 0; ax < 3; ++ax) {
-      f[2 * ax] += L * (std::max(d[ax], 0.0f) * w);
-      f[2 * ax + 1] += L * (std::max(-d[ax], 0.0f) * w);
+      const float up = std::max(d[ax], 0.0f), down = std::max(-d[ax], 0.0f);
+      f[2 * ax] += L * (up * w);
+      f[2 * ax + 1] += L * (down * w);
+      // the sky's own directions only (above the horizon): below it the sky's
+      // picture is the far ground, which a face looking sideways over open
+      // ground still sees. The face looking straight down has none: all its rays.
+      if (d.y <= 0 && ax != 1) continue;
+      all[static_cast<size_t>(2 * ax)] += up, all[static_cast<size_t>(2 * ax + 1)] += down;
+      if (openSky[k]) sky[static_cast<size_t>(2 * ax)] += up, sky[static_cast<size_t>(2 * ax + 1)] += down;
     }
   }
+  for (size_t a = 0; a < 6; ++a) sky[a] = all[a] > 0 ? sky[a] / all[a] : 0;
   if (back * 4 > rays) {  // more than a quarter see the backs of surfaces: inside something
     cache.state[static_cast<size_t>(i)] = LightCache::kInside;
     return;
   }
   cache.face[static_cast<size_t>(i)] = f;
+  if (cache.sky.size() != cache.face.size()) cache.sky.assign(cache.face.size(), std::array<float, 6>{1, 1, 1, 1, 1, 1});
+  cache.sky[static_cast<size_t>(i)] = sky;
   cache.state[static_cast<size_t>(i)] = LightCache::kBaked;
   // its links to the neighbours (+x, +y, +z here; the others when they bake theirs)
   if (cache.open.size() != cache.state.size()) cache.open.assign(cache.state.size(), 0), cache.tested.assign(cache.state.size(), 0);
@@ -190,6 +204,7 @@ std::vector<int> rooms(const LightCache& c) {
 void fillInside(LightCache& c) {
   // each pass, an inside probe next to lit ones takes their average and is lit
   std::vector<uint8_t> lit(c.state.size());
+  const bool skies = c.sky.size() == c.face.size();
   for (size_t i = 0; i < lit.size(); ++i) lit[i] = c.state[i] == LightCache::kBaked;
   for (bool changed = true; changed;) {
     changed = false;
@@ -200,6 +215,7 @@ void fillInside(LightCache& c) {
           const int i = c.probeAt(x, y, z);
           if (lit[static_cast<size_t>(i)] || c.state[static_cast<size_t>(i)] != LightCache::kInside) continue;
           std::array<Vec3, 6> sum{};
+          std::array<float, 6> sumSky{};
           int n = 0;
           for (int d = 0; d < 6; ++d) {
             const int ax = d / 2, s = d % 2 ? -1 : 1;
@@ -208,11 +224,13 @@ void fillInside(LightCache& c) {
             const int j = c.probeAt(qx, qy, qz);
             if (!lit[static_cast<size_t>(j)]) continue;
             for (int f = 0; f < 6; ++f) sum[static_cast<size_t>(f)] += c.face[static_cast<size_t>(j)][static_cast<size_t>(f)];
+            if (skies) for (int f = 0; f < 6; ++f) sumSky[static_cast<size_t>(f)] += c.sky[static_cast<size_t>(j)][static_cast<size_t>(f)];
             ++n;
           }
           if (!n) continue;
           const float k = 1.0f / static_cast<float>(n);
           for (int f = 0; f < 6; ++f) c.face[static_cast<size_t>(i)][static_cast<size_t>(f)] = sum[static_cast<size_t>(f)] * k;
+          if (skies) for (int f = 0; f < 6; ++f) c.sky[static_cast<size_t>(i)][static_cast<size_t>(f)] = sumSky[static_cast<size_t>(f)] * k;
           next[static_cast<size_t>(i)] = 1;
           changed = true;
         }
@@ -222,6 +240,7 @@ void fillInside(LightCache& c) {
 
 LightCache smoothed(const LightCache& c) {
   LightCache out = c;
+  const bool skies = c.sky.size() == c.face.size();
   auto lit = [&](int i) { return c.state[static_cast<size_t>(i)] != LightCache::kWaiting; };
   for (int z = 0; z < c.nz; ++z)
     for (int y = 0; y < c.ny; ++y)
@@ -230,7 +249,9 @@ LightCache smoothed(const LightCache& c) {
         if (!lit(i)) continue;
         const size_t si = static_cast<size_t>(i);
         std::array<Vec3, 6> sum{};
+        std::array<float, 6> sumSky{};
         for (int f = 0; f < 6; ++f) sum[static_cast<size_t>(f)] = c.face[si][static_cast<size_t>(f)] * 0.4f;
+        if (skies) for (int f = 0; f < 6; ++f) sumSky[static_cast<size_t>(f)] = c.sky[si][static_cast<size_t>(f)] * 0.4f;
         float w = 0.4f;
         for (int d = 0; d < 6; ++d) {
           const int ax = d / 2, s = d % 2 ? -1 : 1;
@@ -240,9 +261,11 @@ LightCache smoothed(const LightCache& c) {
           if (!lit(j)) continue;
           const size_t sj = static_cast<size_t>(j);
           for (int f = 0; f < 6; ++f) sum[static_cast<size_t>(f)] += c.face[sj][static_cast<size_t>(f)] * 0.1f;
+          if (skies) for (int f = 0; f < 6; ++f) sumSky[static_cast<size_t>(f)] += c.sky[sj][static_cast<size_t>(f)] * 0.1f;
           w += 0.1f;
         }
         for (int f = 0; f < 6; ++f) out.face[si][static_cast<size_t>(f)] = sum[static_cast<size_t>(f)] / w;
+        if (skies) for (int f = 0; f < 6; ++f) out.sky[si][static_cast<size_t>(f)] = sumSky[static_cast<size_t>(f)] / w;
       }
   return out;
 }

@@ -27,6 +27,7 @@ struct Config {
     float slowGpu = 110, climbUnder = 100;  // % of the frame budget
     float calm = 3;                          // seconds steady before climbing
     int msaa = 4;
+    int shading = -1;          // how much the shader does: -1 the quality's own (Phone 1, High 2), 0 Lowest .. 3 Highest
     bool fxaa = false;
     bool filmGrain = false;
     bool cull = true;  // skip what a pass can't see

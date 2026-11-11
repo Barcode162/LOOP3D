@@ -34,6 +34,11 @@ struct LightCache {
   int nx = 0, ny = 0, nz = 0;
   // per probe: the light falling on a face turned +x, -x, +y, -y, +z, -z
   std::vector<std::array<Vec3, 6>> face;
+  // per probe and face: how much of the sky the face looks at (the directions
+  // above the horizon; the face looking down: all of its) is open (1: all of
+  // it, 0: none, a closed room). The live renderer's glossy surfaces mirror
+  // the sky's picture only by this share, and the room's own light for the rest.
+  std::vector<std::array<float, 6>> sky;
   enum State : uint8_t { kWaiting, kBaked, kInside };
   std::vector<uint8_t> state;
   // The rooms (the picture pipeline's phase 10, typed relationships): per

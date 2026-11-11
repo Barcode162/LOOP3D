@@ -72,6 +72,7 @@ Settings::Settings() {
   F("render.climbUnder", r.climbUnder, 30, 150, "climb only if the bigger size would still fit under this % of the budget");
   F("render.calm", r.calm, 0.5, 30, "seconds of steady frames before the resolution climbs");
   I("render.msaa", r.msaa, 1, 4, "multisampling of the scene pass: 1 off, 4 on");
+  I("render.shading", r.shading, -1, 3, "how much the shader does for each pixel: -1 the quality's own (Phone 1, High 2); 0 Lowest: colour, shine and glow; 1 Standard: every layer of a material lit by every light as in film, steady highlights; 2 High: sun shadows sharp where things touch and soft far from what casts them, softer lamp shadows, finer creases; 3 Highest: more of each");
   B("render.fxaa", r.fxaa, "edge smoothing in the final pass (cheap; helps with MSAA off)");
   B("render.lightGrid", r.lightGrid, "many lamps cheaply: each pixel works out the lamps near it alone, and far groups of lamps as one lamp each (off: every lamp alone, everywhere)");
   B("render.allLampShadows", r.allLampShadows, "High: one lamp is traced on its own and the rest share one shadow ray a pixel, given each frame to one picked by its light, each pixel keeping its answer over frames (ReSTIR's reuse): every lamp casts shadows, for the same rays");

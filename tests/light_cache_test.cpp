@@ -81,6 +81,47 @@ TEST(light_cache_closed_room_keeps_the_sky_out) {
   CHECK(E > 1.0f && E < 60.0f);
 }
 
+// The sky's share of each face's view (the live renderer's glossy surfaces
+// mirror the sky only by it): all of it in the open, none in a closed room,
+// and over a floor only the faces that look up or sideways.
+TEST(light_cache_knows_how_much_sky_each_face_sees) {
+  {
+    Scene s = skyOnly(1000);
+    PathTracer pt;
+    pt.setScene(s);
+    LightCache c = oneProbe({0, 0, 0});
+    bakeProbe(c, 0, pt, 256);
+    for (float share : c.sky[0]) CHECK_NEAR(share, 1.0f, 1e-4f);
+  }
+  {
+    Material grey;
+    grey.baseColor = Vec3(0.5f);
+    Scene s = room(grey, 800);
+    PathTracer pt;
+    pt.setScene(s);
+    LightCache c = oneProbe({0, 1.5f, 0});
+    bakeProbe(c, 0, pt, 256);
+    CHECK(c.state[0] == LightCache::kBaked);
+    for (float share : c.sky[0]) CHECK_NEAR(share, 0.0f, 1e-4f);
+  }
+  {
+    Scene s = skyOnly(1000);
+    Material grey;
+    grey.baseColor = Vec3(0.5f);
+    s.add(s.addMesh(shapes::box({200, 0.2f, 200})), s.addMaterial(grey), Mat4::translation({0, -0.1f, 0}));
+    PathTracer pt;
+    pt.setScene(s);
+    LightCache c = oneProbe({0, 1, 0});
+    bakeProbe(c, 0, pt, 1024);
+    CHECK_NEAR(c.sky[0][2], 1.0f, 0.01f);  // looking up: all sky
+    CHECK_NEAR(c.sky[0][3], 0.0f, 0.01f);  // looking down: the floor
+    CHECK_NEAR(c.sky[0][0], 1.0f, 0.01f);  // sideways: all the sky it looks at (the ground below isn't sky)
+    // smoothing and filling keep the shares
+    const LightCache sm = smoothed(c);
+    CHECK_NEAR(sm.sky[0][2], 1.0f, 0.01f);
+  }
+}
+
 TEST(light_cache_red_wall_tints_its_side) {
   Material white, red;
   white.baseColor = Vec3(0.7f), red.baseColor = Vec3(0.8f, 0.05f, 0.05f);

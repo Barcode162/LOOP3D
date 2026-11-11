@@ -123,6 +123,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
     f.shadowFarViewProj = farShown_ ? farShownViewProj_ : sunFarViewProj_;
     f.shadowFar = {B / BF, static_cast<float>(farShown_), upscaling_ ? 1.0f : 0.0f, upscaling_ ? static_cast<float>(width_) / std::max(outW_, 1u) : 1.0f};
   }
+  f.shade = {std::tan(sunRadius_), 2 * B, 8 * R, 0};
   f.camPos = {cam.position, time};
   f.sunDir = {sunDir_, sunOn_ ? 1.0f : 0.0f};
   f.sunColor = {sunIllum_, C.render.skyLight};

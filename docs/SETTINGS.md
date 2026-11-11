@@ -50,6 +50,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Setting | Name | Default | Range | Status | In a script | What it does |
 |---|---|---|---|---|---|---|
 | Live quality | `render.quality` | 1 | 0 / 1 / 2 | live |  | Phone: 1x pixels, sun shadows, lamps without shadows. High: sharper, crisp shadows from the two lamps that matter most. Ultra: path traced on the GPU. |
+| Shader detail | `render.shading` | -1 | -1 / 0 / 1 / 2 / 3 | live · script | `setting "render.shading", -1` | How much the shader works out for each pixel. Lowest: colour, shine and glow. Standard: every layer of a material (lacquer, cloth, thin leaves, metal) lit by every light the way film does it, and highlights that hold steady. High: sun shadows sharp where things touch and soft far from what casts them, softer lamp shadows, finer creases. Highest: more of each. Automatic: Standard on Phone, High on High. |
 | Target frame rate | `render.targetFps` | 60 | 30 / 60 / 90 / 120 / 144 | live · script | `setting "render.targetFps", 60` | What the automatic resolution aims for (never above the display's own rate). |
 | Frames in flight | `render.framesInFlight` | 2 | 1 / 2 / 3 | live · script | `setting "render.framesInFlight", 2` | More hides GPU stalls; fewer means less delay. |
 | Stop drawing when the page is hidden | `render.pauseHidden` | true |  | live · script | `setting "render.pauseHidden", true` | stop drawing while the page is hidden |
@@ -600,4 +601,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 152 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you
+11 project.json · 153 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you
