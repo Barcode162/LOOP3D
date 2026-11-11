@@ -8,17 +8,21 @@ void registerShapes(Vm& vm) {
   vm.native("box", [](Args& a) {
     Vec3 sz = a.vec(0, "size", Vec3(1));
     float r = f32(a.num(-1, "round", 0));
-    int m = cachedMesh(stageOf(a.vm), keyOf("box", {sz.x, sz.y, sz.z, r}), [&] { return r > 0 ? shapes::roundedBox(sz, r, 4) : shapes::box(sz); });
+    // Steps across a rounded edge follow its size: 1 under 5 mm, 2 under 20 mm, 4 above.
+    int steps = static_cast<int>(a.num(-1, "steps", r < 0.005f ? 1 : r < 0.02f ? 2 : 4));
+    int m = cachedMesh(stageOf(a.vm), keyOf("box", {sz.x, sz.y, sz.z, r, static_cast<float>(steps)}), [&] { return r > 0 ? shapes::roundedBox(sz, r, steps) : shapes::box(sz); });
     return place(a, m, 'b', sz);
-  }, "box(size: vec(w, h, d), at, turn, material, round)");
+  }, "box(size: vec(w, h, d), at, turn, material, round, steps)");
   vm.native("sphere", [](Args& a) {
     float r = f32(a.num(0, "radius", a.num(-1, "size", 1) * 0.5));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r}), [&] { return shapes::sphere(r, 96, 48); }), 's', Vec3(r));
   }, "sphere(radius, at, material)");
   vm.native("cylinder", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), h = f32(a.num(1, "height", 1));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("cyl", {r, h}), [&] { return shapes::cylinder(r, h, 64); }), 'y', Vec3(r, h, r));
-  }, "cylinder(radius, height, at, material)");
+    // Thin tubes (under 3 cm across) need fewer sides: 16 by default, 64 otherwise.
+    int sides = static_cast<int>(a.num(-1, "sides", r * 2 < 0.03f ? 16 : 64));
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("cyl", {r, h, static_cast<float>(sides)}), [&] { return shapes::cylinder(r, h, sides); }), 'y', Vec3(r, h, r));
+  }, "cylinder(radius, height, at, material, sides)");
   vm.native("cone", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), h = f32(a.num(1, "height", 1));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("cone", {r, h}), [&] { return shapes::cone(r, h, 64); }));
