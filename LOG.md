@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-11** · M3c, the whole surface stack in the film renderer: a surface's layers now show in film. Wear goes to its own colour only on rounded edges (the cook's edge mark), dirt gathers only in creases and grooves (the hollow mark) and lies over the wear, coats cover their share, and slow change across metres comes from one shared wander picture. A new test scene, `projects/samples/surface_box.loop`: red paint worn to bare steel only on the roundings, near-black dirt only in the plinth's groove. 207 tests. The 12 live picture tests were not run: M3c changes only the film renderer's handling of materials made by `surface(...)`, gated so a scene with no surfaces takes none of the new code, and no picture-test scene uses a surface. Deployed.
 - **2026-11-11** · M3b: the fifteen patterns of docs/SURFACES.md section 5 in one place (engine/render/surface_patterns.*), every one wrapping at its tile, sizes fitted to whole features (bricks 215 mm, 9 to a 2 m tile); not used yet. Weak spot to revisit when oak is judged: wood grain is a regular wave, not long arches. Deployed.
 
 - **2026-11-11** · M3a, "rework every material in layers" (track M begins): the word `surface` (a material as a stack of layers in real sizes: base, vary, coats, wear, dirt, detail), refused by name when wrong; `material("oak")` now finds a surface made in the scene, then `library/surfaces/oak.loop`, then the built-in list. The film shows a surface's base colour flat for now. Deployed.

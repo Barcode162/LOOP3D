@@ -43,3 +43,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | SH1 | L | lead | 240 | 416 | 2026-11-11 |
 | M3a | M | builder | 9 | 8 | 2026-11-11 |
 | M3b | M | builder | 9 | 7 | 2026-11-11 |
+| M3c | M | lead | 19 | 6 | 2026-11-11 |
