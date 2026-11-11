@@ -144,6 +144,7 @@ Every setting has a sensible default; give only what matters.
 - **Shapes** (all take `at`, `turn`, `tilt`, `rotation`, `scale`, `material` (or `made_of`), `name`, and `collide: no` to walk through):
   - `box(size: vec(w, h, d), round)`, `sphere(radius)`, `cylinder(radius, height)`, `cone(radius, height)`, `capsule(radius, height)`, `ring(radius, thickness)`
   - `lathe(profile: [vec(radius, height), …], segments: 32)`: an outline spun round the up axis, like a vase, bowl or lamp base; a point at radius 0 closes that end. It needs two points or more and no negative radius
+  - `group at: vec(…), turn: 90 deg` with indented lines under it: everything those lines place (things, lamps, strips, groups inside) is measured from the group's place and turn, and a recipe called there lands in the group, which is how a library piece is turned. With a name: `let stair = group(at: …, turn: …)` and the lines under it; then `stair.position`, `stair.turn` and `stair.visible` move, turn and hide them all (its lamps go dark with it).
   - `ground(size)` (its material also sets what footsteps sound like; `collide: no` is seen but never stood on, like water), `rock(size, seed)`
   - `tree(kind: "oak" | "pine" | "birch" | "bush", at, height, turn, variant, leaves)`
   - A shape's fields can be read and changed any time: `.position .turn .rotation .scale .visible .material`.

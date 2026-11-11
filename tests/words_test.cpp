@@ -99,3 +99,23 @@ g.visible = yes
   CHECK_NEAR(r->stage.scene.lights[0].lumens, 500, 1e-3);
   CHECK(!runScene("group at: vec(0, 0, 0)\n")->problems().empty());  // no lines under it
 }
+
+TEST(words_a_strip_in_a_group_turns_with_it) {
+  auto r = runScene(R"(
+let g = group(at: vec(0, 1, 0), turn: 90 deg)
+  strip(from: vec(0, 0, 0), to: vec(1, 0, 0), lumens: 300)
+)");
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  auto& st = r->stage;
+  if (st.scene.lights.size() < 4) return;
+  // four lamps along x from 0 to 1 now lie along -z, one metre up, still facing down
+  float zMin = 0, zMax = -9;
+  for (const auto& l : st.scene.lights) {
+    CHECK_NEAR(l.position.x, 0, 1e-3);
+    CHECK_NEAR(l.position.y, 1, 2e-2);
+    CHECK_NEAR(l.direction.y, -1, 1e-3);
+    zMin = std::min(zMin, l.position.z), zMax = std::max(zMax, l.position.z);
+  }
+  CHECK(zMin < -0.8f && zMax < 0.01f && zMax > -0.2f);
+}
