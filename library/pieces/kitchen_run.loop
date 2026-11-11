@@ -1,0 +1,61 @@
+# kitchen_run · a run of kitchen cupboards along a wall: base units under a worktop, wall units above, one tall unit at the end
+# kitchen_run(at, length, tall, fronts, top, steel) stands it with `at` the middle of its back on the floor, the back
+# against the wall (the origin line), the fronts towards -z. It runs `length` along x. Base units are 0.9 m high and
+# 0.6 m deep under a 4 cm worktop that overhangs 2 cm at the front and the free end; wall units 0.7 m high and 0.35 m
+# deep hang with their bottoms 1.45 m up; with `tall: yes` a 2.15 m unit takes the right-hand end and the base and
+# wall units fill the rest. Doors are flat and handleless, about 0.6 m each, with thin shadow gaps, over a recessed
+# dark plinth. `fronts` and `top` take a surface name or a material; `steel` is the dark carcass and plinth. No lamps.
+#
+# kind: piece
+# place: kitchen_run(AT + vec(0, 0, 0.02), length: 3.6)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: kitchen, cupboards, units, worktop, loft, interior
+# size: room
+# sockets: top
+# seeds: none, it is made the same every time
+# view: front
+
+let dark_steel = material(like: "iron", color: rgb(0.03, 0.03, 0.035), metal: 0.6, roughness: 0.6)
+let base_h = 0.9
+let base_d = 0.6
+let top_t = 0.04
+let plinth_h = 0.1
+let wall_h = 0.7
+let wall_d = 0.35
+let wall_y = 1.45
+let tall_h = 2.15
+let tall_w = 0.6
+let door_t = 0.018
+let gap = 0.004
+
+# one flat door, its face level with `front`, its middle at x
+to door(x, y0, y1, w, front, fronts)
+  box size: vec(w - gap, y1 - y0 - gap, door_t), at: vec(x, (y0 + y1) / 2, front + door_t / 2), material: fronts, round: 0.003
+
+to kitchen_run(at: vec(0, 0, 0), length: 3.6, tall: yes, fronts: "oak", top: "concrete", steel: dark_steel)
+  let left = at.x - length / 2
+  let span = length
+  if tall
+    span = length - tall_w
+  let n = max(1, round(span / 0.6))
+  let w = span / n
+  # the carcass behind the doors, and the recessed plinth under it
+  box size: vec(span, base_h - top_t - plinth_h, base_d - door_t), at: vec(left + span / 2, plinth_h + (base_h - top_t - plinth_h) / 2, at.z - (base_d - door_t) / 2), material: steel
+  box size: vec(span - 0.04, plinth_h, base_d - 0.1), at: vec(left + span / 2, plinth_h / 2, at.z - 0.05 - (base_d - 0.1) / 2), material: steel
+  box size: vec(span, wall_h, wall_d - door_t), at: vec(left + span / 2, wall_y + wall_h / 2, at.z - (wall_d - door_t) / 2), material: steel
+  # the worktop, overhanging 2 cm at the front and at the free end
+  box size: vec(span + 0.02, top_t, base_d + 0.02), at: vec(left + span / 2 - 0.01, base_h - top_t / 2, at.z - (base_d + 0.02) / 2), material: top, round: 0.004
+  # doors: base units under a 2 cm shadow slot below the worktop, wall units above
+  for each i in range(0, n, 1)
+    let x = left + (i + 0.5) * w
+    door(x, plinth_h, base_h - top_t - 0.02, w, at.z - base_d, fronts)
+    door(x, wall_y, wall_y + wall_h, w, at.z - wall_d, fronts)
+  # the tall unit, two doors, on the right
+  if tall
+    let tx = left + span + tall_w / 2
+    box size: vec(tall_w, tall_h - plinth_h, base_d - door_t), at: vec(tx, plinth_h + (tall_h - plinth_h) / 2, at.z - (base_d - door_t) / 2), material: steel
+    box size: vec(tall_w - 0.04, plinth_h, base_d - 0.1), at: vec(tx, plinth_h / 2, at.z - 0.05 - (base_d - 0.1) / 2), material: steel
+    door(tx, plinth_h, 1.3, tall_w, at.z - base_d, fronts)
+    door(tx, 1.3, tall_h, tall_w, at.z - base_d, fronts)
