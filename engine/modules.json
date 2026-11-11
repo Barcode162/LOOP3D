@@ -22,7 +22,7 @@
     {"name": "Live drawing", "side": "visual", "status": "to separate", "what": "the WebGPU renderer, with the GPU path tracer (Ultra) mixed in",
      "files": ["engine/gpu/*", "engine/gpu/shaders/*", "engine/render/frame_graph.*", "engine/render/change_tracker.*"]},
     {"name": "Surfaces", "side": "visual", "status": "in place", "what": "a material written as layers in real sizes (docs/SURFACES.md): the recipe, its fingerprint, the word `surface`; the patterns and the stack follow (orders M3b, M3c)",
-     "files": ["engine/render/surface.*"]},
+     "files": ["engine/render/surface.*", "engine/render/surface_bake.*"]},
     {"name": "Film renderer", "side": "visual", "status": "in place", "what": "the path tracer for stills: materials, sky, film looks, shots",
      "files": ["engine/render/pathtracer.*", "engine/render/bsdf.*", "engine/render/film.*", "engine/render/sky.*", "engine/render/shots.*", "engine/render/scene_bvh.*", "engine/render/demo_scenes.*", "engine/render/materials.*", "engine/render/pattern.*"]},
     {"name": "Pictures and models", "side": "visual", "status": "in place", "what": "PNG, JPEG and glTF readers",
