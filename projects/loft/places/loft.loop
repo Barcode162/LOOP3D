@@ -30,6 +30,7 @@ box size: vec(0.5, 1.8, 0.05), at: vec(-3.9, 0.9, -5.5), material: "oak"
 box size: vec(0.006, 2.2, 0.006), at: vec(0, 4.9, 0), material: "iron"
 cylinder radius: 0.012, height: 0.08, at: vec(0, 3.76, 0), material: "brass"
 light(vec(0, 3.6, 0), lumens: 800, kelvin: 2700, radius: 0.03)
+# the view is from the glass looking back at the stair and the deck (the glass is behind the player)
 # the camera's exposure is held still, so dark stays dark (never brightened to help)
-camera at: vec(2.5, 1.6, 4.5), look_at: vec(-1, 2.4, -6), lens: 22 mm, f_stop: 2, shutter: 1 / 50, iso: 1600, auto_exposure: no
-move_player at: vec(2.5, 0, 4.5), look_at: vec(-1, 2.4, -6)
+camera at: vec(3.5, 1.7, -3.5), look_at: vec(-2, 2.6, 3), lens: 22 mm, f_stop: 2, shutter: 1 / 50, iso: 1600, auto_exposure: no
+move_player at: vec(3.5, 0, -3.5), look_at: vec(-2, 2.6, 3)
