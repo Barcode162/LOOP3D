@@ -1,0 +1,43 @@
+# built_in_shelves · a wall of open shelves: blackened steel uprights, oak shelves, a closed back and a low plinth
+# built_in_shelves(at, width, height, depth, bays, shelves, wood, steel) stands it with `at` the middle of its
+# back, on the floor, the back against the wall and the front towards -z. `bays` equal bays lie between
+# `bays + 1` steel uprights; `shelves` oak boards, 3 cm thick, rise at even heights, the top one flush with the
+# top of the uprights; a thin back panel closes the wall behind; a low plinth carries the foot.
+# The top of shelf j (0 is the lowest) is at at.y + 0.1 + (j + 1) * (height - 0.1) / shelves; in bay i its
+# middle is at x = at.x - width / 2 + 0.02 + (i + 0.5) * (width - 0.04) / bays, z = at.z - depth / 2: set
+# things there.
+#
+# kind: piece
+# place: built_in_shelves(AT, width: 3.0, height: 2.6, depth: 0.32, bays: 4, shelves: 6)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: shelves, bookcase, built-in, steel, oak, loft, interior
+# size: room
+# sockets: top
+# seeds: no
+
+let plinth_h = 0.1
+let plinth_back = 0.03
+let board = 0.03
+let post = 0.04
+let panel = 0.012
+let setback = 0.02
+
+to built_in_shelves(at: vec(0, 0, 0), width: 3.0, height: 2.6, depth: 0.32, bays: 4, shelves: 6, wood: "oak", steel: material(color: 0.03, metal: 1, roughness: 0.5))
+  let bay = (width - post) / bays
+  let pitch = (height - plinth_h) / shelves
+  # the plinth, set back from the front so the shelves seem to float
+  box size: vec(width, plinth_h, depth - plinth_back), at: at + vec(0, plinth_h / 2, -(depth - plinth_back) / 2), material: steel, round: 0.004
+  # the closed back panel, between the uprights
+  box size: vec(width - post, height - plinth_h, panel), at: at + vec(0, plinth_h + (height - plinth_h) / 2, -panel / 2), material: wood, round: 0.002
+  # the uprights, full depth, from the plinth to the top
+  for each i in range(0, bays + 1, 1)
+    let x = -width / 2 + post / 2 + i * bay
+    box size: vec(post, height - plinth_h, depth), at: at + vec(x, plinth_h + (height - plinth_h) / 2, -depth / 2), material: steel, round: 0.004
+  # the shelves, one board to each bay, even heights, the last one at the top
+  for each j in range(0, shelves, 1)
+    let top = plinth_h + (j + 1) * pitch
+    for each i in range(0, bays, 1)
+      let x = -width / 2 + post / 2 + (i + 0.5) * bay
+      box size: vec(bay - post, board, depth - setback - panel), at: at + vec(x, top - board / 2, -panel - (depth - setback - panel) / 2), material: wood, round: 0.004
