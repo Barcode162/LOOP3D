@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-11** · N5, "Dark stays dark: a lit room beside an unlit one": Dark stays dark: unlit room is 0.0% of the lit one in film and 0.8% live (under 2%); two_rooms scene and picture added; deployed.
 - **2026-11-11** · N2, "The word strip": The word strip: a glowing rectangle on a dark channel plus panel lamps that stand for it (film matches lamps within 0.2%); deployed.
 - **2026-11-11** · S7, "The word group": The word group: indented lines under it are placed, turned and hidden as one (things, lamps, groups inside groups); a recipe called inside lands in it; 179 tests; deployed.
 - **2026-11-11** · L-pendant_dome, "Library light: pendant_dome": pendant_dome: dome, cord, rose, dim bulb and one spot whose angle is the dome's opening; 2240 triangles; deployed.

@@ -18,6 +18,7 @@
     {"name": "courtyard", "filmtime": 3},
     {"name": "cabin", "filmtime": 2},
     {"name": "the_woods", "filmtime": 5},
-    {"name": "bar"}
+    {"name": "bar"},
+    {"name": "two_rooms"}
   ]
 }

@@ -35,3 +35,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | S7 | M | lead | 60 | 7 | 2026-11-11 |
 | L-pendant_dome | S | asset-smith | 24 | 6 | 2026-11-11 |
 | L-track_spots | S | asset-smith | 24 | 5 | 2026-11-11 |
+| N5 | M | builder | 60 | 482 | 2026-11-11 |
