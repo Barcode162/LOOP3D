@@ -1,0 +1,51 @@
+# armchair_leather · a worn leather club armchair: a deep seat cushion, a rounded back that
+# rolls round into fat arms, and four short dark wooden feet, all a little slumped
+# armchair_leather(at, turn, leather, wood, seed) stands it on `at` (the floor under its
+# middle), facing -z, turned `turn`. It is 0.85 m wide, 0.9 m deep and 0.8 m high; the seat
+# is at 0.42 m. Each seed slumps it a little differently (cushion sag, a leaning back, arms
+# a hair uneven). Gives back the group (.position, .turn, .visible) with `.seat` (where a
+# person sits) and `.arms` (the two arm tops) as points.
+#
+# kind: model
+# place: armchair_leather(AT, turn: 0, seed: 1)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: chair, armchair, leather, club, seat, furniture, interior
+# size: chair
+# sockets: seat, top
+# seeds: any whole number
+# pictures: armchair_leather(AT, seed: 1) | armchair_leather(AT, seed: 7) | armchair_leather(AT, seed: 23)
+
+let worn_leather = material(like: "leather", color: rgb(0.3, 0.16, 0.09), roughness: 0.55)
+
+to armchair_leather(at: vec(0, 0, 0), turn: 0, leather: worn_leather, wood: "oak", seed: 1)
+  let foot = 0.1
+  let seat_top = 0.42
+  let arm_r = 0.1
+  let arm_x = 0.425 - arm_r
+  let dark = material(like: wood, color: rgb(0.17, 0.1, 0.06))
+  let sag = 0.012 + 0.012 * (noise(seed * 3.1, 0.5, 0.5) + 1) / 2
+  let lean = 12 deg + 3 deg * noise(seed * 5.7, 1.5, 0.5)
+  let uneven = 0.012 * noise(seed * 9.3, 2.5, 0.5)
+  let chair = group(at: at, turn: turn)
+    # four short feet
+    for each sx in [-1, 1]
+      for each sz in [-1, 1]
+        cylinder radius: 0.032, height: foot + 0.01, at: vec(sx * 0.33, foot / 2, sz * 0.36), material: dark, sides: 12
+    # the low body under everything
+    box size: vec(0.8, 0.22, 0.84), at: vec(0, foot + 0.11, 0), material: leather, round: 0.07, steps: 2
+    # the deep seat cushion, sunk a little in the middle
+    box size: vec(0.47, 0.15, 0.6), at: vec(0, seat_top - 0.075 - sag, -0.07), material: leather, round: 0.06, steps: 2, tilt: -3 deg
+    # the back: a thick slab leaning back, a rolled top, and a cushion in front of it
+    box size: vec(0.82, 0.56, 0.2), at: vec(0, 0.53, 0.32), material: leather, round: 0.09, steps: 2, tilt: lean
+    box size: vec(0.8, 0.19, 0.2), at: vec(0, 0.7, 0.37), material: leather, round: 0.095, steps: 3
+    box size: vec(0.46, 0.34, 0.14), at: vec(0, 0.6, 0.17), material: leather, round: 0.06, steps: 2, tilt: lean
+    # the fat rolled arms: a block, and a fat roll along the top
+    for each s in [-1, 1]
+      let top = 0.6 + s * uneven
+      box size: vec(arm_r * 2 - 0.02, 0.3, 0.8), at: vec(s * arm_x, 0.38, 0), material: leather, round: 0.05, steps: 2
+      box size: vec(arm_r * 2, arm_r * 2, 0.84), at: vec(s * arm_x, top - arm_r + 0.02, 0), material: leather, round: arm_r - 0.005, steps: 3
+  chair.seat = at + vec(0, seat_top, -0.07)
+  chair.arms = [at + vec(-arm_x, 0.62, 0), at + vec(arm_x, 0.62, 0)]
+  return chair
