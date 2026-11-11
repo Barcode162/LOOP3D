@@ -1,14 +1,28 @@
-# The Loft, goal 2: night falls. The same bare room two floors high (9 m wide,
+# The Loft, goal 3: the upper floor and the stair. Goal 2's night, kept: the same bare room two floors high (9 m wide,
 # 6 m high, 12 m deep) with one wall of glass, but the sun is gone and the sky
 # is near black. One bare 800 lumen bulb hangs in the middle: everything you
 # can see is lit by it, and nothing else is lit at all.
 use "loft_shell"
 use "glazing_wall"
+use "mezzanine_deck"
+use "stair_straight"
+use "steel_rail"
+use "glass_balustrade"
 title "The Loft"
 mode "game"
 sky "color", color: vec(0.02, 0.03, 0.08), nits: 0.05
 loft_shell(size: vec(9, 6, 12), floor: "floorboards", walls: "plaster")
 glazing_wall(at: vec(0, 0, -6), width: 9, height: 6, across: 6, up: 4)
+# the upper floor. The "back" of the room is +z (the far end from the glass wall at z = -6), so the
+# deck covers z from 2 to 6 and leaves the glass wall free. Its top is at 3.06 m (17 rises of 0.18 m).
+mezzanine_deck(at: vec(0, 0, 2), width: 9, depth: 4, top: 3.06)
+# the stair climbs the left wall towards +z: 17 rises, 16 treads, its top step level with the deck at z = 2
+# (the stair is 0.95 wide, its middle 4.0 m left of centre, so its steel sits just off the wall at x = -4.5)
+stair_straight(at: vec(-4, 0, -2.32), rises: 17, rise: 0.18, going: 0.27, width: 0.95)
+# the rail on the stair's open (right) side, climbing along the nosing line from 0.18 m at the foot to the deck
+steel_rail(vec(-3.48, 0.18, -2.32), vec(-3.48, 3.06, 2))
+# the glass guard along the deck's front edge, from the stair's mouth to the right wall, standing on the deck
+glass_balustrade(vec(-3.4, 3.06, 2.06), vec(4.5, 3.06, 2.06))
 # a mark the height of a person by the glass, to judge the room by (1.8 m)
 box size: vec(0.5, 1.8, 0.05), at: vec(-3.9, 0.9, -5.5), material: "oak"
 # the bulb: a cord from the ceiling, a brass holder, and the light itself
