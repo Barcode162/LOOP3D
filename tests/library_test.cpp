@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 
+#include "engine/core/image.h"
 #include "engine/core/settings.h"
 #include "engine/project/library.h"
 #include "engine/project/project.h"
@@ -120,4 +121,49 @@ TEST(library_entries_are_within_their_size_budget) {
       CHECK(problems.size() == 1 && problems[0].find("over") != std::string::npos);
       break;
     }
+}
+
+// `loop library picture` for an entry of kind surface: the test ball, near and --far
+// (docs/SURFACES.md section 11). Run as the real command, from a made-up library folder.
+namespace {
+bool pictureIsNotFlat(const std::string& path) {
+  Image img;
+  if (!readPng(path, img, false) || img.width != 512 || img.height != 512) return false;
+  float lo = 1e9f, hi = -1e9f;
+  for (const Vec4& p : img.px) lo = std::min(lo, p.x + p.y + p.z), hi = std::max(hi, p.x + p.y + p.z);
+  return hi - lo > 0.3f;
+}
+}  // namespace
+
+TEST(library_picture_of_a_surface_is_the_test_ball) {
+  namespace fs = std::filesystem;
+  const std::string dir = "build/m8_library";
+  std::error_code ec;
+  fs::remove_all(dir, ec);
+  fs::create_directories(dir + "/library/surfaces", ec);
+  fs::create_directories(dir + "/library/models", ec);
+  fs::copy_file("library/models/test_ball.loop", dir + "/library/models/test_ball.loop", ec);
+  CHECK(!ec);
+  FILE* f = std::fopen((dir + "/library/surfaces/test_red.loop").c_str(), "w");
+  CHECK(f != nullptr);
+  if (!f) return;
+  std::fputs(
+      "# test_red · glossy red paint, for the test\n#\n# kind: surface\n# place: test_ball(\"test_red\", AT)\n# credit: J Production\n"
+      "# licence: our own work\n# from: order M8\n# size: chair\n\n"
+      "to test_red(seed: 1)\n"
+      "  return surface(\"test_red\", seed: seed, tile: 0.5 m, base: {color: rgb(0.55, 0.05, 0.04), roughness: 0.3}, "
+      "wear: {color: rgb(0.6, 0.6, 0.62), amount: 0.9}, dirt: {color: rgb(0.06, 0.04, 0.03), amount: 0.8})\n",
+      f);
+  std::fclose(f);
+  // small pictures: 8 samples, not the command's "good"
+  const std::string loop = fs::absolute("build/loop").string();
+  const std::string go = "cd " + dir + " && " + loop + " library picture ";
+  CHECK(std::system((go + "test_red --samples 8 -o near.png > near.txt 2>&1").c_str()) == 0);
+  CHECK(std::system((go + "test_red --samples 8 --far --seed 2 -o far.png > far.txt 2>&1").c_str()) == 0);
+  CHECK(pictureIsNotFlat(dir + "/near.png"));
+  CHECK(pictureIsNotFlat(dir + "/far.png"));
+  // a built-in material's name is not a surface entry; and --far is only for a surface
+  CHECK(std::system((go + "oak -o oak.png > oak.txt 2>&1").c_str()) != 0);
+  CHECK(!fs::exists(dir + "/oak.png"));
+  CHECK(std::system((go + "test_ball --far -o x.png > x.txt 2>&1").c_str()) != 0);
 }
