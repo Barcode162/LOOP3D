@@ -282,6 +282,77 @@ average 18.2 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10
    32), written with a storage texture; one pick a pixel; one lamp fewer traced on its own (the same rays).
    The bar on High after 80 frames: grain 4.9 (off 3.9; one pick unkept 8.6), score 12.0 (off 11.9).
    ?view=6 shows the kept answer (red: started afresh).
+   *The shader, whole, 2026-11-11 (the user's order; SH1):* the live shader lights every material with the film
+   renderer's model (`engine/render/bsdf.cpp`), from every light: the diffuse less by what the mirror lobe takes at
+   the view, the light a rough surface sends back between its own bumps (1 + f0 (1/E - 1), E from the split-sum
+   fit), a clear coat lobe with its own roughness, sheen, light through thin things from behind (translucency,
+   and half the subsurface in its colour), the mirror colour from `specular`, glass by its own bending strength.
+   Before: the coat and the sheen came only from the sky, light from behind only from the sun, `specular` and the
+   coat's roughness were never sent. Creases darken pale surfaces less (Jimenez 2016) and mirrors only where their
+   own view is hidden (Lagarde 2014).
+   *Panels as rectangles:* a panel within six of its diagonals is lit as what it is: its diffuse by Lambert's edge
+   formula, the part below the surface's horizon cut by a ball's fit (Heitz and Hill 2017; against a brute-force
+   answer over 300 cases 8% off on average, where one point was up to 46% too bright under a big panel); its shine
+   as its own mirror image (the point of the panel nearest the mirrored view), never brighter than the panel. Its
+   sides come from the way it faces by the film's rule, so a strip may be one long panel (N6's shader half).
+   *Reflections know the sky:* each light-cache probe keeps, per face, the share of the sky it looks at that is
+   open (the picture's alpha). A glossy surface mirrors the sky's picture by that share and the room's own light
+   (what arrives beyond the sky's part) for the rest. Before: a closed room's floor mirrored the open sky whenever
+   its lamps were bright, and nothing at all at night.
+   *The glow as film's:* bloom's six levels were summed and never divided: six times film's glow, a veil over
+   every picture (live metered 1.1 to 2.2 times brighter than cinema; now 0.8 to 1.2). Now each wider level counts
+   three quarters of the one before and the sum is an average; halation glows round the brights only. The fog's
+   sunlit share reads the far sun shadow past the near one.
+   *The ladder, `render.shading`* (compiled into the lighting passes: a level's extra work isn't in the levels
+   below): 0 Lowest (colour, shine, glow; 4 shadow taps; panels as points), 1 Standard (all of the above; 12 taps
+   turned per pixel; Phone's own), 2 High (the sun's shadow sharp where things touch and soft far from what casts
+   it, from the depths round the point and the sun's true size; 4 taps for lamp-map shadows; 12 crease points;
+   reflections refine their hit; High's own), 3 Highest (16 taps, 16 crease points, 40 reflection steps). The
+   fog's shafts take 8, 12, 16, 24 steps by level (their grain showed once the veil was gone). `?shading=` on the page.
+   *Tried and dropped:* spreading a curved glossy thing's highlight over what a pixel covers (Tokuyoshi and
+   Kaplanyan 2019): a 36-pixel chrome ball lost its sharp sky and the sun's glint became a halo.
+   *The score* (cinema at 32 samples; before, then after):
+
+```
+windows 3.4 s, 3.0 M rays/s
+showcase_hall             10.3         15.7        1.43
+showcase_materials        27.0         37.2        1.36
+showcase_light            28.1         76.4        0.52
+showcase_sky               5.0         10.4        1.14
+showcase_fog              13.4         24.7        1.25
+showcase_physics          30.0         87.2        1.26
+showcase_people           25.0         48.2        1.27
+showcase_glade            25.3         46.2        1.10
+courtyard                  9.0         17.3        2.23
+cabin                     12.9         24.6        1.41
+the_woods                 21.7         30.1        1.87
+bar                       11.9         29.8        1.16
+two_rooms                  0.4          1.2        1.11
+windows                    2.4          6.5        1.23
+average 15.9 over 14 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
+```
+```
+showcase_hall             12.6         20.6        1.11
+showcase_materials        28.3         42.2        1.05
+showcase_light            30.7         77.3        0.43
+showcase_sky               5.6         10.1        1.00
+showcase_fog              10.9         23.9        0.92
+showcase_physics          31.1         88.6        1.15
+showcase_people           26.3         50.4        1.16
+showcase_glade            27.8         52.7        0.81
+courtyard                 14.1         31.0        1.04
+cabin                     14.7         26.4        0.95
+the_woods                 24.0         33.6        1.17
+bar                       13.0         29.9        0.90
+two_rooms                  0.5          1.1        0.93
+windows                    1.4          3.7        1.08
+average 17.2 over 14 scenes (ΔE: 0 the same picture, about 2 barely visible, 10 plainly different)
+```
+   The average is worse by 1.3 though every picture is plainly nearer cinema's contrast and brightness: the
+   veil greyed the live pictures, and a greyer picture scores nearer to anything with this measure. What it
+   uncovers is next: a panel light is a visible glowing thing in film and unseen live (hall, light, physics,
+   materials), and the light cache's bounce is too red on shaded walls (courtyard).
+   *Found, not done:* a model's normal and glow pictures are read by neither renderer.
 9. **Research.** Radiance cascades against the light cache; bidirectional paths in cinema.
 10. **World.** Typed relationships and streaming (with rebuild step 12, world generation).
 

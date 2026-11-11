@@ -95,9 +95,9 @@ function serve() {
       // and, drawing in clusters, until the background cook has switched over
       const switched = !config.clusters || st.clustered || (process.env.PARAMS || '').includes('clusters=0');
       // and until the light cache's probes are all baked
-      // (and the far sun shadow, drawn a part a frame), then 8 frames more for frame blending to settle on it
+      // (and the far sun shadow, drawn a part a frame), then 32 frames more: frame blending settles on it (its grain is an average of 16 frames) and the main lamps' shadow maps, drawn one a frame, are all there
       if (st.cacheWaiting || st.farWaiting) frames0 = st.frames;
-      steady = st.frames - frames0 >= 8 && moved < 0.002 && switched ? steady + 1 : 0;
+      steady = st.frames - frames0 >= 32 && moved < 0.002 && switched ? steady + 1 : 0;
       last = st.exposure;
     }
     // the frame itself, read back from the GPU (no page buttons on it)

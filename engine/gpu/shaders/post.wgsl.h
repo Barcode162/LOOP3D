@@ -41,6 +41,12 @@ struct Out {
   return o;
 }
 fn lum(c : vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
+// The glow's six levels are summed on the way up, each wider one counting
+// three quarters of the one before (film's weights, 1 / (1 + level / 2), are
+// close to that); their sum, to make the total an average. Summed unweighted
+// and never divided, the glow was six times film's: a veil over the picture.
+const kGlowUp = 0.75;
+const kGlowSum = 3.288;  // 1 + 0.75 + 0.75^2 + ... + 0.75^5
 fn agx(c0 : vec3f) -> vec3f {
   let inM = mat3x3f(vec3f(0.842479062253094, 0.0423282422610123, 0.0423756549057051),
                     vec3f(0.0784335999999992, 0.878468636469772, 0.0784336),
@@ -99,7 +105,7 @@ fn grain(p : vec2f, t : f32) -> f32 {
     let raw = textureSampleLevel(hdr, linearSampler, inA(huv), 0.0).rgb;
     if (post.screen.w < 1.5 || post.screen.w > 3.5) { return vec4f(clamp(raw, vec3f(0.0), vec3f(1.0)), 1.0); }
     if (post.screen.w < 2.5) { return vec4f(exposureBuf[0] * 1000.0, exposureBuf[1] * 1000.0, 0.0, 1.0); }
-    let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb;
+    let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb / kGlowSum;
     return vec4f(clamp(b, vec3f(0.0), vec3f(1.0)), 1.0);
   }
   let cuv = uv - 0.5;
@@ -137,9 +143,12 @@ fn grain(p : vec2f, t : f32) -> f32 {
   let ratio = select(1.0, exposureBuf[0] / max(exposureBuf[1], 1e-12), post.exposure.z > 0.5);
   let exposure = ratio * exp2(post.exposure.y);
   c *= exposure;
-  let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb * exposure;
+  // the glow: its levels' weighted average (kGlowSum: what fsUp's weights add up to), as film's
+  let b = textureSampleLevel(bloomTex, linearSampler, buv, 0.0).rgb * (exposure / kGlowSum);
   c = c + (b - min(c, vec3f(8.0))) * post.fx.x;
-  c += b * vec3f(1.0, 0.25, 0.05) * post.fx2.z * 0.5;
+  // halation: film's red glow, round what is bright only (the glow of everything gave a red veil
+  // over the whole picture, where film's is the glow of the brights alone)
+  c += b * saturate((lum(b) - 0.9) / 2.0) * vec3f(1.0, 0.25, 0.05) * post.fx2.z * 2.0;
   c *= post.wb.rgb;
   let cos4 = 1.0 / ((1.0 + r2 * 0.25) * (1.0 + r2 * 0.25));
   c *= mix(1.0, cos4 * (1.0 - 0.4 * r2), post.fx.y);
@@ -203,7 +212,7 @@ fn grain(p : vec2f, t : f32) -> f32 {
       c += textureSampleLevel(hdr, linearSampler, inA(i.uv * pu.a.xy + vec2f(f32(x), f32(y)) * px * 1.5 * post.gamma.w), 0.0).rgb * w;
     }
   }
-  return vec4f(c, 1.0);
+  return vec4f(c * kGlowUp, 1.0);
 }
 )";
 

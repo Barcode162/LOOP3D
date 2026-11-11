@@ -227,14 +227,14 @@ fn sunShadowIn(layer : i32, p : vec4f, spread : f32, rot : vec2f) -> f32 {
   return s / f32(n);
 }
 // How much of the fog along the view to a point at `dist` the sun reaches:
-// 8 points along the way (nearer ones counting more, as their light is lost
+// 8 to 24 points along the way, by the shading level (nearer ones counting more, as their light is lost
 // less on its way to the eye), each one tap of the near shadow map; turned per
 // pixel and per frame, so frame blending smooths it into shafts.
 fn fogSunlit(dist : f32, toPoint : vec3f, density : f32, pix : vec2f) -> f32 {
   let start = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))) + frame.ao.z * 0.618034);
   var lit = 0.0;
   var total = 0.0;
-  let n = select(8, 16, kShading >= 3u);
+  let n = select(select(select(8, 12, kShading >= 1u), 16, kShading >= 2u), 24, kShading >= 3u);
   for (var k = 0; k < n; k++) {
     let t = dist * (f32(k) + start) / f32(n);
     let w = exp(-density * t);
