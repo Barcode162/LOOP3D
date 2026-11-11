@@ -27,20 +27,22 @@ inline const char* kSceneWgsl = R"(
 @group(1) @binding(14) var cachePZ : texture_3d<f32>;
 @group(1) @binding(15) var cacheNZ : texture_3d<f32>;
 // The light falling on a surface at p facing n that isn't straight from a
-// lamp or the sun, blended between the probes round it and between the faces.
-fn cacheLight(p : vec3f, n : vec3f) -> vec3f {
+// lamp or the sun, blended between the probes round it and between the faces;
+// and (a) how much of what such a surface looks at is open sky.
+fn cacheLight4(p : vec3f, n : vec3f) -> vec4f {
   let dims = frame.cache1.xyz;
   let half = 0.5 / dims;
   let uvw = clamp(((p - frame.cache0.xyz) / frame.cache0.w + 0.5) / dims, half, 1.0 - half);
-  let fx = select(textureSampleLevel(cacheNX, skySampler, uvw, 0.0), textureSampleLevel(cachePX, skySampler, uvw, 0.0), n.x > 0.0).rgb;
-  let fy = select(textureSampleLevel(cacheNY, skySampler, uvw, 0.0), textureSampleLevel(cachePY, skySampler, uvw, 0.0), n.y > 0.0).rgb;
-  let fz = select(textureSampleLevel(cacheNZ, skySampler, uvw, 0.0), textureSampleLevel(cachePZ, skySampler, uvw, 0.0), n.z > 0.0).rgb;
+  let fx = select(textureSampleLevel(cacheNX, skySampler, uvw, 0.0), textureSampleLevel(cachePX, skySampler, uvw, 0.0), n.x > 0.0);
+  let fy = select(textureSampleLevel(cacheNY, skySampler, uvw, 0.0), textureSampleLevel(cachePY, skySampler, uvw, 0.0), n.y > 0.0);
+  let fz = select(textureSampleLevel(cacheNZ, skySampler, uvw, 0.0), textureSampleLevel(cachePZ, skySampler, uvw, 0.0), n.z > 0.0);
   return fx * n.x * n.x + fy * n.y * n.y + fz * n.z * n.z;
 }
+fn cacheLight(p : vec3f, n : vec3f) -> vec3f { return cacheLight4(p, n).rgb; }
 
 // How much of lamp k (one of the first, mapped) a point sees: its depth in the
 // lamp's view that faces it, against the map (the chip blends 2x2 of them).
-fn lampMapSeen(p : vec3f, L : Light, k : u32) -> f32 {
+fn lampMapSeen(p : vec3f, L : Light, k : u32, pix : vec2f) -> f32 {
   let v = p - L.pos.xyz;
   let a = abs(v);
   var face = 0u;
@@ -53,6 +55,18 @@ fn lampMapSeen(p : vec3f, L : Light, k : u32) -> f32 {
   let tile = frame.lampMaps.y;
   let inset = 1.0 / tile;
   let uv = clamp(ndc.xy * vec2f(0.5, -0.5) + 0.5, vec2f(inset), vec2f(1.0 - inset));
+  if (kShading >= 2u) {
+    // a softer edge: four taps a texel and a half round the point (each the
+    // chip's own blend of 2x2), turned per pixel, kept inside this view's tile
+    let ang = pixelTurn(pix) * 6.2831853;
+    let rot = vec2f(cos(ang), sin(ang));
+    var seen = 0.0;
+    for (var t = 0; t < 4; t++) {
+      let q = clamp(uv + spiral(t, 4, rot) * (1.5 * inset), vec2f(inset), vec2f(1.0 - inset));
+      seen += textureSampleCompareLevel(lampMap, shadowSampler, vec2f((f32(face) + q.x) / 6.0, q.y), i32(k), ndc.z);
+    }
+    return seen * 0.25;
+  }
   let at = vec2f((f32(face) + uv.x) / 6.0, uv.y);
   return textureSampleCompareLevel(lampMap, shadowSampler, at, i32(k), ndc.z);
 }
@@ -144,29 +158,73 @@ fn V_smith(nv : f32, nl : f32, a : f32) -> f32 {
   return 0.5 / max(gv + gl, 1e-5);
 }
 fn schlick(f0 : vec3f, c : f32) -> vec3f { return f0 + (vec3f(1.0) - f0) * pow(1.0 - clamp(c, 0.0, 1.0), 5.0); }
-// split-sum environment BRDF (Karis' analytic fit)
-fn envBrdf(f0 : vec3f, rough : f32, nv : f32) -> vec3f {
+// split-sum environment BRDF (Karis' analytic fit): the mirror colour's share (x) and the rest (y)
+fn envAB(rough : f32, nv : f32) -> vec2f {
   let c0 = vec4f(-1.0, -0.0275, -0.572, 0.022);
   let c1 = vec4f(1.0, 0.0425, 1.04, -0.04);
   let r = rough * c0 + c1;
   let a004 = min(r.x * r.x, exp2(-9.28 * nv)) * r.x + r.y;
-  let ab = vec2f(-1.04, 1.04) * a004 + r.zw;
+  return vec2f(-1.04, 1.04) * a004 + r.zw;
+}
+fn envBrdf(f0 : vec3f, rough : f32, nv : f32) -> vec3f {
+  let ab = envAB(rough, nv);
   return f0 * ab.x + ab.y;
 }
 
-// One layer of the sun's shadow: 12 taps of a Poisson disk (soft edges),
-// `spread` uv wide; 1 outside it.
-fn sunShadowIn(layer : i32, p : vec4f, spread : f32) -> f32 {
+// How much the shader does (render.shading), compiled in: a level's extra
+// work isn't there at all in the levels below it (a shader keeps GPU registers
+// for its heaviest path even when that path never runs).
+//   0 Lowest: every material's colour, shine and glow, the lobes that cost per lamp left out
+//   1 Standard: every lobe the film renderer has, from every light; steady highlights; shadows turned per pixel
+//   2 High: sun shadows that sharpen where things touch and soften with distance; softer lamp-map shadows; finer creases
+//   3 Highest: more of each (shadow taps, crease points, reflection steps)
+override kShading : u32 = 1u;
+
+// A number that differs from pixel to pixel (and, with frame blending, from
+// frame to frame, so the blend smooths it): turns sample patterns.
+fn pixelTurn(pix : vec2f) -> f32 {
+  let still = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))));
+  return select(still, fract(still + frame.ao.z * 0.618034), frame.shadowFar.z > 0.5);
+}
+// 16 directions a golden angle apart: with radius sqrt((k + 0.5) / n), the
+// first n cover a disk evenly for any n (Vogel's spiral)
+const kSpiral = array<vec2f, 16>(vec2f(1.00000, 0.00000), vec2f(-0.73737, 0.67549), vec2f(0.08743, -0.99617), vec2f(0.60844, 0.79360), vec2f(-0.98471, -0.17418), vec2f(0.84376, -0.53673), vec2f(-0.25960, 0.96572), vec2f(-0.46091, -0.88745), vec2f(0.93932, 0.34304), vec2f(-0.92435, 0.38156), vec2f(0.42385, -0.90573), vec2f(0.29928, 0.95416), vec2f(-0.86521, -0.50141), vec2f(0.97668, -0.21472), vec2f(-0.57513, 0.81806), vec2f(-0.12851, -0.99171));
+fn spiral(k : i32, n : i32, rot : vec2f) -> vec2f {
+  let d = kSpiral[k] * sqrt((f32(k) + 0.5) / f32(n));
+  return vec2f(d.x * rot.x - d.y * rot.y, d.x * rot.y + d.y * rot.x);
+}
+
+// One layer of the sun's shadow: taps over a disk `spread` uv wide (soft
+// edges), turned by `rot`; 1 outside the layer.
+fn sunShadowIn(layer : i32, p : vec4f, spread : f32, rot : vec2f) -> f32 {
   let uv = vec2f(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || p.z > 1.0) { return 1.0; }
-  var s = 0.0;
-  let taps = array<vec2f, 12>(vec2f(-0.326, -0.406), vec2f(-0.840, -0.074), vec2f(-0.696, 0.457), vec2f(-0.203, 0.621),
-                              vec2f(0.962, -0.195), vec2f(0.473, -0.480), vec2f(0.519, 0.767), vec2f(0.185, -0.893),
-                              vec2f(0.507, 0.064), vec2f(0.896, 0.412), vec2f(-0.322, -0.933), vec2f(-0.792, -0.598));
-  for (var i = 0; i < 12; i++) {
-    s += textureSampleCompareLevel(shadowMap, shadowSampler, uv + taps[i] * spread, layer, p.z - frame.fogColor.w);
+  let n = select(select(12, 16, kShading >= 3u), 4, kShading == 0u);
+  var wide = spread;
+  if (kShading >= 2u) {
+    // how far above this point what shades it is (the nearer depths round it,
+    // on average) says how wide the sun's disk smears the shadow's edge here:
+    // sharp where a thing stands on the ground, soft far from what casts it
+    let size = vec2i(textureDimensions(shadowMap));
+    let scale = select(1.0, 1.0 / frame.shadowFar.x, layer > 0);  // the far layer's box is that much bigger
+    let search = spread * 3.0;
+    var sum = 0.0;
+    var count = 0.0;
+    for (var k = 0; k < 8; k++) {
+      let at = uv + spiral(k, 8, rot) * search;
+      let d = textureLoad(shadowMap, clamp(vec2i(at * vec2f(size)), vec2i(0), size - 1), layer, 0);
+      if (d < p.z - frame.fogColor.w) { sum += d; count += 1.0; }
+    }
+    if (count == 0.0) { return 1.0; }  // nothing near shades it
+    let above = (p.z - sum / count) * frame.shade.z * scale;       // metres
+    let smear = above * frame.shade.x / (frame.shade.y * scale);   // the half-shadow's half width, in uv
+    wide = clamp(smear, spread * 0.5, spread * 3.0);
   }
-  return s / 12.0;
+  var s = 0.0;
+  for (var i = 0; i < n; i++) {
+    s += textureSampleCompareLevel(shadowMap, shadowSampler, uv + spiral(i, n, rot) * wide, layer, p.z - frame.fogColor.w);
+  }
+  return s / f32(n);
 }
 // How much of the fog along the view to a point at `dist` the sun reaches:
 // 8 points along the way (nearer ones counting more, as their light is lost
@@ -176,8 +234,9 @@ fn fogSunlit(dist : f32, toPoint : vec3f, density : f32, pix : vec2f) -> f32 {
   let start = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))) + frame.ao.z * 0.618034);
   var lit = 0.0;
   var total = 0.0;
-  for (var k = 0; k < 8; k++) {
-    let t = dist * (f32(k) + start) / 8.0;
+  let n = select(8, 16, kShading >= 3u);
+  for (var k = 0; k < n; k++) {
+    let t = dist * (f32(k) + start) / f32(n);
     let w = exp(-density * t);
     let q = frame.camPos.xyz + toPoint * t;
     let p = frame.shadowViewProj * vec4f(q, 1.0);
@@ -193,17 +252,23 @@ fn fogSunlit(dist : f32, toPoint : vec3f, density : f32, pix : vec2f) -> f32 {
 }
 
 // The sun's shadow: the sharp near map, and beyond it the far one (with the
-// same softness in metres), blended over the near box's outer edge.
-fn shadowAt(world : vec3f, n : vec3f) -> f32 {
+// same softness in metres), blended over the near box's outer edge. `side`:
+// the way the point is moved off its surface first (towards the sun's side).
+fn shadowAt(world : vec3f, side : vec3f, pix : vec2f) -> f32 {
   let texel = 1.0 / frame.params.z;
   let spread = texel * frame.sh[0].w;
-  let p = frame.shadowViewProj * vec4f(world + n * 0.03, 1.0);
+  var rot = vec2f(1.0, 0.0);
+  if (kShading >= 1u && frame.shadowFar.z > 0.5) {
+    let a = pixelTurn(pix) * 6.2831853;
+    rot = vec2f(cos(a), sin(a));
+  }
+  let p = frame.shadowViewProj * vec4f(world + side * 0.03, 1.0);
   let edge = max(abs(p.x), abs(p.y));  // 0 at the near box's middle, 1 at its side
-  if (frame.shadowFar.y < 0.5 || (edge < 0.8 && p.z <= 1.0)) { return sunShadowIn(0, p, spread); }
-  let pf = frame.shadowFarViewProj * vec4f(world + n * 0.03 / frame.shadowFar.x, 1.0);
-  let far = sunShadowIn(i32(frame.shadowFar.y + 0.5), pf, max(spread * frame.shadowFar.x, texel * 0.5));
+  if (frame.shadowFar.y < 0.5 || (edge < 0.8 && p.z <= 1.0)) { return sunShadowIn(0, p, spread, rot); }
+  let pf = frame.shadowFarViewProj * vec4f(world + side * 0.03 / frame.shadowFar.x, 1.0);
+  let far = sunShadowIn(i32(frame.shadowFar.y + 0.5), pf, max(spread * frame.shadowFar.x, texel * 0.5), rot);
   if (edge >= 0.96 || p.z > 1.0) { return far; }
-  return mix(sunShadowIn(0, p, spread), far, (edge - 0.8) / 0.16);
+  return mix(sunShadowIn(0, p, spread, rot), far, (edge - 0.8) / 0.16);
 }
 
 struct Shaded {
@@ -246,6 +311,48 @@ fn lampVisibility(p : vec3f, L : Light, pix : vec2f) -> f32 {
 // GPU registers for its heaviest path even when that path never runs, so the
 // ray code alone would slow every pixel.
 override kLampShadows : bool = true;
+
+// One surface point's scattering, the film renderer's model (engine/render/bsdf.cpp):
+// diffuse, a glossy mirror lobe (GGX), a clear coat over both, a sheen, and
+// light let through thin things from behind.
+struct Surf {
+  n : vec3f,
+  v : vec3f,
+  nv : f32,
+  diffuse : vec3f,      // already less by what the mirror lobe takes at this view
+  translucent : vec3f,  // what comes through from behind
+  f0 : vec3f,
+  sheen : vec3f,
+  comp : vec3f,         // light a rough surface sends back after bouncing between its own bumps
+  alpha : f32,
+  coat : f32,
+  coatAlpha : f32,
+};
+// What the surface sends to the eye of light arriving from `l` (times the
+// cosine). `bulb`: how much a lamp's size widens the highlight (0 for the sun).
+fn surfLight(s : Surf, l : vec3f, bulb : f32) -> vec3f {
+  let nl = dot(s.n, l);
+  if (nl <= 0.0) { return s.translucent * (-nl / PI); }
+  let h = normalize(l + s.v);
+  let nh = max(dot(s.n, h), 0.0);
+  let fres = pow(1.0 - clamp(dot(s.v, h), 0.0, 1.0), 5.0);
+  // the coat sits on top: what it reflects doesn't reach what's under it
+  let coatF = s.coat * (0.04 + 0.96 * fres);
+  let under = 1.0 - coatF;
+  // a bulb's size softens highlights (Karis' sphere-light trick)
+  let a = clamp(s.alpha + bulb, 0.0, 1.0);
+  let F = s.f0 + (vec3f(1.0) - s.f0) * fres;
+  var f = s.diffuse / PI + F * s.comp * (D_ggx(nh, a) * V_smith(s.nv, nl, a) * (s.alpha * s.alpha / (a * a)));
+  if (kShading >= 1u) {
+    f += s.sheen * (fres / PI);
+    f *= under;
+    if (s.coat > 0.0) {
+      let ca = clamp(s.coatAlpha + bulb, 0.0, 1.0);
+      f += vec3f(coatF * D_ggx(nh, ca) * V_smith(s.nv, nl, ca) * (s.coatAlpha * s.coatAlpha / (ca * ca)));
+    }
+  }
+  return f * nl;
+}
 
 var<private> resolving : bool = false;  // shading the visibility picture: never cut holes
 fn shade(i : VsOut, front : bool) -> Shaded {
@@ -323,28 +430,45 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     }
   }
   let metal = m.props.x * metalScale;
-  let glass = m.props.y;
-  let alpha = max(rough * rough, 0.002);
+  let glass = m.props.y * (1.0 - metal);
+  var alpha = max(rough * rough, 0.002);
+  if (kShading >= 1u) {
+    // a curved glossy thing: the highlight spread over the directions this
+    // pixel covers (Tokuyoshi and Kaplanyan 2019), as the film renderer's many
+    // samples a pixel average it: chrome legs and rims don't sparkle
+    alpha = sqrt(alpha * alpha + min(0.5 * (dot(slopeNrmX, slopeNrmX) + dot(slopeNrmY, slopeNrmY)), 0.18));
+    rough = sqrt(alpha);
+  }
   let nv = max(dot(n, v), 1e-4);
-  let f0 = mix(vec3f(0.04), base, metal);
-  let diffuseColor = base * (1.0 - metal) * (1.0 - glass);
+  var sf : Surf;
+  sf.n = n;
+  sf.v = v;
+  sf.nv = nv;
+  sf.alpha = alpha;
+  // the mirror colour: a non-metal's from `specular` (0.5: 4%), a metal's its own;
+  // glass does its own mirror below
+  sf.f0 = mix(vec3f(0.08 * m.coat.y), base, metal) * (1.0 - glass);
+  let transl = m.extra.y * (1.0 - metal) * (1.0 - glass);
+  let sss = m.extra.x * (1.0 - metal) * (1.0 - glass);
+  let ab = envAB(rough, nv);
+  let mirrorNow = sf.f0 + (vec3f(1.0) - sf.f0) * pow(1.0 - nv, 5.0);
+  sf.diffuse = base * ((1.0 - metal) * (1.0 - glass) * (1.0 - transl) * (1.0 - 0.5 * sss)) * (1.0 - dot(mirrorNow, vec3f(0.2126, 0.7152, 0.0722)));
+  sf.translucent = base * transl + base * m.sss.rgb * (0.5 * sss);
+  sf.sheen = vec3f(m.props.w) * mix(vec3f(1.0), base, 0.5) * (1.0 - metal);
+  sf.coat = m.props.z;
+  sf.coatAlpha = max(m.coat.x * m.coat.x, 1e-4);
+  sf.comp = vec3f(1.0);
+  if (kShading >= 1u) { sf.comp = vec3f(1.0) + sf.f0 * (1.0 / max(ab.x + ab.y, 0.05) - 1.0); }
+  let lit2 = dot(sf.translucent, vec3f(1.0)) > 0.0;  // lit from behind too
   var lo = vec3f(0.0);
 
   // the sun, with shadows
   if (frame.sunDir.w > 0.5) {
     let l = frame.sunDir.xyz;
     let nl = dot(n, l);
-    let wrap = m.extra.y;  // translucent sheets let light through from behind
-    if (nl > 0.0 || wrap > 0.0) {
-      let sh = shadowAt(i.world, n);
-      let h = normalize(l + v);
-      let nh = max(dot(n, h), 0.0);
-      let F = schlick(f0, max(dot(v, h), 0.0));
-      let spec = D_ggx(nh, alpha) * V_smith(nv, max(nl, 1e-4), alpha) * F;
-      let diff = diffuseColor * (1.0 - F) / PI;
-      var c = (diff + spec) * max(nl, 0.0);
-      c += base * wrap * max(-nl, 0.0) / PI * 0.6;
-      lo += c * frame.sunColor.rgb * sh;
+    if (nl > 0.0 || lit2) {
+      let c = surfLight(sf, l, 0.0);
+      if (dot(c, c) > 0.0) { lo += c * frame.sunColor.rgb * shadowAt(i.world, n * sign(nl), i.clip.xy); }
     }
   }
   // lamps (inverse-square, as bulbs with a size). With the light grid, the
@@ -380,17 +504,19 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let d2 = max(dot(tl, tl), L.pos.w * L.pos.w);
     let l = tl * inverseSqrt(max(dot(tl, tl), 1e-8));
     let nl = dot(n, l);
-    if (nl <= 0.0) { continue; }
+    if (nl <= 0.0 && !lit2) { continue; }
     var I = L.color.rgb / d2;
     if (L.dir.w > 0.5 && L.dir.w < 1.5) {  // spot
       I *= smoothstep(L.cone.y, L.cone.x, dot(-l, L.dir.xyz));
     } else if (L.dir.w > 1.5) {  // panel: radiance x area x cosines
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
+    if (dot(I, I) == 0.0) { continue; }
+    let off = ng * sign(nl);  // off the surface, on the lamp's side
     // the main lamps' shadow maps (Phone): only the first few lamps have one
     var ownShadow = false;
     if (k < u32(frame.lampMaps.x) && frame.lampValid[k] > 0.5) {
-      I *= lampMapSeen(i.world + ng * 0.02, L, k);
+      I *= lampMapSeen(i.world + off * 0.02, L, k, i.clip.xy);
       ownShadow = true;
       if (dot(I, I) == 0.0) { continue; }
     }
@@ -400,7 +526,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // most of any lamp (long rays across a whole room) for a wrong, hard edge
     if (kLampShadows && L.dir.w < 1.5 && shadowed < u32(frame.params.y) && dot(I, vec3f(0.3333)) * preExposure() > 2e-4) {
       shadowed += 1u;
-      I *= lampVisibility(i.world + ng * 0.004, L, i.clip.xy);
+      I *= lampVisibility(i.world + off * 0.004, L, i.clip.xy);
       ownShadow = true;
       if (dot(I, I) == 0.0) { continue; }
     }
@@ -409,13 +535,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // lamps on Phone), in part
     let picked = picking && !ownShadow && L.dir.w < 1.5;
     if (!ownShadow && !picked) { I *= mix(1.0, aoTerm, 0.7); }
-    let h = normalize(l + v);
-    let nh = max(dot(n, h), 0.0);
-    // a bulb's size softens highlights (Karis' sphere-light trick)
-    let a2 = clamp(alpha + L.pos.w / (2.0 * sqrt(d2)), 0.0, 1.0);
-    let F = schlick(f0, max(dot(v, h), 0.0));
-    let spec = D_ggx(nh, a2) * V_smith(nv, nl, a2) * F * (alpha * alpha / (a2 * a2));
-    let c = (diffuseColor * (1.0 - F) / PI + spec) * nl * I;
+    let c = surfLight(sf, l, L.pos.w / (2.0 * sqrt(d2))) * I;
     if (picked) {
       // one kept, each with the chance of its share of the light so far
       let w = dot(c, vec3f(0.3333));
@@ -437,41 +557,75 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     if (rest) {
       shadowNow = shadowPast;
     } else {
-      let seenNow = lampVisibility(i.world + ng * 0.004, lights[pick], i.clip.xy);
+      let Lp = lights[pick];
+      let seenNow = lampVisibility(i.world + ng * (0.004 * sign(dot(ng, Lp.pos.xyz - i.world))), Lp, i.clip.xy);
       shadowCount = select(1.0, min(shadowCount + 1.0, 32.0), shadowPast >= 0.0);
       shadowNow = select(seenNow, mix(shadowPast, seenNow, 1.0 / shadowCount), shadowPast >= 0.0);
     }
     lo += restLight * shadowNow;
   }
-  // the sky's light: diffuse from its harmonics, glossy from the blurred sky
+  // the soft light. Diffuse: the sky's from its harmonics, or the light cache's
+  // (what really reaches here: walls, floor, the sky through openings). Glossy:
+  // what the screen shows that way (High), else the blurred sky, only as bright
+  // as the light coming from that way says the sky is seen there.
   let r = reflect(-v, n);
-  let envSpec = skyRadiance(r, rough * 6.0) * envBrdf(f0, rough, nv);
+  let cached = frame.cache1.w > 0.5;
+  var softN = shIrradiance(n);
+  var softBack = vec3f(0.0);
+  var skySeen = 1.0;
+  var room = vec3f(0.0);
+  if (cached) {
+    // the reflected way: the sky by the share of it the probes see that way
+    // (none under a ceiling), and the room's own light from that way (what
+    // arrives beyond the sky's part) as an even glow: a closed room's floor
+    // mirrors the room, by day and by night, never a sky it can't see
+    softN = cacheLight(i.world, n);
+    let cr = cacheLight4(i.world, r);
+    skySeen = clamp(cr.a, 0.0, 1.0);
+    room = max(cr.rgb - shIrradiance(r) * skySeen, vec3f(0.0)) / PI;
+  }
+  if (lit2) {
+    softBack = shIrradiance(-n);
+    if (cached) { softBack = cacheLight(i.world, -n); }
+  }
   // a little less sky low down (render.occlusion), all of it times render.skyLight
-  let occl = mix(1.0, clamp(0.4 + 0.6 * (n.y * 0.5 + 0.5), 0.0, 1.0), frame.fixedExposure.w);
-  if (frame.cache1.w > 0.5) {
-    // the light cache: the soft light that really reaches here (walls, floor,
-    // the sky through openings); reflections of the sky only as bright as the
-    // light coming from that way says the sky is seen there
-    let seen = clamp(dot(cacheLight(i.world, r), vec3f(0.2126, 0.7152, 0.0722)) / max(dot(shIrradiance(r), vec3f(0.2126, 0.7152, 0.0722)), 1e-4), 0.0, 1.0);
-    lo += (diffuseColor * cacheLight(i.world, n) / PI + envSpec * seen * (1.0 - ssrSeen)) * occl * aoTerm * frame.sunColor.w;
-  } else {
-    lo += (diffuseColor * shIrradiance(n) / PI + envSpec * (1.0 - ssrSeen)) * occl * aoTerm * frame.sunColor.w;
+  let occl = mix(1.0, clamp(0.4 + 0.6 * (n.y * 0.5 + 0.5), 0.0, 1.0), frame.fixedExposure.w) * frame.sunColor.w;
+  // creases: the soft light they lose. A pale surface loses less (light keeps
+  // bouncing in a pale crease: Jimenez 2016); a mirror loses only what its
+  // own narrow view of the room is hidden (Lagarde 2014)
+  var aoDiffuse = vec3f(aoTerm);
+  var aoMirror = aoTerm;
+  if (kShading >= 1u && aoTerm < 1.0) {
+    let al = clamp(sf.diffuse + sf.translucent, vec3f(0.0), vec3f(1.0));
+    let ka = 2.0404 * al - 0.3324;
+    let kb = -4.7951 * al + 0.6417;
+    let kc = 2.7552 * al + 0.6903;
+    aoDiffuse = max(vec3f(aoTerm), ((aoTerm * ka + kb) * aoTerm + kc) * aoTerm);
+    aoMirror = clamp(pow(nv + aoTerm, exp2(-16.0 * rough - 1.0)) - 1.0 + aoTerm, 0.0, 1.0);
   }
-  // what the screen shows in the reflected direction (the room itself, not the sky)
-  lo += ssrColor * envBrdf(f0, rough, nv) * ssrSeen;
-  if (m.props.z > 0.0) {  // clear coat: a second, sharp reflection
-    let Fc = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
-    lo = lo * (1.0 - Fc * m.props.z) + skyRadiance(r, 0.5) * Fc * m.props.z;
+  let coatNow = sf.coat * (0.04 + 0.96 * pow(1.0 - nv, 5.0));
+  let under = select(1.0, 1.0 - coatNow, kShading >= 1u);
+  let seenBase = ssrSeen * (1.0 - smoothstep(0.25, 0.5, rough));
+  let mirror = (sf.f0 * ab.x + ab.y) * sf.comp;
+  lo += (sf.diffuse * softN * under + sf.translucent * softBack) / PI * occl * aoDiffuse;
+  lo += ((skyRadiance(r, rough * 6.0) * skySeen + room) * (1.0 - seenBase) * occl + ssrColor * seenBase) * mirror * under * aoMirror;
+  if (sf.coat > 0.0) {  // clear coat: a second, sharp reflection over everything
+    let coatRough = sqrt(sf.coatAlpha);
+    let seenCoat = ssrSeen * (1.0 - smoothstep(0.25, 0.5, coatRough));
+    if (kShading == 0u) { lo *= 1.0 - coatNow; }
+    lo += ((skyRadiance(r, coatRough * 6.0) * skySeen + room) * (1.0 - seenCoat) * occl + ssrColor * seenCoat) * coatNow * aoMirror;
   }
-  if (m.props.w > 0.0) {  // sheen: a soft rim
-    lo += base * m.props.w * pow(1.0 - nv, 4.0) * shIrradiance(n) / PI;
+  if (m.props.w > 0.0) {  // sheen: a soft rim (the lobe's share of even light: a fit)
+    lo += sf.sheen * softN / PI * (0.028 * pow(1.0 - nv, 2.4)) * under * occl * aoDiffuse;
   }
   lo += m.emission.rgb * glowScale * glowTint;
   var outA = m.emission.w;
   if (glass > 0.0) {
-    // glass: what's reflected, plus the tint of what's behind (blended)
-    let F = schlick(vec3f(0.04), nv);
-    lo += skyRadiance(r, 0.0) * F;
+    // glass: what's reflected (by its own bending strength), plus the tint of
+    // what's behind (blended)
+    let g0 = (m.extra.w - 1.0) / (m.extra.w + 1.0);
+    let F = schlick(vec3f(g0 * g0), nv);
+    lo += (skyRadiance(r, 0.0) * skySeen + room) * F * (occl * glass);
     outA = mix(1.0, max(F.x, 0.08), glass);
     lo = lo / max(outA, 0.08);
   }
@@ -501,6 +655,9 @@ fn shade(i : VsOut, front : bool) -> Shaded {
 
 // the screen slopes of a drawn triangle, from the GPU
 fn takeSlopes(i : VsOut) {
+  let nn = normalize(i.nrm);
+  slopeNrmX = dpdx(nn);
+  slopeNrmY = dpdy(nn);
   slopeWorldX = dpdx(i.world);
   slopeWorldY = dpdy(i.world);
   slopeUvX = dpdx(i.uv);

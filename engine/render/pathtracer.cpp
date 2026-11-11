@@ -723,6 +723,11 @@ Vec3 PathTracer::probeInterval(Vec3 p, Vec3 d, float t0, float t1, uint32_t seed
   return probeLight(r.o, d, seed, bounces, nullptr);
 }
 
+bool PathTracer::seesSky(Vec3 p, Vec3 d) {
+  ++impl_->rays;
+  return !impl_->geom.occluded({p, d}, 1e-4f, 1e7f);
+}
+
 bool PathTracer::clear(Vec3 a, Vec3 b) {
   const Vec3 d = b - a;
   const float len = length(d);

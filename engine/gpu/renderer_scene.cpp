@@ -21,7 +21,9 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
     u.pattern = {static_cast<float>(static_cast<int>(m.pattern.kind)), m.pattern.scale, m.pattern.bump, m.pattern.contrast};
     if (m.pattern.kind == Pattern::Kind::kImage) u.pattern.x = 0;
     u.colorB = {m.pattern.colorB, m.pattern.roughnessVariation};
-    u.extra = {m.subsurface, m.translucency + m.subsurface * 0.4f, m.leafShape ? 1.0f : 0.0f, m.ior};
+    u.extra = {m.subsurface, m.translucency, m.leafShape ? 1.0f : 0.0f, m.ior};
+    u.coat = {m.clearcoatRoughness, m.specular, 0, 0};
+    u.sss = {m.subsurfaceColor, 0};
     auto layer = [&](int t) { return t >= 0 && t < static_cast<int>(texLayer_.size()) ? static_cast<float>(texLayer_[t]) : -1.0f; };
     u.tex = {layer(m.baseTexture), layer(m.metalRoughTexture), layer(m.normalTexture), layer(m.emissiveTexture)};
     u.tex2 = {m.alphaCutoff, m.roughnessMin, 0, 0};

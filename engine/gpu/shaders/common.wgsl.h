@@ -31,6 +31,7 @@ struct Frame {
   prevViewProj : mat4x4f,  // last frame's view, unshifted (screen reflections read last frame's picture)
   prevCam : vec4f,       // last frame's eye
   prevScreen : vec4f,    // last frame's drawn size
+  shade : vec4f,         // the sun's shadow in true sizes: tan of the sun's angular radius, the near box's width (m), its depth (m); -
 };
 struct Light {
   pos : vec4f,     // xyz, radius
@@ -47,6 +48,8 @@ struct Material {
   extra : vec4f,     // subsurface, translucency, leaf, ior
   tex : vec4f,       // model picture layers: colour, rough/metal, normal, glow (-1 none)
   tex2 : vec4f,      // alpha cutoff, least roughness
+  coat : vec4f,      // clear coat roughness, specular (0.5: 4% mirror), -, -
+  sss : vec4f,       // subsurface colour, -
 };
 struct Instance {
   model : mat4x4f,
@@ -116,7 +119,7 @@ var<private> aoTerm : f32 = 1.0;
 // screen reflections (phase 8, High): what a glossy surface reflects, found on
 // screen by the light pass, and how sure (0: the sky's and the light cache's)
 var<private> ssrColor : vec3f = vec3f(0.0);
-var<private> ssrSeen : f32 = 0.0;
+var<private> ssrSeen : f32 = 0.0;  // how sure, before the surface's roughness counts
 // the shared lamp shadow (High), kept over frames: this pixel's answer last
 // frame where its point was (-1: none, start afresh), and this frame's
 var<private> shadowPast : f32 = -1.0;
@@ -125,6 +128,10 @@ var<private> shadowCount : f32 = 0.0;  // frames it has been kept (to 32: blende
 var<private> slopeWorldY : vec3f;
 var<private> slopeUvX : vec2f;
 var<private> slopeUvY : vec2f;
+// how the surface's own direction turns from one pixel to the next: a curved
+// glossy thing's highlight is spread over what the pixel covers (no sparkle)
+var<private> slopeNrmX : vec3f = vec3f(0.0);
+var<private> slopeNrmY : vec3f = vec3f(0.0);
 fn planar(p : vec3f, n : vec3f) -> vec2f {
   let a = abs(n);
   if (a.y >= a.x && a.y >= a.z) { return p.xz; }

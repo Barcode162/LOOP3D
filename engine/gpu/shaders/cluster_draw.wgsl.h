@@ -121,8 +121,12 @@ fn reflectionSeen(p : vec3f, n : vec3f, v : vec3f, rough : f32, pix : vec2f) -> 
   let r = reflect(-v, n);
   let size = vec2i(textureDimensions(sceneDepth));
   let jitter = fract(52.9829189 * fract(dot(pix, vec2f(0.06711056, 0.00583715))) + frame.ao.z * 0.618034);
+  // the same reach in more, shorter steps at the higher levels (1.28^24 = 1.16^40)
+  let steps = select(24, 40, kShading >= 3u);
+  let grow = select(1.28, 1.16, kShading >= 3u);
   var t = 0.04 * (0.5 + jitter);
-  for (var k = 0; k < 24; k++) {
+  var tBefore = 0.0;
+  for (var k = 0; k < steps; k++) {
     let q = p + r * t;
     let c = frame.viewProj * vec4f(q, 1.0);
     if (c.w <= 0.0) { break; }
@@ -132,9 +136,26 @@ fn reflectionSeen(p : vec3f, n : vec3f, v : vec3f, rough : f32, pix : vec2f) -> 
     let d = textureLoad(sceneDepth, clamp(at, vec2i(0), size - 1), 0);
     if (d < 1.0) {
       let w = frame.invViewProj * vec4f(ndc.xy, d, 1.0);
-      let hit = w.xyz / w.w;
+      var hit = w.xyz / w.w;
       let gap = length(q - frame.camPos.xyz) - length(hit - frame.camPos.xyz);
       if (gap > 0.0 && gap < 0.1 + t * 0.05) {
+        if (kShading >= 2u) {
+          // the ray passed behind the surface somewhere in this step: halve the
+          // step four times to find where (no stair-steps in the reflection)
+          var lo = tBefore;
+          var hi = t;
+          for (var b = 0; b < 4; b++) {
+            let mid = 0.5 * (lo + hi);
+            let qm = p + r * mid;
+            let cm = frame.viewProj * vec4f(qm, 1.0);
+            let nm = cm.xyz / max(cm.w, 1e-6);
+            let dm = textureLoad(sceneDepth, clamp(vec2i((nm.xy * vec2f(0.5, -0.5) + 0.5) * frame.screen.xy), vec2i(0), size - 1), 0);
+            let wm = frame.invViewProj * vec4f(nm.xy, dm, 1.0);
+            let hm = wm.xyz / wm.w;
+            let gm = length(qm - frame.camPos.xyz) - length(hm - frame.camPos.xyz);
+            if (dm < 1.0 && gm > 0.0 && gm < 0.1 + mid * 0.05) { hi = mid; hit = hm; } else { lo = mid; }
+          }
+        }
         // where that point was in last frame's picture
         let pc = frame.prevViewProj * vec4f(hit, 1.0);
         if (pc.w <= 0.0) { break; }
@@ -142,10 +163,11 @@ fn reflectionSeen(p : vec3f, n : vec3f, v : vec3f, rough : f32, pix : vec2f) -> 
         if (any(uv < vec2f(0.0)) || any(uv > vec2f(1.0))) { break; }
         let col = textureSampleLevel(pastPicture, skySampler, uv, 0.0).rgb / max(preExposure(), 1e-9);
         let edge = smoothstep(0.0, 0.08, min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y)));
-        return vec4f(col, edge * (1.0 - smoothstep(0.25, 0.5, rough)));
+        return vec4f(col, edge);
       }
     }
-    t *= 1.28;
+    tBefore = t;
+    t *= grow;
   }
   return vec4f(0.0);
 }
@@ -162,8 +184,9 @@ fn ambientSeen(p : vec3f, n : vec3f, pix : vec2f) -> f32 {
   let t = normalize(cross(n, a));
   let b = cross(n, t);
   var hidden = 0.0;
-  for (var k = 0; k < 8; k++) {
-    let u = (f32(k) + 0.5) / 8.0;
+  let points = select(select(8, 12, kShading >= 2u), 16, kShading >= 3u);
+  for (var k = 0; k < points; k++) {
+    let u = (f32(k) + 0.5) / f32(points);
     let phi = f32(k) * 2.39996323 + turn;
     let r = sqrt(u);                          // cosine-weighted over the half-ball
     let dir = t * (r * cos(phi)) + b * (r * sin(phi)) + n * sqrt(1.0 - u);
@@ -181,7 +204,7 @@ fn ambientSeen(p : vec3f, n : vec3f, pix : vec2f) -> f32 {
     // only what's near counts: something far in front is a separate thing (no dark rims round it)
     if (gap > 0.02) { hidden += 1.0 - smoothstep(reach * 0.3, reach, gap); }
   }
-  return pow(1.0 - hidden / 8.0, frame.ao.x);
+  return pow(1.0 - hidden / f32(points), frame.ao.x);
 }
 struct ResolveOut { @builtin(position) clip : vec4f };
 @vertex fn vsResolve(@builtin(vertex_index) vi : u32) -> ResolveOut {
@@ -253,12 +276,16 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   slopeWorldY = (py - v.world) * perShown;
   slopeUvX = (A.uv * bx.x + B.uv * bx.y + C.uv * bx.z - v.uv) * perShown;
   slopeUvY = (A.uv * by.x + B.uv * by.y + C.uv * by.z - v.uv) * perShown;
+  let n0 = normalize(A.nrm * b0.x + B.nrm * b0.y + C.nrm * b0.z);
+  slopeNrmX = (normalize(A.nrm * bx.x + B.nrm * bx.y + C.nrm * bx.z) - n0) * perShown;
+  slopeNrmY = (normalize(A.nrm * by.x + B.nrm * by.y + C.nrm * by.z) - n0) * perShown;
   // which side the camera sees, as the GPU tells a drawn triangle (counter-
   // clockwise on screen is its front): its corners' turn as seen from the eye,
   // which stays right for big triangles reaching behind the camera
   let front = dot(ng, frame.camPos.xyz - wa) > 0.0;
   if (frame.ao.w > 0.5) {
-    let rough0 = materials[v.mat].base.w;
+    let m0 = materials[v.mat];
+    let rough0 = select(m0.base.w, min(m0.base.w, m0.coat.x), m0.props.z > 0.0);  // a coat reflects too
     if (rough0 < 0.5) {
       let nf = normalize(ng) * select(-1.0, 1.0, front);
       let found = reflectionSeen(v.world + nf * 0.01, nf, normalize(frame.camPos.xyz - v.world), rough0, r.clip.xy);

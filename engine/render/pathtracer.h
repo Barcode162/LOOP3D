@@ -64,6 +64,8 @@ class PathTracer {
   Vec3 probeInterval(Vec3 p, Vec3 d, float t0, float t1, uint32_t seed, int bounces, bool* through);
   // Can `a` see `b` (nothing solid between)? The light cache's rooms.
   bool clear(Vec3 a, Vec3 b);
+  // Does a ray from `p` along `d` leave the scene without meeting anything (it sees the open sky)?
+  bool seesSky(Vec3 p, Vec3 d);
   const SkyModel& sky() const;
 
   struct Impl;

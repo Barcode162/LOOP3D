@@ -54,6 +54,7 @@ window.LE = window.LE || {};
     { id: 'rendering', title: 'Rendering', icon: '▣', groups: [
       { title: 'Quality', items: [
         en('render.quality', 'Live quality', 1, opts([0, 'Phone'], [1, 'High'], [2, 'Ultra']), { bind: 'quality', help: 'Phone: 1x pixels, sun shadows, lamps without shadows. High: sharper, crisp shadows from the two lamps that matter most. Ultra: path traced on the GPU.' }),
+        en('render.shading', 'Shader detail', -1, opts([-1, 'Automatic'], [0, 'Lowest'], [1, 'Standard'], [2, 'High'], [3, 'Highest']), E({ help: 'How much the shader works out for each pixel. Lowest: colour, shine and glow. Standard: every layer of a material (lacquer, cloth, thin leaves, metal) lit by every light the way film does it, and highlights that hold steady. High: sun shadows sharp where things touch and soft far from what casts them, softer lamp shadows, finer creases. Highest: more of each. Automatic: Standard on Phone, High on High.' })),
         en('render.targetFps', 'Target frame rate', 60, opts(30, 60, 90, 120, 144), E({ help: 'What the automatic resolution aims for (never above the display\'s own rate).' })),
         en('render.framesInFlight', 'Frames in flight', 2, opts(1, 2, 3), E({ help: 'More hides GPU stalls; fewer means less delay.' })),
         tog('render.pauseHidden', 'Stop drawing when the page is hidden', true, E()),

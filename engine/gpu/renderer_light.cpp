@@ -56,6 +56,7 @@ Vec3 GpuRenderer::skyIrradiance(Vec3 n) const {
 void GpuRenderer::skyProbe(int i) {
   static const Vec3 axis[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
   for (int f = 0; f < 6; ++f) cache_.face[static_cast<size_t>(i)][static_cast<size_t>(f)] = skyIrradiance(axis[f]);
+  if (cache_.sky.size() == cache_.face.size()) cache_.sky[static_cast<size_t>(i)] = {1, 1, 1, 1, 1, 1};  // not baked yet: as if open
 }
 
 void GpuRenderer::sendCache() {
@@ -68,7 +69,8 @@ void GpuRenderer::sendCache() {
     for (int f = 0; f < 6; ++f) {
       uint16_t* o = &px[f][i * 4];
       const Vec3 e = sent.face[i][static_cast<size_t>(f)];
-      o[0] = toHalf(e.x), o[1] = toHalf(e.y), o[2] = toHalf(e.z), o[3] = 0;
+      // alpha: how much of the face's view is open sky
+      o[0] = toHalf(e.x), o[1] = toHalf(e.y), o[2] = toHalf(e.z), o[3] = toHalf(sent.sky.size() == n ? sent.sky[i][static_cast<size_t>(f)] : 1.0f);
     }
   for (int c = 0; c < 6; ++c) {
     wgpu::TexelCopyTextureInfo dst;

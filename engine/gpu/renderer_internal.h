@@ -103,6 +103,7 @@ struct FrameU {
   Mat4 prevViewProj;       // last frame's view, unshifted
   Vec4 prevCam;            // last frame's eye; w: its drawn width
   Vec4 prevScreen;         // x, y: last frame's drawn size
+  Vec4 shade;              // the sun's shadow in true sizes: tan of its angular radius, the near box's width, depth (m)
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -110,7 +111,9 @@ struct LightU {
 struct MaterialU {
   Vec4 base, props, emission, pattern, colorB, extra;
   Vec4 tex;   // picture layers: colour, roughness/metal, normal, glow (-1 none)
-  Vec4 tex2;  // alpha cutoff, -, -, -
+  Vec4 tex2;  // alpha cutoff, least roughness, -, -
+  Vec4 coat;  // clear coat roughness, specular, -, -
+  Vec4 sss;   // subsurface colour, -
 };
 struct InstanceU {
   Mat4 model;
@@ -147,13 +150,14 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1536, "frame layout");
+static_assert(sizeof(FrameU) == 1552, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
 constexpr int kBloomLevels = 6;
 constexpr int kFinalPass = 2 * kBloomLevels - 1;  // pass uniforms: bloom down, bloom up, then the film
 inline int g_samples = 4;  // multisampling of the scene pass (1 = off)
+inline int g_shading = 1;  // how much the shader does (render.shading in effect, 0 Lowest .. 3 Highest)
 
 struct GpuMesh {
   wgpu::Buffer vb, ib;
