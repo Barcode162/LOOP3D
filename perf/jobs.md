@@ -50,3 +50,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | M5 | L | lead | 120 | 44 | 2026-11-11 |
 | M5b | S | lead | 25 | 2 | 2026-11-11 |
 | MCARDS | M | lead | 13 | 3 | 2026-11-11 |
+| M3d | S | lead | 18 | 3 | 2026-11-11 |

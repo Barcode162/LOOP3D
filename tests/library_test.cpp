@@ -162,6 +162,8 @@ TEST(library_picture_of_a_surface_is_the_test_ball) {
   CHECK(std::system((go + "test_red --samples 8 --far --seed 2 -o far.png > far.txt 2>&1").c_str()) == 0);
   CHECK(pictureIsNotFlat(dir + "/near.png"));
   CHECK(pictureIsNotFlat(dir + "/far.png"));
+  // the check places a surface's example on the test ball too (it said "test_ball isn't known": order M3d)
+  CHECK(std::system(("cd " + dir + " && " + loop + " library check > check.txt 2>&1").c_str()) == 0);
   // a built-in material's name is not a surface entry; and --far is only for a surface
   CHECK(std::system((go + "oak -o oak.png > oak.txt 2>&1").c_str()) != 0);
   CHECK(!fs::exists(dir + "/oak.png"));
