@@ -1,0 +1,15 @@
+# Lit windows: three towers at night, 50, 300 and 1,000 m away. Their windows are the same cells,
+# lit or dark by the same hash, near and far; far away a window is smaller than a pixel and blends
+# to the face's average, so the far tower glows steadily and does not shimmer.
+title "Windows"
+mode "movie"
+ground 3000, material: material(color: rgb(0.03, 0.03, 0.035), roughness: 0.9)
+let glass = material(color: rgb(0.07, 0.07, 0.08), roughness: 0.7, pattern: "windows", floor: 3.2, bay: 2.4, window: vec(1.5, 1.7), lit: 0.35, glow: 20, seed: 1, pattern_color: rgb(0.04, 0.06, 0.1))
+box size: vec(18, 60, 18), at: vec(-12, 30, -50), material: glass
+box size: vec(54, 180, 54), at: vec(40, 90, -300), material: glass
+box size: vec(160, 400, 160), at: vec(330, 200, -1000), material: glass
+sun elevation: -30 deg, toward: 0 deg
+sky "physical", haze: 2, stars: 1
+look "natural"
+camera at: vec(0, 1.7, 0), look_at: vec(8, 28, -300), lens: 24 mm, f_stop: 2, shutter: 1 / 50 s, iso: 800, auto_exposure: no
+shot "towers", 10 s, from: {at: vec(0, 1.7, 0), look_at: vec(8, 28, -300), lens: 24 mm}, to: {at: vec(0, 1.7, 0), look_at: vec(8, 28, -300), lens: 24 mm}, fade_in: 0 s

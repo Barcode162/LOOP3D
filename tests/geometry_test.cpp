@@ -36,6 +36,17 @@ TEST(shapes_closed_volumes) {
   CHECK(t.volume() > 0);
 }
 
+TEST(rounded_box_is_cheap) {
+  // A box rounded 3 mm, one step per edge, stays under 200 triangles and is still a closed round-shaded solid.
+  Mesh r3 = shapes::roundedBox({1, 1, 1}, 0.003f, 1);
+  CHECK(r3.triangleCount() < 200);
+  CHECK(r3.volume() > 0.99f && r3.volume() < 1.0f);
+  for (size_t i = 0; i < r3.positions.size(); ++i) CHECK_NEAR(length(r3.normals[i]), 1, 1e-4);
+  // More steps cost more, and the middle of a face stays one cell.
+  CHECK(shapes::roundedBox({1, 1, 1}, 0.1f, 4).triangleCount() > r3.triangleCount());
+  CHECK(shapes::roundedBox({1, 1, 1}, 0.1f, 4).triangleCount() < 1000);
+}
+
 TEST(mesh_normals_point_out) {
   Mesh s = shapes::sphere(2);
   int bad = 0;

@@ -255,14 +255,23 @@ fn direct(p : vec3f, n : vec3f, v : vec3f, base : vec3f, f0 : vec3f, alpha : f32
     if (giPath && bounce == 1u) { x2 = p; n2 = ng; }
     var base = m.base.rgb;
     var rough = m.base.w;
+    var winGlow = vec3f(1.0);  // a windows face glows only in its lit windows
     if (m.pattern.x > 0.5) {
       // how wide this pixel is out there (after a bounce: blurry anyway)
       let lod = select(1.0, h.t * 2.0 * U.camUp.w / f32(H) * f32(B), bounce == 0u);
-      let pv = patternLod(m, p, n, lod);
-      base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
-      rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
+      if (i32(m.pattern.x) == 11) {
+        // windows (its slots are not scale or roughness variation: see windowsAt)
+        let wv = windowsAt(m, p, n, lod);
+        base = mix(m.base.rgb, m.colorB.rgb * 0.02 / max(dot(m.colorB.rgb, vec3f(0.2126, 0.7152, 0.0722)), 0.001), wv.cover);
+        rough = mix(rough, 0.05, wv.cover);
+        winGlow = wv.glow;
+      } else {
+        let pv = patternLod(m, p, n, lod);
+        base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
+        rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
+      }
     }
-    if (front) { L += beta * m.emission.rgb; }
+    if (front) { L += beta * m.emission.rgb * winGlow; }
     let metal = m.props.x;
     let glass = select(0.0, m.props.y, (flags & 2u) != 0u);
     let alpha = max(rough * rough, 0.002);

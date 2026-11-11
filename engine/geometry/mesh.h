@@ -38,7 +38,8 @@ struct Mesh {
 
 namespace shapes {
 Mesh box(Vec3 size);
-// A box with edges rounded to `radius` (`segments` per quarter circle).
+// A box with edges rounded to `radius` (`segments` steps across each rounded edge;
+// the flat middle of a face is one cell, so a small rounding costs little).
 Mesh roundedBox(Vec3 size, float radius, int segments = 4);
 Mesh sphere(float radius, int segments = 48, int rings = 24);
 Mesh icosphere(float radius, int subdivisions = 3);

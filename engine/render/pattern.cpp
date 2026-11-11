@@ -19,8 +19,8 @@ inline float cellHash(int x, int y, uint32_t s = 0) {
 inline float fract(float v) { return v - std::floor(v); }
 }  // namespace
 
-void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, float& mix, float& height, Vec3& tint) {
-  mix = 0, height = 0.5f, tint = Vec3(1);
+void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, float& mix, float& height, Vec3& tint, Vec3& glow) {
+  mix = 0, height = 0.5f, tint = Vec3(1), glow = Vec3(1);
   Vec3 q = pt.worldSpace ? p * pt.scale : Vec3(uv.x, uv.y, 0) * pt.scale;
   Vec2 pl = pt.worldSpace ? planar(q, n) : Vec2(q.x, q.y);
   noise::Fractal f;
@@ -36,6 +36,24 @@ void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, V
       float gx = fract(pl.x), gy = fract(pl.y);
       float edge = std::min(std::min(gx, 1 - gx), std::min(gy, 1 - gy));
       mix = 1 - smoothstep(0.008f, 0.016f, edge);
+      return;
+    }
+    case Pattern::Kind::kWindows: {
+      // cells one floor high and one bay wide, a window in each one's middle
+      glow = Vec3(0);
+      if (std::fabs(n.y) > 0.7f) return;  // roofs and floors have none
+      Vec2 w = pt.worldSpace ? planar(p, n) : uv;
+      float cx = w.x / pt.bay, cy = w.y / pt.floorHeight;
+      int ix = static_cast<int>(std::floor(cx)), iy = static_cast<int>(std::floor(cy));
+      float dx = (fract(cx) - 0.5f) * pt.bay, dy = (fract(cy) - 0.5f) * pt.floorHeight;
+      if (std::fabs(dx) > pt.window.x * 0.5f || std::fabs(dy) > pt.window.y * 0.5f) return;
+      mix = 1;
+      tint = Vec3(0.02f) / std::max(luminance(pt.colorB), 0.001f);  // glass: near black
+      uint32_t s = hash32(static_cast<uint32_t>(pt.seed) * 0x2545f491U + 1);
+      if (cellHash(ix, iy, s) >= pt.lit) return;  // dark
+      float bright = 0.3f + 0.7f * cellHash(ix, iy, s ^ 0x68e31da4U);
+      float cool = cellHash(ix, iy, s ^ 0xb5297a4dU);
+      glow = kelvin(cool < 0.125f ? 6500.0f : 2700.0f + 1300.0f * cellHash(ix, iy, s ^ 0x1b873593U)) * bright;
       return;
     }
     case Pattern::Kind::kTiles: {
@@ -135,6 +153,10 @@ void patternValue(const Pattern& pt, const std::vector<Image>& images, Vec3 p, V
   }
 }
 
+float windowsMeanGlow(const Pattern& pt) {
+  return pt.lit * 0.65f * std::min(1.0f, pt.window.x * pt.window.y / (pt.bay * pt.floorHeight));
+}
+
 Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p, Vec3 n, Vec2 uv, const std::vector<Texture>* textures) {
   Surface s;
   s.base = m.baseColor;
@@ -159,19 +181,20 @@ Surface shadeSurface(const Material& m, const std::vector<Image>& images, Vec3 p
   if (m.pattern.kind == Pattern::Kind::kNone) return s;
   float mix, h;
   Vec3 tint;
-  patternValue(m.pattern, images, p, n, uv, mix, h, tint);
+  patternValue(m.pattern, images, p, n, uv, mix, h, tint, s.glow);
   s.base = vlerp(m.baseColor, m.pattern.colorB, saturate(mix)) * tint;
   if (m.pattern.kind == Pattern::Kind::kImage) s.base = tint;
   s.roughness = saturate(m.roughness + (mix - 0.5f) * m.pattern.roughnessVariation);
+  if (m.pattern.kind == Pattern::Kind::kWindows && mix > 0.5f) s.roughness = 0.05f;  // glass is smooth
   if (m.pattern.bump > 0) {
     // finite-difference gradient of the height over the surface
     Vec3 t, b;
     orthonormalBasis(n, t, b);
     float e = 0.0015f / std::max(m.pattern.scale, 0.1f);
     float m1, h1, m2, h2;
-    Vec3 tt;
-    patternValue(m.pattern, images, p + t * e, n, uv, m1, h1, tt);
-    patternValue(m.pattern, images, p + b * e, n, uv, m2, h2, tt);
+    Vec3 tt, tg;
+    patternValue(m.pattern, images, p + t * e, n, uv, m1, h1, tt, tg);
+    patternValue(m.pattern, images, p + b * e, n, uv, m2, h2, tt, tg);
     float k = m.pattern.bump * 0.001f / e;
     s.normal = normalize(n - t * ((h1 - h) * k) - b * ((h2 - h) * k));
   }

@@ -25,6 +25,15 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
     auto layer = [&](int t) { return t >= 0 && t < static_cast<int>(texLayer_.size()) ? static_cast<float>(texLayer_[t]) : -1.0f; };
     u.tex = {layer(m.baseTexture), layer(m.metalRoughTexture), layer(m.normalTexture), layer(m.emissiveTexture)};
     u.tex2 = {m.alphaCutoff, m.roughnessMin, 0, 0};
+    if (m.pattern.kind == Pattern::Kind::kWindows) {
+      // windows uses no scale, bump, contrast or roughness variation, so its numbers ride in those slots
+      // (the Material struct stays one size; the shader's windowsAt reads them): pattern.y floor height,
+      // pattern.z bay, pattern.w window width, tex2.z window height, tex2.w share lit, colorB.w the seed
+      u.pattern = {static_cast<float>(static_cast<int>(m.pattern.kind)), m.pattern.floorHeight, m.pattern.bay, m.pattern.window.x};
+      u.tex2.z = m.pattern.window.y;
+      u.tex2.w = m.pattern.lit;
+      u.colorB.w = static_cast<float>(m.pattern.seed);
+    }
   }
   ensureStorage(materialsBuf_, materialsCap_, sizeof(MaterialU), mats.size());
   queue_.WriteBuffer(materialsBuf_, 0, mats.data(), mats.size() * sizeof(MaterialU));
@@ -240,6 +249,7 @@ int GpuRenderer::skipBits() const {
 
 void GpuRenderer::readLights(const Scene& scene) {
   lights_.clear();
+  lampNoShadow_.clear();
   sunOn_ = false;
   for (const Light& l : scene.lights) {
     if (l.kind == Light::Kind::kSun) {
@@ -268,6 +278,7 @@ void GpuRenderer::readLights(const Scene& scene) {
       u.dir = {0, -1, 0, 0};
     }
     lights_.push_back(u);
+    lampNoShadow_.push_back(l.castShadows ? 0 : 1);
   }
   lightsDirty_ = true;
   // the light grid: laid out again when lamps move (a lamp's light changing

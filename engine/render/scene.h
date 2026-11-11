@@ -20,7 +20,7 @@ namespace loop {
 // A pattern computed at the hit point (no image files needed): colour,
 // roughness and bumps that vary across a surface.
 struct Pattern {
-  enum class Kind { kNone, kChecker, kTiles, kBricks, kWood, kMarble, kNoise, kGround, kPlanks, kImage, kGrid };
+  enum class Kind { kNone, kChecker, kTiles, kBricks, kWood, kMarble, kNoise, kGround, kPlanks, kImage, kGrid, kWindows };
   Kind kind = Kind::kNone;
   Vec3 colorB{0.2f};          // second colour (grout, dark grain, veins...)
   float scale = 1;            // pattern cells per metre
@@ -29,6 +29,12 @@ struct Pattern {
   float roughnessVariation = 0;
   int image = -1;             // Scene::images index for kImage
   bool worldSpace = true;     // world position (true) or mesh UVs
+  // kWindows (a tower's face in cells; lengths in metres, not `scale`): a window in each cell's middle,
+  // lit or dark by the cell's number and `seed`; `lit` is the share lit. The glow itself is the material's.
+  float floorHeight = 3.2f, bay = 2.4f;
+  Vec2 window{1.5f, 1.7f};
+  float lit = 0.35f;
+  int seed = 1;
 };
 
 struct Material {

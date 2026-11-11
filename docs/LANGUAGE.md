@@ -129,8 +129,9 @@ Every setting has a sensible default; give only what matters.
 - **About the piece:**
   - `title "…"`
   - `mode "movie"` (plays its shots) or `mode "game"` (you walk around)
-- **Materials:** `material("oak")`, or `material(like: "oak", roughness: 0.3)`, or `material(color: rgb(..), roughness, metal, glass, ior, dispersion, glow, clearcoat, sheen, subsurface, subsurface_color, translucent, opacity, leaf, pattern, pattern_color, pattern_scale, bump)`.
-  - Patterns: `checker tiles bricks wood planks marble noise ground grid` (`grid`: even squares with thin lines in `pattern_color`, one square per `1 / pattern_scale` metres; its lines stay sharp at any distance).
+- **Materials:** `material("oak")`, or `material(like: "oak", roughness: 0.3)`, or `material(color: rgb(..), roughness, metal, glass, ior, dispersion, glow, clearcoat, sheen, subsurface, subsurface_color, translucent, opacity, leaf, pattern, pattern_color, pattern_scale, bump, and for `windows`: floor, bay, window, lit, seed)`.
+  - Patterns: `checker tiles bricks wood planks marble noise ground grid windows` (`grid`: even squares with thin lines in `pattern_color`, one square per `1 / pattern_scale` metres; its lines stay sharp at any distance).
+  - `windows`, in film: `material(pattern: "windows", floor: 3.2, bay: 2.4, window: vec(1.5, 1.7), lit: 0.35, glow: 40, seed: 1)` cuts a tower's face into cells one `floor` high (m) and one `bay` wide (m), a `window` (width, height in m) in each middle; none on roofs. Each window is lit or dark by its cell and the `seed`; `lit` is the share lit. A lit one glows `glow` nits times 0.3 to 1 (most warm, 2,700 to 4,000 K; one in eight cool, 6,500 K) and so gives light; a dark one is near black and smooth; between windows is the material's own colour. The live view draws it the same way (same cells and hash), blending to the average when a window or a cell is smaller than a pixel.
   - Every shape takes `material:` as a name, a material, or a bare colour.
 - **59 named materials** (`materials()` lists them):
   - wood: oak, pine, walnut, cherry, floorboards, old wood, bark
@@ -142,7 +143,7 @@ Every setting has a sensible default; give only what matters.
   - glowing: flame, ember, neon, screen, lamp shade
   - plain: white, black, grey
 - **Shapes** (all take `at`, `turn`, `tilt`, `rotation`, `scale`, `material` (or `made_of`), `name`, and `collide: no` to walk through):
-  - `box(size: vec(w, h, d), round)`, `sphere(radius)`, `cylinder(radius, height)`, `cone(radius, height)`, `capsule(radius, height)`, `ring(radius, thickness)`
+  - `box(size: vec(w, h, d), round, steps)` (`round` rounds the edges; `steps` is how many flat pieces make each rounded edge: 1 under 5 mm, 2 under 20 mm, 4 above, unless you set it), `sphere(radius)`, `cylinder(radius, height, sides)` (`sides` is 16 for tubes under 3 cm across, 64 otherwise unless you set it), `cone(radius, height)`, `capsule(radius, height)`, `ring(radius, thickness)`
   - `lathe(profile: [vec(radius, height), …], segments: 32)`: an outline spun round the up axis, like a vase, bowl or lamp base; a point at radius 0 closes that end. It needs two points or more and no negative radius
   - `group at: vec(…), turn: 90 deg` with indented lines under it: everything those lines place (things, lamps, strips, groups inside) is measured from the group's place and turn, and a recipe called there lands in the group, which is how a library piece is turned. With a name: `let stair = group(at: …, turn: …)` and the lines under it; then `stair.position`, `stair.turn` and `stair.visible` move, turn and hide them all (its lamps go dark with it).
   - `ground(size)` (its material also sets what footsteps sound like; `collide: no` is seen but never stood on, like water), `rock(size, seed)`
@@ -169,8 +170,8 @@ Every setting has a sensible default; give only what matters.
   - `tree(…)` gives back the tree; `tree` and `forest` take `leaf_size:` (smaller leaves come in greater numbers)
   - Materials for them: `fern`, `fresh leaves`, `blades`, `dry blades`, `daisy`, `violet`, `poppy`, `bluebell`, `pollen`, `stem`, `wing blue`, `wing orange`, `wing white`, `firefly`, `ruin stone`, `mossy stone`, `forest floor`
 - **Light** (real units):
-  - `light(at, lumens, kelvin | color, radius)`; add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
-  - `panel_light(at, facing, size, lumens, kelvin | color)`
+  - `light(at, lumens, kelvin | color, radius, shadows: yes)`; `shadows: no` makes a lamp that casts none (no shadow map, no ray); add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
+  - `panel_light(at, facing, size, lumens, kelvin | color, shadows: yes)`; `shadows: no` makes a panel that casts none
   - `strip(from, to, lumens: 300, kelvin: 2700, facing: vec(0, -1, 0), width: 0.012, piece: 0.25, shadows: no, name)`: a thin strip of light; `lumens` is for each metre. One glowing rectangle (on a dark channel) and a row of panel lamps (each at most `piece` long) that stand for it on the phone; film lights from the rectangle alone. Gives back the glowing rectangle
   - `sun(elevation, toward (or azimuth), lux, kelvin, size: 0.53 deg)`: a wider sun casts softer shadows
   - `sky("physical", haze, stars, brightness, ground)` or `sky("color", color, nits)`
