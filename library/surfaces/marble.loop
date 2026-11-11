@@ -1,0 +1,24 @@
+# marble · white marble, polished: near white with soft grey veins that wander
+# For floors, counters, plinths and statues. Keeps its polish; edges wear honed (duller); gathers a little dull grey dust in grooves.
+#
+# kind: surface
+# place: test_ball("marble", AT)
+# tags: stone, white, polished, indoor
+# size: chair
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M16 (2026-11-11)
+
+let vein_gap = 12 cm     # the gap between one vein and the next
+let tile_side = 1.5 m    # holds about twelve veins
+
+to marble(seed: 1)
+  return surface("marble", seed: seed, tile: tile_side, space: "world",
+    base: {color: rgb(0.93, 0.92, 0.90), color2: rgb(0.45, 0.46, 0.48), roughness: 0.08, roughness2: 0.12,
+           pattern: "veins", size: vein_gap, contrast: 0.8, sharp: 0.3},
+    vary: {large: 1 m, amount: 0.05, tint: rgb(0.95, 0.90, 0.82), small: 2 cm, small_amount: 0.03},
+    wear: {color: rgb(0.90, 0.89, 0.87), roughness: 0.25, amount: 0.5},
+    dirt: {color: rgb(0.50, 0.50, 0.50), roughness: 0.7, amount: 0.3},
+    detail: {pattern: "speckle", size: 0.3 mm, bump: 0.01 mm},
+    subsurface: 0.25, subsurface_color: rgb(1, 0.92, 0.85))
