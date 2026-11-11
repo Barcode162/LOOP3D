@@ -60,6 +60,16 @@
   "what": "a small wooden boat with a mast, a sail and a lamp at its bow"
  },
  {
+  "about": "bed_platform(at, width, length, wood, mattress) stands it with `at` the middle of the floor under it; the head is towards +z, the foot (front) towards -z. The oak top is 0.25 m high and overhangs the dark base by 8 cm all round, so the recess under the edge is clear for a light strip. The headboard stands 0.9 m high at the head. Sockets: top is the mattress top, at + vec(0, 0.47, 0); light is the recess under the edge, 0.05 to 0.17 m up and 8 cm deep all round, kept clear for a light strip; lie is each side, 0.45 m out, for a bedside table. The mattress is 0.22 m thick, softly rounded, set in 10 cm from the platform's edge. No lamps of its own.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "bed_platform",
+  "place": "bed_platform(AT + vec(0, 0, 1), width: 1.9, length: 2.1, wood: \"oak\", mattress: yes)",
+  "what": "a low oak bed platform that floats over a recessed dark base, with a plain headboard and a mattress"
+ },
+ {
   "about": "brick_wall_bay(at, width, height, brick, faces) stands it against a wall; `at` is the middle of its foot at the wall's face. faces: \"z\" looks towards -z (a wall at the back), \"x\" looks towards -x (a wall at x = +4.5). Join bays side by side, width apart, and the piers meet as one.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-10)",
@@ -208,6 +218,16 @@
   "name": "timber_joists",
   "place": "timber_joists(AT, width: 9, depth: 12, top: 6, spacing: 0.6, timber: \"oak\", seed: 1)",
   "what": "a ceiling of boards laid on joists, seen from below as ribs"
+ },
+ {
+  "about": "window_seat(at, length, wood, cushion, cover) stands it on `at` (the middle of its back, on the floor, against the glass). It runs `length` along x and 0.55 m towards -z, 0.45 m high (0.53 m with the cushion). A recessed dark plinth carries an oak box whose front is cut into flat drawer fronts about 0.9 m wide with thin shadow gaps; the top is one thick board with a softly rounded front edge. With `cushion: yes` an 8 cm seat cushion with rounded edges lies on it. The `seat` socket is the top, at (at.x, 0.45, at.z - 0.275).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "window_seat",
+  "place": "window_seat(AT, length: 3.0, wood: \"oak\", cushion: yes, cover: \"wool\")",
+  "what": "a built-in bench along the foot of a wall of glass"
  },
  {
   "about": "loft_shell(size, floor, walls, ceiling) builds it round the middle of the world: `size` is its inside width, height and depth. The end toward -z is left open (put a glazing_wall there); the other three walls, the floor and the ceiling are solid. No lamps: the light comes in through the open end.",

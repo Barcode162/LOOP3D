@@ -1,0 +1,46 @@
+# window_seat · a built-in bench along the foot of a wall of glass
+# window_seat(at, length, wood, cushion, cover) stands it on `at` (the middle of
+# its back, on the floor, against the glass). It runs `length` along x and 0.55 m
+# towards -z, 0.45 m high (0.53 m with the cushion). A recessed dark plinth
+# carries an oak box whose front is cut into flat drawer fronts about 0.9 m
+# wide with thin shadow gaps; the top is one thick board with a softly rounded
+# front edge. With `cushion: yes` an 8 cm seat cushion with rounded edges lies on it.
+# The `seat` socket is the top, at (at.x, 0.45, at.z - 0.275).
+#
+# kind: piece
+# place: window_seat(AT, length: 3.0, wood: "oak", cushion: yes, cover: "wool")
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: bench, window seat, built-in, oak, drawers, loft, interior
+# size: room
+# sockets: seat
+# seeds: none, it is made the same every time
+
+let seat_cover = material(like: "wool", color: rgb(0.30, 0.31, 0.33))
+
+to window_seat(at: vec(0, 0, 0), length: 3.0, wood: "oak", cushion: yes, cover: seat_cover)
+  let depth = 0.55
+  let height = 0.45
+  let plinth_h = 0.08
+  let recess = 0.05
+  let top_h = 0.05
+  let gap = 0.004
+  let body_h = height - plinth_h - top_h
+  let mid = at + vec(0, 0, -depth / 2)
+  let dark = material(like: "black", roughness: 0.8)
+  # the recessed dark plinth
+  box size: vec(length - 0.04, plinth_h, depth - recess - 0.02), at: mid + vec(0, plinth_h / 2, recess / 2 - 0.01), material: dark
+  # the dark carcass behind the fronts: what shows through the shadow gaps
+  box size: vec(length - 0.04, body_h, depth - 0.03), at: mid + vec(0, plinth_h + body_h / 2, 0.005), material: dark
+  # the drawer fronts, about 0.9 m wide
+  let count = max(1, round(length / 0.9))
+  let wide = (length - 0.04) / count
+  for each i in range(0, count, 1)
+    let x = -(length - 0.04) / 2 + (i + 0.5) * wide
+    box size: vec(wide - gap, body_h - gap, 0.02), at: mid + vec(x, plinth_h + body_h / 2, -depth / 2 + 0.01), material: wood, round: 0.003
+  # the top: one thick board, front edge rounded, a small overhang
+  box size: vec(length, top_h, depth), at: mid + vec(0, height - top_h / 2, 0), material: wood, round: 0.015
+  # the cushion
+  if cushion
+    box size: vec(length - 0.06, 0.08, depth - 0.06), at: mid + vec(0, height + 0.04, 0.005), material: cover, round: 0.03
