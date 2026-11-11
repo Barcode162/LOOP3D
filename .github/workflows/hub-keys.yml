@@ -81,7 +81,7 @@ jobs:
           echo "Cloudflare: token valid (as an account token): $v2"
           a=$(get "accounts/$CF_ACCOUNT" | jq -r '.success')
           echo "Cloudflare: token can see the account: $a"
-          count() { get "accounts/$CF_ACCOUNT/$1" | jq -r 'if .success then "yes, \((.result.buckets // .result) | length) there now" else "no" end'; }
+          count() { get "accounts/$CF_ACCOUNT/$1" | jq -r 'if .success then "yes, \(.result | if type == "array" then length else (.buckets | length) end) there now" else "no" end'; }
           echo "Cloudflare: Workers (live code): $(count workers/scripts)"
           echo "Cloudflare: Pages (sites): $(count pages/projects)"
           echo "Cloudflare: D1 (database): $(count d1/database)"
