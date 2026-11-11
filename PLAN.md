@@ -44,9 +44,17 @@ About fifteen more are cut once the first phone recording says where the time go
 glowing strip (N1, with an old fault found and mended: a closed glowing shape lit a room twice in film), and
 **goal 2, night falls**: no sun, a near-black sky, one bare bulb. Still running: the night picture for library
 entries (E10), the shape word `lathe` (S1), the dark-stays-dark check (N5).
-*Next:* the word `strip` (N2), the black glass in film (F1), and **goal 3, the upper floor and the stair**, which
-now has all its pieces.
-*Needs you:* a look at goal 2 on your phone once it is published, and your go for goal 3.
+*Also on main since (2026-11-10):* the shape word `lathe` (S1), glass no longer black in film (F1), the night
+picture for library entries (E10).
+*Paused 2026-11-11, finished but not yet on main* (each on its own branch, its claim says done; say "deploy"):
+the word `strip` (N2), the word `group` (S7), the pendant lamp and the track spotlights (the library would hold
+22), and the dark-stays-dark check (N5: the unlit room is 0.0% of the lit one in film, 0.8% live). The branch
+`work/deploy-loft2b` holds the first four merged with a docs line and one more test, **not yet checked**: run the
+quick checks there first. N5 also adds one line to `projects/samples/project.json` (off its card, needed).
+*Not published:* the public player still shows the Loft before goal 2.
+*Next:* deploy those five; publish, so goal 2 (night falls) can be seen on the phone; then **goal 3, the upper
+floor and the stair** (all its pieces are in the library), and goal 4 once `strip` is in.
+*Needs you:* "deploy" and "publish" when you are back, and your go for goal 3.
 
 ---|---|
 | The order of work (this page) | `PLAN.md` |
