@@ -1,0 +1,47 @@
+# kitchen_island · a free-standing kitchen island: handleless cupboards under a thick worktop that overhangs for stools
+# kitchen_island(at, length, fronts, top, steel) stands it on `at` (the middle of its footprint), working side to -z.
+# The block is `length` x 0.9 m deep x 0.9 m high with the worktop on it: 5 cm thick, 2 cm proud on the working
+# side and the ends, 30 cm proud on the seating side (+z) for stools. The working side has a row of drawers over
+# doors with thin dark shadow gaps and no handles; the seating side is one plain panel; the plinth is dark and set back.
+#
+# kind: piece
+# place: kitchen_island(AT, length: 2.2)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: kitchen, island, worktop, cupboards, interior, loft
+# size: room
+# view: front
+# sockets: top
+# seeds: none
+
+let depth = 0.9
+let height = 0.9
+let top_t = 0.05
+let plinth_h = 0.1
+let plinth_in = 0.06
+let skin = 0.02
+let gap = 0.006
+let drawer_h = 0.17
+
+to kitchen_island(at: vec(0, 0, 0), length: 2.2, fronts: "oak", top: "concrete", steel: material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45))
+  let body_h = height - top_t - plinth_h
+  let cy = at.y + plinth_h + body_h / 2
+  # the dark carcass shows through the gaps, and the plinth sits back under it
+  box size: vec(length - skin * 2, body_h - 0.02, depth - skin * 2), at: vec(at.x, cy, at.z), material: steel
+  box size: vec(length - plinth_in * 2, plinth_h, depth - plinth_in * 2), at: vec(at.x, at.y + plinth_h / 2, at.z), material: steel
+  # two end panels and the plain seating panel
+  for each side in [-1, 1]
+    box size: vec(skin, body_h - 0.01, depth), at: vec(at.x + side * (length / 2 - skin / 2), cy, at.z), material: fronts, round: 0.004
+  box size: vec(length - skin * 2 - gap, body_h - 0.01, skin), at: vec(at.x, cy, at.z + depth / 2 - skin / 2), material: fronts, round: 0.004
+  # the working side: a row of drawers over a row of doors, one module about 0.55 m wide
+  let n = round((length - skin * 2) / 0.55)
+  let w = (length - skin * 2) / n
+  let z = at.z - depth / 2 + skin / 2
+  let door_h = body_h - drawer_h - gap * 3
+  for each i in range(0, n, 1)
+    let x = at.x - length / 2 + skin + (i + 0.5) * w
+    box size: vec(w - gap, drawer_h, skin), at: vec(x, at.y + plinth_h + body_h - gap - drawer_h / 2, z), material: fronts, round: 0.004
+    box size: vec(w - gap, door_h, skin), at: vec(x, at.y + plinth_h + gap + door_h / 2, z), material: fronts, round: 0.004
+  # the worktop
+  box size: vec(length + skin * 2, top_t, depth + 0.32), at: vec(at.x, at.y + height - top_t / 2, at.z + 0.14), material: top, round: 0.008
