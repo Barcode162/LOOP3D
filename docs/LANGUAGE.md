@@ -169,8 +169,8 @@ Every setting has a sensible default; give only what matters.
   - `tree(…)` gives back the tree; `tree` and `forest` take `leaf_size:` (smaller leaves come in greater numbers)
   - Materials for them: `fern`, `fresh leaves`, `blades`, `dry blades`, `daisy`, `violet`, `poppy`, `bluebell`, `pollen`, `stem`, `wing blue`, `wing orange`, `wing white`, `firefly`, `ruin stone`, `mossy stone`, `forest floor`
 - **Light** (real units):
-  - `light(at, lumens, kelvin | color, radius)`; add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
-  - `panel_light(at, facing, size, lumens, kelvin | color)`
+  - `light(at, lumens, kelvin | color, radius, shadows: yes)`; `shadows: no` makes a lamp that casts none (no shadow map, no ray); add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
+  - `panel_light(at, facing, size, lumens, kelvin | color, shadows: yes)`; `shadows: no` makes a panel that casts none
   - `strip(from, to, lumens: 300, kelvin: 2700, facing: vec(0, -1, 0), width: 0.012, piece: 0.25, shadows: no, name)`: a thin strip of light; `lumens` is for each metre. One glowing rectangle (on a dark channel) and a row of panel lamps (each at most `piece` long) that stand for it on the phone; film lights from the rectangle alone. Gives back the glowing rectangle
   - `sun(elevation, toward (or azimuth), lux, kelvin, size: 0.53 deg)`: a wider sun casts softer shadows
   - `sky("physical", haze, stars, brightness, ground)` or `sky("color", color, nits)`
