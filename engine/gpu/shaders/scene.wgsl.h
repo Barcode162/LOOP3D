@@ -276,13 +276,24 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let width = sin(PI * pow(clamp(y, 0.0, 1.0), 0.75)) * 0.95;
     if (abs(x) > width && !resolving) { discard; }
   }
+  var glowTint = vec3f(1.0);  // a windows face glows only in its lit windows
   var glowScale = 1.0;  // a see-through grid's lines fade at their edges and far away
   if (m.pattern.x > 0.5) {
     // detail smaller than a pixel fades to its average (no shimmer, no moire)
     let kind = i32(m.pattern.x);
     let sc = max(m.pattern.y, 0.01);
     let lod = length(abs(slopeWorldX) + abs(slopeWorldY));
-    var pv = patternLod(m, i.world, n, lod);
+    var pv = vec3f(0.0, 0.5, 1.0);
+    if (kind == 11) {
+      // windows: glass where a window is (near black, in pattern_color's hue), a glow where one is lit.
+      // Its slots in the material are not scale, bump or roughness variation (see windowsAt).
+      let wv = windowsAt(m, i.world, n, lod);
+      base = mix(m.base.rgb, m.colorB.rgb * 0.02 / max(dot(m.colorB.rgb, vec3f(0.2126, 0.7152, 0.0722)), 0.001), wv.cover);
+      rough = mix(rough, 0.05, wv.cover);
+      glowTint = wv.glow;
+    } else {
+      pv = patternLod(m, i.world, n, lod);
+    }
     if (kind == 10) {
       pv = vec3f(gridLine(i.world, n, sc), 0.5, 1.0);
       // a see-through grid (opacity under a half): only its lines are drawn
@@ -291,9 +302,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
         glowScale = smoothstep(0.5, 1.0, pv.x);
       }
     }
-    base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
-    rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
-    if (m.pattern.z > 0.0) {
+    if (kind != 11) {
+      base = mix(m.base.rgb, m.colorB.rgb, clamp(pv.x, 0.0, 1.0)) * pv.z;
+      rough = clamp(rough + (pv.x - 0.5) * m.colorB.w, 0.02, 1.0);
+    }
+    if (m.pattern.z > 0.0 && kind != 11) {
       // bumps from the pattern's height, by screen-space differences
       let h = pv.y * m.pattern.z * 0.001;
       let dhx = dpdx(h);
@@ -453,7 +466,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   if (m.props.w > 0.0) {  // sheen: a soft rim
     lo += base * m.props.w * pow(1.0 - nv, 4.0) * shIrradiance(n) / PI;
   }
-  lo += m.emission.rgb * glowScale;
+  lo += m.emission.rgb * glowScale * glowTint;
   var outA = m.emission.w;
   if (glass > 0.0) {
     // glass: what's reflected, plus the tint of what's behind (blended)

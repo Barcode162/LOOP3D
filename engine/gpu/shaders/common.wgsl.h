@@ -145,6 +145,84 @@ fn gridLine(world : vec3f, n : vec3f, scale : f32) -> f32 {
   return mix(line, 0.25, far);
 }
 
+// The windows pattern (kind 11) live, as film (engine/render/pattern.cpp): cells one floor high and one
+// bay wide, a window in each one's middle, lit or dark by the same hash, with the same glow and colours.
+// Its slots in Material (set in renderer_scene.cpp; windows has no scale, bump, contrast or roughness
+// variation to send): pattern.y floor height, pattern.z bay, pattern.w window width, tex2.z window
+// height, tex2.w the share lit, colorB.w the seed (a whole number). Returns how much of the pixel is
+// window glass (cover) and the glow multiplier (times the material's emission). Where a window is
+// smaller than a pixel it blends to the cell's average, and where a cell is, to the whole face's.
+struct Windows { cover : f32, glow : vec3f };
+fn hash32(x : u32) -> u32 {
+  var v = x;
+  v = v ^ (v >> 16u);
+  v = v * 0x7feb352du;
+  v = v ^ (v >> 15u);
+  v = v * 0x846ca68bu;
+  v = v ^ (v >> 16u);
+  return v;
+}
+fn cellHashU(ix : i32, iy : i32, s : u32) -> f32 {
+  return f32(hash32((bitcast<u32>(ix) * 0x9e3779b1u) ^ (bitcast<u32>(iy) * 0x85ebca77u) ^ s) >> 8u) * (1.0 / 16777216.0);
+}
+// a black-body colour at luminance 1 (the film's kelvin(): Kim's fit to CIE xy, then linear sRGB)
+fn kelvinColor(k : f32) -> vec3f {
+  let t = clamp(k, 1000.0, 40000.0);
+  let t2 = t * t;
+  let t3 = t2 * t;
+  var x = -3.0258469e9 / t3 + 2.1070379e6 / t2 + 0.2226347e3 / t + 0.240390;
+  if (t <= 4000.0) { x = -0.2661239e9 / t3 - 0.2343589e6 / t2 + 0.8776956e3 / t + 0.179910; }
+  let x2 = x * x;
+  let x3 = x2 * x;
+  var y = 3.0817580 * x3 - 5.87338670 * x2 + 3.75112997 * x - 0.37001483;
+  if (t <= 4000.0) { y = -0.9549476 * x3 - 1.37418593 * x2 + 2.09137015 * x - 0.16748867; }
+  if (t <= 2222.0) { y = -1.1063814 * x3 - 1.34811020 * x2 + 2.18555832 * x - 0.20219683; }
+  let X = x / y;
+  let Z = (1.0 - x - y) / y;
+  let c = max(vec3f(3.2404542 * X - 1.5371385 - 0.4985314 * Z, -0.9692660 * X + 1.8760108 + 0.0415560 * Z, 0.0556434 * X - 0.2040259 + 1.0572252 * Z), vec3f(0.0));
+  let l = dot(c, vec3f(0.2126, 0.7152, 0.0722));
+  return select(vec3f(1.0), c / l, l > 0.0);
+}
+fn windowsAt(m : Material, p : vec3f, n : vec3f, lod : f32) -> Windows {
+  var o : Windows;
+  o.cover = 0.0;
+  o.glow = vec3f(0.0);
+  if (abs(n.y) > 0.7) { return o; }  // roofs and floors have none
+  let floorH = max(m.pattern.y, 0.01);
+  let bay = max(m.pattern.z, 0.01);
+  let win = vec2f(m.pattern.w, m.tex2.z);
+  let lit = m.tex2.w;
+  let w = planar(p, n);
+  let c = vec2f(w.x / bay, w.y / floorH);
+  let cell = floor(c);
+  let d = (fract(c) - 0.5) * vec2f(bay, floorH);
+  let ix = i32(cell.x);
+  let iy = i32(cell.y);
+  let s = hash32(bitcast<u32>(i32(m.colorB.w)) * 0x2545f491u + 1u);
+  var g = vec3f(0.0);
+  if (cellHashU(ix, iy, s) < lit) {
+    let bright = 0.3 + 0.7 * cellHashU(ix, iy, s ^ 0x68e31da4u);
+    let cool = cellHashU(ix, iy, s ^ 0xb5297a4du);
+    g = kelvinColor(select(2700.0 + 1300.0 * cellHashU(ix, iy, s ^ 0x1b873593u), 6500.0, cool < 0.125)) * bright;
+  }
+  let area = min(1.0, win.x * win.y / (bay * floorH));
+  // the window's edges, a pixel wide
+  let e = clamp((win * 0.5 - abs(d)) / max(lod, 1e-4) + 0.5, vec2f(0.0), vec2f(1.0));
+  let sharp = e.x * e.y;
+  let lo = select(0.4, 1.2, frame.shadowFar.z > 0.5);
+  let hi = select(1.5, 4.0, frame.shadowFar.z > 0.5);
+  let fWin = smoothstep(lo, hi, lod / min(win.x, win.y) * frame.sh[1].w);
+  let fCell = smoothstep(lo, hi, lod / min(bay, floorH) * frame.sh[1].w);
+  o.cover = mix(mix(sharp, area, fWin), area, fCell);
+  var avg = vec3f(0.0);
+  if (fCell > 0.0) {
+    // the face's average colour: seven in eight warm (the middle of 2,700 to 4,000 K), one in eight cool, 0.65 bright
+    avg = (kelvinColor(3350.0) * 0.875 + kelvinColor(6500.0) * 0.125) * (lit * 0.65);
+  }
+  o.glow = mix(mix(sharp * g, area * g, fWin), area * avg, fCell);
+  return o;
+}
+
 // The pattern with detail finer than `lod` (metres per pixel) faded to its
 // average: no shimmer when a pixel covers many bricks or grains.
 fn patternLod(m : Material, p : vec3f, n : vec3f, lod : f32) -> vec3f {
@@ -258,6 +336,7 @@ fn pattern(m : Material, p : vec3f, n : vec3f) -> vec3f {
       let g = abs(fract(pl - 0.5) - 0.5);
       return vec3f(1.0 - smoothstep(0.008, 0.016, min(g.x, g.y)), 0.5, 1.0);
     }
+    // kind 11 (windows) is windowsAt, above: it also gives a glow
     default: { return vec3f(0.0, 0.5, 1.0); }
   }
 }
