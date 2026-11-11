@@ -94,6 +94,27 @@ void registerShapes(Vm& vm) {
     st.groundSurface = audio::surfaceOf(gm.name);
     return v;
   }, "ground(size, material): a flat floor");
+  // ---- group: what its block places is measured from its place and turn
+  vm.native("group", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const Value* block = a.get(-1, "of");
+    if (!block) a.vm.fail("a group needs the lines that belong to it, indented under it");
+    const size_t things = s.placed.size(), lamps = s.scene.lights.size(), groups = s.groups.size();
+    a.vm.call(*block, {});
+    Stage::Group g;
+    for (size_t i = things; i < s.placed.size(); ++i) g.parts.push_back(static_cast<int>(i));
+    for (size_t i = lamps; i < s.scene.lights.size(); ++i)
+      if (s.scene.lights[i].kind != Light::Kind::kSun) g.lights.push_back(static_cast<int>(i));
+    for (size_t i = groups; i < s.groups.size(); ++i) g.children.push_back(static_cast<int>(i));
+    g.name = a.text(-1, "name", "");
+    s.groups.push_back(std::move(g));
+    const int gi = static_cast<int>(s.groups.size() - 1);
+    // the block placed everything as if the group stood at the middle of the
+    // world, unturned; now the group takes its place
+    s.placeGroup(gi, a.vec(-1, "at", {}), f32(a.num(-1, "turn", 0)));
+    if (!a.flag(-1, "visible", true)) s.showGroup(gi, false);
+    return Value::object(a.vm.newThing(&kGroupClass, gi));
+  }, "group(at, turn, name) with indented lines under it: everything they place moves, turns and hides as one (.position, .turn, .visible)");
   vm.native("rock", [](Args& a) {
     float sz = f32(a.num(0, "size", 1));
     int seed = static_cast<int>(a.num(-1, "seed", 1));
