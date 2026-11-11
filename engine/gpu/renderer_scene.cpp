@@ -163,9 +163,15 @@ void GpuRenderer::syncTransforms(const Scene& scene) {
     u.n0 = {nm.c[0], 0}, u.n1 = {nm.c[1], 0}, u.n2 = {nm.c[2], 0};
     u.material[0] = static_cast<uint32_t>(std::max(0, in.material));
     u.material[1] = static_cast<uint32_t>(in.mesh);  // its shape (the cluster drawing finds its clusters by it)
-    // each thing starts at its own place in a surface's tile: the same hash of its number as the film's
-    u.material[2] = hash32(idx * 0x9e3779b1U + 0x632be5abU);
+    // each thing starts at its own place in a surface's tile: the same hash of its number as the film's;
+    // and its surface's stretch runs along the axis the film works out from the mesh's bounds
+    u.material[2] = surfaceStartKey(idx);
     u.material[3] = 0;
+    if (!scene.materials.empty()) {
+      const Material& m = scene.materials[std::clamp(in.material, 0, static_cast<int>(scene.materials.size()) - 1)];
+      if (m.surface >= 0 && m.surface < static_cast<int>(scene.surfaces.size()))
+        u.material[3] = static_cast<uint32_t>(alongAxis(scene.surfaces[m.surface], meshes_[in.mesh].box));
+    }
     bool g = glassOf(in);
     if (!batches_.empty() && batches_.back().mesh == in.mesh && batches_.back().glass == g) ++batches_.back().count;
     else batches_.push_back({in.mesh, static_cast<uint32_t>(data.size()), 1, g});
@@ -308,7 +314,7 @@ void GpuRenderer::readLights(const Scene& scene) {
 void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, MaterialU& u) {
   u.surf0 = {static_cast<float>(layer), static_cast<float>(layer + 1), r.tile, r.varyLarge > 0 ? static_cast<float>(wander) : -1.0f};
   u.surf1 = {r.varyLarge, r.varyAmount, r.varyRoughness, r.worldSpace ? 1.0f : 0.0f};
-  u.surf2 = {r.varyTint, 0};
+  u.surf2 = {r.varyTint, static_cast<float>(static_cast<int>(r.project))};
   auto layerOf = [](const SurfaceLayer& L, Vec4& a, Vec4& b, float amount) {
     a = {L.color, L.roughness};
     b = {L.metal, L.on ? amount : 0.0f, L.ragged, L.soft};

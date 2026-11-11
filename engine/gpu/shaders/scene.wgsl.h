@@ -463,37 +463,92 @@ fn layerStep(t : f32, soft : f32) -> f32 {
   let s = max(soft, 1e-3);
   return smoothstep(0.5 - s * 0.5, 0.5 + s * 0.5, t);
 }
-fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, edge : f32, hollow : f32) -> SurfaceHere {
-  // until M6: the tile laid on from the side the facing points at most (as the film's planarAxes)
+// Where a point reads the tile (section 10; order M6): the same rule as
+// projectSurface in engine/render/surface.cpp. One side of the box the tile is
+// laid on from: its place on the tile and how that changes across one pixel,
+// the tile's two ways there, and its weight.
+struct SurfaceSide { u : vec2f, ux : vec2f, uy : vec2f, ax : vec3f, ay : vec3f, w : f32 };
+struct SurfaceSides { a : SurfaceSide, b : SurfaceSide };
+fn unitAxis(i : i32) -> vec3f { return vec3f(f32(i == 0), f32(i == 1), f32(i == 2)); }
+// The tile's two ways on the side facing `axis` (0 x, 1 y, 2 z) on its `sgn`
+// side, the first laid along `along`: the film's sideWays table, so from
+// outside every side reads as a picture seen from the front (nothing mirrored).
+fn sideOf(p : vec3f, gx : vec3f, gy : vec3f, axis : i32, sgn : f32, along : i32, w : f32) -> SurfaceSide {
+  var a = along;
+  if (a == axis || a < 0 || a > 2) { a = select(0, 2, axis == 0); }
+  let b = 3 - axis - a;
+  let turn = select(-1.0, 1.0, b == (a + 1) % 3);
+  var ax = unitAxis(a);
+  var ay = unitAxis(b);
+  if (b == 1) { ax *= sgn * turn; } else { ay *= sgn * turn; }
+  return SurfaceSide(vec2f(dot(p, ax), dot(p, ay)), vec2f(dot(gx, ax), dot(gx, ay)), vec2f(dot(gy, ax), dot(gy, ay)), ax, ay, w);
+}
+fn projectSurface(kind : i32, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, uv : vec2f, uvx : vec2f, uvy : vec2f, along : i32) -> SurfaceSides {
   let a = abs(n);
-  var u = vec2f(p.x, p.y);
-  var ux = vec2f(gx.x, gx.y);
-  var uy = vec2f(gy.x, gy.y);
-  var ax = vec3f(1.0, 0.0, 0.0);
-  var ay = vec3f(0.0, 1.0, 0.0);
-  if (a.y >= a.x && a.y >= a.z) {
-    u = p.xz; ux = gx.xz; uy = gy.xz; ay = vec3f(0.0, 0.0, 1.0);
-  } else if (a.x >= a.z) {
-    u = p.zy; ux = gx.zy; uy = gy.zy; ax = vec3f(0.0, 0.0, 1.0);
+  var strongest = 2;
+  if (a.y >= a.x && a.y >= a.z) { strongest = 1; } else if (a.x >= a.z) { strongest = 0; }
+  let noSide = SurfaceSide(vec2f(0.0), vec2f(0.0), vec2f(0.0), vec3f(1.0, 0.0, 0.0), vec3f(0.0, 0.0, 1.0), 0.0);
+  if (kind == 1) { return SurfaceSides(sideOf(p, gx, gy, 1, 1.0, along, 1.0), noSide); }
+  if (kind == 2) {
+    var s = sideOf(p, gx, gy, strongest, select(1.0, -1.0, n[strongest] < 0.0), along, 1.0);
+    s.u = uv; s.ux = uvx; s.uy = uvy;
+    return SurfaceSides(s, noSide);
   }
+  // box: the facing's parts to the eighth power; the next strongest of the other two (the later where equal)
+  let o1 = select(0, 1, strongest == 0);
+  let o2 = select(2, 1, strongest == 2);
+  let second = select(o1, o2, a[o2] > a[o1]);
+  let q2 = a * a;
+  let q4 = q2 * q2;
+  let q = q4 * q4;
+  let p1 = q[strongest];
+  let p2 = q[second];
+  var w2 = 0.0;
+  if (p1 + p2 > 0.0) { w2 = p2 / (p1 + p2); }
+  let s1 = sideOf(p, gx, gy, strongest, select(1.0, -1.0, n[strongest] < 0.0), along, 1.0 - w2);
+  if (w2 > 0.0) { return SurfaceSides(s1, sideOf(p, gx, gy, second, select(1.0, -1.0, n[second] < 0.0), along, w2)); }
+  return SurfaceSides(s1, noSide);
+}
+// One side's tile: colour, height, roughness and metal from the two baked
+// pictures, read with the slopes of the place itself (so a change of side never
+// shows as a line of wrong sharpness), and its bumped facing (the shape
+// picture's two sideways parts along the tile's two ways as they lie on the
+// surface: the film's bumpedFacing), each times the side's weight.
+struct SurfaceTile { color : vec3f, b : f32, rough : f32, metal : f32, n : vec3f };
+fn tileOf(m : Material, sd : SurfaceSide, n : vec3f) -> SurfaceTile {
   let tile = max(m.surf0.z, 1e-4);
-  let t = u / tile;
-  let col = textureSampleGrad(modelTex, modelSampler, t, i32(m.surf0.x), ux / tile, uy / tile);
-  let shp = textureSampleGrad(modelTex, modelSampler, t, i32(m.surf0.y), ux / tile, uy / tile);
-  var color = srgbToLinear(col.rgb);
-  let b = col.a;  // the tile's height, 0 to 1
-  var rough = shp.b;
-  var metal = shp.a;
-  // the bumped facing: the tile's two sideways parts along the tile's two ways
+  let t = sd.u / tile;
+  let col = textureSampleGrad(modelTex, modelSampler, t, i32(m.surf0.x), sd.ux / tile, sd.uy / tile);
+  let shp = textureSampleGrad(modelTex, modelSampler, t, i32(m.surf0.y), sd.ux / tile, sd.uy / tile);
   let f = shp.rg * 2.0 - 1.0;
   let fz = sqrt(max(1.0 - dot(f, f), 0.0));
-  let tx = normalize(ax - n * dot(ax, n));
-  let ty = normalize(ay - n * dot(ay, n));
-  let nb = normalize(n * fz + tx * f.x + ty * f.y);
-  // 4. large change
+  let tx = sd.ax - n * dot(sd.ax, n);
+  let ty = sd.ay - n * dot(sd.ay, n);
+  let nb = n * fz + tx * f.x + ty * f.y;
+  return SurfaceTile(srgbToLinear(col.rgb) * sd.w, col.a * sd.w, shp.b * sd.w, shp.a * sd.w, nb * (inverseSqrt(max(dot(nb, nb), 1e-12)) * sd.w));
+}
+// The slow change's four noises from one side, times its weight.
+fn wanderOf(m : Material, sd : SurfaceSide) -> vec4f {
+  let side = 8.0 * max(m.surf1.x, 0.01);
+  return (textureSampleGrad(modelTex, modelSampler, sd.u / side, i32(m.surf0.w), sd.ux / side, sd.uy / side) * 2.0 - 1.0) * sd.w;
+}
+fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, uv : vec2f, uvx : vec2f, uvy : vec2f, along : i32, edge : f32, hollow : f32) -> SurfaceHere {
+  // 1 to 3: the tile from each side, blended by the weights; the bumped facing made whole after
+  let sides = projectSurface(i32(m.surf2.w), p, n, gx, gy, uv, uvx, uvy, along);
+  var t = tileOf(m, sides.a, n);
+  if (sides.b.w > 0.0) {
+    let t2 = tileOf(m, sides.b, n);
+    t = SurfaceTile(t.color + t2.color, t.b + t2.b, t.rough + t2.rough, t.metal + t2.metal, t.n + t2.n);
+  }
+  var color = t.color;
+  let b = t.b;  // the tile's height, 0 to 1
+  var rough = t.rough;
+  var metal = t.metal;
+  let nb = normalize(t.n);
+  // 4. large change (read from the same sides, so it never shows where they change)
   if (m.surf0.w >= 0.0 && m.surf1.x > 0.0) {
-    let side = 8.0 * max(m.surf1.x, 0.01);
-    let w = textureSampleGrad(modelTex, modelSampler, u / side, i32(m.surf0.w), ux / side, uy / side) * 2.0 - 1.0;
+    var w = wanderOf(m, sides.a);
+    if (sides.b.w > 0.0) { w += wanderOf(m, sides.b); }
     color = color * max(0.0, 1.0 + m.surf1.y * w.x);
     color = mix(color, m.surf2.rgb, clamp(m.surf1.y * max(w.y, 0.0), 0.0, 1.0));
     rough += m.surf1.z * w.z;
@@ -618,7 +673,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       gx = back * slopeWorldX;
       gy = back * slopeWorldY;
     }
-    let h = surfaceHere(m, sp, sn, gx, gy, i.marks.x, i.marks.y);
+    let h = surfaceHere(m, sp, sn, gx, gy, i.uv, slopeUvX, slopeUvY, i32(I.material.w), i.marks.x, i.marks.y);
     base = h.base;
     rough = h.rough;
     metal = h.metal;

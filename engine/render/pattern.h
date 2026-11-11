@@ -18,7 +18,8 @@ struct Surface {
 // (docs/SURFACES.md section 7): where it is and which way it faces in the
 // recipe's own space (the thing's as it was made, or the world's), the way back
 // to the world for the bumped facing, the two marks blended across the
-// triangle, and how far away it is.
+// triangle, and how far away it is. `recipe` is the recipe as laid on this
+// thing: its `along` already worked out from the thing's mesh (alongAxis).
 struct SurfaceContext {
   const SurfaceRecipe* recipe = nullptr;
   Vec3 place{0}, facing{0, 1, 0};

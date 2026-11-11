@@ -109,6 +109,8 @@ struct PathTracer::Impl {
   std::vector<int> sceneOf;                           // per geometry instance: its number in Scene::instances
   std::vector<Mat4> thingInv;                         // per geometry instance: the world to the thing as made
   std::vector<std::shared_ptr<const Marks>> marksOf;  // per mesh drawn in a surface: its edge and hollow marks
+  std::vector<SurfaceRecipe> laid;                    // each recipe three times, with `along` x, y and z
+  std::vector<int8_t> alongOf;                        // per geometry instance: the way its surface's stretch runs on it
   bool surfaceContext(const SceneHit& h, Vec3 p, Vec3 ns, const Material& M, SurfaceContext& out) const;
 
   // camera
@@ -157,16 +159,27 @@ void PathTracer::Impl::build(const Scene& s) {
   // surfaces: each drawn thing's way back to its own space, and the marks of the
   // meshes drawn in one (measured once a mesh by the cook)
   hasSurfaces = !s.surfaces.empty();
-  sceneOf.clear(), thingInv.clear();
+  sceneOf.clear(), thingInv.clear(), laid.clear(), alongOf.clear();
   marksOf.assign(hasSurfaces ? s.meshes.size() : 0, nullptr);
   if (hasSurfaces) {
+    // a recipe whose stretch runs along the longest side gets it from each mesh's bounds (as the live renderer)
+    for (const SurfaceRecipe& r : s.surfaces)
+      for (int a = 0; a < 3; ++a) laid.push_back(r), laid.back().along = a;
+    std::vector<AABB> bounds(s.meshes.size());
     for (size_t i = 0; i < s.instances.size(); ++i) {  // in the order SceneBvh keeps them (it skips meshes without triangles)
       const int m = s.instances[i].mesh;
       if (m < 0 || m >= static_cast<int>(s.meshes.size()) || s.meshes[m].triangleCount() == 0) continue;
       sceneOf.push_back(static_cast<int>(i));
       thingInv.push_back(s.instances[i].transform.inverse());
       const int mat = s.materials.empty() ? -1 : clamp(s.instances[i].material, 0, static_cast<int>(s.materials.size()) - 1);
-      if (mat >= 0 && s.materials[mat].surface >= 0 && !marksOf[m]) marksOf[m] = Cook::shared().marks(s.meshes[m]);
+      const int sf = mat >= 0 ? s.materials[mat].surface : -1;
+      int8_t along = 0;
+      if (sf >= 0 && sf < static_cast<int>(s.surfaces.size())) {
+        if (!marksOf[m]) marksOf[m] = Cook::shared().marks(s.meshes[m]);
+        if (!bounds[m].valid()) bounds[m] = s.meshes[m].bounds();
+        along = static_cast<int8_t>(alongAxis(s.surfaces[sf], bounds[m]));
+      }
+      alongOf.push_back(along);
     }
   }
   emitBase.assign(geom.instanceCount(), -1);
@@ -298,7 +311,7 @@ float PathTracer::Impl::fogDistance(Vec3 o, Vec3 d, float tmax, float& t0, float
 bool PathTracer::Impl::surfaceContext(const SceneHit& h, Vec3 p, Vec3 ns, const Material& M, SurfaceContext& out) const {
   if (M.surface < 0 || M.surface >= static_cast<int>(scene->surfaces.size()) || h.inst < 0 || h.inst >= static_cast<int>(sceneOf.size()))
     return false;
-  const SurfaceRecipe& r = scene->surfaces[M.surface];
+  const SurfaceRecipe& r = laid[static_cast<size_t>(M.surface) * 3 + alongOf[h.inst]];
   const int si = sceneOf[h.inst];
   const MeshInstance& in = scene->instances[si];
   const Mesh& mesh = scene->meshes[in.mesh];
@@ -313,8 +326,7 @@ bool PathTracer::Impl::surfaceContext(const SceneHit& h, Vec3 p, Vec3 ns, const 
     out.facing = normalize(L.transposed() * ns);
     out.toWorld = L.inverse().transposed();
     // each thing starts at its own place in the tile
-    const uint32_t k = hash32(static_cast<uint32_t>(si) * 0x9e3779b1U + 0x632be5abU);
-    out.place = out.place + Vec3(toUnit(k), toUnit(hash32(k)), toUnit(hash32(k ^ 0x5bd1e995U))) * r.tile;
+    out.place = out.place + surfaceStart(surfaceStartKey(static_cast<uint32_t>(si)), r.tile);
   }
   out.edge = out.hollow = 0;
   if (in.mesh < static_cast<int>(marksOf.size()) && marksOf[in.mesh]) {

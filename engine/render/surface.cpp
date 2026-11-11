@@ -92,16 +92,81 @@ void moveTo(Vec3& color, float& rough, float& metal, const SurfaceLayer& L, floa
 
 uint32_t layerSeed(uint32_t seed, uint32_t which) { return hashCombine(seed * 0x9e3779b1U + 1, which); }
 
-// Planar coordinates on the face the facing points at most, and the two directions they run along.
-Vec2 planarAxes(Vec3 p, Vec3 n, Vec3& ax, Vec3& ay) {
-  Vec3 a = vabs(n);
-  if (a.y >= a.x && a.y >= a.z) { ax = {1, 0, 0}, ay = {0, 0, 1}; return {p.x, p.z}; }
-  if (a.x >= a.z) { ax = {0, 0, 1}, ay = {0, 1, 0}; return {p.z, p.y}; }
-  ax = {1, 0, 0}, ay = {0, 1, 0};
-  return {p.x, p.y};
+Vec3 unitAxis(int i) { return {i == 0 ? 1.0f : 0.0f, i == 1 ? 1.0f : 0.0f, i == 2 ? 1.0f : 0.0f}; }
+
+// The tile's two ways on the side facing `axis` (0, 1, 2: x, y, z) on the `sign` (+1 or -1) side of
+// it, the first (the pattern's stretched way) laid along `along`:
+//  - on a side that holds the along axis, the first way runs along it; on the side facing along it,
+//    the side's usual first way (the x side: z; the y and z sides: x);
+//  - where y is the second way (an upright side), it points up, so a pattern's up stays up;
+//  - the remaining sign makes the first way, the second and the facing out a right-hand turn, so
+//    seen from outside every side reads as a picture seen from the front: nothing reads mirrored.
+// So with the stretched way along x: +x (-z, y), -x (z, y); +y (x, -z), -y (x, z); +z (x, y), -z (-x, y).
+// The live renderer's sideOf (engine/gpu/shaders/scene.wgsl.h) is the same table.
+void sideWays(int axis, float sign, int along, Vec3& ax, Vec3& ay) {
+  const int a = along == axis || along < 0 || along > 2 ? (axis == 0 ? 2 : 0) : along;
+  const int b = 3 - axis - a;
+  const float turn = b == (a + 1) % 3 ? 1.0f : -1.0f;  // (a, b, axis) in the order x, y, z
+  if (b == 1) ax = unitAxis(a) * (sign * turn), ay = unitAxis(b);
+  else ax = unitAxis(a), ay = unitAxis(b) * (sign * turn);
+}
+
+SurfaceSide sideOf(Vec3 p, int axis, float sign, int along, float weight) {
+  SurfaceSide s;
+  s.axis = axis, s.weight = weight;
+  sideWays(axis, sign, along, s.ax, s.ay);
+  s.u = {dot(p, s.ax), dot(p, s.ay)};
+  return s;
 }
 
 }  // namespace
+
+SurfaceProjection projectSurface(const SurfaceRecipe& r, Vec3 place, Vec3 facing, Vec2 uv, int along) {
+  SurfaceProjection pr;
+  const Vec3 a = vabs(facing);
+  // the side the facing points at most (y, then x, then z where two are equal)
+  const int first = a.y >= a.x && a.y >= a.z ? 1 : (a.x >= a.z ? 0 : 2);
+  auto signOf = [&](int i) { return facing[i] < 0 ? -1.0f : 1.0f; };
+  if (r.project == SurfaceRecipe::Project::kTop) {
+    pr.side[0] = sideOf(place, 1, 1, along, 1);
+    return pr;
+  }
+  if (r.project == SurfaceRecipe::Project::kUv) {
+    pr.side[0] = sideOf(place, first, signOf(first), along, 1);
+    pr.side[0].u = uv;
+    return pr;
+  }
+  // box: the facing's parts to the eighth power; the next strongest of the other two (the later where equal)
+  const int o1 = first == 0 ? 1 : 0, o2 = first == 2 ? 1 : 2;
+  const int second = a[o2] > a[o1] ? o2 : o1;
+  auto eighth = [&](int i) {
+    float q = a[i] * a[i];
+    q *= q;
+    return q * q;
+  };
+  const float p1 = eighth(first), p2 = eighth(second);
+  const float w2 = p1 + p2 > 0 ? p2 / (p1 + p2) : 0;
+  pr.side[0] = sideOf(place, first, signOf(first), along, 1 - w2);
+  if (w2 > 0) {
+    pr.side[1] = sideOf(place, second, signOf(second), along, w2);
+    pr.sides = 2;
+  }
+  return pr;
+}
+
+int alongAxis(const SurfaceRecipe& r, const AABB& bounds) {
+  if (r.along >= 0 && r.along <= 2) return r.along;
+  if (!bounds.valid()) return 0;
+  const Vec3 e = bounds.extent();
+  int a = 0;
+  for (int i = 1; i < 3; ++i)
+    if (e[i] > e[a] * 1.01f) a = i;
+  return a;
+}
+
+uint32_t surfaceStartKey(uint32_t thing) { return hash32(thing * 0x9e3779b1U + 0x632be5abU); }
+
+Vec3 surfaceStart(uint32_t k, float tile) { return Vec3(toUnit(k), toUnit(hash32(k)), toUnit(hash32(k ^ 0x5bd1e995U))) * tile; }
 
 const Image& wanderPicture() {
   // 64 square, four smooth noises that wrap (value noise on an 8 by 8 lattice and half as much on a
@@ -177,33 +242,40 @@ SurfacePoint surfaceTile(const SurfaceRecipe& r, Vec2 u) {
   return sp;
 }
 
-// The bumped facing from the tile's height: its slope across the two directions the tile runs.
-Vec3 bumpedFacing(const SurfaceRecipe& r, Vec2 u, Vec3 n, Vec3 ax, Vec3 ay, float h0) {
+// One side's bumped facing: the tile's height slope along its two ways, laid on the thing's own facing
+// `n` along those ways as they lie on the surface (each way less its part along `n`, so a way that
+// meets the surface slanted gives the smaller slope it really has there). The live renderer does the
+// same from the shape picture's two sideways parts.
+Vec3 bumpedFacing(const SurfaceRecipe& r, const SurfaceSide& sd, Vec3 n, float h0) {
   const float total = tileBump(r);
-  if (total <= 0) return n;
   const float e = clamp(r.base.pattern.size * 0.05f, 0.0001f, 0.002f);
-  float hx = surfaceTile(r, u + Vec2(e, 0)).height, hy = surfaceTile(r, u + Vec2(0, e)).height;
+  float hx = surfaceTile(r, sd.u + Vec2(e, 0)).height, hy = surfaceTile(r, sd.u + Vec2(0, e)).height;
   float k = total / e;  // height (0..1) to metres, over the step
-  // the two directions laid on the surface
-  Vec3 tx = normalize(ax - n * dot(ax, n)), ty = normalize(ay - n * dot(ay, n));
+  Vec3 tx = sd.ax - n * dot(sd.ax, n), ty = sd.ay - n * dot(sd.ay, n);
   return normalize(n - tx * ((hx - h0) * k) - ty * ((hy - h0) * k));
 }
 
 Surface surfaceAt(const SurfaceRecipe& r, const Material& mat, Vec3 place, Vec3 facing, Vec2 uv, float edge, float hollow, float distance) {
-  (void)uv, (void)distance;  // uv projection is M6; detail (which fades by distance) is M7
+  (void)distance;  // detail (which fades by distance) is M7
   Surface s;
   s.alpha = mat.opacity;
-  Vec3 ax, ay;
-  Vec2 u = planarAxes(place, facing, ax, ay);
-  // 1 to 3: the tile
-  SurfacePoint t = surfaceTile(r, u);
-  Vec3 color = t.color;
-  float rough = t.roughness, metal = t.metal;
-  const float b = t.height;
-  s.normal = bumpedFacing(r, u, facing, ax, ay, b);
-  // 4. large change
+  const SurfaceProjection pr = projectSurface(r, place, facing, uv, r.along < 0 ? 0 : r.along);
+  // 1 to 3: the tile from each side, blended by the weights; the bumped facing made whole after
+  Vec3 color{0}, bent{0};
+  float rough = 0, metal = 0, b = 0;
+  const bool bumps = tileBump(r) > 0;
+  for (int k = 0; k < pr.sides; ++k) {
+    const SurfaceSide& sd = pr.side[k];
+    const SurfacePoint t = surfaceTile(r, sd.u);
+    color += t.color * sd.weight;
+    rough += t.roughness * sd.weight, metal += t.metal * sd.weight, b += t.height * sd.weight;
+    if (bumps) bent += bumpedFacing(r, sd, facing, t.height) * sd.weight;
+  }
+  s.normal = bumps ? normalize(bent) : facing;
+  // 4. large change (read from the same sides, so it never shows where they change)
   if (r.varyLarge > 0 && (r.varyAmount != 0 || r.varyRoughness != 0)) {
-    Vec4 w = wanderAt(u, r.varyLarge);
+    Vec4 w;
+    for (int k = 0; k < pr.sides; ++k) w = w + wanderAt(pr.side[k].u, r.varyLarge) * pr.side[k].weight;
     color = color * std::max(0.0f, 1 + r.varyAmount * w.x);
     color = vlerp(color, r.varyTint, saturate(r.varyAmount * std::max(w.y, 0.0f)));
     rough += r.varyRoughness * w.z;
