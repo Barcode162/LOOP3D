@@ -1,0 +1,23 @@
+# steel · satin stainless steel, the kind of a kitchen fitting: soft sheen, fine brushing, a few fingerprints
+# For worktops, sinks, handles, appliances and trims. Wears smoother on edges; grime gathers dark in joints.
+#
+# kind: surface
+# place: test_ball("steel", AT)
+# tags: metal, steel, kitchen
+# size: chair
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M31 (2026-11-11)
+
+let grain = 0.02 mm   # one brushing line
+let tile_side = 0.5 m
+
+# A metal's colour is its reflectance (linear 0.63, 0.62, 0.60), written here as seen.
+to steel(seed: 1)
+  return surface("steel", seed: seed, tile: tile_side,
+    base: {color: rgb(0.81, 0.80, 0.79), roughness: 0.3, metal: 1},
+    vary: {large: 0.5 m, amount: 0.02, roughness: 0.08},
+    wear: {color: rgb(0.86, 0.85, 0.84), roughness: 0.2, metal: 1, amount: 0.5},
+    dirt: {color: rgb(0.25, 0.25, 0.26), roughness: 0.85, amount: 0.4},
+    detail: {pattern: "brushed", size: grain, stretch: 50, roughness: 0.08, bump: 0.01 mm})
