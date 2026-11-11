@@ -312,8 +312,8 @@ milliseconds.
 | High | 80 | 320 | 61.1 | 61 | 1.02 | lamp work |
 | High | 160 | 640 | 61.1 | 61 | 1.02 | lamp work |
 
-Phone leaves its frame budget between 10 and 40 strips (17 of 24 at 10 strips, 40 at 40): about 15 strips,
-where the work reaches 24. Entries a surface stop growing at 61 from 80 strips on (the light grid's cap), so
+Phone leaves its frame budget between 10 and 40 strips (17 of 24 at 10 strips, 40 at 40; a straight line
+puts 24 near 19). Entries a surface stop growing at 61 from 80 strips on (the light grid's cap), so
 160 strips cost no more per pixel than 80 here, but 640 lamps are sent, and a surface only 61 entries long
 drops lamps that matter (222 lamps give 95% of the light at 160 strips): the picture gets dimmer, not slower.
 Triangles, draw calls and surfaces stay inside the budget at every count; only lamp work goes over.
