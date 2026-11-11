@@ -4,7 +4,7 @@ hand:     lead
 size:     S
 branch:   work/MAT1
 status:   working
-touch:    projects/samples/roughness.loop, projects/samples/project.json
+touch:    projects/samples/roughness.loop, projects/samples/stills/roughness.png
 pictures: no
 expected: 25
 started:  2026-11-11T16:40Z
