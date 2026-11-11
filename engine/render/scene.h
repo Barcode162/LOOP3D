@@ -14,6 +14,7 @@
 #include "engine/core/image.h"
 #include "engine/core/math.h"
 #include "engine/geometry/mesh.h"
+#include "engine/render/surface.h"
 
 namespace loop {
 
@@ -61,6 +62,7 @@ struct Material {
   int baseTexture = -1, metalRoughTexture = -1, normalTexture = -1, emissiveTexture = -1;
   float alphaCutoff = 0;      // > 0: cut away where the colour picture's alpha is below this
   float roughnessMin = 0;     // never smoother than this (a model's real value; its pictures may say less)
+  int surface = -1;           // >= 0: made by `surface(...)`, the recipe is Scene::surfaces[surface] (docs/SURFACES.md)
 };
 
 struct Light {
@@ -167,6 +169,7 @@ struct MeshInstance {
 struct Scene {
   std::vector<Mesh> meshes;
   std::vector<Material> materials;
+  std::vector<SurfaceRecipe> surfaces;  // the recipes `surface(...)` made; a Material points at one
   std::vector<MeshInstance> instances;
   std::vector<Light> lights;
   std::vector<Image> images;
