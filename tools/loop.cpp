@@ -25,7 +25,7 @@
 //               behind the thing, exposure held at f/2, 1/50 s, ISO 800 (an entry whose
 //               card says `kind: light` or `kind: sky` is pictured this way without being asked)
 //               an entry of kind surface is pictured on the test ball (library/models/test_ball.loop):
-//               the camera 0.5 m from the ball's nearest point, 50 mm; --far from 3 m and 1.5 m up,
+//               the camera 1.6 m from the ball's middle, 50 mm, the ball two thirds of the frame; --far from 3 m and 1.5 m up,
 //               so the slab's far edge is in the frame; --seed n picks the piece of the surface
 //   Every command that takes a scene also takes a project's cover page (.looped):
 //   it opens the project's first scene.
@@ -420,14 +420,14 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
   }
   cam.position = centre + dir * dist, cam.target = centre;
   if (isSurface) {
-    // the test ball: 50 mm; 0.5 m from the ball's nearest point (the ball is 0.25 m in radius),
-    // or --far: 3 m out and 1.5 m up, looking at the ball and the slab behind it
+    // the test ball: 50 mm; 1.6 m from the ball's middle, so the ball fills about two thirds of the
+    // frame's height, looking a little down so the plinth's top and groove show; or --far: 3 m out and 1.5 m up, looking at the ball and the slab behind it
     cam.focalLength = 50;
     if (o.far) {
       const Vec3 flat = normalize(Vec3(dir.x, 0, dir.z));
       cam.position = Vec3(0, 1.5f, 0) + flat * 3.0f, cam.target = Vec3(-0.1f, 0.1f, -1.0f);
     } else {
-      cam.position = aim + dir * (0.25f + 0.5f), cam.target = aim;
+      cam.position = aim + dir * 1.6f, cam.target = Vec3(0, 0.3f, 0);
     }
   }
   const float floorSize = std::max(200.0f, 40 * length(box.extent()));
