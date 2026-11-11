@@ -8,5 +8,5 @@ touch:    projects/samples/roughness.loop, projects/samples/project.json
 pictures: no
 expected: 25
 started:  2026-11-11T16:40Z
-updated:  2026-11-11T16:40Z
-note:     claimed
+updated:  2026-11-11T16:52Z
+note:     scene on main; cinema before/after pictures rendering
