@@ -1,0 +1,64 @@
+# city_night · the city at night in three depths, seen from forty metres up
+# city_night(toward, eye_height, seed, lit, at, lamp) puts a dark blue-black sky with a few stars, a haze that fades
+# far towers to blue, and 180 lit-window towers in a fan 60 degrees each side of `toward` (towards -z by
+# default): 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from 800 to 1,500 m, none nearer than 100 m,
+# their feet `eye_height` below `at` (the eye, the middle of the glass). Under them a dark street and, far out
+# at 300 m, a low panel of dull orange (the streets' glow). One tall group stands off-centre and one stretch of
+# sky is left clear; each seed puts them elsewhere. `toward` leans to -z (its z is negative).
+# It adds ONE lamp outside, a cool panel the size of a 9 by 6 m window, 1 m outside the glass facing in (the
+# city's own light reaching the room: 7,500 K, 300 lumens, no shadows). It is the only lamp outside; `lamp: no`
+# leaves it out (the panel shines at the eye from the glass side). Gives back that light.
+#
+# kind: sky
+# place: city_night(at: AT + vec(0, 40, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: city, night, sky, towers, windows, skyline, cool, dark
+# size: room
+# sockets: light
+# seeds: any whole number
+
+let city_street = material(color: rgb(0.012, 0.012, 0.016), roughness: 0.8)
+let city_glow = material(color: rgb(0.05, 0.02, 0.01), glow: rgb(1.0, 0.45, 0.15) * 4)
+
+# a repeatable random number in 0..1 from a counter (the `seed` argument would hide `seed()`)
+to city_hash(n)
+  let x = sin(n * 12.9898 + 4.1414) * 43758.5453
+  return x - floor(x)
+
+to city_night(toward: vec(0, 0, -1), eye_height: 40, seed: 1, lit: 0.35, at: vec(0, 0, 0), lamp: yes)
+  let n = seed * 1000
+  let degree = 1 deg
+  let a0 = atan(toward.x / max(0.001, 0 - toward.z))
+  sky "color", color: rgb(0.1, 0.2, 0.5), nits: 0.05, stars: 0.2
+  haze 2500, 1200
+  # one tall group off-centre, one stretch of sky left clear on the other side
+  let side = 1
+  if city_hash(n) < 0.5
+    side = 0 - 1
+  let tall_at = side * (18 + city_hash(n + 1) * 22) * degree
+  let gap_at = 0 - side * (15 + city_hash(n + 2) * 30) * degree
+  # each layer: how many, nearest, farthest, width low, width high, usual top height, window glow (nits)
+  for each layer in [[40, 120, 250, 14, 30, 80, 8], [60, 300, 600, 30, 60, 110, 12], [80, 800, 1500, 40, 90, 130, 20]]
+    let faces = []
+    for each k in range(0, 6)
+      faces.push(material(color: rgb(0.05, 0.055, 0.07), roughness: 0.75, pattern: "windows", floor: 3.2, bay: 2.4, window: vec(1.5, 1.7), lit: lit, glow: layer[6], seed: seed * 7 + k, pattern_color: rgb(0.03, 0.04, 0.07)))
+    for each i in range(0, layer[0])
+      n += 8
+      let th = (i + city_hash(n)) / layer[0] * 120 * degree - 60 * degree
+      if abs(th - gap_at) > 7 * degree or city_hash(n + 1) < 0.04
+        let d = layer[1] + city_hash(n + 2) * (layer[2] - layer[1])
+        let h = 30 + city_hash(n + 3) * (layer[5] - 30)
+        if layer[0] > 40 and (abs(th - tall_at) < 12 * degree or city_hash(n + 4) < 0.04)
+          h = 110 + city_hash(n + 5) * 70
+        let w = layer[3] + city_hash(n + 6) * (layer[4] - layer[3])
+        let dir = a0 + th
+        box size: vec(w, h, w * 0.8), at: at + vec(sin(dir) * d, h / 2 - eye_height, 0 - cos(dir) * d), turn: 0 - dir, material: faces[floor(city_hash(n + 7) * 5.99)], collide: no
+  # the dark street, and the streets' glow lying on it at 300 m
+  box size: vec(4000, 0.1, 4000), at: at + vec(0, 0.03 - eye_height, 0), material: city_street, collide: no
+  box size: vec(1600, 0.15, 150), at: at + vec(sin(a0) * 300, 0.1 - eye_height, 0 - cos(a0) * 300), turn: 0 - a0, material: city_glow, collide: no
+  # the city's light reaching the room: the only lamp outside
+  if lamp == no
+    return nothing
+  return panel_light(at + vec(sin(a0), 3, 0 - cos(a0)), facing: vec(0 - sin(a0), 0, cos(a0)), size: vec(9, 6, 0), lumens: 300, kelvin: 7500, shadows: no)

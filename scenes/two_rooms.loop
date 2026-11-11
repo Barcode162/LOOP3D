@@ -1,0 +1,28 @@
+# Two rooms side by side at night: one lamp in the first, none in the second.
+# The test: the unlit room must stay dark. No sun, a black sky, nothing to light it.
+# The rooms are open at the top (no ceiling) so the camera can see both floors;
+# the sky is black, so nothing comes in from above.
+# Render it:  loop render projects/samples/two_rooms.loop --quality cinema
+title "Two Rooms"
+mode "movie"
+
+let wall = material("plaster", color: rgb(0.7, 0.7, 0.68), roughness: 0.9)
+# the floors: room one is x from -4.15 to -0.15, room two from 0.15 to 4.15 (4 m square)
+box size: vec(8.7, 0.1, 4.7), at: vec(0, -0.05, 0), material: material("oak", roughness: 0.8)
+# the outer walls, closed all round
+box size: vec(8.7, 2.6, 0.15), at: vec(0, 1.3, -2.375), material: wall
+box size: vec(8.7, 2.6, 0.15), at: vec(0, 1.3, 2.375), material: wall
+box size: vec(0.15, 2.6, 4.7), at: vec(-4.275, 1.3, 0), material: wall
+box size: vec(0.15, 2.6, 4.7), at: vec(4.275, 1.3, 0), material: wall
+# the wall between the rooms, 0.3 m thick
+box size: vec(0.3, 2.6, 4.7), at: vec(0, 1.3, 0), material: wall
+
+# one lamp, in the first room only
+light vec(-2.15, 2.0, 0), lumens: 800, kelvin: 2700, radius: 0.08
+
+# night: no sun, a black sky
+sky "color", color: rgb(0, 0, 0), nits: 0
+
+camera at: vec(0, 10, 2.5), look_at: vec(0, 0, 0), lens: 18 mm, f_stop: 2, shutter: 1 / 50 s, iso: 800, auto_exposure: no
+shot "from above", 4 s, from: {at: vec(0, 10, 2.5), look_at: vec(0, 0, 0), lens: 18 mm, f_stop: 2}, to: {at: vec(0, 10, 2.5), look_at: vec(0, 0, 0), lens: 18 mm, f_stop: 2}
+render file: "two_rooms.png", quality: "cinema", width: 640

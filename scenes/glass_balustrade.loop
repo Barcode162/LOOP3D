@@ -1,0 +1,50 @@
+# glass_balustrade · glass panels along an edge, held in a steel shoe, with a cap rail
+# glass_balustrade(from_at, to_at, height, panel, steel) stands it level on the floor
+# from `from_at` to `to_at`, along x or along z (whichever differs more). The glass
+# is 12 mm thick, cut in equal panels at most `panel` wide with 2 cm gaps; a
+# steel shoe 5 by 10 cm runs along the foot and a cap rail 4 cm by 12 mm along
+# the top. `height` is to the top of the rail.
+#
+# kind: piece
+# place: glass_balustrade(AT + vec(-4.5, 0, 2), AT + vec(4.5, 0, 2))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: glass, balustrade, railing, guard, mezzanine, steel
+# size: sofa
+# sockets: lie
+# seeds: none
+
+let balu_steel = material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+
+to glass_balustrade(from_at, to_at, height: 1.05, panel: 1.2, steel: balu_steel)
+  let shoe_w = 0.05
+  let shoe_h = 0.1
+  let cap_w = 0.04
+  let cap_h = 0.012
+  let thick = 0.012
+  let gap = 0.02
+  let along_z = abs(to_at.z - from_at.z) > abs(to_at.x - from_at.x)
+  let len = max(abs(to_at.x - from_at.x), abs(to_at.z - from_at.z))
+  let mid = (from_at + to_at) / 2
+  let floor_y = min(from_at.y, to_at.y)
+  # axis helpers: `run` is a size along the edge, `cross` across it
+  let n = ceil((len + gap) / (panel + gap))
+  let w = (len - (n - 1) * gap) / n
+  let glass_h = height - cap_h - shoe_h + 0.03
+  let glass_y = floor_y + shoe_h - 0.03 + glass_h / 2
+  # shoe and cap rail: one long bar each
+  let shoe_size = vec(len, shoe_h, shoe_w)
+  let cap_size = vec(len, cap_h, cap_w)
+  if along_z
+    shoe_size = vec(shoe_w, shoe_h, len)
+    cap_size = vec(cap_w, cap_h, len)
+  box size: shoe_size, at: vec(mid.x, floor_y + shoe_h / 2, mid.z), material: steel, round: 0.008
+  box size: cap_size, at: vec(mid.x, floor_y + height - cap_h / 2, mid.z), material: steel, round: 0.004
+  # the glass panels
+  for each i in range(0, n, 1)
+    let off = -len / 2 + w / 2 + i * (w + gap)
+    if along_z
+      box size: vec(thick, glass_h, w), at: vec(mid.x, glass_y, mid.z + off), material: "glass"
+    else
+      box size: vec(w, glass_h, thick), at: vec(mid.x + off, glass_y, mid.z), material: "glass"

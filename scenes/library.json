@@ -1,5 +1,45 @@
 [
  {
+  "about": "cove(from_at, to_at, lumens, kelvin, ledge, out, wall) runs one level ledge along a wall, from `from_at` to `to_at` (points on the wall's face at the ledge's top; the line runs along x or along z). The ledge is 0.1 m deep and 0.04 m thick, its softened front edge carries an upstand 0.06 m high and 0.02 m thick. Behind the upstand, on the ledge, lies a strip of light facing up: it washes the wall and the ceiling above and is never seen from below. `out` says which way the ledge leaves the wall: -1 is towards -z for a line along x and towards -x for a line along z; 1 is the other way. With `wall` above 0 a plaster wall that high stands behind it (0.3 m of it below the ledge), for a bare picture; in a room leave it 0. Gives back the strip's glowing rectangle.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "cove",
+  "place": "cove(AT + vec(-1.5, 0.4, 0), AT + vec(1.5, 0.4, 0), lumens: 600, kelvin: 2700, out: 1, wall: 1.4)",
+  "what": "a plaster ledge on a wall with a strip of light hidden on top"
+ },
+ {
+  "about": "pendant_dome(at, drop, across, lumens, kelvin, shade) hangs one from the ceiling point `at`: a thin cord `drop` long, a small ceiling rose, a dome `across` wide (dark outside, pale inside), a dim bulb high inside it, and one spotlight at the bulb aimed straight down. The light's angle is the dome's opening, so the dome owns the pool below and nothing leaves upward. Gives back the light.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "pendant_dome",
+  "place": "pendant_dome(at: AT + vec(0, 2.4, 0))",
+  "what": "a plain metal dome on a cord, its light falling in a cone"
+ },
+ {
+  "about": "step_strips(at, rises, rise, going, width, lumens, kelvin) takes the same numbers as stair_straight and puts one strip under each tread's front edge: 0.03 m in from each side, 0.02 m back from the nosing, facing down and tipped a little towards the stair's foot, so each one washes the tread below while the tread above hides it from anyone walking up or standing in the room. One tread fewer than rises, like the stair. Gives back nothing.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "step_strips",
+  "place": "step_strips(at: AT)",
+  "what": "a strip of warm light under the front edge of every tread of a stair, 250 lm per metre"
+ },
+ {
+  "about": "track_spots(from_at, to_at, count, aims, lumens, kelvin, steel, beam) hangs a level track under the ceiling from `from_at` to `to_at` (along x or z; its top is at the height of from_at) with `count` heads spaced evenly. Head i aims at aims[i] (a point); with no point it looks straight down.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "track_spots",
+  "place": "track_spots(from_at: vec(-1.5, 3, 0), to_at: vec(1.5, 3, 0), count: 4, beam: 10)",
+  "what": "a ceiling track with small spotlights, each making its own pool on the floor"
+ },
+ {
   "about": "lantern(name, at) places one, dark (a faint ember inside); light_lantern(l) lights it: its flame, a warm light that breathes like fire, a crackle, a bell (quiet: yes leaves the bell out). Every lantern placed is in `lanterns`; lit_count() says how many are lit.",
   "credit": "J Production, made in Loop3D",
   "from": "The Lantern Isle (2026-11-06)",
@@ -18,6 +58,56 @@
   "name": "sailing_boat",
   "place": "sailing_boat(at: AT)",
   "what": "a small wooden boat with a mast, a sail and a lamp at its bow"
+ },
+ {
+  "about": "brick_wall_bay(at, width, height, brick, faces) stands it against a wall; `at` is the middle of its foot at the wall's face. faces: \"z\" looks towards -z (a wall at the back), \"x\" looks towards -x (a wall at x = +4.5). Join bays side by side, width apart, and the piers meet as one.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "brick_wall_bay",
+  "place": "brick_wall_bay(at: AT, width: 3, height: 6, faces: \"z\")",
+  "what": "a bay of brick wall: a thin panel between two piers, with a stone sill band"
+ },
+ {
+  "about": "column(at, height, side, material) stands it on the floor at `at` (its middle) and gives it back. `height` is floor to ceiling, plates included. The flanges face front and back (z), the web runs along z.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "column",
+  "place": "column(AT, height: 3, side: 0.2)",
+  "what": "a steel H-column from the floor to the ceiling, on a bolted base plate, with a cap plate on top"
+ },
+ {
+  "about": "door_and_frame(at, width, height, open, leaf, steel) stands it on `at` (the middle of the threshold), facing -z. `width` and `height` are the clear opening; the frame is 0.05 by 0.12 m round it. The leaf is 0.04 m thick with a lever handle on both faces and three hinges down the left side (seen from the front); `open` turns the leaf about those hinges, in degrees (positive swings it towards -z). `leaf` and `steel` are materials, by name or made.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "door_and_frame",
+  "place": "door_and_frame(at: AT, open: 30)",
+  "what": "a plain door hung in its frame, closed or swung open"
+ },
+ {
+  "about": "duct_run(from_at, to_at, across, hangers_every, ceiling, steel) hangs a level galvanised duct between two points (`from_at` and `to_at` are the middles of its ends, level, along x or z), `across` wide: a raised seam ring every 1.2 m, a thin strap hanger up to the height `ceiling` at each `hangers_every`, one round grille on its side and a flat cap on each end. It gives back the duct.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "duct_run",
+  "place": "duct_run(AT + vec(0, 5, -3), AT + vec(0, 5, 3), across: 0.4, ceiling: 6)",
+  "what": "a round air duct hung from the ceiling"
+ },
+ {
+  "about": "glass_balustrade(from_at, to_at, height, panel, steel) stands it level on the floor from `from_at` to `to_at`, along x or along z (whichever differs more). The glass is 12 mm thick, cut in equal panels at most `panel` wide with 2 cm gaps; a steel shoe 5 by 10 cm runs along the foot and a cap rail 4 cm by 12 mm along the top. `height` is to the top of the rail.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "glass_balustrade",
+  "place": "glass_balustrade(AT + vec(-4.5, 0, 2), AT + vec(4.5, 0, 2))",
+  "what": "glass panels along an edge, held in a steel shoe, with a cap rail"
  },
  {
   "about": "glazing_wall(at, width, height, across, up, bar, material) stands it on `at` (the middle of its foot), facing along z: one sheet of glass, a frame round it, and bars that cut it into `across` panes side by side and `up` panes high. `bar` is how thick the bars are.",
@@ -40,6 +130,16 @@
   "what": "a stone beam laid across from one point to another, like the top of a doorway or a ruin"
  },
  {
+  "about": "mezzanine_deck(at, width, depth, top, floor, steel) stands it with `at` the middle of its front edge on the floor below; the deck runs from there towards +z. Its top is at height `top`. Joists run front to back under it every 0.45 m; a steel beam under the front edge has a low lip standing above the deck there; two steel posts stand 1.5 m in from each end.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "mezzanine_deck",
+  "place": "mezzanine_deck(AT + vec(0, 0, 2), width: 9, depth: 4, top: 3.06)",
+  "what": "an upper floor: a slab of boards on timber joists, carried by a steel beam and two posts"
+ },
+ {
   "about": "plinth(at, height, material) stands it on the floor at `at` and gives it back; what it shows goes at at + vec(0, height, 0).",
   "credit": "J Production, made in Loop3D",
   "from": "the Showcase (2026-11-06)",
@@ -48,6 +148,66 @@
   "name": "plinth",
   "place": "plinth(AT)",
   "what": "a square stand with softened edges, to show something on"
+ },
+ {
+  "about": "radiator(at, columns, height, steel) stands it on `at` (the middle of its foot), facing -z: `columns` columns of two tubes each (front and back), joined by a rail along the top and one along the bottom, two feet, and a small valve at the right-hand end. It is `columns` x 0.045 m long.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "radiator",
+  "place": "radiator(AT, columns: 14, height: 0.6)",
+  "what": "a column radiator of upright steel tubes, to stand under a window"
+ },
+ {
+  "about": "skirting(from_at, to_at, height, timber, side) lays one board level on the floor, from `from_at` to `to_at` (floor points at the wall's face, the line runs along x or along z). The board is 0.018 m thick and stands `height` tall, lifted a 2 mm shadow gap off the floor, its edges softened 6 mm. `side` says which way the thickness goes, away from the wall: 1 is towards +z for a line along x and towards +x for a line along z; -1 is the other way.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "skirting",
+  "place": "skirting(AT + vec(-2, 0, 0), AT + vec(2, 0, 0), height: 0.12, timber: \"oak\")",
+  "what": "a skirting board along the foot of a wall"
+ },
+ {
+  "about": "stair_straight(at, rises, rise, going, width, tread, steel) stands it with `at` at the middle of the first rise's foot and climbs towards +z. One tread fewer than rises: the last rise meets the upper floor, which is rises x rise high and starts at the top tread's back edge. No risers, no rail.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "stair_straight",
+  "place": "stair_straight(AT)",
+  "what": "a straight stair of open treads on two steel stringers, you see through between the treads"
+ },
+ {
+  "about": "steel_beam(from_at, to_at, depth, flange, steel) lays it level, along x or along z (whichever the two points are further apart in). `from_at` and `to_at` are the middles of the tops of its ends. A thin web, two flanges, and at each end a plate with four bolt heads.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "steel_beam",
+  "place": "steel_beam(AT + vec(-4.5, 3.06, 0), AT + vec(4.5, 3.06, 0))",
+  "what": "a blackened steel I-beam laid level between two points, with a bolted end plate at each end"
+ },
+ {
+  "about": "steel_rail(from_at, to_at, height, posts_every, steel) runs the rail from `height` above `from_at` to `height` above `to_at`, so it climbs with a stair when the two points are at different heights. Give it the points on the floor (or on the stair's nosing line); posts stand on that line, one at each end and no further apart than `posts_every`, and a thinner bar runs halfway up. Gives back the top rail.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "steel_rail",
+  "place": "steel_rail(AT + vec(-4.2, 0, -2.32), AT + vec(-4.2, 3.06, 2))",
+  "what": "a handrail of flat steel on thin posts, for a stair, a mezzanine or any edge"
+ },
+ {
+  "about": "timber_joists(at, width, depth, top, spacing, timber, seed) stands under its middle on the floor at `at`. The boards are 25 mm thick and their top is at `top`; the joists (75 by 220 mm) hang under them every `spacing` metres across the width, each running the depth (along z). Edges are rounded 4 mm, and every joist is a few millimetres shorter or longer, a little differently for each seed.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-10)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "timber_joists",
+  "place": "timber_joists(AT, width: 9, depth: 12, top: 6, spacing: 0.6, timber: \"oak\", seed: 1)",
+  "what": "a ceiling of boards laid on joists, seen from below as ribs"
  },
  {
   "about": "loft_shell(size, floor, walls, ceiling) builds it round the middle of the world: `size` is its inside width, height and depth. The end toward -z is left open (put a glazing_wall there); the other three walls, the floor and the ceiling are solid. No lamps: the light comes in through the open end.",
@@ -68,6 +228,16 @@
   "name": "room_shell",
   "place": "room_shell(size: vec(12, 4.5, 12))",
   "what": "a plain room: a floor, four walls with a doorway, a ceiling with a soft panel light"
+ },
+ {
+  "about": "city_night(toward, eye_height, seed, lit, at, lamp) puts a dark blue-black sky with a few stars, a haze that fades far towers to blue, and 180 lit-window towers in a fan 60 degrees each side of `toward` (towards -z by default): 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from 800 to 1,500 m, none nearer than 100 m, their feet `eye_height` below `at` (the eye, the middle of the glass). Under them a dark street and, far out at 300 m, a low panel of dull orange (the streets' glow). One tall group stands off-centre and one stretch of sky is left clear; each seed puts them elsewhere. `toward` leans to -z (its z is negative). It adds ONE lamp outside, a cool panel the size of a 9 by 6 m window, 1 m outside the glass facing in (the city's own light reaching the room: 7,500 K, 300 lumens, no shadows). It is the only lamp outside; `lamp: no` leaves it out (the panel shines at the eye from the glass side). Gives back that light.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "sky",
+  "licence": "our own work, free for every J Production project",
+  "name": "city_night",
+  "place": "city_night(at: AT + vec(0, 40, 0))",
+  "what": "the city at night in three depths, seen from forty metres up"
  },
  {
   "about": "drifting plates lift its mountain ranges, rivers carve its valleys as it rises, lakes fill its hollows, wind from the west rains on the mountains' near side and leaves their far side dry; sand on the shores, grass, forests where it is wet and warm, bare rock high and steep. Its land and trees are made a chunk at a time round the player as they walk. The player starts on gentle land looking towards the mountains. (any whole number: each grows a different island)",

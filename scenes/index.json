@@ -25,6 +25,16 @@
      "name": "the_woods",
      "title": "The Woods",
      "still": false
+    },
+    {
+     "name": "two_rooms",
+     "title": "Two Rooms",
+     "still": false
+    },
+    {
+     "name": "windows",
+     "title": "Windows",
+     "still": false
     }
    ],
    "library": [],
