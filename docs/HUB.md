@@ -24,7 +24,12 @@ A line is ticked only when it has been checked, on the phone where it says so.
 - [ ] The editor, linked from the hub.
 
 **The pipe** (so publishing is one word)
-- [ ] The three IONOS secrets are in this repo's GitHub settings (only the user can).
+- [x] The three IONOS secrets are in this repo's GitHub settings (only the user can).
+      *Checked 2026-11-11 by the key check (`.github/workflows/hub-keys.yml`, looks only): logged in; `home/bar` is
+      there, `home/bar/loop3d` not yet. The host and user are saved with a new line at their end: every workflow
+      that uses them trims it, as the key check does.*
+- [ ] The Cloudflare token works (needed for the later part, not the first publish). *2026-11-11: refused,
+      "Invalid API Token"; the account ID has the right shape.*
 - [ ] One workflow builds the hub and the player and uploads them; started by hand for the first publish.
 - [ ] After the first publish: every green Check on `main` uploads by itself.
 - [ ] The live page is opened and checked after an upload, by the workflow.
