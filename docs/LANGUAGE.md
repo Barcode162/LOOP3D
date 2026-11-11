@@ -170,6 +170,7 @@ Every setting has a sensible default; give only what matters.
 - **Light** (real units):
   - `light(at, lumens, kelvin | color, radius)`; add `aim:` and `angle:` (and `softness:`) for a spotlight; `aim_is_direction: yes` reads `aim` as a direction
   - `panel_light(at, facing, size, lumens, kelvin | color)`
+  - `strip(from, to, lumens: 300, kelvin: 2700, facing: vec(0, -1, 0), width: 0.012, piece: 0.25, shadows: no, name)`: a thin strip of light; `lumens` is for each metre. One glowing rectangle (on a dark channel) and a row of panel lamps (each at most `piece` long) that stand for it on the phone; film lights from the rectangle alone. Gives back the glowing rectangle
   - `sun(elevation, toward (or azimuth), lux, kelvin, size: 0.53 deg)`: a wider sun casts softer shadows
   - `sky("physical", haze, stars, brightness, ground)` or `sky("color", color, nits)`
   - `fog(density, top, glow, color, from, to)`: mist you can stand in
