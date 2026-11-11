@@ -19,10 +19,11 @@ void registerLight(Vm& vm) {
       float ang = f32(a.num(-1, "angle", 0.6));
       l.innerAngle = ang * f32(a.num(-1, "softness", 0.7)), l.outerAngle = ang;
     }
+    l.castShadows = a.flag(-1, "shadows", true);
     s.scene.lights.push_back(l);
     ++s.version;
     return Value::object(a.vm.newThing(&kLightClass, static_cast<int>(s.scene.lights.size() - 1)));
-  }, "light(at, lumens, kelvin | color, radius) — add aim: and angle: for a spotlight");
+  }, "light(at, lumens, kelvin | color, radius, shadows: yes) — add aim: and angle: for a spotlight; shadows: no for a lamp that casts none");
   vm.native("panel_light", [](Args& a) {
     Stage& s = stageOf(a.vm);
     Light l;
@@ -32,10 +33,11 @@ void registerLight(Vm& vm) {
     l.size = {f32(a.vec(-1, "size", Vec3(1)).x), f32(a.vec(-1, "size", Vec3(1)).y)};
     l.lumens = f32(a.num(-1, "lumens", 3000));
     l.color = a.has(-1, "color") ? unitLuminanceOr(a.vec(-1, "color", Vec3(1))) : kelvin(f32(a.num(-1, "kelvin", 5000)));
+    l.castShadows = a.flag(-1, "shadows", true);
     s.scene.lights.push_back(l);
     ++s.version;
     return Value::object(a.vm.newThing(&kLightClass, static_cast<int>(s.scene.lights.size() - 1)));
-  }, "panel_light(at, facing, size, lumens): a soft rectangle of light (a window, a softbox)");
+  }, "panel_light(at, facing, size, lumens, shadows: yes): a soft rectangle of light (a window, a softbox)");
   vm.native("strip", [](Args& a) {
     Stage& s = stageOf(a.vm);
     const Vec3 from = a.vec(0, "from", {}), to = a.vec(1, "to", {0, 0, 1});
