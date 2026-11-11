@@ -1,7 +1,10 @@
 # Puts LOOP3D's player, with the bar, on a hidden link beside the live bar:
 #   https://joshuavelasco.com/bar/loop3d/?scene=bar
-# Runs only when started by hand (Actions → "Bar on the hidden link" → Run),
-# so nothing goes up until the owner decides. It never deletes anything on
+# and the hub's new front page (web/hub/, docs/HUB.md) in a folder under it:
+#   https://joshuavelasco.com/bar/loop3d/hub/
+# Runs when started by hand (Actions → "Bar on the hidden link" → Run), and
+# while the hub is being built, when the hub's page or this file changes on
+# the hub's branch (the owner's go, 2026-11-11). It never deletes anything on
 # the server: the live bar, its PHP and its labs stay exactly as they are.
 #
 # Needs three secrets in this repo (Settings → Secrets and variables →
@@ -10,6 +13,9 @@
 name: Bar on the hidden link
 on:
   workflow_dispatch:
+  push:
+    branches: ['claude/dazzling-mccarthy-fcaffw']
+    paths: ['.github/workflows/bar-hidden.yml', 'web/hub/**']
 permissions:
   contents: read
 env:
@@ -45,6 +51,18 @@ jobs:
         run: |
           sudo apt-get install -y ninja-build lftp >/dev/null
           for i in 1 2 3; do ./tools/build_site.sh && break; [ $i = 3 ] && exit 1; sleep 30; done
+      - name: The hub's front page, beside the player
+        run: |
+          mkdir -p site/hub && cp -r web/hub/. site/hub/
+          # here the player is one folder up; at the real front door these links are set again
+          sed -i 's#https://barcode162.github.io/LOOP3D/#../#g' site/hub/index.html
+          ! grep -q "github.io" site/hub/index.html
+      - name: Keys saved with a space or a new line at their end still work
+        run: |
+          for n in IONOS_SFTP_HOST IONOS_SFTP_USER; do
+            t="$(printf '%s' "${!n}" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+            [ -n "$t" ] && echo "::add-mask::$t" && echo "$n=$t" >> "$GITHUB_ENV"
+          done
       - name: Upload (adds and replaces files, never deletes)
         timeout-minutes: 20
         if: env.IONOS_SFTP_HOST != ''
@@ -63,6 +81,15 @@ jobs:
           mput index.html editor.html player.js player.wasm
           bye
           EOF
+      - name: The live pages answer
+        if: env.IONOS_SFTP_HOST != ''
+        run: |
+          for u in bar/loop3d/ bar/loop3d/hub/ bar/loop3d/hub/images/hero_loft_night.jpg bar/loop3d/player.wasm; do
+            code=$(curl -sS -m 30 -o got -w '%{http_code}' "https://joshuavelasco.com/$u"); echo "$code  $(wc -c < got) bytes  /$u"
+            [ "$code" = 200 ]
+          done
+          curl -sS -m 30 https://joshuavelasco.com/bar/loop3d/hub/ | grep -q "J Production"
+          code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' https://joshuavelasco.com/bar/); echo "$code  the live bar, untouched"
       - name: No secrets yet
         if: env.IONOS_SFTP_HOST == ''
         run: |

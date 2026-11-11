@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-11** · HUB1, The hub: joshuavelasco.com as the front door, and its update card: a new front page around the user's three concept pictures (web/hub/), its update card (docs/HUB.md), a key check that only looks (hub-keys.yml: IONOS and Cloudflare both let us in), and the hidden-link upload now carries the page and checks the live pages itself (joshuavelasco.com/bar/loop3d/hub/); nothing public changed; deployed.
 - **2026-11-11** · L-city_night, "Library sky: city_night": a DRAFT entry (below the rubric bar), 1920 triangles; deployed.
 - **2026-11-11** · Library check fix: a sky lives in skies/ (it said skys); the site build had the same plural fault, mended; deployed.
 - **2026-11-11** · A11b, "Windows live": the lit-window pattern drawn live (common, ultra, renderer_scene); new picture scene windows (14 pictures); deployed.

@@ -1,0 +1,91 @@
+# The key check: logs in to IONOS and to Cloudflare with the repo's five
+# secrets and says whether each works. It changes nothing on either: no
+# upload, no delete, no setting. It prints only yes/no and counts, never a
+# name, an address or a key (this repo's logs can be read by anyone).
+# Runs when started by hand, or when this file changes on the hub's branch.
+name: Hub key check
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/dazzling-mccarthy-fcaffw']
+    paths: ['.github/workflows/hub-keys.yml']
+permissions:
+  contents: read
+jobs:
+  keys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      IONOS_SFTP_HOST: ${{ secrets.IONOS_SFTP_HOST }}
+      IONOS_SFTP_USER: ${{ secrets.IONOS_SFTP_USER }}
+      LFTP_PASSWORD: ${{ secrets.IONOS_SFTP_PASSWORD }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: The five keys are there, and their shape
+        run: |
+          # a key pasted with a space or a new line at its end stops working: trim each one, and say so
+          ok=1
+          for n in IONOS_SFTP_HOST IONOS_SFTP_USER LFTP_PASSWORD CF_ACCOUNT CF_TOKEN; do
+            v="${!n}"; t="$(printf '%s' "$v" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+            if [ -z "$t" ]; then echo "MISSING: $n"; ok=0; continue; fi
+            echo "::add-mask::$t"
+            extra=""; [ "$t" != "$v" ] && extra=" (had a space or new line around it: trimmed here, better saved again clean)"
+            echo "present: $n$extra"
+            echo "$n=$t" >> "$GITHUB_ENV"
+          done
+          t="$(printf '%s' "$CF_ACCOUNT" | tr -d '[:space:]')"
+          if printf '%s' "$t" | grep -Eq '^[0-9a-f]{32}$'; then echo "shape: the account ID looks like one"; else echo "shape: the account ID does NOT look like one (it is 32 letters a-f and digits)"; fi
+          t="$(printf '%s' "$IONOS_SFTP_HOST" | tr -d '[:space:]')"
+          case "$t" in *://*|*/*|*@*) echo "shape: the IONOS host has extra parts (it is only a name like access-123.webspace-host.com)";; *.*) echo "shape: the IONOS host looks like one";; *) echo "shape: the IONOS host does NOT look like a server name";; esac
+          # what kind of thing each one is, never the thing itself
+          t="$(printf '%s' "$CF_TOKEN" | tr -d '\r\n')"
+          case "$t" in
+            [Bb]earer*) echo "shape: the Cloudflare token starts with the word Bearer (paste only the token after it)";;
+            *curl*|*http*) echo "shape: the Cloudflare token holds a whole command or a link (paste only the token)";;
+            *[[:space:]]*) echo "shape: the Cloudflare token has a space inside it";;
+            *) if printf '%s' "$t" | grep -Eq '^[0-9a-f]+$'; then echo "shape: the Cloudflare token is only digits and a-f: that is a Global API Key or an ID, not an API token"
+               elif printf '%s' "$t" | grep -Eq '^[A-Za-z0-9_-]+$'; then echo "shape: the Cloudflare token is one unbroken word, as it should be"
+               else echo "shape: the Cloudflare token has marks a token never has"; fi;;
+          esac
+          t="$(printf '%s' "$IONOS_SFTP_USER" | tr -d '[:space:]')"
+          case "$t" in *@*) echo "shape: the IONOS user is an email address (the SFTP user is a short name from the SFTP page)";;
+            *) if printf '%s' "$t" | grep -Eq '^[0-9]+$'; then echo "shape: the IONOS user is only digits (a customer number? the SFTP user starts with letters)"; else echo "shape: the IONOS user is a short name"; fi;; esac
+          [ $ok = 1 ]
+      - name: IONOS lets us in (looks, changes nothing)
+        if: always()
+        run: |
+          sudo apt-get install -y lftp >/dev/null 2>&1
+          if getent hosts "$IONOS_SFTP_HOST" >/dev/null; then echo "IONOS: the host name exists"; else echo "IONOS: the host name does NOT exist (the host secret is wrong)"; exit 1; fi
+          if out=$(lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" -e "set sftp:auto-confirm yes; set cmd:fail-exit yes; set net:max-retries 1; set net:timeout 20; cls -1; bye" 2>err.txt); then
+            echo "IONOS: logged in; $(echo "$out" | grep -c .) things at the top"
+          else
+            if grep -qi "login failed\|Login incorrect\|denied" err.txt; then echo "IONOS: the host answers, but the user or the password is refused"
+            elif grep -qi "timed out\|timeout\|refused" err.txt; then echo "IONOS: the host does not answer SFTP (is it the SFTP host, not the website's name?)"
+            else echo "IONOS: login failed for another reason ($(wc -l < err.txt) lines of error, kept private)"; fi
+            exit 1
+          fi
+          for d in home home/bar home/bar/loop3d; do
+            if lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" -e "set sftp:auto-confirm yes; set cmd:fail-exit yes; cd $d; bye" >/dev/null 2>&1
+            then echo "IONOS: folder $d: yes"; else echo "IONOS: folder $d: no"; fi
+          done
+      - name: Cloudflare lets us in (looks, changes nothing)
+        if: always()
+        run: |
+          api=https://api.cloudflare.com/client/v4
+          get() { curl -sS -m 20 -H "Authorization: Bearer $CF_TOKEN" "$api/$1"; }
+          why='"\(.success) \(.result.status // "-") \([.errors[]? | "\(.code): \(.message)"] | join("; "))"'
+          v=$(get user/tokens/verify | jq -r "$why")
+          echo "Cloudflare: token valid (as a personal token): $v"
+          v2=$(get "accounts/$CF_ACCOUNT/tokens/verify" | jq -r "$why")
+          echo "Cloudflare: token valid (as an account token): $v2"
+          a=$(get "accounts/$CF_ACCOUNT" | jq -r '.success')
+          echo "Cloudflare: token can see the account: $a"
+          count() { get "accounts/$CF_ACCOUNT/$1" | jq -r 'if .success then "yes, \(.result | if type == "array" then length else (.buckets | length) end) there now" else "no" end'; }
+          echo "Cloudflare: Workers (live code): $(count workers/scripts)"
+          echo "Cloudflare: Pages (sites): $(count pages/projects)"
+          echo "Cloudflare: D1 (database): $(count d1/database)"
+          echo "Cloudflare: R2 (big files): $(count r2/buckets)"
+          echo "Cloudflare: KV (small records): $(count storage/kv/namespaces)"
+          { [ "${v%% *}" = true ] || [ "${v2%% *}" = true ]; } && [ "$a" = true ]
+          # checked again 2026-11-11, three times, after the keys were saved again
