@@ -13,8 +13,9 @@ A line is ticked only when it has been checked, on the phone where it says so.
 
 **The page itself** (`web/hub/`)
 - [ ] The front page: what J Production is, what Loop3D is, one button to play. Fits an iPhone, loads fast.
-- [ ] Three pictures from the user (below), placed, with their credit line.
-- [ ] Every picture made by the engine is marked as such, and every concept picture as concept art.
+      *Built 2026-11-11 (`web/hub/index.html`, no downloads but its three pictures); waits for the user's eye on the phone.*
+- [x] Three pictures from the user (below), placed, with their credit line.
+- [x] Every picture made by the engine is marked as such, and every concept picture as concept art.
 - [ ] A "what's new" list on the page, written from this card.
 
 **Things a visitor can use**
@@ -40,9 +41,9 @@ as the engine's own picture; each is replaced by a real engine picture when one 
 
 | File (`web/hub/images/`) | Shape | What it is | Arrived |
 |---|---|---|---|
-| `hero_loft_night` | tall, 9:16 | The Loft at night, the top of the front page on a phone | no |
-| `recipe_to_world` | wide, 16:9 | A world half drawn as lines, half finished: "text is the source" | no |
-| `loop_mark` | square, 1:1 | A glowing loop, the mark beside the name | no |
+| `hero_loft_night` | tall, 9:16 | The Loft at night, the top of the front page on a phone | 2026-11-11 |
+| `recipe_to_world` | wide, 16:9 | A world half drawn as lines, half finished: "text is the source" | 2026-11-11 |
+| `loop_mark` | square, 1:1 | A glowing loop, the mark beside the name | 2026-11-11 |
 
 Credit line for each: "Concept art, made with Google Gemini for J Production." No text, logos, brands or real
 people in any of them.
