@@ -52,8 +52,11 @@ Dims dimsOf(const SurfacePattern& p) {
     case Kind::kBrushed: return {s * st, s, false, false, 1};
     case Kind::kBricks: return {s, s / st, false, true, 1};  // courses even: the bond wraps
     case Kind::kChecker: return {s, s, true, true, 1};
+    case Kind::kGrid: return {s, s, false, false, 1};
     case Kind::kWeave: return {s, s, false, false, 2 * std::max(1, p.twill)};  // the cross-over repeats every `period` threads
-    default: return {s, s, false, false, 1};
+    // every other kind stretches too: its grid is longer along u.x, so its features are (a pore a dash,
+    // a tile a subway tile, noise a streak); under 1 they run across (oak's rays)
+    default: return {s * st, s, false, false, 1};
   }
 }
 int fitPeriod(float tile, float len, int period) {
@@ -196,8 +199,22 @@ void patternAt(const SurfacePattern& p, Vec2 u, float tile, uint32_t seed, float
       break;
     }
     case Kind::kGrain: {
-      // Rings cut by a board: the rings run along u.x and bend into long arches.
-      float ph = gy + 2.0f * (1 - std::cos(2 * kPi * gx)) + 0.5f * vnoise(gx, gy, nx, ny, seed, 51);
+      // Rings cut by a board (plain-sawn): the log's rings are circles round its middle, and the board's
+      // face passes them at a depth that wanders slowly along it. A place `yb` rings across from the
+      // board's middle line, where the middle lies `d` rings below the face, is on ring sqrt(d² + yb²):
+      // nested arches ("cathedrals") where the face passes the rings' tops, straight close lines towards
+      // the board's edges. Boards of about 48 rings sit side by side across the tile, each its own log.
+      const int boards = std::max(1, static_cast<int>(std::lround(ny / 48.0f)));
+      const float perBoard = static_cast<float>(ny) / boards;
+      const float bpos = gy / perBoard;  // which board, and where across it
+      const int board = static_cast<int>(std::floor(bpos));
+      const float yb = (bpos - board - 0.5f) * perBoard;
+      // the depth: about 26 rings, wandering by up to 9 along the board: a slow noise with a feature every
+      // four of the pattern's lengths (its own whole number across the tile, so it wraps)
+      const int slow = std::max(1, nx / 4);
+      const float d = 26 + 9 * (fbm(gx * slow / nx, static_cast<float>(board) * 3.1f, slow, boards * 4, 2, seed, 52) * 2 - 1) +
+                      3 * (rnd(wrapIdx(board, boards), 0, seed, 53) * 2 - 1);
+      float ph = std::sqrt(d * d + yb * yb) + 0.35f * vnoise(gx * 4, gy, nx * 4, ny, seed, 51);
       int ring = static_cast<int>(std::floor(ph));
       float f = ph - ring;
       o.mix = lerp(0.5f - 0.5f * std::cos(2 * kPi * f), f, sharp);

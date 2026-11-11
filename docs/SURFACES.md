@@ -408,3 +408,10 @@ What building it taught, where this page was silent or wrong. Later orders follo
 - **No tint given** means the slow change only goes brighter and darker (the word sets the tint to the
   base's colour).
 - **The test ball** is sofa-sized in triangles (13,752): a test rig, so its plinth is round.
+- **Every pattern stretches** (order M3d): `stretch` is a feature's length along the tile's first way over its
+  width, for every kind but `checker`, `grid` and `weave` (a pore becomes a dash, a tile a subway tile, noise a
+  streak); under 1 it runs across (oak's rays). **`grain` is a sawn board's rings:** boards of about 48 rings
+  side by side, each passing its log's rings at a depth that wanders slowly along it, so the rings arch where
+  the face passes their tops and run straight and close towards the board's edges.
+- **`loop library check` places a surface's example on the test ball** and counts no triangles for it (a
+  surface has no shape of its own).

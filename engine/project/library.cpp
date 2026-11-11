@@ -153,7 +153,9 @@ bool countLibraryTriangles(const std::string& library, const LibraryEntry& e, si
   for (size_t at; (at = place.find("AT")) != std::string::npos;) place.replace(at, 2, "vec(0, 0, 0)");
   // placed as a scene would, so `use` finds the entry in the library
   std::vector<std::string> seen;
-  std::string src = expandUses("use \"" + e.name + "\"\n" + place + "\n", library, seen);
+  // a surface is placed on the test ball (library/models/test_ball.loop), as its picture is
+  const std::string ball = e.kind == "surface" ? "use \"test_ball\"\n" : "";
+  std::string src = expandUses(ball + "use \"" + e.name + "\"\n" + place + "\n", library, seen);
   Vm vm;
   Stage st;
   installStandardLibrary(vm);
@@ -165,6 +167,7 @@ bool countLibraryTriangles(const std::string& library, const LibraryEntry& e, si
   }
   for (int i = 0; i < 60; ++i) vm.update(1.0 / 120), st.update(1.0f / 120);
   triangles = 0;
+  if (e.kind == "surface") return true;  // a surface has no shape of its own: the test ball's isn't its
   for (const MeshInstance& in : st.scene.instances)
     if (in.mesh >= 0 && in.mesh < static_cast<int>(st.scene.meshes.size())) triangles += st.scene.meshes[in.mesh].triangleCount();
   return true;
