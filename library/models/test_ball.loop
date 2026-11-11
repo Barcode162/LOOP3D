@@ -5,6 +5,7 @@
 # groove 1 cm wide and deep in its top round the ball (at a radius of 0.2 m, lips rounded at 2 mm);
 # behind it (toward -z) a slab 2 by 2 m and 4 cm thick lies flat, to show the tile repeating and
 # the shine at a low angle; beside it a 10 cm cube with 2 mm rounded edges shows the size.
+# (A test rig, not a piece for a scene: sofa-sized in triangles, so the plinth is round, not 16-sided.)
 # `loop library picture <surface>` uses it.
 #
 # kind: model
@@ -13,14 +14,14 @@
 # licence: our own work, free for every J Production project
 # from: order M8 (2026-11-11)
 # tags: test, surface
-# size: chair
+# size: sofa
 
 to test_ball(surface, at)
   # the plinth: one round lathe, so its groove can gather dirt (marks never cross from one thing to
   # another). The outline goes from the bottom up; points every 2 to 4 cm on the flat stretches
   # either side of the groove keep its dirt from smearing across them.
   let outline = [vec(0.3, 0), vec(0.3, 0.115), vec(0.2985, 0.1185), vec(0.295, 0.12), vec(0.27, 0.12), vec(0.24, 0.12), vec(0.22, 0.12), vec(0.207, 0.12), vec(0.2056, 0.1194), vec(0.205, 0.118), vec(0.205, 0.112), vec(0.204, 0.11), vec(0.2, 0.11), vec(0.196, 0.11), vec(0.195, 0.112), vec(0.195, 0.118), vec(0.1956, 0.1194), vec(0.197, 0.12), vec(0.18, 0.12), vec(0.15, 0.12), vec(0.12, 0.12), vec(0.09, 0.12), vec(0.06, 0.12), vec(0.03, 0.12), vec(0, 0.12)]
-  lathe profile: outline, segments: 16, at: at, material: surface
+  lathe profile: outline, segments: 96, at: at, material: surface
   # the ball, resting on the middle
   sphere 0.25, at: at + vec(0, 0.37, 0), material: surface
   # the slab, lying flat on the floor behind
