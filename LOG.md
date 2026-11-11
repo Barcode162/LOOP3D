@@ -2,6 +2,10 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-11** · N2, "The word strip": The word strip: a glowing rectangle on a dark channel plus panel lamps that stand for it (film matches lamps within 0.2%); deployed.
+- **2026-11-11** · S7, "The word group": The word group: indented lines under it are placed, turned and hidden as one (things, lamps, groups inside groups); a recipe called inside lands in it; 179 tests; deployed.
+- **2026-11-11** · L-pendant_dome, "Library light: pendant_dome": pendant_dome: dome, cord, rose, dim bulb and one spot whose angle is the dome's opening; 2240 triangles; deployed.
+- **2026-11-11** · L-track_spots, "Library light: track_spots": track_spots: 3248 tris, separate pools with beam<=10; library picture crops the floor; deployed.
 - **2026-11-10** · F1, "Film: the view through the Loft's glass is black": light through glass that splits colours was thrown away in film (a single wavelength has one colour below zero, and light below zero is dropped), so every such pane was black; kept at zero, all wavelengths still make white (a dispersive glass ball in a white furnace: 980 957 991 of 1000). 177 tests, pictures 12 of 12. Deployed, with S1 (the word `lathe`: a list of radius and height points spun round) and E10 (`loop library picture <name> --night`: a dark room, the exposure held; lights and skies are pictured so by themselves).
 - **2026-11-10** · "Go" (the Loft's first wave, loft1): **goal 2, night falls** (no sun, a near-black sky, one bare 800 lumen bulb on a cord, the exposure held at f/2, 1/50 s, ISO 1600; checked in film and live; fits the Phone budget). Deployed LOFT2.
 - **2026-11-10** · N1, "A lamp that stands for a glowing thing": a lamp can stand for a glowing thing, so the phone lights with the lamp and film with the glow, never both; found by its test and mended: a glowing face lit from its back too, so a closed glowing shape gave double light in film. 174 tests; pictures 11 of 12 the same, showcase_materials renewed. Deployed.
