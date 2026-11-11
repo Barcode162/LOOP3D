@@ -1,0 +1,57 @@
+# dining_table_oak · a dining table for six: an oak top on a blackened steel trestle base
+# dining_table_oak(at, turn, length, wood, steel) stands it on the floor at `at` (long way along x, a head at
+# each end; turn it in degrees) and gives back its group. The top is 4 cm thick with softened edges, 0.75 m up.
+# Two inverted-T steel ends, set in from the heads so a chair fits at each, are joined by a low stretcher.
+# table_top_at(at, turn, length) gives the middle of the top's face (plates go there); table_seats(at, turn,
+# length) gives the six places chairs stand, three a side, 0.6 m apart, as a list of {at, facing}.
+#
+# kind: model
+# place: dining_table_oak(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: table, dining, oak, steel, furniture, loft
+# size: chair
+# sockets: top, seat
+# seeds: none
+
+let tbl_width = 0.95
+let tbl_height = 0.75
+let top_t = 0.04
+let set_in = 0.38
+let foot_len = 0.74
+let foot_w = 0.06
+let foot_h = 0.035
+let post_w = 0.05
+let post_d = 0.09
+let rail_w = 0.05
+let rail_h = 0.04
+let rail_len = 0.82
+let stretch = 0.035
+let stretch_y = 0.2
+let blackened_steel = material(like: "iron", color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+
+to dining_table_oak(at: vec(0, 0, 0), turn: 0, length: 2.0, wood: "oak", steel: blackened_steel)
+  let t = group(at: at, turn: turn)
+    box size: vec(length, top_t, tbl_width), at: vec(0, tbl_height - top_t / 2, 0), material: wood, round: 0.012
+    let ux = length / 2 - set_in
+    let post_h = tbl_height - top_t - rail_h - foot_h
+    for each side in [-1, 1]
+      let x = ux * side
+      box size: vec(foot_w, foot_h, foot_len), at: vec(x, foot_h / 2, 0), material: steel, round: 0.008
+      box size: vec(post_w, post_h, post_d), at: vec(x, foot_h + post_h / 2, 0), material: steel, round: 0.006
+      box size: vec(rail_w, rail_h, rail_len), at: vec(x, tbl_height - top_t - rail_h / 2, 0), material: steel, round: 0.008
+    box size: vec(2 * ux - post_w, stretch, stretch), at: vec(0, stretch_y, 0), material: steel, round: 0.006
+  return t
+
+to table_top_at(at: vec(0, 0, 0), turn: 0, length: 2.0)
+  return at + vec(0, tbl_height, 0)
+
+# six seat places: x = -0.6, 0, 0.6 along each long side; facing is where a chair looks (into the table)
+to table_seats(at: vec(0, 0, 0), turn: 0, length: 2.0)
+  let seats = []
+  for each side in [-1, 1]
+    for each i in [-1, 0, 1]
+      let o = vec(0.6 * i, 0, (tbl_width / 2 + 0.2) * side)
+      seats.push({at: at + vec(o.x * cos(turn) + o.z * sin(turn), 0, o.z * cos(turn) - o.x * sin(turn)), facing: turn + (0 if side > 0 else 180)})
+  return seats
