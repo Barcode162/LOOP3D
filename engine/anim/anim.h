@@ -1,5 +1,5 @@
 #pragma once
-// Animation: skeletons and poses, clips with blending, limbs that reach
+// Animation: skeletons and poses that blend (clips of keys: clip.h), limbs that reach
 // (two-bone and chain IK), springs for follow-through, and a procedural
 // animator for people that needs no recorded motion: breathing and weight
 // shifts at rest, a walk and a run that change with speed, feet that plant
@@ -35,18 +35,6 @@ struct Pose {
 };
 // Mixes two poses (rotations slerped, positions lerped).
 Pose blend(const Pose& a, const Pose& b, float t);
-
-struct Clip {
-  struct Key {
-    float time;
-    Quat rotation;
-    Vec3 offset{0};  // added to the rest position
-  };
-  float length = 1;
-  bool loop = true;
-  std::vector<std::vector<Key>> tracks;  // per bone, sorted by time (empty = rest)
-  Pose sample(const Skeleton& s, float t) const;
-};
 
 // A critically damped spring: reaches its target as fast as possible
 // without wobbling past it; `halfLife` is the time to close half the gap.

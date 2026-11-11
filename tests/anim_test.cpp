@@ -36,22 +36,6 @@ TEST(anim_spring_settles_without_overshoot) {
   CHECK(maxV <= 1.0001f);
 }
 
-TEST(anim_clip_samples_and_blends) {
-  Skeleton s;
-  s.add("root", -1, {0, 0, 0});
-  s.add("arm", 0, {1, 0, 0});
-  Clip c;
-  c.length = 1;
-  c.tracks.resize(2);
-  c.tracks[1] = {{0, Quat()}, {0.5f, Quat::axisAngle({0, 0, 1}, kPi / 2)}};
-  Pose p = c.sample(s, 0.5f);
-  Vec3 tip = p.world(s, Transform())[1].apply({1, 0, 0});
-  CHECK_NEAR(tip.y, 1, 1e-4);  // the arm sits at x = 1; turned 90°, its tip points up
-  CHECK_NEAR(tip.x, 1, 1e-4);
-  Pose half = blend(Pose::rest(s), p, 0.5f);
-  CHECK(half.local[1].rotation.z > 0.1f);
-}
-
 TEST(anim_person_walks_with_planted_feet) {
   Skeleton s = humanSkeleton(1.8f);
   CHECK(s.bones.size() == 17);
