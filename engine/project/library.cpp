@@ -127,7 +127,8 @@ bool readLibrary(const std::string& library, std::vector<LibraryEntry>& out, std
     std::string stem = f.stem().string();
     if (e.name != stem) why.push_back("its card names it \"" + e.name + "\" but its file is " + stem + ".loop");
     // each kind has its folder: a model in models/, a room in rooms/
-    if (e.kind + "s" != f.parent_path().filename().string()) why.push_back("its card says kind \"" + e.kind + "\" but it's in " + f.parent_path().filename().string() + "/");
+    const std::string folderOfKind = e.kind == "sky" ? "skies" : e.kind + "s";  // a sky lives in skies/
+    if (folderOfKind != f.parent_path().filename().string()) why.push_back("its card says kind \"" + e.kind + "\" but it's in " + f.parent_path().filename().string() + "/");
     auto [it, fresh] = seen.emplace(stem, f.string());
     if (!fresh) why.push_back("another entry is called " + stem + " (" + it->second + "): names must be unique");
     for (const std::string& w : why) problems.push_back(f.string() + ": " + w);
