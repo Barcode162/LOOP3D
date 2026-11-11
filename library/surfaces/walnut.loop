@@ -1,0 +1,27 @@
+# walnut · black walnut heartwood, sanded and waxed: deep chocolate, fine calm grain, a satin shine
+# For fine furniture and panels. Lightens and shines where handled; gathers near black in joints.
+#
+# kind: surface
+# place: test_ball("walnut", AT)
+# tags: wood, dark, warm, indoor
+# size: chair
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M10 (2026-11-11)
+
+let ring = 2.2 mm      # a growth ring's width
+let pore = 0.15 mm     # a pore's width
+let streak = 3 cm        # a dark streak's width, 20 times as long
+
+to walnut(seed: 1)
+  return surface("walnut", seed: seed, tile: 1 m, project: "box", along: "long",
+    base:   {color: rgb(0.26, 0.17, 0.14), color2: rgb(0.20, 0.13, 0.11), roughness: 0.4, roughness2: 0.45,
+             pattern: "grain", size: ring, stretch: 40, bump: 0.08 mm},
+    vary:   {large: 0.9 m, amount: 0.06, tint: rgb(0.28, 0.18, 0.15), roughness: 0.04,
+             small: 4 cm, small_amount: 0.03},
+    coat:   {color: rgb(0.08, 0.055, 0.055), roughness: 0.42, cover: 0.15,
+             pattern: "noise", size: streak, stretch: 20, sharp: 0.3, sits: "any"},
+    wear:   {color: rgb(0.47, 0.32, 0.22), roughness: 0.3, amount: 0.7, ragged: 0.4},
+    dirt:   {color: rgb(0.06, 0.04, 0.04), roughness: 0.8, amount: 0.5, ragged: 0.6},
+    detail: {pattern: "pores", size: pore, stretch: 10, bump: 0.02 mm, tile: 8 cm})
