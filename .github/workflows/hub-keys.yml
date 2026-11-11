@@ -1,0 +1,65 @@
+# The key check: logs in to IONOS and to Cloudflare with the repo's five
+# secrets and says whether each works. It changes nothing on either: no
+# upload, no delete, no setting. It prints only yes/no and counts, never a
+# name, an address or a key (this repo's logs can be read by anyone).
+# Runs when started by hand, or when this file changes on the hub's branch.
+name: Hub key check
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/dazzling-mccarthy-fcaffw']
+    paths: ['.github/workflows/hub-keys.yml']
+permissions:
+  contents: read
+jobs:
+  keys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      IONOS_SFTP_HOST: ${{ secrets.IONOS_SFTP_HOST }}
+      IONOS_SFTP_USER: ${{ secrets.IONOS_SFTP_USER }}
+      LFTP_PASSWORD: ${{ secrets.IONOS_SFTP_PASSWORD }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: The five keys are there
+        run: |
+          ok=1
+          for n in IONOS_SFTP_HOST IONOS_SFTP_USER LFTP_PASSWORD CF_ACCOUNT CF_TOKEN; do
+            if [ -z "${!n}" ]; then echo "MISSING: $n"; ok=0; else echo "present: $n"; fi
+          done
+          [ $ok = 1 ]
+      - name: IONOS lets us in (looks, changes nothing)
+        if: always()
+        run: |
+          sudo apt-get install -y lftp >/dev/null
+          out=$(lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" 2>/dev/null <<'EOF'
+          set cmd:fail-exit yes
+          set sftp:auto-confirm yes
+          set net:max-retries 2
+          set net:timeout 20
+          cls -1
+          bye
+          EOF
+          ) || { echo "IONOS: login FAILED (host, user or password is wrong)"; exit 1; }
+          echo "IONOS: logged in; $(echo "$out" | grep -c .) things at the top"
+          for d in home home/bar home/bar/loop3d; do
+            if lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" -e "set sftp:auto-confirm yes; set cmd:fail-exit yes; cd $d; bye" >/dev/null 2>&1
+            then echo "IONOS: folder $d: yes"; else echo "IONOS: folder $d: no"; fi
+          done
+      - name: Cloudflare lets us in (looks, changes nothing)
+        if: always()
+        run: |
+          api=https://api.cloudflare.com/client/v4
+          get() { curl -sS -m 20 -H "Authorization: Bearer $CF_TOKEN" "$api/$1"; }
+          v=$(get user/tokens/verify | jq -r '"\(.success) \(.result.status // "-")"')
+          echo "Cloudflare: token valid: $v"
+          a=$(get "accounts/$CF_ACCOUNT" | jq -r '.success')
+          echo "Cloudflare: token can see the account: $a"
+          count() { get "accounts/$CF_ACCOUNT/$1" | jq -r 'if .success then "yes, \((.result.buckets // .result) | length) there now" else "no" end'; }
+          echo "Cloudflare: Workers (live code): $(count workers/scripts)"
+          echo "Cloudflare: Pages (sites): $(count pages/projects)"
+          echo "Cloudflare: D1 (database): $(count d1/database)"
+          echo "Cloudflare: R2 (big files): $(count r2/buckets)"
+          echo "Cloudflare: KV (small records): $(count storage/kv/namespaces)"
+          [ "${v%% *}" = true ] && [ "$a" = true ]
