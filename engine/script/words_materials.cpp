@@ -217,10 +217,19 @@ void registerMaterials(Vm& vm) {
     Stage& s = stageOf(a.vm);
     Material m;
     std::string base = a.text(0, "like", "");
+    auto has = [&](const char* k) { return std::any_of(a.named.begin(), a.named.end(), [&](const auto& e) { return e.first == k; }); };
+    // an old pattern asked for by name (`material("oak", pattern: "planks")`) means the flat material of the
+    // built-in list, as before surfaces; anything else keeps a surface of that name
+    bool oldPattern = false;
+    for (const char* k : {"pattern", "pattern_color", "pattern_colour", "pattern_scale", "bump", "floor", "bay", "window", "lit", "seed"})
+      oldPattern = oldPattern || has(k);
+    Material flat;
+    oldPattern = oldPattern && materialByName(base, flat);
     int found = -1;  // a surface made in this scene, then one from the library (decision 11)
-    for (size_t i = 0; i < s.scene.materials.size() && !base.empty(); ++i)
+    // the first of that name: the surface as made (a copy given its own colour comes after it, and keeps its name)
+    for (size_t i = 0; i < s.scene.materials.size() && !base.empty() && !oldPattern && found < 0; ++i)
       if (s.scene.materials[i].surface >= 0 && s.scene.materials[i].name == base) found = static_cast<int>(i);
-    if (found < 0 && !base.empty()) found = surfaceFromLibrary(a.vm, base);
+    if (found < 0 && !base.empty() && !oldPattern) found = surfaceFromLibrary(a.vm, base);
     if (found >= 0) m = s.scene.materials[found];  // a surface made in this scene, or one from the library
     else if (!base.empty() && !materialByName(base, m)) {
       std::string c = closest(base, materialNames());
@@ -234,6 +243,31 @@ void registerMaterials(Vm& vm) {
         std::string c = closest(k, opts);
         a.vm.fail("a material has no setting `" + k + "`", c.empty() ? "" : "did you mean `" + c + "`?");
       }
+    // a surface by name with its own colour, shine or metal: a copy of its recipe, changed so (its own
+    // colours tinted to the new one, its shine shifted by as much; its wear and dirt, which stand for
+    // other things, kept)
+    if (m.surface >= 0 && m.surface < static_cast<int>(s.scene.surfaces.size())) {
+      const bool color = has("color") || has("colour"), rough = has("roughness"), metal = has("metal") || has("metallic");
+      if (color || rough || metal) {
+        SurfaceRecipe r = s.scene.surfaces[m.surface];
+        if (color) {
+          const Vec3 was = r.base.color;
+          const Vec3 k{m.baseColor.x / std::max(was.x, 1e-4f), m.baseColor.y / std::max(was.y, 1e-4f), m.baseColor.z / std::max(was.z, 1e-4f)};
+          r.base.color = m.baseColor, r.base.color2 = r.base.color2 * k, r.varyTint = r.varyTint * k;
+          for (SurfaceLayer& c : r.coat)
+            if (c.facing == SurfaceLayer::Facing::kAny) c.color = c.color * k;
+        }
+        if (rough) {
+          const float d = m.roughness - r.base.roughness;
+          r.base.roughness = m.roughness, r.base.roughness2 = std::clamp(r.base.roughness2 + d, 0.03f, 1.0f);
+          for (SurfaceLayer& c : r.coat)
+            if (c.facing == SurfaceLayer::Facing::kAny) c.roughness = std::clamp(c.roughness + d, 0.03f, 1.0f);
+        }
+        if (metal) r.base.metal = m.metallic;
+        m.surface = static_cast<int>(s.scene.surfaces.size());
+        s.scene.surfaces.push_back(r);
+      }
+    }
     return Value::object(a.vm.newThing(&kMaterialClass, s.scene.addMaterial(m)));
   }, "material(\"oak\", roughness: 0.3) or material(color: rgb(…), metal: 1, …) or material(pattern: \"windows\", lit: 0.35, glow: 40, …)");
   vm.native("surface", [](Args& a) {

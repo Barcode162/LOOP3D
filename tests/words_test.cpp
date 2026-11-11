@@ -296,3 +296,56 @@ TEST(words_surface_is_a_listed_word) {
   for (auto& [name, help] : r->vm.words()) found = found || name == "surface";
   CHECK(found);
 }
+
+TEST(words_surface_by_name_takes_its_own_colour_and_shine) {
+  // order M5b: a scene's own settings on a material's name (`material("plaster", color: …, roughness: 0.9)`)
+  // were lost once that name became a surface: the stack reads its recipe, not the material's colour
+  namespace fs = std::filesystem;
+  fs::path root = fs::temp_directory_path() / "loop_m5b_library";
+  fs::remove_all(root);
+  fs::create_directories(root / "library" / "surfaces");
+  {
+    std::ofstream f(root / "library" / "surfaces" / "oak.loop");
+    f << "to oak()\n  return surface(\"oak\", tile: 1 m, base: {color: vec(0.2, 0.1, 0.05), color2: vec(0.1, 0.05, 0.025), roughness: 0.5, "
+         "roughness2: 0.7, pattern: \"grain\", size: 3 mm, stretch: 30}, wear: {color: vec(0.4, 0.3, 0.2), roughness: 0.3, amount: 0.5})\n";
+  }
+  looptest::SceneRun r;
+  r.stage.folder = (root / "scene").string() + "/";
+  loop::script::installStandardLibrary(r.vm);
+  loop::script::installSceneApi(r.vm, r.stage);
+  r.ok = r.vm.load("box size: 1, material: material(\"oak\", color: vec(0.1, 0.1, 0.1), roughness: 0.3)\n"
+                   "box size: 1, material: material(\"oak\", metal: 1)\n"
+                   "box size: 1, material: material(\"oak\", sheen: 0.4)\n"
+                   "box size: 1, material: material(\"oak\", pattern: \"planks\")\n", "t.loop");
+  CHECK(r.ok && r.problems().empty());
+  const auto& sc = r.stage.scene;
+  CHECK(sc.instances.size() == 4);
+  if (sc.instances.size() != 4) return;
+  auto matOf = [&](int i) { return sc.materials[sc.instances[i].material]; };
+  // colour and shine: a changed copy of the recipe
+  const auto& m0 = matOf(0);
+  CHECK(m0.surface >= 0);
+  if (m0.surface < 0) return;
+  const auto& r0 = sc.surfaces[m0.surface];
+  CHECK_NEAR(r0.base.color.x, 0.1f, 1e-6);
+  CHECK_NEAR(r0.base.color2.x, 0.05f, 1e-6);  // tinted as the first colour was: half
+  CHECK_NEAR(r0.base.color2.z, 0.05f, 1e-6);  // 0.025 x (0.1 / 0.05)
+  CHECK_NEAR(r0.base.roughness, 0.3f, 1e-6);
+  CHECK_NEAR(r0.base.roughness2, 0.5f, 1e-6);  // shifted by as much
+  CHECK_NEAR(r0.wear.color.x, 0.4f, 1e-6);  // wear stands for something else: kept
+  CHECK(r0.base.pattern.kind == loop::SurfacePattern::Kind::kGrain);
+  // the library's own recipe is untouched
+  const auto& m2 = matOf(2);
+  CHECK(m2.surface >= 0 && m2.surface != m0.surface);
+  if (m2.surface >= 0) CHECK_NEAR(sc.surfaces[m2.surface].base.color.x, 0.2f, 1e-6);
+  CHECK_NEAR(m2.sheen, 0.4f, 1e-6);  // a setting beside the layers goes on the material as before
+  // metal
+  const auto& m1 = matOf(1);
+  CHECK(m1.surface >= 0);
+  if (m1.surface >= 0) CHECK_NEAR(sc.surfaces[m1.surface].base.metal, 1.0f, 1e-6);
+  // an old pattern by name: the flat material of the built-in list, as before
+  const auto& m3 = matOf(3);
+  CHECK(m3.surface == -1);
+  CHECK(m3.pattern.kind == loop::Pattern::Kind::kPlanks);
+  fs::remove_all(root);
+}
