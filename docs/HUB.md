@@ -30,9 +30,12 @@ A line is ticked only when it has been checked, on the phone where it says so.
       that uses them trims it, as the key check does.*
 - [ ] The Cloudflare token works (needed for the later part, not the first publish). *2026-11-11: refused,
       "Invalid API Token"; the account ID has the right shape.*
-- [ ] One workflow builds the hub and the player and uploads them; started by hand for the first publish.
+- [x] One workflow builds the hub and the player and uploads them; started by hand for the first publish.
+      *2026-11-11: `.github/workflows/bar-hidden.yml` put both in the hidden folder (joshuavelasco.com/bar/loop3d/,
+      the front page at `hub/` under it) in 5 min 40 s, the upload itself 17 s; nothing deleted, the live bar
+      answers as before. Still to do for the real publish: the same upload aimed at the front door.*
 - [ ] After the first publish: every green Check on `main` uploads by itself.
-- [ ] The live page is opened and checked after an upload, by the workflow.
+- [x] The live page is opened and checked after an upload, by the workflow.
 
 **Later, not in the first publish**
 - The user's database holds the phone's timed runs and the job board (needs: what the server offers).
