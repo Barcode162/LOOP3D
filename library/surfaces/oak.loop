@@ -1,0 +1,26 @@
+# oak · European oak, sawn along the trunk, sanded and oiled: arched grain, open pores, a soft sheen
+# For furniture, floors and beams. Wears paler and smoother on edges; gathers dark in joints.
+#
+# kind: surface
+# place: test_ball("oak", AT)
+# tags: wood, warm, indoor
+# size: chair
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M9 (2026-11-11)
+
+ring = 3 mm        # a growth ring of plain-sawn oak: 2 to 4 mm
+pore = 0.3 mm      # an open pore: 0.3 mm wide, 2 to 5 mm long
+ray  = 7 mm        # a pale ray fleck: 5 to 20 mm long
+
+to oak(seed: 1)
+  return surface("oak", seed: seed, tile: 2 m, project: "box", along: "long",
+    base:   {color: rgb(0.62, 0.50, 0.38), color2: rgb(0.41, 0.32, 0.23), roughness: 0.55, roughness2: 0.6,
+             pattern: "grain", size: ring, stretch: 40, bump: 0.15 mm},
+    coat:   {color: rgb(0.68, 0.57, 0.45), roughness: 0.4, cover: 0.04, pattern: "speckle", size: ray,
+             stretch: 1, sits: "any"},
+    vary:   {large: 1 m, amount: 0.1, roughness: 0.04},
+    wear:   {color: rgb(0.72, 0.61, 0.48), roughness: 0.35, amount: 0.8, ragged: 0.5},
+    dirt:   {color: rgb(0.16, 0.11, 0.07), roughness: 0.85, amount: 0.6, ragged: 0.6},
+    detail: {pattern: "pores", size: pore, stretch: 10, bump: 0.03 mm, tile: 8 cm})
