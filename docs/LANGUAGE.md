@@ -129,8 +129,9 @@ Every setting has a sensible default; give only what matters.
 - **About the piece:**
   - `title "…"`
   - `mode "movie"` (plays its shots) or `mode "game"` (you walk around)
-- **Materials:** `material("oak")`, or `material(like: "oak", roughness: 0.3)`, or `material(color: rgb(..), roughness, metal, glass, ior, dispersion, glow, clearcoat, sheen, subsurface, subsurface_color, translucent, opacity, leaf, pattern, pattern_color, pattern_scale, bump)`.
-  - Patterns: `checker tiles bricks wood planks marble noise ground grid` (`grid`: even squares with thin lines in `pattern_color`, one square per `1 / pattern_scale` metres; its lines stay sharp at any distance).
+- **Materials:** `material("oak")`, or `material(like: "oak", roughness: 0.3)`, or `material(color: rgb(..), roughness, metal, glass, ior, dispersion, glow, clearcoat, sheen, subsurface, subsurface_color, translucent, opacity, leaf, pattern, pattern_color, pattern_scale, bump, and for `windows`: floor, bay, window, lit, seed)`.
+  - Patterns: `checker tiles bricks wood planks marble noise ground grid windows` (`grid`: even squares with thin lines in `pattern_color`, one square per `1 / pattern_scale` metres; its lines stay sharp at any distance).
+  - `windows`, in film: `material(pattern: "windows", floor: 3.2, bay: 2.4, window: vec(1.5, 1.7), lit: 0.35, glow: 40, seed: 1)` cuts a tower's face into cells one `floor` high (m) and one `bay` wide (m), a `window` (width, height in m) in each middle; none on roofs. Each window is lit or dark by its cell and the `seed`; `lit` is the share lit. A lit one glows `glow` nits times 0.3 to 1 (most warm, 2,700 to 4,000 K; one in eight cool, 6,500 K) and so gives light; a dark one is near black and smooth; between windows is the material's own colour. The live view does not draw it yet.
   - Every shape takes `material:` as a name, a material, or a bare colour.
 - **59 named materials** (`materials()` lists them):
   - wood: oak, pine, walnut, cherry, floorboards, old wood, bark
