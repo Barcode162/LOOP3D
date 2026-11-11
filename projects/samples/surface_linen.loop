@@ -1,0 +1,32 @@
+# Surface linen: the fine detail layer (docs/SURFACES.md, order M7). A cushion in a linen recipe: off-white
+# cloth whose threads are 0.5 mm wide, over and under (`weave`). The threads live in the `detail` layer, a
+# small tile of 2.5 cm (a thread is five baked pixels wide) that the phone and the film both read within 2 m; far away they flatten into the cloth's
+# soft sheen, and the shine rises where many threads share a pixel. A soft light rakes across it so the
+# threads' sides catch it.
+# A macro: the camera is 27 cm from the cloth with a 135 mm lens, so a pixel is about 0.08 mm and a 0.5 mm thread
+# is six pixels wide. (From further away the threads are smaller than a pixel, and the phone fades them to the
+# cloth's sheen, as the film's smaller copies do.)
+# Its aperture is small (f/22) so the whole cloth is in focus, as the phone shows it.
+# Render it:  loop render projects/samples/surface_linen.loop --quality good
+title "Surface Linen"
+mode "movie"
+
+let linen = surface("linen", tile: 0.5 m, sheen: 0.4,
+  base: {color: rgb(0.78, 0.74, 0.66), color2: rgb(0.70, 0.66, 0.58), roughness: 0.85},
+  vary: {large: 0.5 m, amount: 0.04},
+  wear: {color: rgb(0.86, 0.83, 0.76), roughness: 0.95, amount: 0.4},
+  detail: {pattern: "weave", size: 0.5 mm, tile: 2.5 cm, bump: 0.12 mm, roughness: 0.15})
+
+# a dark table to lie on
+box size: vec(4, 0.05, 4), at: vec(0, -0.025, 0), material: material(color: rgb(0.14, 0.12, 0.10), roughness: 0.6)
+# the cushion: 40 by 12 by 40 cm, its edges rounded at 2 cm
+box size: vec(0.4, 0.12, 0.4), round: 0.02, steps: 4, at: vec(0, 0.06, 0), material: linen
+
+# a low, raking lamp from the side
+panel_light at: vec(-0.7, 0.2, 0.05), facing: vec(1, -0.12, 0), size: vec(0.5, 0.3), lumens: 9000, kelvin: 5000
+sky "color", color: rgb(0.1, 0.1, 0.12), nits: 30
+
+look "natural"
+camera at: vec(0.02, 0.30, 0.2), look_at: vec(0.0, 0.12, 0.0), lens: 135 mm, f_stop: 22, shutter: 1 / 50 s, iso: 3200, auto_exposure: no
+shot "close", 4 s, from: {at: vec(0.02, 0.30, 0.2), look_at: vec(0.0, 0.12, 0.0), lens: 135 mm, f_stop: 22}, to: {at: vec(0.02, 0.30, 0.2), look_at: vec(0.0, 0.12, 0.0), lens: 135 mm, f_stop: 22}
+render file: "surface_linen.png", quality: "good", width: 800

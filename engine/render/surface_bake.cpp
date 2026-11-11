@@ -114,6 +114,91 @@ void store(const Level& lv, Image& colour, Image& shape) {
   }
 }
 
+// ---- the detail tile (order M7): a chain like the tile's, of the detail alone ----
+
+struct DLevel {
+  int size = 0;
+  std::vector<Vec3> facing;
+  std::vector<float> height, extra;  // the height 0..1, the roughness the smaller copies add
+  explicit DLevel(int n) : size(n) {
+    const size_t count = static_cast<size_t>(n) * n;
+    facing.resize(count, Vec3{0, 0, 1}), height.resize(count), extra.resize(count, 0);
+  }
+  size_t at(int x, int y) const { return static_cast<size_t>(y) * size + x; }
+};
+
+DLevel detailLargest(const SurfaceRecipe& r, int n) {
+  DLevel lv(n);
+  const float tile = r.detailTile;
+  JobSystem& jobs = JobSystem::shared();
+  jobs.parallelFor(n, [&](int y) {
+    for (int x = 0; x < n; ++x) {
+      float h = 0;
+      for (int j = 0; j < 2; ++j)
+        for (int i = 0; i < 2; ++i) h += detailAt(r, Vec2((x + 0.25f + 0.5f * i) / n * tile, (y + 0.25f + 0.5f * j) / n * tile)).height;
+      lv.height[lv.at(x, y)] = h * 0.25f;
+    }
+  });
+  // the slope of the true height in metres across the two neighbouring pixels (wrapping)
+  const float pixel = tile / n, k = r.detailBump / (2 * pixel);
+  if (r.detailBump > 0 && pixel > 0) {
+    jobs.parallelFor(n, [&](int y) {
+      for (int x = 0; x < n; ++x) {
+        const float sx = (lv.height[lv.at(wrap(x + 1, n), y)] - lv.height[lv.at(wrap(x - 1, n), y)]) * k;
+        const float sy = (lv.height[lv.at(x, wrap(y + 1, n))] - lv.height[lv.at(x, wrap(y - 1, n))]) * k;
+        lv.facing[lv.at(x, y)] = normalize(Vec3{-sx, -sy, 1});
+      }
+    });
+  }
+  return lv;
+}
+
+DLevel detailSmaller(const DLevel& a) {
+  DLevel lv(std::max(1, a.size / 2));
+  const int n = lv.size;
+  JobSystem::shared().parallelFor(n, [&](int y) {
+    for (int x = 0; x < n; ++x) {
+      Vec3 f{0};
+      float h = 0, e = 0;
+      for (int j = 0; j < 2; ++j)
+        for (int i = 0; i < 2; ++i) {
+          const size_t k = a.at(std::min(2 * x + i, a.size - 1), std::min(2 * y + j, a.size - 1));
+          f = f + a.facing[k], h += a.height[k], e += a.extra[k];
+        }
+      f = f * 0.25f, e *= 0.25f;
+      const float L = std::max(length(f), 1e-6f);
+      const size_t k = lv.at(x, y);
+      lv.facing[k] = f / L, lv.height[k] = h * 0.25f;
+      lv.extra[k] = std::min(1.0f, std::sqrt(e * e + (1 - L) / L));  // Toksvig, as in the shape picture
+    }
+  });
+  return lv;
+}
+
+std::vector<Image> bakeDetailChain(const SurfaceRecipe& r, int size) {
+  std::vector<Image> chain;
+  DLevel lv = detailLargest(r, size);
+  for (;;) {
+    Image im(lv.size, lv.size);
+    for (size_t k = 0; k < im.px.size(); ++k) im.px[k] = {0.5f + 0.5f * lv.facing[k].x, 0.5f + 0.5f * lv.facing[k].y, lv.height[k], lv.extra[k]};
+    chain.push_back(std::move(im));
+    if (lv.size <= 1) break;
+    lv = detailSmaller(lv);
+  }
+  return chain;
+}
+
+bool hasDetail(const SurfaceRecipe& r) { return r.detail.kind != SurfacePattern::Kind::kNone && r.detailTile > 0; }
+
+struct KeptDetail {
+  std::mutex m;
+  std::unordered_map<uint64_t, std::shared_ptr<const std::vector<Image>>> chains;
+};
+KeptDetail& keptDetail() {
+  static KeptDetail k;
+  return k;
+}
+
 SurfacePictures bake(const SurfaceRecipe& r, int size) {
   SurfacePictures out;
   Level lv = largest(r, size);
@@ -123,7 +208,8 @@ SurfacePictures bake(const SurfaceRecipe& r, int size) {
     if (lv.size <= 1) break;
     lv = smaller(lv);
   }
-  return out;  // detail: order M7
+  if (hasDetail(r)) out.detail = *bakeDetail(r, size);
+  return out;
 }
 
 // What is kept, by the recipe's fingerprint and the size (like the cook's trees).
@@ -137,6 +223,39 @@ Kept& kept() {
 }
 
 }  // namespace
+
+uint64_t detailFingerprint(const SurfaceRecipe& r) {
+  uint64_t h = 1469598103934665603ull;  // FNV-1a over the numbers, as the recipe's own
+  auto bytes = [&](const void* p, size_t n) {
+    for (size_t i = 0; i < n; ++i) h = (h ^ static_cast<const unsigned char*>(p)[i]) * 1099511628211ull;
+  };
+  auto f = [&](float x) {
+    if (x == 0) x = 0;
+    bytes(&x, sizeof x);
+  };
+  const int kind = static_cast<int>(r.detail.kind);
+  bytes(&kind, sizeof kind);
+  f(r.detail.size), f(r.detail.stretch), f(r.detail.contrast), f(r.detail.sharp), f(r.detail.piece);
+  bytes(&r.detail.twill, sizeof r.detail.twill);
+  f(r.detailTile), f(r.detailBump);
+  bytes(&r.seed, sizeof r.seed);
+  return h;
+}
+
+std::shared_ptr<const std::vector<Image>> bakeDetail(const SurfaceRecipe& r, int size) {
+  size = std::max(size, 1);
+  if (!hasDetail(r)) return std::make_shared<const std::vector<Image>>();
+  const uint64_t key = detailFingerprint(r) ^ (static_cast<uint64_t>(size) * 0x9e3779b97f4a7c15ull);
+  KeptDetail& k = keptDetail();
+  {
+    std::lock_guard<std::mutex> l(k.m);
+    auto it = k.chains.find(key);
+    if (it != k.chains.end()) return it->second;
+  }
+  auto made = std::make_shared<const std::vector<Image>>(bakeDetailChain(r, size));
+  std::lock_guard<std::mutex> l(k.m);
+  return k.chains.emplace(key, std::move(made)).first->second;
+}
 
 std::shared_ptr<const SurfacePictures> bakeSurface(const SurfaceRecipe& recipe, int size) {
   size = std::max(size, 1);

@@ -32,7 +32,7 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
     u.coat = {m.clearcoatRoughness, m.specular, 0, 0};
     u.sss = {m.subsurfaceColor, 0};
     if (m.surface >= 0 && m.surface < static_cast<int>(scene.surfaces.size()) && m.surface < static_cast<int>(surfLayer_.size()) && surfLayer_[m.surface] >= 0)
-      surfaceNumbers(scene.surfaces[m.surface], surfLayer_[m.surface], wanderLayer_, u);
+      surfaceNumbers(scene.surfaces[m.surface], surfLayer_[m.surface], wanderLayer_, m.surface < static_cast<int>(surfDetail_.size()) ? surfDetail_[m.surface] : -1, u);
     auto layer = [&](int t) { return t >= 0 && t < static_cast<int>(texLayer_.size()) ? static_cast<float>(texLayer_[t]) : -1.0f; };
     u.tex = {layer(m.baseTexture), layer(m.metalRoughTexture), layer(m.normalTexture), layer(m.emissiveTexture)};
     u.tex2 = {m.alphaCutoff, m.roughnessMin, 0, 0};
@@ -311,10 +311,11 @@ void GpuRenderer::readLights(const Scene& scene) {
 
 // A surface's numbers for the shader (steps 4 to 7 of docs/SURFACES.md section 7;
 // steps 1 to 3 are its baked tile, at `layer` and the one after).
-void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, MaterialU& u) {
+void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, int detail, MaterialU& u) {
   u.surf0 = {static_cast<float>(layer), static_cast<float>(layer + 1), r.tile, r.varyLarge > 0 ? static_cast<float>(wander) : -1.0f};
   u.surf1 = {r.varyLarge, r.varyAmount, r.varyRoughness, r.worldSpace ? 1.0f : 0.0f};
   u.surf2 = {r.varyTint, static_cast<float>(static_cast<int>(r.project))};
+  u.det0 = {static_cast<float>(detail), r.detailTile, r.detailFade, r.detailRoughness};
   auto layerOf = [](const SurfaceLayer& L, Vec4& a, Vec4& b, float amount) {
     a = {L.color, L.roughness};
     b = {L.metal, L.on ? amount : 0.0f, L.ragged, L.soft};
@@ -444,6 +445,20 @@ void GpuRenderer::uploadModelTextures(const Scene& scene) {
     if (scene.surfaces[i].varyLarge > 0) wander = true;
   }
   if (wander && n < maxLayers_) wanderLayer_ = static_cast<int>(n++);
+  // then each distinct detail's picture, shared by every recipe with the same detail (order M7)
+  surfDetail_.assign(scene.surfaces.size(), -1);
+  std::unordered_map<uint64_t, int> detailLayers;
+  for (size_t i = 0; i < scene.surfaces.size(); ++i) {
+    const SurfaceRecipe& r = scene.surfaces[i];
+    if (surfLayer_[i] < 0 || r.detail.kind == SurfacePattern::Kind::kNone || !(r.detailTile > 0)) continue;
+    const uint64_t key = detailFingerprint(r);
+    auto it = detailLayers.find(key);
+    if (it == detailLayers.end()) {
+      if (n >= maxLayers_) continue;  // no room: its detail is left out
+      it = detailLayers.emplace(key, static_cast<int>(n++)).first;
+    }
+    surfDetail_[i] = it->second;
+  }
   surfUploaded_.clear();
   for (const SurfaceRecipe& r : scene.surfaces) surfUploaded_.push_back(r.fingerprint());
   int levels = 1;
@@ -497,6 +512,14 @@ void GpuRenderer::uploadModelTextures(const Scene& scene) {
     putPicture(static_cast<uint32_t>(surfLayer_[i] + 1), pics->shape, false);
   }
   if (wanderLayer_ >= 0) putPicture(static_cast<uint32_t>(wanderLayer_), {wanderPicture()}, false);
+  {
+    std::unordered_set<int> sent;  // a detail picture goes up once, however many recipes read it
+    for (size_t i = 0; i < scene.surfaces.size(); ++i) {
+      if (surfDetail_[i] < 0 || !sent.insert(surfDetail_[i]).second) continue;
+      std::shared_ptr<const std::vector<Image>> chain = bakeDetail(scene.surfaces[i], S);
+      if (chain && !chain->empty()) putPicture(static_cast<uint32_t>(surfDetail_[i]), *chain, false);
+    }
+  }
   for (uint32_t layer = 0; layer < models; ++layer) {
     const Texture& t = scene.textures[layer];
     texLayer_[layer] = static_cast<int>(layer);
