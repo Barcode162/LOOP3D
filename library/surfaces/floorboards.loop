@@ -1,0 +1,23 @@
+# floorboards · oiled oak boards, 140 mm wide, ends staggered, a dark hairline gap
+# For room floors. The boards each take their own tone; paths wear shinier; grime gathers in a thing's creases.
+#
+# kind: surface
+# place: test_ball("floorboards", AT)
+# tags: wood, floor, warm, indoor
+# size: room
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M13 (2026-11-11)
+
+board = 140 mm
+tile_side = 2.4 m
+
+to floorboards(seed: 1)
+  return surface("floorboards", seed: seed, tile: tile_side, space: "world", project: "top",
+    base: {color: rgb(0.66, 0.47, 0.30), color2: rgb(0.06, 0.04, 0.03), roughness: 0.55,
+           pattern: "planks", size: board, stretch: 12, piece: 0.22, sharp: 0.9, bump: 0.5 mm},
+    coat: {color: rgb(0.48, 0.34, 0.21), roughness: 0.55, cover: 0.45, facing: "any",
+           pattern: "grain", size: 3 mm, stretch: 40, sits: "any"},
+    vary: {large: 1.5 m, amount: 0.1, roughness: 0.1},
+    detail: {pattern: "pores", size: 0.3 mm, stretch: 6})
