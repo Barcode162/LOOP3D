@@ -119,3 +119,23 @@ let g = group(at: vec(0, 1, 0), turn: 90 deg)
   }
   CHECK(zMin < -0.8f && zMax < 0.01f && zMax > -0.2f);
 }
+
+TEST(words_shadows_no_lands_on_every_lamp) {
+  auto r = runScene(R"(
+light at: vec(0, 2, 0)
+light at: vec(1, 2, 0), shadows: no
+light at: vec(2, 2, 0), aim: vec(2, 0, 0), shadows: no
+panel_light at: vec(0, 3, 0), shadows: no
+panel_light at: vec(1, 3, 0)
+)");
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  const auto& ls = r->stage.scene.lights;
+  CHECK(ls.size() == 5);
+  if (ls.size() < 5) return;
+  CHECK(ls[0].castShadows);
+  CHECK(!ls[1].castShadows);
+  CHECK(!ls[2].castShadows && ls[2].kind == loop::Light::Kind::kSpot);
+  CHECK(!ls[3].castShadows);
+  CHECK(ls[4].castShadows);
+}

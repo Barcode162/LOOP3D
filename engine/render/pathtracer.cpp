@@ -53,6 +53,7 @@ struct Emitter {
   float area;
   Vec3 radiance;
   Vec3 v0, e1, e2, ng;
+  int mat;  // its material
 };
 
 struct LightData {
@@ -154,7 +155,10 @@ void PathTracer::Impl::build(const Scene& s) {
     for (uint32_t k = 0; k < geom.triangleCount(static_cast<int>(i)); ++k) {
       TriInfo t = geom.triangle(static_cast<int>(i), k);
       float area = 0.5f * length(cross(t.e1, t.e2));
-      emitters.push_back({std::max(area, 1e-12f), s.materials[mat].emission, t.v0, t.e1, t.e2, t.ng});
+      // a `windows` face: picked by its average glow; each point's own glow is read when it is met
+      const Material& em = s.materials[mat];
+      Vec3 rad = em.pattern.kind == Pattern::Kind::kWindows ? em.emission * windowsMeanGlow(em.pattern) : em.emission;
+      emitters.push_back({std::max(area, 1e-12f), rad, t.v0, t.e1, t.e2, t.ng, mat});
     }
   }
   emitterPower = 0;
@@ -287,8 +291,8 @@ bool PathTracer::Impl::surfaceAlphaCut(int inst, uint32_t prim, float u, float v
   if (m.opacity < 0.5f && m.pattern.kind == Pattern::Kind::kGrid) {
     // a see-through grid: only its lines are there
     float mix, height;
-    Vec3 tint;
-    patternValue(m.pattern, scene->images, p, td.ng, uv, mix, height, tint);
+    Vec3 tint, glow;
+    patternValue(m.pattern, scene->images, p, td.ng, uv, mix, height, tint, glow);
     return mix < 0.5f;
   }
   if (m.opacity < 1) {
@@ -455,7 +459,15 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
         Vec3 f = scatter(wi, bp);
         if (luminance(f) > 0) {
           Vec3 T = transmittance(origin(wi), wi, dist * 0.999f);
-          sum += f * e.radiance * T * (powerHeuristic(lightPdf, bp) / lightPdf);
+          Vec3 Le = e.radiance;
+          const Material& em = scene->materials[e.mat];
+          if (em.pattern.kind == Pattern::Kind::kWindows) {
+            float m_, h_;
+            Vec3 t_, g_;
+            patternValue(em.pattern, scene->images, q, e.ng, Vec2(0), m_, h_, t_, g_);
+            Le = em.emission * g_;
+          }
+          sum += f * Le * T * (powerHeuristic(lightPdf, bp) / lightPdf);
         }
       }
     }
@@ -604,12 +616,12 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     // it, as it skips lamps: the live renderer lights with that lamp)
     if (luminance(M.emission) > 0 && front && !(probeFirst && bounces == 0 && firstHit && stoodFor[h.inst])) {
       if (lastDelta || emissiveIndex < 0) {
-        if (settings.caustics || !sawDiffuse || !lastDelta) addLight(beta * M.emission);
+        if (settings.caustics || !sawDiffuse || !lastDelta) addLight(beta * M.emission * sf.glow);
       } else {
         const Emitter& e = emitters[emissiveIndex];
         float cl = std::fabs(dot(ray.d, td.ng));
         float lightPdf = (e.area * luminance(e.radiance) / emitterPower) * h.t * h.t / std::max(cl * e.area, 1e-9f);
-        addLight(beta * M.emission * powerHeuristic(lastPdf, lightPdf));
+        addLight(beta * M.emission * sf.glow * powerHeuristic(lastPdf, lightPdf));
       }
     }
 

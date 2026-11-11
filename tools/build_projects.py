@@ -122,6 +122,6 @@ entries = json.loads(listing.stdout)
 for e in entries:
     if e["name"] in owner:
         sys.exit(f"library entry '{e['name']}' has the name of a scene in {owner[e['name']]} (names must be unique)")
-    shutil.copy(root / "library" / (e["kind"] + "s") / (e["name"] + ".loop"), out / (e["name"] + ".loop"))
+    shutil.copy(root / "library" / (e["kind"][:-1] + "ies" if e["kind"].endswith("y") else e["kind"] + "s") / (e["name"] + ".loop"), out / (e["name"] + ".loop"))
 (out / "library.json").write_text(json.dumps(entries, indent=1))
 print(f"the library: {len(entries)} entries -> {out}")

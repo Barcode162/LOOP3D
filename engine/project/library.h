@@ -34,6 +34,7 @@ struct LibraryEntry {
   std::string name, what, about;  // about: the lines saying how to use it
   std::string kind, place, credit, licence, from;
   std::string tags, size, sockets, seeds;  // optional card lines ("" when absent)
+  std::string pictures, view;  // optional: up to three calls split by "|" for `loop library picture --case n`; where the camera stands
   std::string path;               // the entry's file
 };
 

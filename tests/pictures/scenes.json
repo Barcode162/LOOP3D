@@ -19,6 +19,7 @@
     {"name": "cabin", "filmtime": 2},
     {"name": "the_woods", "filmtime": 5},
     {"name": "bar"},
-    {"name": "two_rooms"}
+    {"name": "two_rooms"},
+    {"name": "windows"}
   ]
 }

@@ -1528,8 +1528,8 @@ Proof:  QUICK; a test: a box rounded 3 mm has under 200 triangles; `./build/loop
         piece's count the same or lower; picture tests the same or the changed ones named.
 ```
 
-*Deployed 2026-11-10:* N1, LOFT2, the twelve pieces of 13.3, S1, F1, E10. *Running:* N5.
-*Ready now:* N2, S7, A11a, LOFT3, L-pendant_dome, L-track_spots. S5 follows S7; E11 is free.
+*Deployed 2026-11-10:* N1, LOFT2, the twelve pieces of 13.3, S1, F1, E10. *Deployed 2026-11-11:* N5, N2, S7, L-pendant_dome, E11, N7, N3, N3b, S5, L-cove, L-step_strips, A11a, A11b, L-city_night (draft).
+*Ready now:* LOFT3, L-track_spots.
 *After N1:* N2, then N3; F1, then A11a, then A11b. *After N2:* N6, N7. *After N2 and E10:* the lights of 13.4
 (L-city_night after A11b). *After LOFT4:* N4, M60.
 *Not cut yet for this milestone (about fifteen orders):* the phone's speed once N7 and the first recording

@@ -88,6 +88,13 @@ TEST(library_card_new_lines_are_read_and_checked) {
   problems.clear();
   CHECK(!parseLibraryCard("# a · b\n# kind: piece\n# place: a(AT)\n# credit: J\n# licence: ours\n# from: here\n# size: huge\n# sockets: seat, chair\n", bad, problems));
   CHECK(problems.size() == 2);
+  // the picture lines: calls split by |, and a view the plan names
+  LibraryEntry shot, badView;
+  problems.clear();
+  CHECK(parseLibraryCard("# a · b\n# kind: piece\n# place: a(AT)\n# credit: J\n# licence: ours\n# from: here\n# pictures: a(AT) | a(AT, 2)\n# view: front\n", shot, problems));
+  CHECK(shot.pictures == "a(AT) | a(AT, 2)" && shot.view == "front");
+  problems.clear();
+  CHECK(!parseLibraryCard("# a · b\n# kind: piece\n# place: a(AT)\n# credit: J\n# licence: ours\n# from: here\n# view: sideways\n", badView, problems));
   CHECK(libraryBudget("hand") == 2000 && libraryBudget("chair") == 10000 && libraryBudget("sofa") == 30000 && libraryBudget("room") == 100000);
   CHECK(libraryBudget("land") == 0 && libraryBudget("") == 0);
 }

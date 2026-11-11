@@ -24,9 +24,10 @@ a city at night behind it (`docs/ROADMAP.md`, star 2). Built from a few hundred 
 *Its parts list:* `docs/LIBRARY_PLAN.md`, section 4 (40 building pieces, 25 seats and beds, and the rest by kind).
 *Its rubric:* `docs/rubrics/` (loft). *Its orders:* cut from `docs/WORK_ORDERS.md` (tracks S shapes, M surfaces,
 the library orders).
-*Where it stands today:* the library holds 22 entries; 5 of the Loft's 40 building pieces exist (plinth, lintel,
+*Where it stands today:* the library holds 25 entries (city_night is a DRAFT, below the rubric bar); 5 of the Loft's 40 building pieces exist (plinth, lintel,
 room shell, loft shell, glazing wall). The surface recipe is designed (M1) and the vertex marks are built (M2). No order card is cut for
 milestone 3 yet.
+*On main 2026-11-11 (wave of the lead's branch):* E11 (library picture `--case`, `view:`), N7 (strip cost), N3+N3b (`shadows: no`), S5 (`steps:`, `sides:`), L-cove, L-step_strips, A11a+A11b (windows, film and live; 14 pictures), L-city_night (draft), library check fix. *Open findings:* `library picture` cannot show a sky entry (needs `view: eye`); panel_light cannot be invisible; stars draw two thin lines (engine/render/sky.cpp ~167-174); a dim sky makes the haze black; `--set` does not reach a scene's own values (N7); glade's picture is flaky; strips now rank behind bulbs for shadow picks (check they do not dim on the phone).
 *Goal 1, the shell (done 2026-11-10):* `projects/loft/`: a bare room 9 m wide, 6 m high and 12 m deep with one wall
 of glass (library: `loft_shell`, `glazing_wall`), lit by a low evening sun. Open: the film renderer shows the view
 through the glass black (order F1).

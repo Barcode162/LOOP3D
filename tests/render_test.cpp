@@ -1,6 +1,7 @@
 #include "engine/render/bsdf.h"
 #include "engine/render/film.h"
 #include "engine/render/pathtracer.h"
+#include "engine/render/pattern.h"
 #include "engine/render/sky.h"
 #include "engine/script/scene_api.h"
 #include "tests/test.h"
@@ -336,4 +337,118 @@ TEST(haze_word_sets_the_scene_and_the_film_shows_it) {
   Vec3 hazy = centre(pt, 64);
   CHECK(luminance(hazy) > luminance(clear) * 2);
   CHECK(hazy.z / std::max(hazy.x, 1e-6f) > clear.z / std::max(clear.x, 1e-6f) * 1.05f);
+}
+
+// ---- the `windows` pattern
+namespace {
+// What a wall facing +z gives at the middle of cell (ix, iy): its glow multiplier.
+Vec3 windowGlowAt(const Pattern& pt, int ix, int iy, float dx = 0, float dy = 0) {
+  float mix, h;
+  Vec3 tint, glow;
+  Vec3 p{ix * pt.bay + pt.bay / 2 + dx, iy * pt.floorHeight + pt.floorHeight / 2 + dy, 0};
+  patternValue(pt, {}, p, {0, 0, 1}, {0, 0}, mix, h, tint, glow);
+  return glow;
+}
+float litShare(const Pattern& pt, int cells) {
+  int lit = 0;
+  for (int y = 0; y < cells; ++y)
+    for (int x = 0; x < cells; ++x)
+      if (luminance(windowGlowAt(pt, x, y)) > 0) ++lit;
+  return static_cast<float>(lit) / (cells * cells);
+}
+}  // namespace
+
+TEST(windows_word_sets_the_pattern) {
+  using namespace loop::script;
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  bool ok = vm.load("let w = material(pattern: \"windows\", floor: 3.2, bay: 2.4, window: vec(1.5, 1.7), lit: 0.35, glow: 40, seed: 7)\n", "w.loop");
+  for (auto& p : vm.problems()) std::printf("    %s\n", p.text().c_str());
+  CHECK(ok);
+  const Material& m = st.scene.materials.back();
+  CHECK(m.pattern.kind == Pattern::Kind::kWindows);
+  CHECK_NEAR(m.pattern.floorHeight, 3.2f, 1e-5f);
+  CHECK_NEAR(m.pattern.bay, 2.4f, 1e-5f);
+  CHECK_NEAR(m.pattern.window.x, 1.5f, 1e-5f);
+  CHECK_NEAR(m.pattern.window.y, 1.7f, 1e-5f);
+  CHECK_NEAR(m.pattern.lit, 0.35f, 1e-5f);
+  CHECK(m.pattern.seed == 7);
+  CHECK_NEAR(m.emission.x, 40, 1e-4f);
+}
+
+TEST(windows_share_lit_and_seeds) {
+  Pattern a;
+  a.kind = Pattern::Kind::kWindows;
+  a.lit = 0.35f;
+  CHECK(std::fabs(litShare(a, 20) - 0.35f) < 0.05f);
+  Pattern b = a;
+  b.seed = 2;
+  CHECK(std::fabs(litShare(b, 20) - 0.35f) < 0.05f);
+  int differ = 0;
+  for (int y = 0; y < 20; ++y)
+    for (int x = 0; x < 20; ++x) differ += (luminance(windowGlowAt(a, x, y)) > 0) != (luminance(windowGlowAt(b, x, y)) > 0);
+  CHECK(differ > 40);
+  Pattern none = a, all = a;
+  none.lit = 0, all.lit = 1;
+  CHECK(litShare(none, 20) == 0);
+  CHECK(litShare(all, 20) == 1);
+}
+
+TEST(windows_glow_colour_and_cells) {
+  Pattern a;
+  a.kind = Pattern::Kind::kWindows;
+  a.lit = 1;
+  int cool = 0, n = 0;
+  for (int y = 0; y < 30; ++y)
+    for (int x = 0; x < 30; ++x) {
+      Vec3 g = windowGlowAt(a, x, y);
+      float l = luminance(g);
+      CHECK(l >= 0.29f && l <= 1.01f);
+      cool += g.z > g.x * 0.9f;
+      ++n;
+    }
+  CHECK(std::fabs(static_cast<float>(cool) / n - 0.125f) < 0.05f);  // one in eight is cool
+  // between the windows nothing glows and the colour is the material's own
+  Pattern d = a;
+  CHECK(luminance(windowGlowAt(d, 3, 4, 1.0f, 0)) == 0);  // in the wall between two windows
+  CHECK(luminance(windowGlowAt(d, 3, 4, 0, 1.4f)) == 0);  // in the wall between two floors
+  float mix, h;
+  Vec3 tint, glow;
+  patternValue(d, {}, {1.2f + 1.0f, 1.6f, 0}, {0, 0, 1}, {0, 0}, mix, h, tint, glow);
+  CHECK(mix == 0);
+  // a roof has no windows
+  patternValue(d, {}, {1.2f, 1.6f, 1.2f}, {0, 1, 0}, {0, 0}, mix, h, tint, glow);
+  CHECK(luminance(glow) == 0);
+}
+
+TEST(windows_light_in_film) {
+  // a wall of windows lights a ball in front of it when they are lit, and not when they are dark
+  auto ball = [](float lit) {
+    Scene s;
+    s.sky.kind = Sky::Kind::kColor;
+    s.sky.color = Vec3(0);
+    s.sky.colorNits = 0;
+    Material wall;
+    wall.baseColor = Vec3(0.02f);
+    wall.emission = Vec3(2000);
+    wall.pattern.kind = Pattern::Kind::kWindows;
+    wall.pattern.lit = lit;
+    int mw = s.addMaterial(wall);
+    Material grey;
+    grey.baseColor = Vec3(0.7f);
+    grey.roughness = 1;
+    int mg = s.addMaterial(grey);
+    s.add(s.addMesh(shapes::box({24, 24, 0.1f})), mw, Mat4::translation({0, 0, -0.05f}));
+    s.add(s.addMesh(shapes::sphere(0.5f, 48, 24)), mg, Mat4::translation({0, 1.6f, 1.5f}));
+    s.camera.position = {5, 1.6f, 1.5f};
+    s.camera.target = {0, 1.6f, 1.5f};
+    s.camera.fStop = 64;
+    PathTracer pt;
+    pt.setScene(s);
+    return luminance(centre(pt, 128));
+  };
+  float dark = ball(0), lit = ball(1);
+  CHECK(lit > dark * 20 + 0.01f);
 }

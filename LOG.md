@@ -2,6 +2,16 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- **2026-11-11** · L-city_night, "Library sky: city_night": a DRAFT entry (below the rubric bar), 1920 triangles; deployed.
+- **2026-11-11** · Library check fix: a sky lives in skies/ (it said skys); the site build had the same plural fault, mended; deployed.
+- **2026-11-11** · A11b, "Windows live": the lit-window pattern drawn live (common, ultra, renderer_scene); new picture scene windows (14 pictures); deployed.
+- **2026-11-11** · A11a, "Pattern windows in film": the film renderer draws the lit-window pattern; deployed.
+- **2026-11-11** · L-step_strips, "Library light: step_strips": strips along stair steps as lamps; deployed.
+- **2026-11-11** · L-cove, "Library light: cove": a hidden-edge cove light; deployed.
+- **2026-11-11** · S5, "Rounded edges cost what they show": `steps:` and `sides:` on rounded shapes and cylinders; fewer triangles; deployed.
+- **2026-11-11** · N3 + N3b, "Lamp shadows by asking": `shadows: no` on light and panel_light; lamps that cast none get no map and no ray; deployed.
+- **2026-11-11** · N7, "What a strip costs": perf/budget.md and projects/samples/many_strips.loop; deployed.
+- **2026-11-11** · E11, "The library's picture: which side, which sizes, a floor": `--case`, `view:`, pale wall; deployed.
 - **2026-11-11** · N5, "Dark stays dark: a lit room beside an unlit one": Dark stays dark: unlit room is 0.0% of the lit one in film and 0.8% live (under 2%); two_rooms scene and picture added; deployed.
 - **2026-11-11** · N2, "The word strip": The word strip: a glowing rectangle on a dark channel plus panel lamps that stand for it (film matches lamps within 0.2%); deployed.
 - **2026-11-11** · S7, "The word group": The word group: indented lines under it are placed, turned and hidden as one (things, lamps, groups inside groups); a recipe called inside lands in it; 179 tests; deployed.
