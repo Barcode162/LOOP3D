@@ -267,13 +267,14 @@ std::string Clip::script(const std::string& target, const std::string& indent) c
       int i = c.find(m);
       if (i < 0) continue;
       const Key& k = c.keys[i];
-      const std::string value = ", " + c.name + ": " + written(c, k.v);
+      const bool shown = c.name == "visible";  // seen or not: yes or no, and always held
+      const std::string value = ", " + c.name + ": " + (shown ? (k.v[0] > 0.5f ? "yes" : "no") : written(c, k.v));
       if (k.free) {
         lines.push_back({"", head + value + ", in: " + written(c, k.in) + ", out: " + written(c, k.out) + wayText(k)});
         lines.back().way = "\x01";  // never shared
         continue;
       }
-      const std::string way = wayText(k);
+      const std::string way = shown ? "" : wayText(k);
       auto same = std::find_if(lines.begin(), lines.end(), [&](const Line& l) { return l.way == way; });
       if (same == lines.end()) lines.push_back({way, head + value});
       else same->text += value;

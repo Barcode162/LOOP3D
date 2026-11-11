@@ -185,11 +185,14 @@ struct Parser {
   // `group at: …, turn: …` with indented lines under it: the lines become a
   // function handed to the word as `of:`, which runs it at once. True when a
   // block was taken (the statement's line end is left for the caller).
+  // `clip crate` takes its `key` lines the same way.
   bool groupBlock(Expr& call, const Token& header) {
-    if (call.kind != Expr::kCall || call.items.empty() || call.items[0]->kind != Expr::kName || call.items[0]->text != "group") return false;
+    if (call.kind != Expr::kCall || call.items.empty() || call.items[0]->kind != Expr::kName) return false;
+    const std::string word = call.items[0]->text;
+    if (word != "group" && word != "clip") return false;
     if (!atKind(Tok::kNewline) || peek(1).kind != Tok::kIndent) return false;
     auto e = node(Expr::kLambda, header);
-    e->fn = beginFunction("group", header.line);
+    e->fn = beginFunction(word.c_str(), header.line);
     parseBody(e->fn->body, header);
     endFunction();
     --pos;  // the caller's endOfStatement wants a line end; the block ate it

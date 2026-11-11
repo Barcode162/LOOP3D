@@ -112,6 +112,7 @@ void registerSound(Vm& vm);
 void registerMusic(Vm& vm);
 void registerStory(Vm& vm);
 void registerRenders(Vm& vm);
+void registerAnim(Vm& vm);
 
 }  // namespace words
 }  // namespace loop::script

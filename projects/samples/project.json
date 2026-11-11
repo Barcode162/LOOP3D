@@ -13,7 +13,8 @@
     "windows",
     "roughness",
     "surface_box",
-    "surface_linen"
+    "surface_linen",
+    "keys"
   ],
   "stills": "stills"
 }

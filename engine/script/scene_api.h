@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "engine/anim/anim.h"
+#include "engine/anim/clip.h"
 #include "engine/core/json.h"
 #include "engine/audio/audio.h"
 #include "engine/audio/music.h"
@@ -98,6 +99,26 @@ struct Stage {
     std::string name;
   };
   std::vector<Group> groups;
+  // Clips of keys playing on things, lamps and groups (the words `clip` and
+  // `key`; engine/anim/clip.h). Each step a playing clip moves on and puts
+  // its target where its keys say; the same in film and live.
+  struct Playing {
+    anim::Clip clip;
+    char kind = 't';    // 't' a thing, 'l' a lamp, 'g' a group, 'n' a clip by name, on nothing yet
+    int target = -1;    // which one (placed, light or group index)
+    int line = 0;       // the script line of its `clip`
+    double moment = 0;  // the clip's own time, in seconds
+    double speed = 1;   // 1 forwards, -1 backwards
+    bool playing = true;
+    bool moving = false;  // it changed its target in the last step
+  };
+  std::deque<Playing> clips;
+  std::vector<int> clipsBeingRead;  // clips whose lines are being read: `key` adds to the last
+  // Puts a clip's target where the clip is at its moment. True when something changed.
+  bool showClip(int clip);
+  // Sets a clip's moment and shows it, without the world's time moving (scrubbing).
+  void seekClip(int clip, double moment);
+  void updateClips(float dt);
   // Moves and turns a group about its own place: its things, lamps and inner groups.
   void placeGroup(int group, Vec3 position, float turn);
   void showGroup(int group, bool visible);

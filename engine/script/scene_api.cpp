@@ -51,6 +51,21 @@ void Stage::placeGroup(int gi, Vec3 to, float turn) {
     else p.rotation.x += d;  // yaw is the outermost turn (Quat::euler), so adding is exact
     updateTransform(i);
   }
+  // keys on its things and lamps are kept in the world's measure: they move and turn with it
+  for (Playing& c : clips) {
+    const bool mine = (c.kind == 't' && std::find(g.parts.begin(), g.parts.end(), c.target) != g.parts.end()) ||
+                      (c.kind == 'l' && std::find(g.lights.begin(), g.lights.end(), c.target) != g.lights.end());
+    if (!mine) continue;
+    if (anim::Channel* at = c.clip.find("at"))
+      for (anim::Key& k : at->keys) {
+        Vec3 v = to + r.rotate(Vec3(k.v[0], k.v[1], k.v[2]) - from);
+        Vec3 in = r.rotate(Vec3(k.in[0], k.in[1], k.in[2])), out = r.rotate(Vec3(k.out[0], k.out[1], k.out[2]));
+        k.v[0] = v.x, k.v[1] = v.y, k.v[2] = v.z;
+        k.in[0] = in.x, k.in[1] = in.y, k.in[2] = in.z, k.out[0] = out.x, k.out[1] = out.y, k.out[2] = out.z;
+      }
+    if (anim::Channel* turnKeys = c.kind == 't' ? c.clip.find("turn") : nullptr)
+      for (anim::Key& k : turnKeys->keys) k.v[0] += d;
+  }
   for (int i : g.lights) {
     Light& l = scene.lights[i];
     l.position = to + r.rotate(l.position - from);
@@ -162,6 +177,7 @@ void Stage::setListener(const Camera& cam) {
 void Stage::update(float dt) {
   if (dt <= 0) return;
   if (streamed) streamWorld();
+  updateClips(dt);  // keys first: what they move, physics and people then see
   // the music's notes that start now
   music.advance(dt, [this](const audio::Track& t, const audio::Track::Step& st, float seconds) {
     mixer.play(audio::makeNote(t.instrument, static_cast<float>(st.midi), seconds, st.velocity, ++musicSeed), Vec3(0), t.volume, false, false, audio::Category::kMusic);
@@ -1074,6 +1090,7 @@ void installSceneApi(Vm& vm, Stage& stage) {
   words::registerMusic(vm);
   words::registerStory(vm);
   words::registerRenders(vm);
+  words::registerAnim(vm);
 }
 
 }  // namespace loop::script
