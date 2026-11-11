@@ -36,6 +36,66 @@ void registerLight(Vm& vm) {
     ++s.version;
     return Value::object(a.vm.newThing(&kLightClass, static_cast<int>(s.scene.lights.size() - 1)));
   }, "panel_light(at, facing, size, lumens): a soft rectangle of light (a window, a softbox)");
+  vm.native("strip", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const Vec3 from = a.vec(0, "from", {}), to = a.vec(1, "to", {0, 0, 1});
+    const float perMetre = f32(a.num(-1, "lumens", 300)), width = f32(a.num(-1, "width", 0.012)), piece = f32(a.num(-1, "piece", 0.25));
+    const Vec3 along = to - from;
+    const float len = length(along);
+    if (len < 1e-4f) a.vm.fail("a strip needs a `from` and a `to` in different places");
+    if (perMetre < 0) a.vm.fail("a strip's lumens are for each metre and can't be below 0");
+    if (width <= 0 || piece <= 0) a.vm.fail("a strip needs a `width` and a `piece` above 0");
+    const Vec3 d = along / len;
+    Vec3 face = a.vec(-1, "facing", {0, -1, 0});
+    face = face - d * dot(face, d);  // the side it shines to, made square to its length
+    if (length(face) < 1e-3f) a.vm.fail("a strip can't face along its own length", "give `facing` a direction across it, like vec(0, -1, 0)");
+    face = normalize(face);
+    // turn a flat rectangle (length along x, normal +y) so its length runs along d and its normal is `face`
+    Quat q = Quat::fromTo({1, 0, 0}, d);
+    const Vec3 y1 = q.rotate({0, 1, 0});
+    q = Quat::axisAngle(d, std::atan2(dot(cross(y1, face), d), dot(y1, face))) * q;
+    const Vec3 mid = (from + to) * 0.5f;
+    const float lumens = perMetre * len;
+    const Vec3 color = a.has(-1, "color") ? unitLuminanceOr(a.vec(-1, "color", Vec3(1))) : kelvin(f32(a.num(-1, "kelvin", 2700)));
+    auto put = [&](int mesh, int mat, Vec3 at, Vec3 scale, const std::string& name) {
+      s.scene.add(mesh, mat);
+      Stage::Placed p;
+      p.instance = static_cast<int>(s.scene.instances.size() - 1);
+      p.position = at, p.scale = scale, p.useQuat = true, p.quat = q, p.name = name, p.kind = 'm', p.line = a.line;
+      s.placed.push_back(p);
+      s.updateTransform(static_cast<int>(s.placed.size() - 1));
+      return static_cast<int>(s.placed.size() - 1);
+    };
+    Material channel, glow;
+    channel.name = "strip channel", channel.baseColor = Vec3(0.04f), channel.roughness = 0.6f;
+    glow.name = "strip glow", glow.baseColor = Vec3(0), glow.emission = color * glowNits(lumens, len * width);
+    // the channel: 2 mm wider and 6 mm deep, its face a hair behind the glowing rectangle
+    put(cachedMesh(s, "strip_box", [] { return shapes::box(Vec3(1)); }), s.scene.addMaterial(channel), mid - face * 0.0035f,
+        Vec3(len, 0.006f, width + 0.002f), "");
+    const int glowing = put(cachedMesh(s, "strip_plane", [] { return shapes::plane({1, 1}); }), s.scene.addMaterial(glow), mid,
+                            Vec3(len, 1, width), a.text(-1, "name", ""));
+    // the lamps that stand for it where the phone needs lamps; a lamp's sides are fixed by its facing
+    Vec3 t, b;
+    if (std::fabs(face.y) < 0.99f) t = normalize(cross(Vec3{0, 1, 0}, face)), b = cross(face, t);
+    else orthonormalBasis(face, t, b);
+    const bool alongT = std::fabs(dot(d, t)) >= std::fabs(dot(d, b));
+    const int n = std::max(1, static_cast<int>(std::ceil(len / piece - 1e-3f)));
+    const float each = len / n;
+    for (int i = 0; i < n; ++i) {
+      Light l;
+      l.kind = Light::Kind::kRect;
+      l.position = from + d * (each * (i + 0.5f));
+      l.direction = face;
+      l.size = alongT ? Vec2{each, width} : Vec2{width, each};
+      l.lumens = perMetre * each;
+      l.color = color;
+      l.castShadows = a.flag(-1, "shadows", false);
+      l.standsFor = s.placed[glowing].instance;
+      s.scene.lights.push_back(l);
+    }
+    ++s.version;
+    return Value::object(a.vm.newThing(&kShapeClass, glowing));
+  }, "strip(from, to, lumens: 300 a metre, kelvin: 2700, facing: vec(0, -1, 0), width: 0.012, piece: 0.25, shadows: no, name): a thin strip of light, a glowing rectangle with lamps standing for it");
   vm.native("sun", [](Args& a) {
     Stage& s = stageOf(a.vm);
     float elev = f32(a.num(0, "elevation", 0.8)), az = f32(a.num(1, "toward", a.num(-1, "azimuth", 2.4)));

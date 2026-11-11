@@ -31,3 +31,8 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | S1 | S | builder | 4 | 4 | 2026-11-10 |
 | F1 | S | lead | 10 | 25 | 2026-11-10 |
 | E10 | S | builder | 4 | 7 | 2026-11-10 |
+| N2 | M | builder | 60 | 6 | 2026-11-11 |
+| S7 | M | lead | 60 | 7 | 2026-11-11 |
+| L-pendant_dome | S | asset-smith | 24 | 6 | 2026-11-11 |
+| L-track_spots | S | asset-smith | 24 | 5 | 2026-11-11 |
+| N5 | M | builder | 60 | 482 | 2026-11-11 |
