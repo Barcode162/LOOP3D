@@ -119,7 +119,7 @@ struct MaterialU {
   // shader works out where it is drawn (steps 4 to 7). surf0.x < 0: not a surface.
   Vec4 surf0{-1, -1, 1, -1};  // colour layer, shape layer (-1 none), tile (m), wander layer (-1 none)
   Vec4 surf1;  // slow change: size (m), amount, roughness; world space (1) or the thing's (0)
-  Vec4 surf2;  // slow change's tint, -
+  Vec4 surf2;  // slow change's tint; how the tile is laid on (0 box, 1 top, 2 uv; order M6)
   Vec4 wear0, wear1;  // wear: colour, roughness; metal, amount (0 off), ragged, soft
   Vec4 dirt0, dirt1;  // dirt: the same
   Vec4 coat0, coat1, coat2;  // the coat that faces a way: colour, roughness; metal, cover (0 off), ragged, soft; facing (1 up, 2 down, 3 side), sits (0 any, 1 high, 2 low), -, -
@@ -131,7 +131,7 @@ float packedMarks(const Marks* marks, size_t i);
 struct InstanceU {
   Mat4 model;
   Vec4 n0, n1, n2;
-  uint32_t material[4];
+  uint32_t material[4];  // its material, its mesh, its start in a surface's tile (surfaceStartKey), the axis its surface's stretch runs along (alongAxis)
 };
 struct PostU {
   Vec4 exposure, look0, wb, lift, gamma, gain, shadowTint, highlightTint, fx, fx2, screen;

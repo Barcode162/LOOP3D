@@ -65,10 +65,42 @@ Vec4 wanderAt(Vec2 u, float large);
 
 // Steps 1 to 3 at `u` (metres on the tile; wraps at the tile's side). Order M3c.
 SurfacePoint surfaceTile(const SurfaceRecipe&, Vec2 u);
+
+// Where a point reads the tile (section 10; order M6). One side of the box the
+// tile is laid on from: the axis it faces (0, 1, 2: x, y, z), the place on the
+// tile there (metres), the tile's two ways there in the recipe's space (the
+// first is the pattern's stretched way), and how much of the point it gives.
+struct SurfaceSide {
+  int axis = 1;
+  Vec2 u{0};
+  Vec3 ax{1, 0, 0}, ay{0, 0, 1};
+  float weight = 1;
+};
+// Up to two sides whose weights add to 1. `box`: the facing's three parts to the
+// eighth power, the two strongest kept; `top`: the side facing up only; `uv`: the
+// mesh's own unwrap (one unit a metre), its two ways those of the strongest side.
+// `along` (0, 1, 2) is the axis the stretched way runs along. The live renderer's
+// projectSurface (engine/gpu/shaders/scene.wgsl.h) is the same rule.
+struct SurfaceProjection {
+  SurfaceSide side[2];
+  int sides = 1;
+};
+SurfaceProjection projectSurface(const SurfaceRecipe&, Vec3 place, Vec3 facing, Vec2 uv, int along);
+// The axis a recipe's stretched way runs along on a mesh with these bounds (in the
+// thing's own space): the one it names, or the mesh's longest side (where two are
+// within 1% of each other, x before y before z). Worked out once a mesh.
+int alongAxis(const SurfaceRecipe&, const AABB& bounds);
+// Each thing starts at its own place on the tile (in its own space): a key from
+// its number (the live renderer gets the key in InstanceU::material[2]) and the
+// place from the key, the same hash in both renderers.
+uint32_t surfaceStartKey(uint32_t thing);
+Vec3 surfaceStart(uint32_t key, float tile);
+
 // Steps 1 to 9: the whole stack at one point of one thing. Order M3c. `place` and
 // `facing` are in the recipe's space (the thing's, or the world's); the bumped
 // facing comes back in that space. `edge` and `hollow` are the marks (0 to 1).
-// Until M6 the tile is laid on from the side the facing points at most.
+// Steps 1 to 3 (and the slow change's read) are blended from projectSurface's
+// sides; a recipe whose `along` is still -1 (the longest side) is read along x.
 Surface surfaceAt(const SurfaceRecipe&, const Material&, Vec3 place, Vec3 facing, Vec2 uv,
                   float edge, float hollow, float distance);
 

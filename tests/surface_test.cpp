@@ -1,9 +1,13 @@
 // The whole surface stack (docs/SURFACES.md section 7; order M3c): wear goes
 // only where the edge mark is, dirt only where the hollow mark is and over the
 // wear, coats cover what they say, the slow change keeps the average, and the
-// tile wraps.
+// tile wraps. And how the tile is laid on (section 10; order M6): box, top, uv.
+#include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <vector>
 
+#include "engine/core/random.h"
 #include "engine/render/pattern.h"
 #include "engine/render/surface.h"
 #include "engine/render/surface_patterns.h"
@@ -184,4 +188,255 @@ TEST(surface_wander_picture_is_the_same_everywhere) {
     sum = sum * 31 + static_cast<uint32_t>(std::lround(p.x * 255)) + static_cast<uint32_t>(std::lround(p.y * 255)) * 3 +
           static_cast<uint32_t>(std::lround(p.z * 255)) * 5 + static_cast<uint32_t>(std::lround(p.w * 255)) * 7;
   CHECK(sum == 572009218u);
+}
+
+// ---- projection (docs/SURFACES.md section 10; order M6) ----
+
+namespace {
+
+// A plaster-like noise: two colours `spread` apart, no bump, the colour the only thing that changes.
+SurfaceRecipe noiseRecipe(float spread) {
+  SurfaceRecipe r;
+  r.tile = 1;
+  r.base.on = true;
+  r.base.color = {0.5f, 0.45f, 0.4f};
+  r.base.color2 = r.base.color * (1 + spread);
+  r.base.roughness = r.base.roughness2 = 0.6f;
+  r.base.pattern.kind = Kind::kNoise, r.base.pattern.size = 0.05f;
+  return r;
+}
+
+Vec3 axisDir(int i, float s) {
+  Vec3 v{0};
+  v[i] = s;
+  return v;
+}
+
+// Facings spread evenly over the ball (a Fibonacci spiral), and on purpose the ones between sides: the
+// 12 at 45 degrees between two, the 8 corners, and the near-corner ones where the second side swaps.
+std::vector<Vec3> facings(int n) {
+  std::vector<Vec3> out;
+  for (int i = 0; i < n; ++i) {
+    float y = 1 - 2 * (i + 0.5f) / n, rr = std::sqrt(std::max(0.0f, 1 - y * y)), phi = i * 2.39996323f;
+    out.push_back({rr * std::cos(phi), y, rr * std::sin(phi)});
+  }
+  for (int sx = -1; sx <= 1; ++sx)
+    for (int sy = -1; sy <= 1; ++sy)
+      for (int sz = -1; sz <= 1; ++sz) {
+        Vec3 v{static_cast<float>(sx), static_cast<float>(sy), static_cast<float>(sz)};
+        if (dot(v, v) < 2) continue;
+        out.push_back(normalize(v));
+        for (int k = 1; k <= 8; ++k) out.push_back(normalize(v + Vec3(0.013f * k, -0.007f * k, 0.003f * k)));
+      }
+  return out;
+}
+
+// `n` turned by `deg` degrees about a way across it (`which` picks one of two).
+Vec3 turned(Vec3 n, float deg, int which) {
+  Vec3 t, b;
+  orthonormalBasis(n, t, b);
+  Vec3 axis = which ? b : t;
+  float a = deg * kPi / 180;
+  return normalize(n * std::cos(a) + cross(axis, n) * std::sin(a));
+}
+
+}  // namespace
+
+TEST(surface_box_gives_the_side_a_facing_points_along_all_of_it) {
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  for (int i = 0; i < 3; ++i)
+    for (float s : {1.0f, -1.0f}) {
+      SurfaceProjection pr = projectSurface(r, {0.3f, 0.2f, 0.1f}, axisDir(i, s), {}, 0);
+      CHECK(pr.sides == 1);
+      CHECK(pr.side[0].axis == i);
+      CHECK(pr.side[0].weight == 1);
+    }
+}
+
+TEST(surface_box_weights_always_add_to_one) {
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  for (Vec3 n : facings(2000)) {
+    SurfaceProjection pr = projectSurface(r, {0.1f, 0.2f, 0.3f}, n, {}, 0);
+    CHECK(pr.sides >= 1 && pr.sides <= 2);
+    float sum = 0;
+    for (int k = 0; k < pr.sides; ++k) {
+      CHECK(pr.side[k].weight > 0 && pr.side[k].weight <= 1);
+      sum += pr.side[k].weight;
+    }
+    CHECK(near(sum, 1, 1e-6f));
+    // the two strongest: the side left out is no stronger than either
+    if (pr.sides == 2) {
+      int other = 3 - pr.side[0].axis - pr.side[1].axis;
+      CHECK(std::fabs(n[other]) <= std::fabs(n[pr.side[1].axis]) && std::fabs(n[pr.side[1].axis]) <= std::fabs(n[pr.side[0].axis]));
+    }
+  }
+}
+
+TEST(surface_box_gives_half_each_at_45_degrees_between_two_sides) {
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  for (int i = 0; i < 3; ++i)
+    for (int j = i + 1; j < 3; ++j)
+      for (float si : {1.0f, -1.0f})
+        for (float sj : {1.0f, -1.0f}) {
+          SurfaceProjection pr = projectSurface(r, {}, normalize(axisDir(i, si) + axisDir(j, sj)), {}, 0);
+          CHECK(pr.sides == 2);
+          CHECK(near(pr.side[0].weight, 0.5f, 1e-5f) && near(pr.side[1].weight, 0.5f, 1e-5f));
+          CHECK((pr.side[0].axis == i && pr.side[1].axis == j) || (pr.side[0].axis == j && pr.side[1].axis == i));
+        }
+}
+
+TEST(surface_box_reads_nothing_mirrored_and_keeps_up_up) {
+  // every side, with the stretched way along x, y or z: seen from outside, the tile's first way, its
+  // second and the facing out turn the same way (right hand), so opposite sides never read as each
+  // other's mirror; the first way runs along the along axis wherever the side holds it; and on an
+  // upright side whose second way is y, that way points up
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  for (int along = 0; along < 3; ++along)
+    for (int i = 0; i < 3; ++i)
+      for (float s : {1.0f, -1.0f}) {
+        Vec3 out = axisDir(i, s);
+        SurfaceProjection pr = projectSurface(r, {}, out, {}, along);
+        const SurfaceSide& sd = pr.side[0];
+        CHECK(near(cross(sd.ax, sd.ay), out));
+        CHECK(near(dot(sd.ax, out), 0) && near(dot(sd.ay, out), 0));
+        if (i != along) CHECK(near(std::fabs(sd.ax[along]), 1));
+        if (std::fabs(sd.ay.y) > 0.5f) CHECK(sd.ay.y == 1);
+      }
+  // the place on the tile follows the two ways: a step along the first way moves u.x by that step
+  const Vec3 p{0.2f, 0.3f, 0.4f};
+  SurfaceProjection pr = projectSurface(r, p, {0, 0, -1}, {}, 0);
+  SurfaceProjection pr2 = projectSurface(r, p + pr.side[0].ax * 0.1f, {0, 0, -1}, {}, 0);
+  CHECK(near(pr2.side[0].u.x - pr.side[0].u.x, 0.1f, 1e-5f) && near(pr2.side[0].u.y, pr.side[0].u.y, 1e-5f));
+}
+
+TEST(surface_box_turning_the_facing_a_degree_barely_changes_a_noise) {
+  // A side change never shows as a line: turning the facing by one degree anywhere changes the colour
+  // of a noise recipe by 2% or less, though the tile itself, read from two sides at one place, differs
+  // by more than that (so reading one side only, as before M6, shows the line).
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  static const Material m;
+  const std::vector<Vec3> ball = facings(1500);
+  float worst = 0, sides = 0;
+  for (int pi = 0; pi < 16; ++pi) {
+    const Vec3 p{toUnit(hash32(pi * 3u + 1)), toUnit(hash32(pi * 3u + 2)), toUnit(hash32(pi * 3u + 3))};
+    // the jump a single side would make here: the most two sides' tiles differ at this place
+    Vec3 side[6];
+    for (int i = 0; i < 6; ++i) side[i] = surfaceAt(r, m, p, axisDir(i / 2, i % 2 ? -1.0f : 1.0f), {}, 0, 0, 1).base;
+    for (int i = 0; i < 6; ++i)
+      for (int j = 0; j < 6; ++j)
+        if (i / 2 != j / 2) sides = std::max(sides, std::fabs(side[i].x / side[j].x - 1));
+    for (Vec3 n : ball) {
+      Vec3 c = surfaceAt(r, m, p, n, {}, 0, 0, 1).base;
+      for (int which = 0; which < 2; ++which)
+        for (float deg : {1.0f, -1.0f}) {
+          Vec3 c2 = surfaceAt(r, m, p, turned(n, deg, which), {}, 0, 0, 1).base;
+          for (int k = 0; k < 3; ++k) worst = std::max(worst, std::fabs(c2[k] / c[k] - 1));
+        }
+    }
+  }
+  std::printf("  (a degree's turn changes the noise by at most %.2f%%; two sides differ by up to %.2f%%)\n", worst * 100, sides * 100);
+  CHECK(sides > 0.02f);
+  CHECK(worst <= 0.02f);
+}
+
+TEST(surface_bumped_facing_stays_on_the_things_own_facing) {
+  // the bumps tilt the facing a little, from whichever sides are read: a ball stays a ball (its facing
+  // is never pulled towards the box's sides), and a flat recipe gives back the very facing
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  r.base.bump = 0.002f;
+  static const Material m;
+  int bent = 0;
+  for (Vec3 n : facings(500)) {
+    Vec3 b = surfaceAt(r, m, n * 0.13f, n, {}, 0, 0, 1).normal;
+    CHECK(std::fabs(length(b) - 1) < 1e-4f);
+    CHECK(dot(b, n) > 0.95f);
+    if (dot(b, n) < 0.99999f) ++bent;
+  }
+  CHECK(bent > 250);
+  r.base.bump = 0;
+  Vec3 n = normalize(Vec3(0.3f, 0.5f, -0.8f));
+  Vec3 f = surfaceAt(r, m, {0.1f, 0.2f, 0.3f}, n, {}, 0, 0, 1).normal;
+  CHECK(f.x == n.x && f.y == n.y && f.z == n.z);
+}
+
+TEST(surface_top_reads_from_above_and_uv_from_the_unwrap) {
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  r.project = SurfaceRecipe::Project::kTop;
+  for (Vec3 n : facings(200)) {
+    SurfaceProjection pr = projectSurface(r, {0.3f, 0.7f, -0.2f}, n, {}, 0);
+    CHECK(pr.sides == 1 && pr.side[0].axis == 1 && pr.side[0].weight == 1);
+    CHECK(near(pr.side[0].u.x, 0.3f) && near(pr.side[0].u.y, 0.2f));  // seen from above: x across, -z away from you
+  }
+  r.project = SurfaceRecipe::Project::kUv;
+  static const Material m;
+  for (Vec3 n : facings(200)) {
+    SurfaceProjection pr = projectSurface(r, {0.3f, 0.7f, -0.2f}, n, {0.25f, 1.5f}, 0);
+    CHECK(pr.sides == 1 && pr.side[0].weight == 1);
+    CHECK(pr.side[0].u.x == 0.25f && pr.side[0].u.y == 1.5f);  // one unit a metre
+  }
+  // the unwrap decides: the same uv gives the same colour wherever the point is and whichever way it faces
+  Vec3 a = surfaceAt(r, m, {0.1f, 0.2f, 0.3f}, {0, 1, 0}, {0.4f, 0.6f}, 0, 0, 1).base;
+  Vec3 b = surfaceAt(r, m, {2.1f, -0.5f, 0.9f}, normalize(Vec3(1, 0.2f, 0.3f)), {0.4f, 0.6f}, 0, 0, 1).base;
+  CHECK(near(a, b));
+}
+
+TEST(surface_planks_run_along_the_long_side) {
+  // boards 2 cm wide and 50 cm long, each a little lighter or darker
+  SurfaceRecipe r;
+  r.tile = 1;
+  r.base.on = true;
+  r.base.color = {0.5f, 0.32f, 0.18f}, r.base.color2 = {0.2f, 0.12f, 0.06f};
+  r.base.pattern.kind = Kind::kPlanks, r.base.pattern.size = 0.02f, r.base.pattern.stretch = 25, r.base.pattern.piece = 0.3f;
+  static const Material m;
+  for (int longest = 0; longest < 3; ++longest) {
+    Vec3 size{0.1f};
+    size[longest] = 2;
+    const AABB bounds(size * -0.5f, size * 0.5f);  // a 2 m by 0.1 m by 0.1 m box, its 2 m along x, y or z
+    CHECK(alongAxis(r, bounds) == longest);
+    SurfaceRecipe laid = r;
+    laid.along = alongAxis(r, bounds);  // as the film lays it on the thing
+    for (int i = 0; i < 3; ++i) {
+      if (i == longest) continue;
+      for (float s : {1.0f, -1.0f}) {
+        Vec3 n = axisDir(i, s), across = axisDir(3 - i - longest, 1), along = axisDir(longest, 1);
+        Vec3 p = n * 0.05f + Vec3(0.0031f, 0.0047f, 0.0053f);
+        CHECK(near(std::fabs(projectSurface(laid, p, n, {}, laid.along).side[0].ax[longest]), 1));
+        // walking 10 cm along the long side meets one board end or none; across it, about five boards
+        int changesAlong = 0, changesAcross = 0;
+        Vec3 last = surfaceAt(laid, m, p, n, {}, 0, 0, 1).base, lastX = surfaceAt(laid, m, p - across * 0.05f, n, {}, 0, 0, 1).base;
+        for (int k = 1; k <= 100; ++k) {
+          Vec3 c = surfaceAt(laid, m, p + along * (k * 0.001f), n, {}, 0, 0, 1).base;
+          Vec3 cx = surfaceAt(laid, m, p + across * (k * 0.001f - 0.05f), n, {}, 0, 0, 1).base;
+          if (!near(c, last, 1e-3f)) ++changesAlong;
+          if (!near(cx, lastX, 1e-3f)) ++changesAcross;
+          last = c, lastX = cx;
+        }
+        CHECK(changesAlong <= 4);   // into a joint and out of it, at most once
+        CHECK(changesAcross >= 6);  // into and out of three joints or more
+      }
+    }
+  }
+  // a named way wins over the longest side
+  r.along = 1;
+  CHECK(alongAxis(r, AABB(Vec3(-1, -0.05f, -0.05f), Vec3(1, 0.05f, 0.05f))) == 1);
+  // a ball or a cube (sides within 1%): x
+  r.along = -1;
+  CHECK(alongAxis(r, AABB(Vec3(-0.13f), Vec3(0.13f, 0.1301f, 0.13f))) == 0);
+}
+
+TEST(surface_two_things_start_at_different_places) {
+  SurfaceRecipe r = noiseRecipe(0.03f);
+  static const Material m;
+  const Vec3 a = surfaceStart(surfaceStartKey(0), r.tile), b = surfaceStart(surfaceStartKey(1), r.tile);
+  CHECK(length(a - b) > 0.05f);
+  for (int k = 0; k < 3; ++k) CHECK(a[k] >= 0 && a[k] < r.tile && b[k] >= 0 && b[k] < r.tile);
+  CHECK(surfaceStart(surfaceStartKey(7), 2) == surfaceStart(surfaceStartKey(7), 1) * 2.0f);
+  // the same point on two copies of a thing: mostly not the same colour
+  int differ = 0;
+  for (int i = 0; i < 50; ++i) {
+    Vec3 p{i * 0.017f, 0.05f, i * 0.023f};
+    Vec3 ca = surfaceAt(r, m, p + a, {0, 1, 0}, {}, 0, 0, 1).base, cb = surfaceAt(r, m, p + b, {0, 1, 0}, {}, 0, 0, 1).base;
+    if (!near(ca, cb, 1e-4f)) ++differ;
+  }
+  CHECK(differ > 40);
 }
