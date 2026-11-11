@@ -88,3 +88,4 @@ jobs:
           echo "Cloudflare: R2 (big files): $(count r2/buckets)"
           echo "Cloudflare: KV (small records): $(count storage/kv/namespaces)"
           { [ "${v%% *}" = true ] || [ "${v2%% *}" = true ]; } && [ "$a" = true ]
+          # checked again 2026-11-11, after the keys were saved again
