@@ -104,6 +104,9 @@ animation and games in one place, but locked to one console and
 
 ## Next
 
+- **The Studio** (the user's word, 2026-11-11): open one thing and work on its shape, its bones and its
+  movement (keys, curves, brushes, a skeleton of hundreds of bones). Its plan, decisions and first eight
+  orders: `docs/STUDIO.md`.
 - **Music on the film's timeline:** songs that start with a shot, more bars than one, chords.
 - **More hands:** pick lamps by their light, sun and sky by dragging, materials made and named, models from the
   project's folder, groups (a table and its chairs move together), people's walks drawn on the floor.
