@@ -94,6 +94,10 @@ void bakeProbe(LightCache& cache, int i, PathTracer& pt, int rays, int bounces, 
       const float up = std::max(d[ax], 0.0f), down = std::max(-d[ax], 0.0f);
       f[2 * ax] += L * (up * w);
       f[2 * ax + 1] += L * (down * w);
+      // the sky's own directions only (above the horizon): below it the sky's
+      // picture is the far ground, which a face looking sideways over open
+      // ground still sees. The face looking straight down has none: all its rays.
+      if (d.y <= 0 && ax != 1) continue;
       all[static_cast<size_t>(2 * ax)] += up, all[static_cast<size_t>(2 * ax + 1)] += down;
       if (openSky[k]) sky[static_cast<size_t>(2 * ax)] += up, sky[static_cast<size_t>(2 * ax + 1)] += down;
     }

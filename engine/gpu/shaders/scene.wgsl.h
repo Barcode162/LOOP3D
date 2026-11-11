@@ -175,7 +175,7 @@ fn envBrdf(f0 : vec3f, rough : f32, nv : f32) -> vec3f {
 // work isn't there at all in the levels below it (a shader keeps GPU registers
 // for its heaviest path even when that path never runs).
 //   0 Lowest: every material's colour, shine and glow, the lobes that cost per lamp left out
-//   1 Standard: every lobe the film renderer has, from every light; steady highlights; shadows turned per pixel
+//   1 Standard: every lobe the film renderer has, from every light; shadows turned per pixel
 //   2 High: sun shadows that sharpen where things touch and soften with distance; softer lamp-map shadows; finer creases
 //   3 Highest: more of each (shadow taps, crease points, reflection steps)
 override kShading : u32 = 1u;
@@ -241,9 +241,17 @@ fn fogSunlit(dist : f32, toPoint : vec3f, density : f32, pix : vec2f) -> f32 {
     let q = frame.camPos.xyz + toPoint * t;
     let p = frame.shadowViewProj * vec4f(q, 1.0);
     let uv = vec2f(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
-    var seen = 1.0;  // beyond the shadow map: sunlit
+    var seen = 1.0;  // beyond the shadow maps: sunlit
     if (all(uv >= vec2f(0.0)) && all(uv <= vec2f(1.0)) && p.z <= 1.0) {
       seen = textureSampleCompareLevel(shadowMap, shadowSampler, uv, 0, p.z - frame.fogColor.w);
+    } else if (frame.shadowFar.y > 0.5) {
+      // past the near map: the far one (a low sun's shadows are long: a wood's
+      // fog was lit as if no tree stood beyond the near map, a veil over everything)
+      let pf = frame.shadowFarViewProj * vec4f(q, 1.0);
+      let uf = vec2f(pf.x * 0.5 + 0.5, 0.5 - pf.y * 0.5);
+      if (all(uf >= vec2f(0.0)) && all(uf <= vec2f(1.0)) && pf.z <= 1.0) {
+        seen = textureSampleCompareLevel(shadowMap, shadowSampler, uf, i32(frame.shadowFar.y + 0.5), pf.z - frame.fogColor.w);
+      }
     }
     lit += seen * w;
     total += w;
@@ -354,6 +362,84 @@ fn surfLight(s : Surf, l : vec3f, bulb : f32) -> vec3f {
   return f * nl;
 }
 
+// ---- panels (windows, softboxes, strips): glowing rectangles, lit as what they are
+// A panel's two sides from the way it faces: the film renderer's rule (engine/render/pathtracer.cpp).
+struct Sides { u : vec3f, v : vec3f };
+fn panelSides(N : vec3f) -> Sides {
+  if (abs(N.y) < 0.99) {
+    let t = normalize(cross(vec3f(0.0, 1.0, 0.0), N));
+    return Sides(t, cross(N, t));
+  }
+  let sg = select(-1.0, 1.0, N.z >= 0.0);
+  let a = -1.0 / (sg + N.z);
+  let c = N.x * N.y * a;
+  return Sides(vec3f(1.0 + sg * N.x * N.x * a, sg * c, -sg * N.x), vec3f(c, sg + N.y * N.y * a, -N.y));
+}
+// One edge of a glowing polygon seen from the point: its share of the light,
+// as a vector (Lambert's formula; Heitz's fit of the angle over its sine)
+fn edgeLight(a : vec3f, b : vec3f) -> vec3f {
+  let x = dot(a, b);
+  let y = abs(x);
+  let p = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
+  let q = 3.4175940 + (4.1616724 + y) * y;
+  let w = p / q;
+  return cross(a, b) * select(0.5 * inverseSqrt(max(1.0 - x * x, 1e-7)) - w, w, x > 0.0);
+}
+// How much of a ball of light (its size sin^2, its height over the surface's
+// horizon as a cosine) falls on a surface, with the part below the horizon cut
+// off: a fit (mean error 0.005). A polygon's light is close to that of the
+// ball with the same vector (Heitz and Hill 2017): no cutting of corners.
+fn ballOverHorizon(x : f32, y : f32) -> f32 {
+  return clamp(x * (0.9245867 + y) * (0.5 + (y - 0.9245867) * (0.5359050 + x * (-1.0054222 + x * (1.8199061 - x * 1.3172082)))), 0.0, 1.0);
+}
+// What the surface sends to the eye of a panel's light, the panel taken as the
+// rectangle it is: its diffuse light exactly (a big panel overhead no longer
+// lights the floor under it as if it were one point: that was up to half too
+// bright), and its shine as its own mirror image, never brighter than the panel.
+fn panelLight(s : Surf, p : vec3f, L : Light) -> vec3f {
+  let N = L.dir.xyz;
+  let centre = L.pos.xyz - p;
+  if (dot(centre, N) >= 0.0) { return vec3f(0.0); }  // behind it: panels shine one way
+  let sd = panelSides(N);
+  let hu = sd.u * (0.5 * L.cone.z);
+  let hv = sd.v * (0.5 * L.cone.w);
+  let c0 = normalize(centre - hu - hv);
+  let c1 = normalize(centre + hu - hv);
+  let c2 = normalize(centre + hu + hv);
+  let c3 = normalize(centre - hu + hv);
+  var F = edgeLight(c0, c1) + edgeLight(c1, c2) + edgeLight(c2, c3) + edgeLight(c3, c0);
+  if (dot(F, centre) < 0.0) { F = -F; }
+  let len = length(F);
+  if (len < 1e-7) { return vec3f(0.0); }
+  let towards = F / len;
+  let coatNow = s.coat * (0.04 + 0.96 * pow(1.0 - s.nv, 5.0));
+  let under = 1.0 - coatNow;
+  var c = s.diffuse * (ballOverHorizon(len, dot(s.n, towards)) * under);
+  if (dot(s.translucent, vec3f(1.0)) > 0.0) { c += s.translucent * ballOverHorizon(len, -dot(s.n, towards)); }
+  // the shine: the point of the panel nearest where the mirrored view meets its plane
+  let r = reflect(-s.v, s.n);
+  let rn = dot(r, N);
+  var q = r * length(centre);
+  if (rn < -1e-4) { q = r * (dot(centre, N) / rn); }
+  let rel = q - centre;
+  let on = centre + sd.u * clamp(dot(rel, sd.u), -0.5 * L.cone.z, 0.5 * L.cone.z) + sd.v * clamp(dot(rel, sd.v), -0.5 * L.cone.w, 0.5 * L.cone.w);
+  let d2 = max(dot(on, on), 1e-6);
+  let l = on * inverseSqrt(d2);
+  let nl = dot(s.n, l);
+  if (nl > 0.0) {
+    let h = normalize(l + s.v);
+    let nh = max(dot(s.n, h), 0.0);
+    let fres = pow(1.0 - clamp(dot(s.v, h), 0.0, 1.0), 5.0);
+    // the panel's size as seen from here: a mirror shows the panel itself (1),
+    // a rough surface spreads that much of it (less)
+    let solid = min(L.cone.z * L.cone.w * max(-dot(l, N), 0.0) / d2, 6.2831853);
+    let F0 = s.f0 + (vec3f(1.0) - s.f0) * fres;
+    c += F0 * s.comp * (min(D_ggx(nh, s.alpha) * V_smith(s.nv, nl, s.alpha) * nl * solid, 1.0) * (1.0 - s.coat * (0.04 + 0.96 * fres)));
+    if (s.coat > 0.0) { c += vec3f(s.coat * (0.04 + 0.96 * fres) * min(D_ggx(nh, s.coatAlpha) * V_smith(s.nv, nl, s.coatAlpha) * nl * solid, 1.0)); }
+  }
+  return c * L.color.rgb;
+}
+
 var<private> resolving : bool = false;  // shading the visibility picture: never cut holes
 fn shade(i : VsOut, front : bool) -> Shaded {
   let m = materials[i.mat];
@@ -431,14 +517,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   }
   let metal = m.props.x * metalScale;
   let glass = m.props.y * (1.0 - metal);
-  var alpha = max(rough * rough, 0.002);
-  if (kShading >= 1u) {
-    // a curved glossy thing: the highlight spread over the directions this
-    // pixel covers (Tokuyoshi and Kaplanyan 2019), as the film renderer's many
-    // samples a pixel average it: chrome legs and rims don't sparkle
-    alpha = sqrt(alpha * alpha + min(0.5 * (dot(slopeNrmX, slopeNrmX) + dot(slopeNrmY, slopeNrmY)), 0.18));
-    rough = sqrt(alpha);
-  }
+  let alpha = max(rough * rough, 0.002);
   let nv = max(dot(n, v), 1e-4);
   var sf : Surf;
   sf.n = n;
@@ -504,14 +583,18 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let d2 = max(dot(tl, tl), L.pos.w * L.pos.w);
     let l = tl * inverseSqrt(max(dot(tl, tl), 1e-8));
     let nl = dot(n, l);
-    if (nl <= 0.0 && !lit2) { continue; }
+    // a panel near enough to show its size (within six of its diagonals; a far
+    // one, or a group of them sent as one lamp, is a point to the eye)
+    let diag2 = L.cone.z * L.cone.z + L.cone.w * L.cone.w;
+    let wide = kShading >= 1u && L.dir.w > 1.5 && L.cone.x > 0.5 && d2 < 36.0 * diag2;
+    if (nl <= 0.0 && !lit2 && !wide) { continue; }
     var I = L.color.rgb / d2;
     if (L.dir.w > 0.5 && L.dir.w < 1.5) {  // spot
       I *= smoothstep(L.cone.y, L.cone.x, dot(-l, L.dir.xyz));
     } else if (L.dir.w > 1.5) {  // panel: radiance x area x cosines
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
-    if (dot(I, I) == 0.0) { continue; }
+    if (dot(I, I) == 0.0 && !wide) { continue; }
     let off = ng * sign(nl);  // off the surface, on the lamp's side
     // the main lamps' shadow maps (Phone): only the first few lamps have one
     var ownShadow = false;
@@ -535,7 +618,9 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // lamps on Phone), in part
     let picked = picking && !ownShadow && L.dir.w < 1.5;
     if (!ownShadow && !picked) { I *= mix(1.0, aoTerm, 0.7); }
-    let c = surfLight(sf, l, L.pos.w / (2.0 * sqrt(d2))) * I;
+    var c = surfLight(sf, l, L.pos.w / (2.0 * sqrt(d2))) * I;
+    // (blended into the point's light over the last of that reach: no ring where one takes over)
+    if (wide) { c = mix(panelLight(sf, i.world, L) * mix(1.0, aoTerm, 0.7), c, smoothstep(25.0, 36.0, d2 / diag2)); }
     if (picked) {
       // one kept, each with the chance of its share of the light so far
       let w = dot(c, vec3f(0.3333));
@@ -655,9 +740,6 @@ fn shade(i : VsOut, front : bool) -> Shaded {
 
 // the screen slopes of a drawn triangle, from the GPU
 fn takeSlopes(i : VsOut) {
-  let nn = normalize(i.nrm);
-  slopeNrmX = dpdx(nn);
-  slopeNrmY = dpdy(nn);
   slopeWorldX = dpdx(i.world);
   slopeWorldY = dpdy(i.world);
   slopeUvX = dpdx(i.uv);

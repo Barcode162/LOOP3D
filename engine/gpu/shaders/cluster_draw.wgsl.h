@@ -276,9 +276,6 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   slopeWorldY = (py - v.world) * perShown;
   slopeUvX = (A.uv * bx.x + B.uv * bx.y + C.uv * bx.z - v.uv) * perShown;
   slopeUvY = (A.uv * by.x + B.uv * by.y + C.uv * by.z - v.uv) * perShown;
-  let n0 = normalize(A.nrm * b0.x + B.nrm * b0.y + C.nrm * b0.z);
-  slopeNrmX = (normalize(A.nrm * bx.x + B.nrm * bx.y + C.nrm * bx.z) - n0) * perShown;
-  slopeNrmY = (normalize(A.nrm * by.x + B.nrm * by.y + C.nrm * by.z) - n0) * perShown;
   // which side the camera sees, as the GPU tells a drawn triangle (counter-
   // clockwise on screen is its front): its corners' turn as seen from the eye,
   // which stays right for big triangles reaching behind the camera

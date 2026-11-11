@@ -37,7 +37,7 @@ struct Light {
   pos : vec4f,     // xyz, radius
   color : vec4f,   // rgb candela (point/spot) or nits (panel)
   dir : vec4f,     // xyz, kind (0 point, 1 spot, 2 panel)
-  cone : vec4f,    // cos inner, cos outer, panel w, panel h
+  cone : vec4f,    // spot: cos inner, cos outer; panel: 1 for a true rectangle (0: a group of far ones as one lamp), -, its width, height
 };
 struct Material {
   base : vec4f,      // rgb, roughness
@@ -128,10 +128,7 @@ var<private> shadowCount : f32 = 0.0;  // frames it has been kept (to 32: blende
 var<private> slopeWorldY : vec3f;
 var<private> slopeUvX : vec2f;
 var<private> slopeUvY : vec2f;
-// how the surface's own direction turns from one pixel to the next: a curved
-// glossy thing's highlight is spread over what the pixel covers (no sparkle)
-var<private> slopeNrmX : vec3f = vec3f(0.0);
-var<private> slopeNrmY : vec3f = vec3f(0.0);
+
 fn planar(p : vec3f, n : vec3f) -> vec2f {
   let a = abs(n);
   if (a.y >= a.x && a.y >= a.z) { return p.xz; }

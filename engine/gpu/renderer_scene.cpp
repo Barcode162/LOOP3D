@@ -269,7 +269,7 @@ void GpuRenderer::readLights(const Scene& scene) {
     if (l.kind == Light::Kind::kRect) {
       u.color = {l.color * (l.lumens / (kPi * std::max(l.size.x * l.size.y, 1e-4f))), 0};
       u.dir = {normalize(l.direction), 2};
-      u.cone = {0, 0, l.size.x, l.size.y};
+      u.cone = {1, 0, l.size.x, l.size.y};  // x: a true rectangle (a group of far panels sent as one lamp has 0)
     } else if (l.kind == Light::Kind::kSpot) {
       float ci = std::cos(l.innerAngle), co = std::cos(std::max(l.outerAngle, l.innerAngle + 1e-3f));
       u.color = {l.color * (l.lumens / (kTwoPi * (1 - 0.5f * (ci + co)))), 0};

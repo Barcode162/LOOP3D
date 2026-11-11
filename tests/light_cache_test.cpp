@@ -115,7 +115,7 @@ TEST(light_cache_knows_how_much_sky_each_face_sees) {
     bakeProbe(c, 0, pt, 1024);
     CHECK_NEAR(c.sky[0][2], 1.0f, 0.01f);  // looking up: all sky
     CHECK_NEAR(c.sky[0][3], 0.0f, 0.01f);  // looking down: the floor
-    CHECK_NEAR(c.sky[0][0], 0.5f, 0.05f);  // sideways: half and half
+    CHECK_NEAR(c.sky[0][0], 1.0f, 0.01f);  // sideways: all the sky it looks at (the ground below isn't sky)
     // smoothing and filling keep the shares
     const LightCache sm = smoothed(c);
     CHECK_NEAR(sm.sky[0][2], 1.0f, 0.01f);
