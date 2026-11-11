@@ -2,7 +2,7 @@
   "order": 0,
   "name": "samples",
   "title": "Samples",
-  "description": "Small scenes that show what the engine does: a candlelit cabin, a living courtyard, and a two-scene story.",
+  "description": "Small scenes that show what the engine does: a candlelit cabin, a living courtyard, a two-scene story, and seven balls from mirror to chalk.",
   "start": "courtyard",
   "scenes": [
     "courtyard",
@@ -10,7 +10,8 @@
     "the_gate",
     "the_woods",
     "two_rooms",
-    "windows"
+    "windows",
+    "roughness"
   ],
   "stills": "stills"
 }
