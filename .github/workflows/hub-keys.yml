@@ -22,27 +22,36 @@ jobs:
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
-      - name: The five keys are there
+      - name: The five keys are there, and their shape
         run: |
+          # a key pasted with a space or a new line at its end stops working: trim each one, and say so
           ok=1
           for n in IONOS_SFTP_HOST IONOS_SFTP_USER LFTP_PASSWORD CF_ACCOUNT CF_TOKEN; do
-            if [ -z "${!n}" ]; then echo "MISSING: $n"; ok=0; else echo "present: $n"; fi
+            v="${!n}"; t="$(printf '%s' "$v" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+            if [ -z "$t" ]; then echo "MISSING: $n"; ok=0; continue; fi
+            echo "::add-mask::$t"
+            extra=""; [ "$t" != "$v" ] && extra=" (had a space or new line around it: trimmed here, better saved again clean)"
+            echo "present: $n, ${#t} characters$extra"
+            echo "$n=$t" >> "$GITHUB_ENV"
           done
+          t="$(printf '%s' "$CF_ACCOUNT" | tr -d '[:space:]')"
+          if printf '%s' "$t" | grep -Eq '^[0-9a-f]{32}$'; then echo "shape: the account ID looks like one"; else echo "shape: the account ID does NOT look like one (it is 32 letters a-f and digits)"; fi
+          t="$(printf '%s' "$IONOS_SFTP_HOST" | tr -d '[:space:]')"
+          case "$t" in *://*|*/*|*@*) echo "shape: the IONOS host has extra parts (it is only a name like access-123.webspace-host.com)";; *.*) echo "shape: the IONOS host looks like one";; *) echo "shape: the IONOS host does NOT look like a server name";; esac
           [ $ok = 1 ]
       - name: IONOS lets us in (looks, changes nothing)
         if: always()
         run: |
-          sudo apt-get install -y lftp >/dev/null
-          out=$(lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" 2>/dev/null <<'EOF'
-          set cmd:fail-exit yes
-          set sftp:auto-confirm yes
-          set net:max-retries 2
-          set net:timeout 20
-          cls -1
-          bye
-          EOF
-          ) || { echo "IONOS: login FAILED (host, user or password is wrong)"; exit 1; }
-          echo "IONOS: logged in; $(echo "$out" | grep -c .) things at the top"
+          sudo apt-get install -y lftp >/dev/null 2>&1
+          if getent hosts "$IONOS_SFTP_HOST" >/dev/null; then echo "IONOS: the host name exists"; else echo "IONOS: the host name does NOT exist (the host secret is wrong)"; exit 1; fi
+          if out=$(lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" -e "set sftp:auto-confirm yes; set cmd:fail-exit yes; set net:max-retries 1; set net:timeout 20; cls -1; bye" 2>err.txt); then
+            echo "IONOS: logged in; $(echo "$out" | grep -c .) things at the top"
+          else
+            if grep -qi "login failed\|Login incorrect\|denied" err.txt; then echo "IONOS: the host answers, but the user or the password is refused"
+            elif grep -qi "timed out\|timeout\|refused" err.txt; then echo "IONOS: the host does not answer SFTP (is it the SFTP host, not the website's name?)"
+            else echo "IONOS: login failed for another reason ($(wc -l < err.txt) lines of error, kept private)"; fi
+            exit 1
+          fi
           for d in home home/bar home/bar/loop3d; do
             if lftp --env-password -u "$IONOS_SFTP_USER" "sftp://$IONOS_SFTP_HOST" -e "set sftp:auto-confirm yes; set cmd:fail-exit yes; cd $d; bye" >/dev/null 2>&1
             then echo "IONOS: folder $d: yes"; else echo "IONOS: folder $d: no"; fi
@@ -52,8 +61,11 @@ jobs:
         run: |
           api=https://api.cloudflare.com/client/v4
           get() { curl -sS -m 20 -H "Authorization: Bearer $CF_TOKEN" "$api/$1"; }
-          v=$(get user/tokens/verify | jq -r '"\(.success) \(.result.status // "-")"')
-          echo "Cloudflare: token valid: $v"
+          why='"\(.success) \(.result.status // "-") \([.errors[]? | "\(.code): \(.message)"] | join("; "))"'
+          v=$(get user/tokens/verify | jq -r "$why")
+          echo "Cloudflare: token valid (as a personal token): $v"
+          v2=$(get "accounts/$CF_ACCOUNT/tokens/verify" | jq -r "$why")
+          echo "Cloudflare: token valid (as an account token): $v2"
           a=$(get "accounts/$CF_ACCOUNT" | jq -r '.success')
           echo "Cloudflare: token can see the account: $a"
           count() { get "accounts/$CF_ACCOUNT/$1" | jq -r 'if .success then "yes, \((.result.buckets // .result) | length) there now" else "no" end'; }
@@ -62,4 +74,4 @@ jobs:
           echo "Cloudflare: D1 (database): $(count d1/database)"
           echo "Cloudflare: R2 (big files): $(count r2/buckets)"
           echo "Cloudflare: KV (small records): $(count storage/kv/namespaces)"
-          [ "${v%% *}" = true ] && [ "$a" = true ]
+          { [ "${v%% *}" = true ] || [ "${v2%% *}" = true ]; } && [ "$a" = true ]
