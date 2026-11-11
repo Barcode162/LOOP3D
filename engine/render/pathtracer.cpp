@@ -5,6 +5,7 @@
 #include "engine/core/jobs.h"
 #include "engine/core/random.h"
 #include "engine/core/time.h"
+#include "engine/geometry/cook.h"
 #include "engine/render/bsdf.h"
 #include "engine/render/pattern.h"
 #include "engine/render/scene_bvh.h"
@@ -103,6 +104,12 @@ struct PathTracer::Impl {
   bool probeFirst = false;  // probeLight: the first stretch skips lamps and the sun seen straight on
   std::vector<char> stoodFor;  // per instance: a lamp stands for its glow (Light::standsFor), so a probe's first stretch skips it too
   std::vector<float> lampWeights;  // probeLight's lamp picking
+  // surface recipes (docs/SURFACES.md): what each needs about a hit
+  bool hasSurfaces = false;
+  std::vector<int> sceneOf;                           // per geometry instance: its number in Scene::instances
+  std::vector<Mat4> thingInv;                         // per geometry instance: the world to the thing as made
+  std::vector<std::shared_ptr<const Marks>> marksOf;  // per mesh drawn in a surface: its edge and hollow marks
+  bool surfaceContext(const SceneHit& h, Vec3 p, Vec3 ns, const Material& M, SurfaceContext& out) const;
 
   // camera
   Vec3 camPos, camF, camR, camU, camDelta{0};
@@ -147,6 +154,21 @@ void PathTracer::Impl::build(const Scene& s) {
     if (M.transmission > 0) hasGlass = true;
   }
   geom.build(s);
+  // surfaces: each drawn thing's way back to its own space, and the marks of the
+  // meshes drawn in one (measured once a mesh by the cook)
+  hasSurfaces = !s.surfaces.empty();
+  sceneOf.clear(), thingInv.clear();
+  marksOf.assign(hasSurfaces ? s.meshes.size() : 0, nullptr);
+  if (hasSurfaces) {
+    for (size_t i = 0; i < s.instances.size(); ++i) {  // in the order SceneBvh keeps them (it skips meshes without triangles)
+      const int m = s.instances[i].mesh;
+      if (m < 0 || m >= static_cast<int>(s.meshes.size()) || s.meshes[m].triangleCount() == 0) continue;
+      sceneOf.push_back(static_cast<int>(i));
+      thingInv.push_back(s.instances[i].transform.inverse());
+      const int mat = s.materials.empty() ? -1 : clamp(s.instances[i].material, 0, static_cast<int>(s.materials.size()) - 1);
+      if (mat >= 0 && s.materials[mat].surface >= 0 && !marksOf[m]) marksOf[m] = Cook::shared().marks(s.meshes[m]);
+    }
+  }
   emitBase.assign(geom.instanceCount(), -1);
   for (size_t i = 0; i < geom.instanceCount(); ++i) {
     int mat = geom.materialOf(static_cast<int>(i));
@@ -271,6 +293,40 @@ float PathTracer::Impl::fogDistance(Vec3 o, Vec3 d, float tmax, float& t0, float
     t0 = std::max(t0, ta), t1 = std::min(t1, tb);
   }
   return std::max(0.0f, t1 - t0);
+}
+
+bool PathTracer::Impl::surfaceContext(const SceneHit& h, Vec3 p, Vec3 ns, const Material& M, SurfaceContext& out) const {
+  if (M.surface < 0 || M.surface >= static_cast<int>(scene->surfaces.size()) || h.inst < 0 || h.inst >= static_cast<int>(sceneOf.size()))
+    return false;
+  const SurfaceRecipe& r = scene->surfaces[M.surface];
+  const int si = sceneOf[h.inst];
+  const MeshInstance& in = scene->instances[si];
+  const Mesh& mesh = scene->meshes[in.mesh];
+  out.recipe = &r;
+  out.distance = h.t;
+  if (r.worldSpace) {
+    out.place = p, out.facing = ns, out.toWorld = Mat3();
+  } else {
+    // the thing as it was made: a normal goes there by the transform's linear part, transposed
+    const Mat3 L = in.transform.linear();
+    out.place = thingInv[h.inst].point(p);
+    out.facing = normalize(L.transposed() * ns);
+    out.toWorld = L.inverse().transposed();
+    // each thing starts at its own place in the tile
+    const uint32_t k = hash32(static_cast<uint32_t>(si) * 0x9e3779b1U + 0x632be5abU);
+    out.place = out.place + Vec3(toUnit(k), toUnit(hash32(k)), toUnit(hash32(k ^ 0x5bd1e995U))) * r.tile;
+  }
+  out.edge = out.hollow = 0;
+  if (in.mesh < static_cast<int>(marksOf.size()) && marksOf[in.mesh]) {
+    const Marks& mk = *marksOf[in.mesh];
+    const uint32_t* idx = &mesh.indices[static_cast<size_t>(h.prim) * 3];
+    const float w0 = 1 - h.u - h.v;
+    auto blend = [&](const std::vector<uint8_t>& v) {
+      return idx[0] < v.size() && idx[1] < v.size() && idx[2] < v.size() ? (v[idx[0]] * w0 + v[idx[1]] * h.u + v[idx[2]] * h.v) / 255.0f : 0.0f;
+    };
+    out.edge = blend(mk.edge), out.hollow = blend(mk.hollow);
+  }
+  return true;
 }
 
 bool PathTracer::Impl::surfaceAlphaCut(int inst, uint32_t prim, float u, float v, Vec3 p) const {
@@ -606,7 +662,9 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
     bool front = dot(ray.d, ng) < 0;
     if (!front) ng = -ng, ns = -ns;
     if (dot(ns, ng) < 0) ns = ng;
-    Surface sf = shadeSurface(M, S.images, p, ns, uv, &S.textures);
+    SurfaceContext sc;
+    const bool onSurface = hasSurfaces && surfaceContext(h, p, ns, M, sc);
+    Surface sf = shadeSurface(M, S.images, p, ns, uv, &S.textures, onSurface ? &sc : nullptr);
     Vec3 n = sf.normal;
     Vec3 wo = -ray.d;
     if (dot(n, wo) <= 1e-4f) n = normalize(n + ng * (1e-4f - dot(n, wo) + 0.01f));
@@ -896,7 +954,9 @@ void PathTracer::Impl::lightPass(Image& out, int W, int H, uint64_t paths, uint3
         const bool front = dot(ray.d, ng) < 0;
         if (!front) ng = -ng, ns = -ns;
         if (dot(ns, ng) < 0) ns = ng;
-        const Surface sf = shadeSurface(M, S.images, p, ns, uv, &S.textures);
+        SurfaceContext sc;
+        const bool onSurface = hasSurfaces && surfaceContext(h, p, ns, M, sc);
+        const Surface sf = shadeSurface(M, S.images, p, ns, uv, &S.textures, onSurface ? &sc : nullptr);
         const Vec3 n = sf.normal;
         const float metal = sf.metallic, glass = M.transmission * (1 - metal);
         if (glass > 0.5f && sf.roughness < 0.05f) {

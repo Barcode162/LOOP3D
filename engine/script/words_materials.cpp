@@ -1,4 +1,5 @@
 // The world words: materials (registered by installSceneApi, scene_api.cpp).
+#include <algorithm>
 #include <filesystem>
 #include <set>
 
@@ -131,7 +132,7 @@ void readLayer(Vm& vm, const std::string& name, const Value& value, SurfaceLayer
     }
 }
 
-void readVary(Vm& vm, const Value& value, SurfaceRecipe& r) {
+bool readVary(Vm& vm, const Value& value, SurfaceRecipe& r) {  // gives whether a tint was given
   Table& t = layerMap(vm, "vary", value);
   const std::vector<std::string> options = {"large", "amount", "tint", "roughness", "small", "small_amount"};
   for (auto& [k, v] : t.entries) {
@@ -144,6 +145,7 @@ void readVary(Vm& vm, const Value& value, SurfaceRecipe& r) {
     else if (k == "small_amount") r.varySmallAmount = number(vm, where, v);
     else unknownSetting(vm, "vary", k, options);
   }
+  return std::any_of(t.entries.begin(), t.entries.end(), [](const auto& e) { return e.first == "tint"; });
 }
 
 void readDetail(Vm& vm, const Value& value, SurfaceRecipe& r) {
@@ -244,7 +246,7 @@ void registerMaterials(Vm& vm) {
     static const std::vector<std::string> layers = {"base", "vary", "coat", "coat2", "wear", "dirt", "detail"};
     static const std::vector<std::string> beside = {"tile", "project", "space", "along", "seed", "sheen", "clearcoat", "subsurface", "subsurface_color", "translucent", "ior"};
     std::vector<std::string> all = join(join({"name"}, layers), beside);
-    bool coatFacing[2] = {false, false};
+    bool coatFacing[2] = {false, false}, tintGiven = false;
     for (auto& [k, v] : a.named) {
       if (k == "name") continue;
       if (k == "base") readLayer(a.vm, k, v, r.base, true);
@@ -252,7 +254,7 @@ void registerMaterials(Vm& vm) {
       else if (k == "coat2") readLayer(a.vm, k, v, r.coat[1], false), coatFacing[1] = r.coat[1].facing != SurfaceLayer::Facing::kAny;
       else if (k == "wear") readLayer(a.vm, k, v, r.wear, false);
       else if (k == "dirt") readLayer(a.vm, k, v, r.dirt, false);
-      else if (k == "vary") readVary(a.vm, v, r);
+      else if (k == "vary") tintGiven = readVary(a.vm, v, r);
       else if (k == "detail") readDetail(a.vm, v, r);
       else if (k == "tile") {
         r.tile = number(a.vm, k, v);
@@ -267,6 +269,7 @@ void registerMaterials(Vm& vm) {
       }
     }
     if (!r.base.on) a.vm.fail("a surface needs a `base`", "base: {color: rgb(0.42, 0.27, 0.14), roughness: 0.55}");
+    if (!tintGiven) r.varyTint = r.base.color;  // no tint: the slow change only goes brighter and darker
     if (coatFacing[0] && coatFacing[1]) a.vm.fail("a surface may have only one coat with a `facing`", "the other coat can have `facing: \"any\"` (it is baked into the tile)");
     // the material: the base's colour, roughness and metal, and the settings beside the layers
     m.name = name;

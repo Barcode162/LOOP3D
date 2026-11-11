@@ -16,6 +16,7 @@ namespace loop {
 
 struct Material;  // engine/render/scene.h
 struct Surface;   // engine/render/pattern.h
+struct Image;     // engine/core/image.h
 
 // A pattern: a pure function of a place on the tile and the seed (section 5).
 struct SurfacePattern {
@@ -55,9 +56,19 @@ struct SurfaceRecipe {
 // After step 3 of section 7: what the cook bakes into the tile.
 struct SurfacePoint { Vec3 color; float height, roughness, metal; };
 
+// The wander picture: 64 square, four smooth noises that wrap (each -1 to 1 once
+// read with wanderAt), the same bytes on every machine. Read at a scale of metres
+// for a surface's slow change (`vary.large`), so a floor never shows its tile.
+const Image& wanderPicture();
+// The four noises at `u` (metres) for slow change of size `large` (metres).
+Vec4 wanderAt(Vec2 u, float large);
+
 // Steps 1 to 3 at `u` (metres on the tile; wraps at the tile's side). Order M3c.
 SurfacePoint surfaceTile(const SurfaceRecipe&, Vec2 u);
-// Steps 1 to 9: the whole stack at one point of one thing. Order M3c.
+// Steps 1 to 9: the whole stack at one point of one thing. Order M3c. `place` and
+// `facing` are in the recipe's space (the thing's, or the world's); the bumped
+// facing comes back in that space. `edge` and `hollow` are the marks (0 to 1).
+// Until M6 the tile is laid on from the side the facing points at most.
 Surface surfaceAt(const SurfaceRecipe&, const Material&, Vec3 place, Vec3 facing, Vec2 uv,
                   float edge, float hollow, float distance);
 
