@@ -383,3 +383,28 @@ facts about a mesh and stay with the cook in `engine/geometry/`. `engine/modules
 | M7 | the detail layer (step 8) |
 | M8 | the test ball and its picture (section 11) |
 | M9 … M58 | fifty surfaces, one a card |
+
+## 15. As built (2026-11-11, orders M3a to M5)
+
+What building it taught, where this page was silent or wrong. Later orders follow this section.
+
+- **The cluster drawing keeps the marks' borders.** The phone draws most meshes from the cook's cluster
+  tree, whose simpler levels drop any point that costs no shape. A flat point beside a rounding costs none,
+  so the rounding's wear spread across the whole face as bare steel (found on the phone, in
+  `projects/samples/surface_box.loop`). A mesh drawn in a surface now gets its own tree
+  (`Cook::clustersKeepingMarks`): every vertex where its marks change (`markBorders`) may only slide along
+  its own band, and a slide counts the distance the band's border moves as its error, so that level is drawn
+  only where the move looks small. Its test: `marks_simpler_levels_keep_the_wear_as_narrow`.
+- **A lathe's outline goes from the bottom up,** or its faces look inward and the hollow mark's rays hit its
+  own inside: the whole top gathers dirt. A flat stretch beside a groove or a rounding needs its own points
+  (every 2 to 4 cm), or the band's mark spreads across the whole stretch (marks follow the mesh's points).
+- **Where the phone does it:** the shader's stack is `surfaceHere` in `engine/gpu/shaders/scene.wgsl.h`
+  (the model pictures it reads are bound there), called from `shade`, so the two ways of drawing (one
+  draw a thing, and the clusters' visibility picture) share it. The GPU path tracer (`ultra.wgsl.h`, the
+  Highest setting) shows a surface's base, flat, for now. Each surface takes two layers of the model
+  pictures' stack (colour and shape, at `render.textureSize`), the wander picture one more; the material
+  record carries steps 4 to 7's numbers (`surf0` … `coat2`); each vertex carries its marks as four bytes;
+  each copy's own start in the tile is the film's hash of its number (`InstanceU::material[2]`).
+- **No tint given** means the slow change only goes brighter and darker (the word sets the tint to the
+  base's colour).
+- **The test ball** is sofa-sized in triangles (13,752): a test rig, so its plinth is round.

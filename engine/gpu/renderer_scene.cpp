@@ -1,13 +1,20 @@
 // The live renderer: its scene part (see renderer_internal.h).
 #include "engine/gpu/renderer_internal.h"
 
+#include "engine/core/random.h"
+
 namespace loop::gpu::impl {
 
 void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged) {
   changes_.bump("shapes");
-  if (scene.textures.size() != texUploaded_ || texSize_ != std::clamp(config().render.textureSize, 16, 2048)) uploadModelTextures(scene);
+  if (scene.textures.size() != texUploaded_ || texSize_ != std::clamp(config().render.textureSize, 16, 2048) || surfacesChanged(scene))
+    uploadModelTextures(scene);
   if (geometryChanged || meshes_.size() != scene.meshes.size()) {
-    for (size_t i = meshes_.size(); i < scene.meshes.size(); ++i) meshes_.push_back(upload(scene.meshes[i]));
+    const std::vector<char> marked = meshesInSurfaces(scene);
+    for (size_t i = meshes_.size(); i < scene.meshes.size(); ++i) {
+      std::shared_ptr<const Marks> mk = marked[i] ? Cook::shared().marks(scene.meshes[i]) : nullptr;
+      meshes_.push_back(upload(scene.meshes[i], mk.get()));
+    }
   }
   wantClusters(scene);
   // materials
@@ -24,6 +31,8 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
     u.extra = {m.subsurface, m.translucency, m.leafShape ? 1.0f : 0.0f, m.ior};
     u.coat = {m.clearcoatRoughness, m.specular, 0, 0};
     u.sss = {m.subsurfaceColor, 0};
+    if (m.surface >= 0 && m.surface < static_cast<int>(scene.surfaces.size()) && m.surface < static_cast<int>(surfLayer_.size()) && surfLayer_[m.surface] >= 0)
+      surfaceNumbers(scene.surfaces[m.surface], surfLayer_[m.surface], wanderLayer_, u);
     auto layer = [&](int t) { return t >= 0 && t < static_cast<int>(texLayer_.size()) ? static_cast<float>(texLayer_[t]) : -1.0f; };
     u.tex = {layer(m.baseTexture), layer(m.metalRoughTexture), layer(m.normalTexture), layer(m.emissiveTexture)};
     u.tex2 = {m.alphaCutoff, m.roughnessMin, 0, 0};
@@ -154,7 +163,9 @@ void GpuRenderer::syncTransforms(const Scene& scene) {
     u.n0 = {nm.c[0], 0}, u.n1 = {nm.c[1], 0}, u.n2 = {nm.c[2], 0};
     u.material[0] = static_cast<uint32_t>(std::max(0, in.material));
     u.material[1] = static_cast<uint32_t>(in.mesh);  // its shape (the cluster drawing finds its clusters by it)
-    u.material[2] = u.material[3] = 0;
+    // each thing starts at its own place in a surface's tile: the same hash of its number as the film's
+    u.material[2] = hash32(idx * 0x9e3779b1U + 0x632be5abU);
+    u.material[3] = 0;
     bool g = glassOf(in);
     if (!batches_.empty() && batches_.back().mesh == in.mesh && batches_.back().glass == g) ++batches_.back().count;
     else batches_.push_back({in.mesh, static_cast<uint32_t>(data.size()), 1, g});
@@ -292,13 +303,61 @@ void GpuRenderer::readLights(const Scene& scene) {
   if (!same) gridKey_ = -1, changes_.bump("lamp places");
 }
 
-GpuMesh GpuRenderer::upload(const Mesh& m) {
+// A surface's numbers for the shader (steps 4 to 7 of docs/SURFACES.md section 7;
+// steps 1 to 3 are its baked tile, at `layer` and the one after).
+void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, MaterialU& u) {
+  u.surf0 = {static_cast<float>(layer), static_cast<float>(layer + 1), r.tile, r.varyLarge > 0 ? static_cast<float>(wander) : -1.0f};
+  u.surf1 = {r.varyLarge, r.varyAmount, r.varyRoughness, r.worldSpace ? 1.0f : 0.0f};
+  u.surf2 = {r.varyTint, 0};
+  auto layerOf = [](const SurfaceLayer& L, Vec4& a, Vec4& b, float amount) {
+    a = {L.color, L.roughness};
+    b = {L.metal, L.on ? amount : 0.0f, L.ragged, L.soft};
+  };
+  layerOf(r.wear, u.wear0, u.wear1, r.wear.amount);
+  layerOf(r.dirt, u.dirt0, u.dirt1, r.dirt.amount);
+  u.coat0 = {}, u.coat1 = {}, u.coat2 = {};
+  for (const SurfaceLayer& c : r.coat)
+    if (c.on && c.facing != SurfaceLayer::Facing::kAny) {
+      layerOf(c, u.coat0, u.coat1, c.cover);
+      u.coat2 = {static_cast<float>(static_cast<int>(c.facing)), static_cast<float>(static_cast<int>(c.sits)), 0, 0};
+    }
+}
+
+// The surfaces a scene's materials use, by fingerprint: changed since their pictures went up?
+bool GpuRenderer::surfacesChanged(const Scene& scene) const {
+  if (scene.surfaces.size() != surfUploaded_.size()) return true;
+  for (size_t i = 0; i < scene.surfaces.size(); ++i)
+    if (scene.surfaces[i].fingerprint() != surfUploaded_[i]) return true;
+  return false;
+}
+
+// Which meshes are drawn in a surface somewhere (they carry their marks to the GPU).
+std::vector<char> meshesInSurfaces(const Scene& scene) {
+  std::vector<char> in(scene.meshes.size(), 0);
+  for (const MeshInstance& i : scene.instances) {
+    if (i.mesh < 0 || i.mesh >= static_cast<int>(in.size()) || scene.materials.empty()) continue;
+    const Material& m = scene.materials[std::clamp(i.material, 0, static_cast<int>(scene.materials.size()) - 1)];
+    if (m.surface >= 0) in[i.mesh] = 1;
+  }
+  return in;
+}
+
+// A corner's two marks as the four bytes of one vertex number (edge, hollow, 0, 0).
+float packedMarks(const Marks* marks, size_t i) {
+  uint32_t w = 0;
+  if (marks && i < marks->edge.size() && i < marks->hollow.size()) w = marks->edge[i] | (static_cast<uint32_t>(marks->hollow[i]) << 8);
+  float f;
+  std::memcpy(&f, &w, 4);
+  return f;
+}
+
+GpuMesh GpuRenderer::upload(const Mesh& m, const Marks* marks) {
   std::vector<float> v;
-  v.reserve(m.positions.size() * 8);
+  v.reserve(m.positions.size() * 9);
   for (size_t i = 0; i < m.positions.size(); ++i) {
     Vec3 n = i < m.normals.size() ? m.normals[i] : Vec3{0, 1, 0};
     Vec2 uv = i < m.uvs.size() ? m.uvs[i] : Vec2{};
-    v.insert(v.end(), {m.positions[i].x, m.positions[i].y, m.positions[i].z, n.x, n.y, n.z, uv.x, uv.y});
+    v.insert(v.end(), {m.positions[i].x, m.positions[i].y, m.positions[i].z, n.x, n.y, n.z, uv.x, uv.y, packedMarks(marks, i)});
   }
   GpuMesh g;
   g.vb = buffer(std::max<size_t>(v.size() * 4, 16), wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst);
@@ -363,6 +422,24 @@ void GpuRenderer::uploadModelTextures(const Scene& scene) {
   uint32_t n = static_cast<uint32_t>(std::min<size_t>(scene.textures.size(), maxLayers_));
   if (scene.textures.size() > n) reportGpuError("more model pictures than this GPU can hold; the rest show plain colours");
   texLayer_.assign(scene.textures.size(), -1);
+  // after the model pictures: each surface's colour and shape tiles (docs/SURFACES.md section 8), then
+  // the one wander picture its slow change reads
+  const uint32_t models = n;
+  surfLayer_.assign(scene.surfaces.size(), -1);
+  wanderLayer_ = -1;
+  bool wander = false;
+  for (size_t i = 0; i < scene.surfaces.size(); ++i) {
+    if (n + 2 > maxLayers_) {
+      reportGpuError("more surfaces than this GPU can hold pictures for; the rest show their base colour");
+      break;
+    }
+    surfLayer_[i] = static_cast<int>(n);
+    n += 2;
+    if (scene.surfaces[i].varyLarge > 0) wander = true;
+  }
+  if (wander && n < maxLayers_) wanderLayer_ = static_cast<int>(n++);
+  surfUploaded_.clear();
+  for (const SurfaceRecipe& r : scene.surfaces) surfUploaded_.push_back(r.fingerprint());
   int levels = 1;
   while ((S >> levels) >= 1 && levels < 12) ++levels;
   wgpu::TextureDescriptor td;
@@ -373,7 +450,48 @@ void GpuRenderer::uploadModelTextures(const Scene& scene) {
   if (modelTex_) modelTex_.Destroy();
   modelTex_ = device_.CreateTexture(&td);
   std::vector<uint8_t> level(static_cast<size_t>(S) * S * 4), next;
-  for (uint32_t layer = 0; layer < n; ++layer) {
+  // a picture made by the engine (a surface's tile, the wander picture) at its own layer: its own smaller
+  // copies where it has them, else each copy the average of four
+  auto putPicture = [&](uint32_t layer, const std::vector<Image>& chain, bool encoded) {
+    std::vector<uint8_t> px;
+    int w = S;
+    for (int l = 0; l < levels; ++l, w = std::max(1, w / 2)) {
+      px.assign(static_cast<size_t>(w) * w * 4, 0);
+      const Image* src = nullptr;
+      for (const Image& im : chain)
+        if (im.width == w && im.height == w) src = &im;
+      for (int y = 0; y < w; ++y)
+        for (int x = 0; x < w; ++x) {
+          // its own copy of this size, else read from the largest (wrapping, smooth)
+          Vec4 c = src ? src->at(x, y) : chain.front().sample((x + 0.5f) / w, (y + 0.5f) / w);
+          uint8_t* d = &px[(static_cast<size_t>(y) * w + x) * 4];
+          const float v[4] = {c.x, c.y, c.z, c.w};
+          for (int k = 0; k < 4; ++k) d[k] = static_cast<uint8_t>(std::lround(std::clamp(encoded ? v[k] : v[k], 0.0f, 1.0f) * 255));
+        }
+      wgpu::TexelCopyTextureInfo dst;
+      dst.texture = modelTex_;
+      dst.mipLevel = static_cast<uint32_t>(l);
+      dst.origin = {0, 0, layer};
+      wgpu::TexelCopyBufferLayout lay;
+      lay.bytesPerRow = static_cast<uint32_t>(w * 4);
+      lay.rowsPerImage = static_cast<uint32_t>(w);
+      wgpu::Extent3D ext{static_cast<uint32_t>(w), static_cast<uint32_t>(w), 1};
+      queue_.WriteTexture(&dst, px.data(), px.size(), &lay, &ext);
+      if (w == 1) break;
+    }
+  };
+  for (size_t i = 0; i < scene.surfaces.size(); ++i) {
+    if (surfLayer_[i] < 0) continue;
+    std::shared_ptr<const SurfacePictures> pics = bakeSurface(scene.surfaces[i], S);
+    if (!pics || pics->colour.empty() || pics->shape.empty()) {
+      surfLayer_[i] = -1;
+      continue;
+    }
+    putPicture(static_cast<uint32_t>(surfLayer_[i]), pics->colour, true);
+    putPicture(static_cast<uint32_t>(surfLayer_[i] + 1), pics->shape, false);
+  }
+  if (wanderLayer_ >= 0) putPicture(static_cast<uint32_t>(wanderLayer_), {wanderPicture()}, false);
+  for (uint32_t layer = 0; layer < models; ++layer) {
     const Texture& t = scene.textures[layer];
     texLayer_[layer] = static_cast<int>(layer);
     for (int y = 0; y < S; ++y)

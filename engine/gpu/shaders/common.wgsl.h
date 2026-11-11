@@ -50,6 +50,13 @@ struct Material {
   tex2 : vec4f,      // alpha cutoff, least roughness
   coat : vec4f,      // clear coat roughness, specular (0.5: 4% mirror), -, -
   sss : vec4f,       // subsurface colour, -
+  // a surface (docs/SURFACES.md): its baked tile and the numbers worked out where drawn
+  surf0 : vec4f,     // colour layer (< 0: not a surface), shape layer, tile (m), wander layer (-1 none)
+  surf1 : vec4f,     // slow change: size (m), amount, roughness; 1 in world space (0 the thing's)
+  surf2 : vec4f,     // slow change's tint, -
+  wear0 : vec4f, wear1 : vec4f,   // wear: colour, roughness; metal, amount (0 off), ragged, soft
+  dirt0 : vec4f, dirt1 : vec4f,   // dirt: the same
+  coat0 : vec4f, coat1 : vec4f, coat2 : vec4f,  // the coat that faces a way: as wear, cover for amount; facing (1 up, 2 down, 3 side), sits (1 high, 2 low)
 };
 struct Instance {
   model : mat4x4f,

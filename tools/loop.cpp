@@ -528,6 +528,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.lodBias = C.world.lodBias;
   v.portraitWide = C.camera.portraitWide;
   v.clusters = C.render.clusters, v.clusterError = C.render.clusterError;
+  v.textureSize = C.render.textureSize;
   v.lightGrid = C.render.lightGrid, v.lampGrouping = C.render.lampGrouping;
   {
     int lamps = 0;
@@ -581,6 +582,8 @@ int budgetScene(const std::string& path, const Options& o) {
                 static_cast<double>(c.lodTriangles[2]) / 1e6);
   std::printf("  sky                           %7.0f%%\n", static_cast<double>(1 - c.coverage) * 100);
   std::printf("  computed patterns (wood...)   %7.0f%% of the surfaces seen\n", static_cast<double>(c.patternShare) * 100);
+  std::printf("  pictures on the graphics chip %6.1f MB   %zu layers of %d square (%zu for surfaces), with their smaller copies\n",
+              static_cast<double>(c.pictureBytes) / 1048576.0, c.pictureLayers, m.view.textureSize, c.surfaceLayers);
   std::printf("  heaviest shapes in the scene (triangles x copies):\n");
   for (const auto& h : m.heaviest)
     std::printf("    %-24s %8zu x %-5zu = %6.2f M\n", h.material.c_str(), h.triangles, h.copies, static_cast<double>(h.triangles * h.copies) / 1e6);

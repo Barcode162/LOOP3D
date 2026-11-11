@@ -59,6 +59,7 @@ struct FrameView {
   // lit once). Glass is still drawn the old way.
   bool clusters = false;
   float clusterError = 1;
+  int textureSize = 256;           // render.textureSize: the side of every picture layer on the graphics chip
 };
 
 struct FrameCost {
@@ -91,6 +92,11 @@ struct FrameCost {
   int lampsThatMatterMost = 0;   // and at the worst point
   float lampsFor99 = 0;          // lamps giving 99% of it (average)
   float patternShare = 0;        // share of covered pixels with a computed pattern (wood, stone...)
+  // the pictures on the graphics chip, as the renderer lays them out: each model picture one layer, each
+  // surface two (its colour and shape tiles), the wander picture one if a surface's slow change reads it;
+  // every layer `textureSize` square in 4 bytes a pixel, with its smaller copies (a third more)
+  size_t pictureLayers = 0, surfaceLayers = 0;
+  uint64_t pictureBytes = 0;
   uint64_t triangles() const { return sceneTriangles + shadowTriangles + prepassTriangles; }
   size_t draws() const { return sceneDraws + shadowDraws + prepassDraws; }
   // per-pixel work today: fragments shaded x lamps each works out
@@ -102,6 +108,8 @@ Mat4 frameViewProj(const FrameView& view);
 Mat4 frameShadowViewProj(const FrameView& view, Vec3 towardSun, int shadowMapSize);
 
 FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples = 40000);
+// The layers and bytes of a scene's pictures on the graphics chip at `textureSize` (as above).
+void countPictures(const Scene& scene, int textureSize, size_t& layers, size_t& surfaceLayers, uint64_t& bytes);
 
 // The graphics chip's choice of a copy's clusters (kClusterCullWgsl's
 // `chosen`): each whose own error looks within `limit` pixels from `eye` while

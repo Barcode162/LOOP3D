@@ -213,4 +213,21 @@ Marks measureMarks(const Mesh& m) {
   return out;
 }
 
+std::vector<uint8_t> markBorders(const Mesh& m, const Marks& marks, int step) {
+  const size_t n = m.positions.size();
+  std::vector<uint8_t> keep(n, 0);
+  if (marks.edge.size() < n || marks.hollow.size() < n) return keep;
+  auto differ = [&](uint32_t a, uint32_t b) {
+    return std::abs(static_cast<int>(marks.edge[a]) - marks.edge[b]) > step || std::abs(static_cast<int>(marks.hollow[a]) - marks.hollow[b]) > step;
+  };
+  for (size_t t = 0; t + 2 < m.indices.size(); t += 3)
+    for (int e = 0; e < 3; ++e) {
+      const uint32_t a = m.indices[t + e], b = m.indices[t + (e + 1) % 3];
+      if (a < n && b < n && differ(a, b)) keep[a] = keep[b] = 1;
+    }
+  for (size_t v = 0; v < n; ++v)
+    if (keep[v]) keep[v] = static_cast<uint8_t>(2 + (marks.edge[v] >> 5) * 8 + (marks.hollow[v] >> 5));
+  return keep;
+}
+
 }  // namespace loop

@@ -248,13 +248,14 @@ void GpuRenderer::buildPipelines() {
   wgpu::PipelineLayout shadowL = pipeLayout({scene0Layout_}, "shadow");
   wgpu::PipelineLayout postL = pipeLayout({postLayout_}, "bloom and film");
 
-  static wgpu::VertexAttribute attrs[3];
+  static wgpu::VertexAttribute attrs[4];
   attrs[0].format = wgpu::VertexFormat::Float32x3, attrs[0].offset = 0, attrs[0].shaderLocation = 0;
   attrs[1].format = wgpu::VertexFormat::Float32x3, attrs[1].offset = 12, attrs[1].shaderLocation = 1;
   attrs[2].format = wgpu::VertexFormat::Float32x2, attrs[2].offset = 24, attrs[2].shaderLocation = 2;
+  attrs[3].format = wgpu::VertexFormat::Unorm8x4, attrs[3].offset = 32, attrs[3].shaderLocation = 3;  // the marks: edge, hollow
   wgpu::VertexBufferLayout vbl;
-  vbl.arrayStride = 32;
-  vbl.attributeCount = 3;
+  vbl.arrayStride = 36;
+  vbl.attributeCount = 4;
   vbl.attributes = attrs;
 
   auto scenePipe = [&](const char* fs, bool blend, bool writeDepth, bool sky, wgpu::CompareFunction cmp = wgpu::CompareFunction::Less, bool color = true,

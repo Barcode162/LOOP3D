@@ -9,8 +9,8 @@ namespace loop::gpu {
 inline const char* kClusterDrawWgsl = R"(
 // The cook's clusters in one pool (one buffer: WebGPU promises only 8 a
 // stage): pool[0] where the triangles' corners start, pool[1] where the
-// clusters start; vertices first, 8 numbers each (position, normal, picture
-// coordinates), clusters 16 numbers each.
+// clusters start; vertices first, 9 numbers each (position, normal, picture
+// coordinates, the marks' four bytes), clusters 16 numbers each.
 @group(3) @binding(0) var<storage, read> pool : array<u32>;
 struct Cluster { bounds : vec4f, lod : vec4f, parent : vec4f, err : vec2f, first : u32, count : u32 };
 fn poolF(i : u32) -> f32 { return bitcast<f32>(pool[i]); }
@@ -20,10 +20,11 @@ fn poolCluster(c : u32) -> Cluster {
   return Cluster(poolV4(b), poolV4(b + 4u), poolV4(b + 8u), vec2f(poolF(b + 12u), poolF(b + 13u)), pool[b + 14u], pool[b + 15u]);
 }
 fn poolCorner(i : u32) -> u32 { return pool[pool[0] + i]; }
-struct PoolVertex { pos : vec3f, nrm : vec3f, uv : vec2f };
+struct PoolVertex { pos : vec3f, nrm : vec3f, uv : vec2f, marks : vec2f };
 fn poolVertex(v : u32) -> PoolVertex {
-  let b = 2u + v * 8u;
-  return PoolVertex(vec3f(poolF(b), poolF(b + 1u), poolF(b + 2u)), vec3f(poolF(b + 3u), poolF(b + 4u), poolF(b + 5u)), vec2f(poolF(b + 6u), poolF(b + 7u)));
+  let b = 2u + v * 9u;
+  return PoolVertex(vec3f(poolF(b), poolF(b + 1u), poolF(b + 2u)), vec3f(poolF(b + 3u), poolF(b + 4u), poolF(b + 5u)), vec2f(poolF(b + 6u), poolF(b + 7u)),
+                    unpack4x8unorm(pool[b + 8u]).xy);
 }
 @group(3) @binding(1) var<storage, read> drawn : array<vec2u>;  // this frame's clusters: (instance, cluster)
 
@@ -268,6 +269,10 @@ fn bary(p : vec3f, a : vec3f, b : vec3f, c : vec3f) -> vec3f {
   v.nrm = mat3x3f(inst.normal0.xyz, inst.normal1.xyz, inst.normal2.xyz) * (A.nrm * b0.x + B.nrm * b0.y + C.nrm * b0.z);
   v.uv = A.uv * b0.x + B.uv * b0.y + C.uv * b0.z;
   v.mat = inst.material.x;
+  v.thing = A.pos * b0.x + B.pos * b0.y + C.pos * b0.z;
+  v.thingNrm = A.nrm * b0.x + B.nrm * b0.y + C.nrm * b0.z;
+  v.marks = A.marks * b0.x + B.marks * b0.y + C.marks * b0.z;
+  v.inst = id.x - 1u;
   // the slopes per pixel of the full picture, not of the smaller drawing: frame
   // blending fills in the detail between, so patterns and pictures keep the
   // detail the screen shows (they faded out early: your bricks)

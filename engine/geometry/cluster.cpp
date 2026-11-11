@@ -217,7 +217,7 @@ std::vector<std::vector<uint32_t>> cutIntoClusters(const std::vector<Vec3>& posi
   return out;
 }
 
-ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) {
+ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel, const std::vector<uint8_t>& keep) {
   ClusterTree tree;
   std::vector<Vec3> pos = mesh.positions;          // the mesh's vertices, then the extra ones
   std::vector<uint32_t> weld = weldMap(mesh.positions);
@@ -318,7 +318,7 @@ ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles, bool parallel) 
       // simplified alone, the group's outer edges are its open edges, which
       // simplify never moves: the new pieces meet their neighbours exactly
       size_t have = tris.size() / 3;
-      SimplifyResult r = simplify(pos, tris, have / 2);
+      SimplifyResult r = simplify(pos, tris, have / 2, keep);
       Done& d = done[gi];
       if (r.indices.size() / 3 <= have * 85 / 100) {
         d.ok = true, d.error = std::max(childError, r.error), d.sphere = sphere;

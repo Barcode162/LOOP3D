@@ -97,7 +97,7 @@ SimplifyResult simplify(const std::vector<Vec3>& positions, const std::vector<ui
   std::vector<uint8_t> lock(locked.empty() ? 0 : used.size());
   for (size_t k = 0; k < used.size(); ++k) {
     pos[k] = positions[used[k]];
-    if (!locked.empty()) lock[k] = locked[used[k]];
+    if (!locked.empty()) lock[k] = used[k] < locked.size() ? locked[used[k]] : 0;  // the list may stop short: the rest are free
   }
   auto local = [&](uint32_t v) {
     auto it = std::lower_bound(used.begin(), used.end(), v);
@@ -135,13 +135,16 @@ SimplifyResult simplifyCompact(const std::vector<Vec3>& positions, const std::ve
     return res;
   }
   // which places can't go: a seam (several originals), an open edge, or locked
+  // (a locked number of 2 or more: the place may go, but only onto a place of the same number)
   std::vector<uint32_t> firstOrig(n, ~0u);
-  std::vector<uint8_t> fixed(n, 0);
+  std::vector<uint8_t> fixed(n, 0), slide(n, 0);
   for (size_t k = 0; k < orig.size(); ++k) {
     uint32_t c = tri[k];
     if (firstOrig[c] == ~0u) firstOrig[c] = orig[k];
     else if (firstOrig[c] != orig[k]) fixed[c] = 1;
-    if (!lockedIn.empty() && lockedIn[orig[k]]) fixed[c] = 1;
+    const uint8_t L = lockedIn.empty() ? 0 : lockedIn[orig[k]];
+    if (L == 1) fixed[c] = 1;
+    else if (L >= 2) slide[c] = L;
   }
   // every edge, sorted: an edge not shared by exactly two triangles is open
   // (or crowded), and its ends stay
@@ -180,11 +183,33 @@ SimplifyResult simplifyCompact(const std::vector<Vec3>& positions, const std::ve
   }
   std::vector<uint32_t> stamp(n, 0);
   std::priority_queue<Candidate, std::vector<Candidate>, std::greater<Candidate>> heap;
+  // how far sliding place a onto b moves its band's border: a's border then runs straight from b to
+  // a's other neighbour of the same kind, so it is a's distance from that line (none on a straight
+  // border; along a ring, the chord's sag). With no such neighbour, the whole way slid.
+  auto bandShift = [&](uint32_t a, uint32_t b) {
+    const Vec3 pa = positions[a], pb = positions[b];
+    float best = kInf;
+    for (uint32_t t : around[a]) {
+      if (!alive[t]) continue;
+      for (int k = 0; k < 3; ++k) {
+        const uint32_t c = tri[t * 3 + k];
+        if (c == a || c == b || slide[c] != slide[a]) continue;
+        const Vec3 d = positions[c] - pb;
+        const float u = clamp(dot(pa - pb, d) / std::max(lengthSq(d), 1e-20f), 0.0f, 1.0f);
+        best = std::min(best, length(pa - (pb + d * u)));
+      }
+    }
+    return best < kInf ? best : length(pa - pb);
+  };
   auto offer = [&](uint32_t from, uint32_t to) {
     if (fixed[from] || from == to) return;
+    if (slide[from] && slide[to] != slide[from]) return;  // it slides along its own kind only
     Quadric q = quad[from];
     q.add(quad[to]);
-    heap.push({std::max(0.0, q.at(positions[to])), from, to, stamp[from], stamp[to]});
+    double cost = std::max(0.0, q.at(positions[to]));
+    // a slide costs what it moves its band's border (below), weighed as the quadric is, so the least goes first
+    if (slide[from]) cost = std::max(cost, (quad[from].weight + quad[to].weight) * static_cast<double>(sqr(bandShift(from, to))));
+    heap.push({cost, from, to, stamp[from], stamp[to]});
   };
   for (size_t t = 0; t < T; ++t)
     for (int e = 0; e < 3; ++e) {
@@ -238,6 +263,10 @@ SimplifyResult simplifyCompact(const std::vector<Vec3>& positions, const std::ve
     // how far a was from the new triangles
     double w = quad[a].weight + quad[b].weight;
     float e = std::max(moved < kInf ? moved : 0.0f, w > 0 ? static_cast<float>(std::sqrt(c.cost / w)) : 0.0f);
+    // a place sliding along its band (a `locked` number of 2 or more) moves the band's border, even
+    // where no shape moves (along a flat ring the chord cuts inside it): that counts as the error, so a
+    // simpler level that does it is drawn only where it looks small
+    if (slide[a]) e = std::max(e, bandShift(a, b));
     if (!ok || e > maxError) continue;
     // collapse: a's triangles go to b (with b's original vertex on this side)
     for (uint32_t t : around[a]) {

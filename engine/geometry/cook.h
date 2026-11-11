@@ -26,6 +26,10 @@ class Cook {
   std::shared_ptr<const ClusterTree> clusters(const Mesh& m);
   // `parallel`: its groups over every core (not from inside another job)
   std::shared_ptr<const ClusterTree> clusters(const Mesh& m, bool parallel);
+  // The tree for a mesh drawn in a surface: its simpler levels keep every
+  // vertex where its marks change (markBorders), so wear and dirt stay as
+  // narrow at every distance as on the full mesh. Kept beside the plain tree.
+  std::shared_ptr<const ClusterTree> clustersKeepingMarks(const Mesh& m);
   // The mesh's marks (edge and hollow per vertex): made the first time it is
   // asked, never otherwise, kept after. Safe from any thread.
   std::shared_ptr<const Marks> marks(const Mesh& m);

@@ -39,6 +39,19 @@ std::shared_ptr<const ClusterTree> Cook::clusters(const Mesh& m, bool parallel) 
   return trees_.emplace(key, std::move(tree)).first->second;  // another thread may have kept one first: the same
 }
 
+std::shared_ptr<const ClusterTree> Cook::clustersKeepingMarks(const Mesh& m) {
+  const uint64_t key = fingerprint(m) ^ 0x6b656570206d6b73ull;  // a key of its own beside the plain tree's
+  {
+    std::lock_guard<std::mutex> l(m_);
+    auto it = trees_.find(key);
+    if (it != trees_.end()) return it->second;
+  }
+  std::shared_ptr<const Marks> mk = marks(m);
+  auto tree = std::make_shared<const ClusterTree>(buildClusterTree(m, 128, false, markBorders(m, *mk)));
+  std::lock_guard<std::mutex> l(m_);
+  return trees_.emplace(key, std::move(tree)).first->second;
+}
+
 std::shared_ptr<const Marks> Cook::marks(const Mesh& m) {
   uint64_t key = fingerprint(m);
   {
