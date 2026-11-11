@@ -57,6 +57,7 @@ struct Material {
   wear0 : vec4f, wear1 : vec4f,   // wear: colour, roughness; metal, amount (0 off), ragged, soft
   dirt0 : vec4f, dirt1 : vec4f,   // dirt: the same
   coat0 : vec4f, coat1 : vec4f, coat2 : vec4f,  // the coat that faces a way: as wear, cover for amount; facing (1 up, 2 down, 3 side), sits (1 high, 2 low)
+  det0 : vec4f,      // the detail: its layer (-1 none), its tile (m), the distance it is gone by (m), how much it changes the shine
 };
 struct Instance {
   model : mat4x4f,

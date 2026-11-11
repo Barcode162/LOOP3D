@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <set>
+#include <unordered_set>
 #include <utility>
 
 #include "engine/geometry/cook.h"
 #include "engine/render/light_grid.h"
 #include "engine/render/scene_bvh.h"
+#include "engine/render/surface_bake.h"
 
 namespace loop {
 
@@ -108,6 +110,11 @@ void countPictures(const Scene& scene, int textureSize, size_t& layers, size_t& 
   bool wander = false;
   for (const SurfaceRecipe& r : scene.surfaces) wander = wander || r.varyLarge > 0;
   if (wander) ++surfaceLayers;
+  // each distinct detail one layer (recipes with the same detail share it)
+  std::unordered_set<uint64_t> details;
+  for (const SurfaceRecipe& r : scene.surfaces)
+    if (r.detail.kind != SurfacePattern::Kind::kNone && r.detailTile > 0) details.insert(detailFingerprint(r));
+  surfaceLayers += details.size();
   layers = scene.textures.size() + surfaceLayers;
   // one layer with its chain of smaller copies, down to a pixel
   uint64_t one = 0;

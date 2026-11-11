@@ -455,7 +455,7 @@ fn panelLight(s : Surf, p : vec3f, L : Light) -> vec3f {
 
 // ---- surfaces (docs/SURFACES.md section 7): the same lines as surfaceAt in
 // engine/render/surface.cpp. Steps 1 to 3 are read from the baked tile; steps 4
-// to 7 are worked out here; step 8 (detail) is order M7. `p` and `n` are in the
+// to 8 are worked out here (step 8, the detail, reads its own baked picture). `p` and `n` are in the
 // surface's own space (the thing's as made, or the world's), `gx` and `gy` how
 // `p` changes across one pixel; the bumped facing comes back in that space.
 struct SurfaceHere { base : vec3f, rough : f32, metal : f32, n : vec3f };
@@ -527,12 +527,28 @@ fn tileOf(m : Material, sd : SurfaceSide, n : vec3f) -> SurfaceTile {
   let nb = n * fz + tx * f.x + ty * f.y;
   return SurfaceTile(srgbToLinear(col.rgb) * sd.w, col.a * sd.w, shp.b * sd.w, shp.a * sd.w, nb * (inverseSqrt(max(dot(nb, nb), 1e-12)) * sd.w));
 }
+// One side's detail (step 8; order M7): the detail picture read at its own tile
+// with the slopes of the place, its two sideways parts along the tile's two ways
+// as they lie on the surface (the film's detailAt slope), as the tilt to add to
+// the facing; and the shine's change: the height's (blue) times `detailRoughness`,
+// plus what the smaller copies added where their bumps disagreed (alpha). Each
+// times the side's weight.
+struct DetailSide { tilt : vec3f, rough : f32 };
+fn detailOf(m : Material, sd : SurfaceSide, n : vec3f) -> DetailSide {
+  let tile = max(m.det0.y, 1e-6);
+  let d = textureSampleGrad(modelTex, modelSampler, sd.u / tile, i32(m.det0.x), sd.ux / tile, sd.uy / tile);
+  let f = d.rg * 2.0 - 1.0;
+  let fz = sqrt(max(1.0 - dot(f, f), 1e-4));
+  let tx = sd.ax - n * dot(sd.ax, n);
+  let ty = sd.ay - n * dot(sd.ay, n);
+  return DetailSide((tx * f.x + ty * f.y) * (sd.w / fz), ((d.b - 0.5) * 2.0 * m.det0.w + d.a) * sd.w);
+}
 // The slow change's four noises from one side, times its weight.
 fn wanderOf(m : Material, sd : SurfaceSide) -> vec4f {
   let side = 8.0 * max(m.surf1.x, 0.01);
   return (textureSampleGrad(modelTex, modelSampler, sd.u / side, i32(m.surf0.w), sd.ux / side, sd.uy / side) * 2.0 - 1.0) * sd.w;
 }
-fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, uv : vec2f, uvx : vec2f, uvy : vec2f, along : i32, edge : f32, hollow : f32) -> SurfaceHere {
+fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, uv : vec2f, uvx : vec2f, uvy : vec2f, along : i32, edge : f32, hollow : f32, dist : f32) -> SurfaceHere {
   // 1 to 3: the tile from each side, blended by the weights; the bumped facing made whole after
   let sides = projectSurface(i32(m.surf2.w), p, n, gx, gy, uv, uvx, uvy, along);
   var t = tileOf(m, sides.a, n);
@@ -544,7 +560,7 @@ fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, uv : 
   let b = t.b;  // the tile's height, 0 to 1
   var rough = t.rough;
   var metal = t.metal;
-  let nb = normalize(t.n);
+  var nb = normalize(t.n);
   // 4. large change (read from the same sides, so it never shows where they change)
   if (m.surf0.w >= 0.0 && m.surf1.x > 0.0) {
     var w = wanderOf(m, sides.a);
@@ -573,6 +589,18 @@ fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, uv : 
   if (m.dirt1.y > 0.0 && hollow > 0.0) {
     let k = layerStep(hollow * m.dirt1.y * 2.0 * (1.0 + (0.5 - b) * 2.0 * m.dirt1.z), m.dirt1.w);
     color = mix(color, m.dirt0.rgb, k); rough = mix(rough, m.dirt0.w, k); metal = mix(metal, m.dirt1.x, k);
+  }
+  // 8. detail, within `det0.z` metres of the eye (the smaller copies of its picture flatten it and add
+  // roughness where a pixel covers many of its features): the film's step 8
+  if (m.det0.x >= 0.0 && dist < m.det0.z) {
+    let fade = 1.0 - smoothstep(0.5 * m.det0.z, m.det0.z, dist);
+    var dd = detailOf(m, sides.a, n);
+    if (sides.b.w > 0.0) {
+      let d2 = detailOf(m, sides.b, n);
+      dd = DetailSide(dd.tilt + d2.tilt, dd.rough + d2.rough);
+    }
+    nb = normalize(nb + dd.tilt * fade);
+    rough += dd.rough * fade;
   }
   // 9.
   return SurfaceHere(color, clamp(rough, 0.03, 1.0), clamp(metal, 0.0, 1.0), nb);
@@ -673,7 +701,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       gx = back * slopeWorldX;
       gy = back * slopeWorldY;
     }
-    let h = surfaceHere(m, sp, sn, gx, gy, i.uv, slopeUvX, slopeUvY, i32(I.material.w), i.marks.x, i.marks.y);
+    let h = surfaceHere(m, sp, sn, gx, gy, i.uv, slopeUvX, slopeUvY, i32(I.material.w), i.marks.x, i.marks.y, length(i.world - frame.camPos.xyz));
     base = h.base;
     rough = h.rough;
     metal = h.metal;

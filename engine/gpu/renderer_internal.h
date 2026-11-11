@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "engine/geometry/cook.h"
 #include "engine/gpu/shaders.h"
@@ -123,9 +124,10 @@ struct MaterialU {
   Vec4 wear0, wear1;  // wear: colour, roughness; metal, amount (0 off), ragged, soft
   Vec4 dirt0, dirt1;  // dirt: the same
   Vec4 coat0, coat1, coat2;  // the coat that faces a way: colour, roughness; metal, cover (0 off), ragged, soft; facing (1 up, 2 down, 3 side), sits (0 any, 1 high, 2 low), -, -
+  Vec4 det0{-1, 0.05f, 2, 0};  // the detail (step 8; order M7): its layer (-1 none), its tile (m), the distance it is gone by (m), how much it changes the shine
 };
 // a surface's numbers for the shader; which meshes a scene draws in a surface, and a corner's marks as one vertex number (renderer_scene.cpp)
-void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, MaterialU& u);
+void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, int detail, MaterialU& u);
 std::vector<char> meshesInSurfaces(const Scene& scene);
 float packedMarks(const Marks* marks, size_t i);
 struct InstanceU {
@@ -495,6 +497,7 @@ class GpuRenderer final : public Renderer {
   wgpu::TextureView modelView_;
   std::vector<int> texLayer_;  // scene texture -> layer (-1: no room)
   std::vector<int> surfLayer_;  // scene surface -> its colour layer (its shape layer is the next; -1: none)
+  std::vector<int> surfDetail_;  // scene surface -> its detail layer (-1: none; recipes with the same detail share one)
   int wanderLayer_ = -1;        // the wander picture's layer (-1: no surface needs it)
   std::vector<uint64_t> surfUploaded_;  // the fingerprints of the surfaces whose pictures are up
   size_t texUploaded_ = 0;

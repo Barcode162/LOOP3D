@@ -251,7 +251,7 @@ size), made on every core like cluster trees:
 |---|---|---|
 | **colour** | red, green, blue: the colour after step 3 (sRGB); alpha: the height `h`, 0 to 1 | `render.textureSize` square |
 | **shape** | red, green: the bumped facing's two sideways parts; blue: roughness; alpha: metal | the same |
-| **detail** (if the recipe has one) | red, green: its bump's facing; blue: its roughness change (0.5: none); alpha: its height | 128 square |
+| **detail** (if the recipe has one) | red, green: its bump's facing; blue: its height (0.5: no change of shine; the shine changes by `roughness × (blue − 0.5) × 2`); alpha: the roughness its smaller copies add (Toksvig; 0 in the largest) | `render.textureSize` square (one layer, as the others), wrapping at `detail.tile` |
 
 And once for the whole engine: the **wander picture**, 64 square, four smooth noises that wrap.
 
@@ -415,3 +415,13 @@ What building it taught, where this page was silent or wrong. Later orders follo
   the face passes their tops and run straight and close towards the board's edges.
 - **`loop library check` places a surface's example on the test ball** and counts no triangles for it (a
   surface has no shape of its own).
+- **The detail layer** (order M7) is its own picture, one layer of the stack per distinct detail (recipes whose
+  detail has the same pattern, tile, bump and seed share one: `detailFingerprint`; its shine change and its fade
+  ride in the material). It is as big as the others (`render.textureSize`), not 128: a detail tile of 5 cm in 256
+  pixels is 0.2 mm a pixel, so **a 0.5 mm thread is only 2.5 pixels wide and shows faintly**; a cloth's detail
+  tile should be 2.5 cm or less (5 pixels a thread). Its alpha is not the height (the tile has the height wear
+  and dirt use) but the roughness the smaller copies add where their bumps disagree. Film and phone fade it by
+  distance (`1 − smoothstep(fade / 2, fade, distance)`), the phone's smaller copies flatten it and roughen the
+  shine as a pixel covers more of it. **A thread under a pixel cannot be shown**: at half a metre a phone pixel
+  is about 0.5 mm, so a 0.5 mm weave is seen only from closer (the test scene `surface_linen` is a macro, 27 cm
+  with a 135 mm lens, where a thread is six pixels).
