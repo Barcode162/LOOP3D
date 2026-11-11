@@ -287,3 +287,77 @@ TEST(surface_bake_time_at_256) {
               JobSystem::shared().threads());
   CHECK(p->colour.size() == 9 && p->shape.size() == 9);
 }
+
+// ---- the detail picture (order M7) ----
+
+namespace {
+SurfaceRecipe weaveRecipe(float base = 0.7f) {
+  SurfaceRecipe r;
+  r.name = "weave";
+  r.tile = 1;
+  r.base.on = true;
+  r.base.color = r.base.color2 = {base, base, base};
+  r.base.roughness = r.base.roughness2 = 0.8f;
+  r.detail.kind = SurfacePattern::Kind::kWeave, r.detail.size = 0.0005f;
+  r.detailTile = 0.05f, r.detailBump = 0.0001f, r.detailRoughness = 0.15f;
+  return r;
+}
+}  // namespace
+
+TEST(surface_bake_detail_is_empty_without_a_detail) {
+  SurfaceRecipe r = weaveRecipe();
+  r.detail.kind = SurfacePattern::Kind::kNone;
+  CHECK(bakeSurface(r, 64)->detail.empty());
+  CHECK(bakeDetail(r, 64)->empty());
+  const auto with = bakeSurface(weaveRecipe(), 64);
+  CHECK(with->detail.size() == with->colour.size());  // a chain as long as the others
+  CHECK(with->detail.front().width == 64);
+}
+
+TEST(surface_bake_two_recipes_with_the_same_detail_share_one_picture) {
+  const auto a = bakeDetail(weaveRecipe(0.7f), 64), b = bakeDetail(weaveRecipe(0.4f), 64);  // another base, the same detail
+  CHECK(a.get() == b.get());
+  CHECK(detailFingerprint(weaveRecipe(0.7f)) == detailFingerprint(weaveRecipe(0.4f)));
+  SurfaceRecipe other = weaveRecipe();
+  other.detailBump = 0.0002f;
+  CHECK(bakeDetail(other, 64).get() != a.get());  // another bump: another picture
+  SurfaceRecipe shine = weaveRecipe();
+  shine.detailRoughness = 0.3f;
+  shine.detailFade = 5;
+  CHECK(bakeDetail(shine, 64).get() == a.get());  // the shine's change and the fade ride in the material, not the picture
+}
+
+TEST(surface_bake_detail_leans_wraps_and_roughens_far_away) {
+  const auto d = bakeDetail(weaveRecipe(), 256);  // 5 cm in 256 pixels: a 0.5 mm thread is 2.5 pixels
+  const std::vector<Image>& c = *d;
+  const Image& big = c.front();
+  // the threads' sides lean the facing: green and red leave the middle somewhere, blue spans the height
+  int lean = 0;
+  float lo = 1, hi = 0;
+  for (const Vec4& p : big.px) {
+    if (std::fabs(p.x - 0.5f) > 0.01f || std::fabs(p.y - 0.5f) > 0.01f) ++lean;
+    lo = std::min(lo, p.z), hi = std::max(hi, p.z);
+    CHECK(p.w == 0);  // the largest adds no roughness
+  }
+  CHECK(lean > static_cast<int>(big.px.size()) / 10);
+  std::printf("  detail height spans %.2f to %.2f\n", lo, hi);
+  CHECK(hi - lo > 0.4f);
+  // wraps: the pictures' edges continue each other (the difference across the edge is no more than twice the inside's)
+  double inside = 0, across = 0;
+  for (int y = 0; y < 256; ++y) {
+    for (int x = 0; x + 1 < 256; ++x) inside += std::fabs(big.at(x, y).z - big.at(x + 1, y).z);
+    across += std::fabs(big.at(255, y).z - big.at(0, y).z);
+  }
+  CHECK(across / 256 <= 2 * inside / (255.0 * 256) + 1e-3);
+  // smaller copies: the facing flattens and the roughness they add rises (the threads disagree)
+  const Image& far = c[4];  // 16 pixels across: each 3 mm, six threads
+  float add = 0;
+  for (const Vec4& p : far.px) add += p.w;
+  CHECK(add / far.px.size() > 0.001f);
+  float steep = 0, steepFar = 0;
+  for (const Vec4& p : big.px) steep += std::fabs(p.x - 0.5f);
+  for (const Vec4& p : far.px) steepFar += std::fabs(p.x - 0.5f);
+  CHECK(steepFar / far.px.size() < steep / big.px.size());
+  // and the last copy's blue is the average height
+  CHECK(c.back().width == 1);
+}

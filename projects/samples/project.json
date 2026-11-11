@@ -12,7 +12,8 @@
     "two_rooms",
     "windows",
     "roughness",
-    "surface_box"
+    "surface_box",
+    "surface_linen"
   ],
   "stills": "stills"
 }

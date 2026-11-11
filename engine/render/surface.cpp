@@ -242,6 +242,27 @@ SurfacePoint surfaceTile(const SurfaceRecipe& r, Vec2 u) {
   return sp;
 }
 
+DetailPoint detailAt(const SurfaceRecipe& r, Vec2 u) {
+  DetailPoint d;
+  if (r.detail.kind == SurfacePattern::Kind::kNone || !(r.detailTile > 0)) return d;
+  const float tile = r.detailTile;
+  // reduced to the tile in double: the slope's step is smaller than a float can hold far from the origin
+  auto reduce = [&](float v) {
+    double x = std::fmod(static_cast<double>(v), static_cast<double>(tile));
+    return static_cast<float>(x < 0 ? x + tile : x);
+  };
+  const Vec2 p{reduce(u.x), reduce(u.y)};
+  const uint32_t seed = layerSeed(r.seed, 9);
+  float m, h, hx, hy, piece;
+  const float e = clamp(r.detail.size * 0.08f, 1e-6f, tile / 64);
+  patternAt(r.detail, p, tile, seed, m, h, piece);
+  patternAt(r.detail, p + Vec2(e, 0), tile, seed, m, hx, piece);
+  patternAt(r.detail, p + Vec2(0, e), tile, seed, m, hy, piece);
+  d.height = h;
+  d.slopeX = (hx - h) / e * r.detailBump, d.slopeY = (hy - h) / e * r.detailBump;
+  return d;
+}
+
 // One side's bumped facing: the tile's height slope along its two ways, laid on the thing's own facing
 // `n` along those ways as they lie on the surface (each way less its part along `n`, so a way that
 // meets the surface slanted gives the smaller slope it really has there). The live renderer does the
@@ -256,7 +277,6 @@ Vec3 bumpedFacing(const SurfaceRecipe& r, const SurfaceSide& sd, Vec3 n, float h
 }
 
 Surface surfaceAt(const SurfaceRecipe& r, const Material& mat, Vec3 place, Vec3 facing, Vec2 uv, float edge, float hollow, float distance) {
-  (void)distance;  // detail (which fades by distance) is M7
   Surface s;
   s.alpha = mat.opacity;
   const SurfaceProjection pr = projectSurface(r, place, facing, uv, r.along < 0 ? 0 : r.along);
@@ -304,6 +324,25 @@ Surface surfaceAt(const SurfaceRecipe& r, const Material& mat, Vec3 place, Vec3 
   if (r.dirt.on && hollow > 0) {
     float tt = hollow * r.dirt.amount * 2 * (1 + (0.5f - b) * 2 * r.dirt.ragged);
     moveTo(color, rough, metal, r.dirt, layerStep(tt, r.dirt.soft));
+  }
+  // 8. detail, within `detailFade` metres (nothing at that distance and beyond): its slope tilts the facing
+  // the tile bent, its height shifts the shine; read from the same sides as the tile. The film has no
+  // pixel to cover, so only the distance fades it (the phone's smaller copies flatten it too).
+  if (r.detail.kind != SurfacePattern::Kind::kNone && r.detailFade > 0 && (r.detailBump > 0 || r.detailRoughness != 0)) {
+    const float fade = 1 - smoothstep(0.5f * r.detailFade, r.detailFade, distance);
+    if (fade > 0) {
+      Vec3 tilt{0};
+      float h = 0;
+      for (int k = 0; k < pr.sides; ++k) {
+        const SurfaceSide& sd = pr.side[k];
+        const DetailPoint dp = detailAt(r, sd.u);
+        const Vec3 tx = sd.ax - facing * dot(sd.ax, facing), ty = sd.ay - facing * dot(sd.ay, facing);
+        tilt += (tx * dp.slopeX + ty * dp.slopeY) * sd.weight;
+        h += dp.height * sd.weight;
+      }
+      if (r.detailBump > 0) s.normal = normalize(s.normal - tilt * fade);
+      rough += r.detailRoughness * (h - 0.5f) * 2 * fade;
+    }
   }
   // 9.
   s.base = color;

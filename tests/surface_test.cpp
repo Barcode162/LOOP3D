@@ -440,3 +440,78 @@ TEST(surface_two_things_start_at_different_places) {
   }
   CHECK(differ > 40);
 }
+
+// ---- the detail layer (order M7) ----
+
+namespace {
+SurfaceRecipe linen() {
+  SurfaceRecipe r;
+  r.name = "linen";
+  r.tile = 1;
+  r.base.on = true;
+  r.base.color = r.base.color2 = {0.7f, 0.68f, 0.62f};
+  r.base.roughness = r.base.roughness2 = 0.8f;
+  r.detail.kind = SurfacePattern::Kind::kWeave, r.detail.size = 0.0005f;
+  r.detailTile = 0.05f, r.detailBump = 0.0001f, r.detailRoughness = 0.15f, r.detailFade = 2;
+  return r;
+}
+}  // namespace
+
+TEST(surface_detail_is_gone_at_its_fade_and_beyond) {
+  SurfaceRecipe with = linen(), without = linen();
+  without.detail.kind = SurfacePattern::Kind::kNone;
+  const Material m;
+  for (int i = 0; i < 40; ++i) {
+    const Vec3 p{i * 0.0137f, 0.2f, i * 0.0091f};
+    for (float d : {2.0f, 2.5f, 40.0f}) {
+      const Surface a = surfaceAt(with, m, p, {0, 1, 0}, {}, 0, 0, d), b = surfaceAt(without, m, p, {0, 1, 0}, {}, 0, 0, d);
+      CHECK(a.normal.x == b.normal.x && a.normal.y == b.normal.y && a.normal.z == b.normal.z);
+      CHECK(a.roughness == b.roughness);
+    }
+  }
+}
+
+TEST(surface_detail_tilts_the_facing_and_shifts_the_shine_up_close) {
+  SurfaceRecipe with = linen(), without = linen();
+  without.detail.kind = SurfacePattern::Kind::kNone;
+  const Material m;
+  int tilted = 0, shifted = 0;
+  float low = 1, high = 0;
+  for (int i = 0; i < 200; ++i) {
+    const Vec3 p{i * 0.00037f, 0.2f, i * 0.00061f};
+    const Surface a = surfaceAt(with, m, p, {0, 1, 0}, {}, 0, 0, 0.3f), b = surfaceAt(without, m, p, {0, 1, 0}, {}, 0, 0, 0.3f);
+    if (a.normal.y < 0.9999f && b.normal.y == 1.0f) ++tilted;
+    if (a.roughness != b.roughness) ++shifted;
+    low = std::min(low, a.roughness), high = std::max(high, a.roughness);
+  }
+  CHECK(tilted > 20);   // the threads' sides lean the facing
+  CHECK(shifted > 100);  // and the shine goes up and down with them
+  CHECK(high - low > 0.1f && high - low < 0.31f);  // by detailRoughness 0.15 either way (0.3 across)
+  // nothing between: fading eases in, never jumps
+  float prev = 0;
+  for (float d : {0.5f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f}) {
+    float spread = 0, lo = 1, hi = 0;
+    for (int i = 0; i < 100; ++i) {
+      const Surface a = surfaceAt(with, m, {i * 0.00031f, 0.2f, i * 0.00053f}, {0, 1, 0}, {}, 0, 0, d);
+      lo = std::min(lo, a.roughness), hi = std::max(hi, a.roughness);
+    }
+    spread = hi - lo;
+    if (d > 1.0f) CHECK(spread <= prev + 1e-6f);
+    prev = spread;
+  }
+  CHECK(prev == 0);  // gone at the fade
+}
+
+TEST(surface_detail_wraps_at_its_own_tile) {
+  const SurfaceRecipe r = linen();
+  for (int i = 0; i < 100; ++i) {
+    // on a 1/1024 m grid so adding the tile is exact (as surface_tile_wraps does)
+    const Vec2 u{std::round(i * 0.0137f * 1024) / 1024, std::round(i * 0.0091f * 1024) / 1024};
+    const DetailPoint a = detailAt(r, u), b = detailAt(r, u + Vec2(r.detailTile, 0)), c = detailAt(r, u + Vec2(0, r.detailTile));
+    CHECK(near(a.height, b.height, 2e-3f) && near(a.height, c.height, 2e-3f));
+  }
+  SurfaceRecipe none = linen();
+  none.detail.kind = SurfacePattern::Kind::kNone;
+  const DetailPoint d = detailAt(none, {0.3f, 0.2f});
+  CHECK(d.height == 0.5f && d.slopeX == 0 && d.slopeY == 0);  // no detail: nothing
+}

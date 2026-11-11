@@ -63,6 +63,15 @@ const Image& wanderPicture();
 // The four noises at `u` (metres) for slow change of size `large` (metres).
 Vec4 wanderAt(Vec2 u, float large);
 
+// The detail layer (step 8; docs/SURFACES.md section 7, order M7) at one place of
+// its own small tile: its height 0 to 1 (the pattern's), and its slope along the
+// tile's two ways in metres per metre (that height times `detailBump`). `u` is in
+// metres and wraps at `detailTile`; the slope is measured on the place reduced to
+// the tile first, so far from the origin it keeps its precision. A recipe with no
+// detail gives height 0.5 and no slope.
+struct DetailPoint { float height = 0.5f, slopeX = 0, slopeY = 0; };
+DetailPoint detailAt(const SurfaceRecipe&, Vec2 u);
+
 // Steps 1 to 3 at `u` (metres on the tile; wraps at the tile's side). Order M3c.
 SurfacePoint surfaceTile(const SurfaceRecipe&, Vec2 u);
 
