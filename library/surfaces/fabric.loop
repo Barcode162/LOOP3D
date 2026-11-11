@@ -1,0 +1,23 @@
+# fabric · plain woven cotton-linen upholstery cloth, grey with a cool tint, slubs where the yarn is thick
+# For sofas, cushions, curtains and chairs. Wears paler and fuzzier on edges; gathers grey-brown dirt in creases.
+#
+# kind: surface
+# place: test_ball("fabric", AT)
+# tags: fabric, soft, indoor
+# size: sofa
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M35 (2026-11-11)
+
+let slub = 2 cm         # one thick place in the yarn
+let thread = 0.5 mm     # one thread's width
+
+to fabric(seed: 1)
+  return surface("fabric", seed: seed, tile: 0.5 m, space: "world", sheen: 0.5,
+    base: {color: rgb(0.55, 0.55, 0.58), color2: rgb(0.48, 0.48, 0.51), roughness: 0.9,
+           pattern: "noise", size: slub, stretch: 8, contrast: 0.3, bump: 0.3 mm},
+    vary: {large: 0.8 m, amount: 0.05},
+    wear: {color: rgb(0.68, 0.68, 0.70), roughness: 1.0, amount: 0.5, soft: 0.35},
+    dirt: {color: rgb(0.26, 0.24, 0.22), roughness: 1.0, amount: 0.45},
+    detail: {pattern: "weave", size: thread, tile: 5 cm, bump: 0.1 mm})
