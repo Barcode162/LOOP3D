@@ -28,8 +28,8 @@ A line is ticked only when it has been checked, on the phone where it says so.
       *Checked 2026-11-11 by the key check (`.github/workflows/hub-keys.yml`, looks only): logged in; `home/bar` is
       there, `home/bar/loop3d` not yet. The host and user are saved with a new line at their end: every workflow
       that uses them trims it, as the key check does.*
-- [ ] The Cloudflare token works (needed for the later part, not the first publish). *2026-11-11: refused,
-      "Invalid API Token"; the account ID has the right shape.*
+- [x] The Cloudflare token works (needed for the later part, not the first publish). *Checked 2026-11-11 by the
+      key check: valid; it can use Workers (1 there), Pages (0), D1 (0), R2 (1 bucket) and KV (0).*
 - [x] One workflow builds the hub and the player and uploads them; started by hand for the first publish.
       *2026-11-11: `.github/workflows/bar-hidden.yml` put both in the hidden folder (joshuavelasco.com/bar/loop3d/,
       the front page at `hub/` under it) in 5 min 40 s, the upload itself 17 s; nothing deleted, the live bar
