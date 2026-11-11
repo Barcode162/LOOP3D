@@ -31,13 +31,26 @@ jobs:
             if [ -z "$t" ]; then echo "MISSING: $n"; ok=0; continue; fi
             echo "::add-mask::$t"
             extra=""; [ "$t" != "$v" ] && extra=" (had a space or new line around it: trimmed here, better saved again clean)"
-            echo "present: $n, ${#t} characters$extra"
+            echo "present: $n$extra"
             echo "$n=$t" >> "$GITHUB_ENV"
           done
           t="$(printf '%s' "$CF_ACCOUNT" | tr -d '[:space:]')"
           if printf '%s' "$t" | grep -Eq '^[0-9a-f]{32}$'; then echo "shape: the account ID looks like one"; else echo "shape: the account ID does NOT look like one (it is 32 letters a-f and digits)"; fi
           t="$(printf '%s' "$IONOS_SFTP_HOST" | tr -d '[:space:]')"
           case "$t" in *://*|*/*|*@*) echo "shape: the IONOS host has extra parts (it is only a name like access-123.webspace-host.com)";; *.*) echo "shape: the IONOS host looks like one";; *) echo "shape: the IONOS host does NOT look like a server name";; esac
+          # what kind of thing each one is, never the thing itself
+          t="$(printf '%s' "$CF_TOKEN" | tr -d '\r\n')"
+          case "$t" in
+            [Bb]earer*) echo "shape: the Cloudflare token starts with the word Bearer (paste only the token after it)";;
+            *curl*|*http*) echo "shape: the Cloudflare token holds a whole command or a link (paste only the token)";;
+            *[[:space:]]*) echo "shape: the Cloudflare token has a space inside it";;
+            *) if printf '%s' "$t" | grep -Eq '^[0-9a-f]+$'; then echo "shape: the Cloudflare token is only digits and a-f: that is a Global API Key or an ID, not an API token"
+               elif printf '%s' "$t" | grep -Eq '^[A-Za-z0-9_-]+$'; then echo "shape: the Cloudflare token is one unbroken word, as it should be"
+               else echo "shape: the Cloudflare token has marks a token never has"; fi;;
+          esac
+          t="$(printf '%s' "$IONOS_SFTP_USER" | tr -d '[:space:]')"
+          case "$t" in *@*) echo "shape: the IONOS user is an email address (the SFTP user is a short name from the SFTP page)";;
+            *) if printf '%s' "$t" | grep -Eq '^[0-9]+$'; then echo "shape: the IONOS user is only digits (a customer number? the SFTP user starts with letters)"; else echo "shape: the IONOS user is a short name"; fi;; esac
           [ $ok = 1 ]
       - name: IONOS lets us in (looks, changes nothing)
         if: always()
