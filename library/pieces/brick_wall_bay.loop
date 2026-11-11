@@ -10,6 +10,7 @@
 # from: The Loft (2026-11-10)
 # tags: brick, wall, pier, loft, bay
 # size: room
+# view: front
 # sockets: hang
 
 let panel_depth = 0.1     # the wall itself

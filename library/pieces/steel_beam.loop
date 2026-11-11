@@ -10,6 +10,7 @@
 # from: The Loft (2026-11-10)
 # tags: steel, beam, girder, loft, industrial
 # size: chair
+# view: front
 # sockets: lie
 
 let web_t = 0.01

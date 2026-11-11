@@ -414,7 +414,7 @@ bool applyMaterialSetting(Vm& vm, Material& m, const std::string& f, const Value
     static const std::pair<const char*, Pattern::Kind> kinds[] = {
         {"none", Pattern::Kind::kNone}, {"checker", Pattern::Kind::kChecker}, {"tiles", Pattern::Kind::kTiles}, {"bricks", Pattern::Kind::kBricks},
         {"wood", Pattern::Kind::kWood}, {"marble", Pattern::Kind::kMarble}, {"noise", Pattern::Kind::kNoise}, {"ground", Pattern::Kind::kGround},
-        {"planks", Pattern::Kind::kPlanks}, {"grid", Pattern::Kind::kGrid}};
+        {"planks", Pattern::Kind::kPlanks}, {"grid", Pattern::Kind::kGrid}, {"windows", Pattern::Kind::kWindows}};
     std::string p = vm.show(v);
     std::vector<std::string> names;
     for (auto& [k, kind] : kinds) {
@@ -422,9 +422,16 @@ bool applyMaterialSetting(Vm& vm, Material& m, const std::string& f, const Value
       if (p == k) { m.pattern.kind = kind; return true; }
     }
     std::string cl = closest(p, names);
-    vm.fail("there's no pattern `" + p + "`", cl.empty() ? "patterns: checker, tiles, bricks, wood, planks, marble, noise, ground" : "did you mean `" + cl + "`?");
+    vm.fail("there's no pattern `" + p + "`", cl.empty() ? "patterns: checker, tiles, bricks, wood, planks, marble, noise, ground, grid, windows" : "did you mean `" + cl + "`?");
   } else if (f == "pattern_color" || f == "pattern_colour") m.pattern.colorB = c();
   else if (f == "pattern_scale") m.pattern.scale = n();
+  else if (f == "floor") m.pattern.floorHeight = std::max(n(), 0.01f);
+  else if (f == "bay") m.pattern.bay = std::max(n(), 0.01f);
+  else if (f == "window") {
+    if (!v.isVec()) vm.fail("`window` is a size, like vec(1.5, 1.7)");
+    m.pattern.window = {v.asVec().x, v.asVec().y};
+  } else if (f == "lit") m.pattern.lit = saturate(n());
+  else if (f == "seed") m.pattern.seed = static_cast<int>(n());
   else if (f == "bump") m.pattern.bump = n() * 1000;  // written in mm: `bump: 1 mm`
   else return false;
   return true;

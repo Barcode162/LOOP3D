@@ -17,12 +17,12 @@ void registerMaterials(Vm& vm) {
     for (auto& [k, v] : a.named)
       if (k != "like" && k != "name" && !applyMaterialSetting(a.vm, m, k, v)) {
         std::vector<std::string> opts = {"color", "roughness", "metal", "glass", "ior", "dispersion", "glow", "clearcoat", "sheen", "subsurface",
-                                         "translucent", "opacity", "pattern", "pattern_color", "pattern_scale", "bump", "leaf"};
+                                         "translucent", "opacity", "pattern", "pattern_color", "pattern_scale", "bump", "leaf", "floor", "bay", "window", "lit", "seed"};
         std::string c = closest(k, opts);
         a.vm.fail("a material has no setting `" + k + "`", c.empty() ? "" : "did you mean `" + c + "`?");
       }
     return Value::object(a.vm.newThing(&kMaterialClass, s.scene.addMaterial(m)));
-  }, "material(\"oak\", roughness: 0.3) or material(color: rgb(…), metal: 1, …)");
+  }, "material(\"oak\", roughness: 0.3) or material(color: rgb(…), metal: 1, …) or material(pattern: \"windows\", lit: 0.35, glow: 40, …)");
   vm.native("materials", [](Args& a) {
     List* l = a.vm.newList();
     for (auto& n : materialNames()) l->items.push_back(a.vm.text(n));

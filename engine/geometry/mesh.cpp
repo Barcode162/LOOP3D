@@ -168,10 +168,22 @@ Mesh box(Vec3 size) {
 Mesh roundedBox(Vec3 size, float radius, int segments) {
   radius = std::min(radius, minComp(size) * 0.5f);
   if (radius <= 0) return box(size);
-  // A cube grid projected onto a rounded box: each face is a grid; points are
-  // clamped to the inner box and pushed out by the radius along the offset.
+  // Each face is a grid projected onto the rounded box: points are clamped to the inner box and pushed
+  // out by the radius along the offset. The grid lines sit only where they are needed: `steps` equal
+  // angles across each rounded edge, and none across the flat middle, so a small rounding stays cheap.
+  // The normals are exact, so even one step shades round.
   Vec3 inner = size * 0.5f - Vec3(radius);
-  int res = std::max(2, segments * 2 + 2);
+  int steps = std::max(1, segments);
+  // One axis' grid lines as offsets from the middle, in units of the half size H (-1 .. 1).
+  auto lines = [&](float H, float I) {
+    std::vector<float> l;
+    for (int k = steps; k >= 1; --k) l.push_back(-(I + radius * std::tan(0.25f * kPi * k / steps)));
+    l.push_back(-I);
+    l.push_back(I);
+    for (int k = 1; k <= steps; ++k) l.push_back(I + radius * std::tan(0.25f * kPi * k / steps));
+    for (float& x : l) x = std::max(-1.0f, std::min(1.0f, x / H));
+    return l;
+  };
   Mesh m;
   const Vec3 n[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
   for (int f = 0; f < 6; ++f) {
@@ -181,25 +193,23 @@ Mesh roundedBox(Vec3 size, float radius, int segments) {
     else u = {nn.z, 0, 0}, v = {0, 1, 0};
     uint32_t base = static_cast<uint32_t>(m.positions.size());
     Vec3 h = size * 0.5f;
-    for (int j = 0; j <= res; ++j)
-      for (int i = 0; i <= res; ++i) {
-        // place grid lines densely near edges so the curve is smooth
-        auto warp = [&](int k) {
-          float t = static_cast<float>(k) / res;
-          return t * 2 - 1;
-        };
-        float a = warp(i), b = warp(j);
-        Vec3 p = nn * dot(vabs(nn), h) + u * (a * dot(vabs(u), h)) + v * (b * dot(vabs(v), h));
+    float hu = dot(vabs(u), h), hv = dot(vabs(v), h);
+    std::vector<float> lu = lines(hu, dot(vabs(u), inner)), lv = lines(hv, dot(vabs(v), inner));
+    int nu = static_cast<int>(lu.size()), nv = static_cast<int>(lv.size());
+    for (int j = 0; j < nv; ++j)
+      for (int i = 0; i < nu; ++i) {
+        float a = lu[i], b = lv[j];
+        Vec3 p = nn * dot(vabs(nn), h) + u * (a * hu) + v * (b * hv);
         Vec3 c = vmin(vmax(p, -inner), inner);
         Vec3 d = normalize(p - c);
         if (lengthSq(d) == 0) d = nn;
         Vec3 q = c + d * radius;
         m.addVertex(q, d, {(a + 1) * 0.5f * dot(vabs(u), size), (1 - b) * 0.5f * dot(vabs(v), size)});
       }
-    for (int j = 0; j < res; ++j)
-      for (int i = 0; i < res; ++i) {
-        uint32_t a = base + j * (res + 1) + i;
-        m.addQuad(a, a + 1, a + res + 2, a + res + 1);
+    for (int j = 0; j + 1 < nv; ++j)
+      for (int i = 0; i + 1 < nu; ++i) {
+        uint32_t a = base + j * nu + i;
+        m.addQuad(a, a + 1, a + nu + 1, a + nu);
       }
   }
   return m;
