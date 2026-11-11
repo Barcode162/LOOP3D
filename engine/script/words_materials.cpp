@@ -183,7 +183,10 @@ int surfaceFromLibrary(Vm& vm, const std::string& name) {
   if (name.empty() || name.find('/') != std::string::npos || name.find("..") != std::string::npos) return -1;
   std::string folder = surfacesFolder(s);
   if (folder.empty()) return -1;
-  std::string file = (fs::path(folder) / (name + ".loop")).string(), src;
+  // a name of several words ("old wood") is the entry old_wood.loop, its function old_wood()
+  std::string key = name;
+  std::replace(key.begin(), key.end(), ' ', '_');
+  std::string file = (fs::path(folder) / (key + ".loop")).string(), src;
   std::error_code ec;
   if (!fs::is_regular_file(file, ec)) return -1;
   std::vector<std::string> seen{file};
@@ -197,12 +200,12 @@ int surfaceFromLibrary(Vm& vm, const std::string& name) {
   int made = -1;
   std::string why;
   if (!ok && !sub.problems().empty()) why = sub.problems()[0].text();
-  else if (!sub.hasGlobal(name)) why = "it has no function `" + name + "()`";
+  else if (!sub.hasGlobal(key)) why = "it has no function `" + key + "()`";
   else {
-    Value m = sub.call(sub.global(name), {});
+    Value m = sub.call(sub.global(key), {});
     Thing* t = m.as<Thing>();
     if (!sub.problems().empty()) why = sub.problems()[0].text();
-    else if (!t || t->cls != &kMaterialClass) why = "`" + name + "()` should give a surface";
+    else if (!t || t->cls != &kMaterialClass) why = "`" + key + "()` should give a surface";
     else made = t->id;
   }
   stages().erase(&sub);

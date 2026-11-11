@@ -347,5 +347,20 @@ TEST(words_surface_by_name_takes_its_own_colour_and_shine) {
   const auto& m3 = matOf(3);
   CHECK(m3.surface == -1);
   CHECK(m3.pattern.kind == loop::Pattern::Kind::kPlanks);
+  // a name of two words is the entry with an underscore: "old wood" is old_wood.loop, old_wood()
+  {
+    std::ofstream f(root / "library" / "surfaces" / "old_wood.loop");
+    f << "to old_wood()\n  return surface(\"old wood\", tile: 1 m, base: {color: vec(0.2, 0.18, 0.15), roughness: 0.85})\n";
+  }
+  looptest::SceneRun w;
+  w.stage.folder = (root / "scene").string() + "/";
+  loop::script::installStandardLibrary(w.vm);
+  loop::script::installSceneApi(w.vm, w.stage);
+  w.ok = w.vm.load("box size: 1, material: \"old wood\"\n", "t.loop");
+  CHECK(w.ok && w.problems().empty());
+  if (!w.stage.scene.instances.empty()) {
+    const auto& mw = w.stage.scene.materials[w.stage.scene.instances[0].material];
+    CHECK(mw.surface >= 0 && mw.name == "old wood");
+  }
   fs::remove_all(root);
 }
