@@ -1,0 +1,39 @@
+# test_ball · a ball on a grooved plinth, a flat slab and a small cube: what a surface looks like
+# test_ball(surface, at) puts them all in the one surface (a material value, or a name the library
+# knows) with the plinth's middle on the floor at `at`. The ball is 0.5 m across; the plinth is
+# 0.6 by 0.12 by 0.6 m with edges rounded at 5 mm and a groove 1 cm wide and deep round the ball
+# (a square ring made of boxes, with small pieces in its floor so dirt can gather there; the
+# ball is 9216 triangles, so only the plinth's body is rounded, to stay under the chair budget);
+# behind it (toward -z) a slab 2 by 2 m and 4 cm thick lies flat, to show the tile repeating and
+# the shine at a low angle; beside it a 10 cm cube with 2 mm rounded edges shows the size.
+# `loop library picture <surface>` uses it.
+#
+# kind: model
+# place: test_ball("oak", AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M8 (2026-11-11)
+# tags: test, surface
+# size: chair
+
+to test_ball(surface, at)
+  # the plinth: a body, then a layer 1 cm thick with the groove between its middle and its frame
+  box size: vec(0.6, 0.105, 0.6), at: at + vec(0, 0.0525, 0), material: surface, round: 0.005
+  box size: vec(0.52, 0.01, 0.52), at: at + vec(0, 0.115, 0), material: surface
+  box size: vec(0.6, 0.01, 0.03), at: at + vec(0, 0.115, 0.285), material: surface
+  box size: vec(0.6, 0.01, 0.03), at: at + vec(0, 0.115, -0.285), material: surface
+  box size: vec(0.03, 0.01, 0.54), at: at + vec(0.285, 0.115, 0), material: surface
+  box size: vec(0.03, 0.01, 0.54), at: at + vec(-0.285, 0.115, 0), material: surface
+  # the groove's floor, in small pieces so each has its own points
+  for each i in range(0, 8, 1)
+    let s = -0.26 + i * 0.065
+    box size: vec(0.065, 0.005, 0.01), at: at + vec(s + 0.0325, 0.1075, 0.265), material: surface
+    box size: vec(0.065, 0.005, 0.01), at: at + vec(s + 0.0325, 0.1075, -0.265), material: surface
+    box size: vec(0.01, 0.005, 0.065), at: at + vec(0.265, 0.1075, s + 0.0325), material: surface
+    box size: vec(0.01, 0.005, 0.065), at: at + vec(-0.265, 0.1075, s + 0.0325), material: surface
+  # the ball, resting on the middle
+  sphere 0.25, at: at + vec(0, 0.37, 0), material: surface
+  # the slab, lying flat on the floor behind
+  box size: vec(2, 0.04, 2), at: at + vec(0, 0.02, -1.4), material: surface
+  # the cube, for size
+  box size: vec(0.1, 0.1, 0.1), at: at + vec(0.6, 0.05, 0.1), material: surface, round: 0.002

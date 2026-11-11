@@ -18,12 +18,15 @@
 //               cluster tree (Nanite-style levels), how long it took
 //   loop library list|check|json              the library (library/): its entries; check refuses
 //               an entry with no credit or licence; json is for the site and the editor
-//   loop library picture <name> [-o out.png] [--seed n] [--night] [--case n]
+//   loop library picture <name> [-o out.png] [--seed n] [--night] [--case n] [--far]
 //               one entry placed on a neutral floor under a soft sky and one sun,
 //               seen three-quarter at 35 mm from its size, 512 by 512, quality good.
 //               --night: no sun, a black sky, a mid-grey floor and one mid-grey wall 3 m
 //               behind the thing, exposure held at f/2, 1/50 s, ISO 800 (an entry whose
 //               card says `kind: light` or `kind: sky` is pictured this way without being asked)
+//               an entry of kind surface is pictured on the test ball (library/models/test_ball.loop):
+//               the camera 0.5 m from the ball's nearest point, 50 mm; --far from 3 m and 1.5 m up,
+//               so the slab's far edge is in the frame; --seed n picks the piece of the surface
 //   Every command that takes a scene also takes a project's cover page (.looped):
 //   it opens the project's first scene.
 //   loop budget <script.loop> [--quality phone|high] [--seconds S] [--size WxH]
@@ -74,7 +77,7 @@ int usage() {
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
       "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
-      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night] [--case n]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held)\n"
+      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night] [--case n] [--far]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held; a surface entry: on the test ball, --far from 3 m)\n"
       "loop settings list   every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -85,6 +88,7 @@ int usage() {
 
 struct Options {
   bool night = false;  // loop library picture --night
+  bool far = false;    // loop library picture --far (a surface: from 3 m, 1.5 m up)
   bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
   std::string quality, look, out, choices, name;  // name: loop library picture <name>
   int seed = 0, caseNo = 0;  // caseNo: loop library picture --case n (1 to 3; 0 is the place line)
@@ -353,8 +357,17 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
     place += word && piece == "AT" ? "vec(0, 0, 0)" : piece;
     i = j;
   }
+  const bool isSurface = e.kind == "surface";
+  if (o.far && !isSurface) {
+    std::fprintf(stderr, "problem: --far is for an entry of kind surface; %s is a %s\n", e.name.c_str(), e.kind.c_str());
+    return 1;
+  }
   std::string head = "use \"" + e.name + "\"\n";
-  if (o.seed) head += "seed " + std::to_string(o.seed) + "\n";
+  if (isSurface) {
+    // the surface's own function makes the piece asked for; the test ball wears it
+    head = "use \"test_ball\"\nuse \"" + e.name + "\"\n";
+    place = "test_ball(" + e.name + "(seed: " + std::to_string(o.seed ? o.seed : 1) + "), vec(0, 0, 0))";
+  } else if (o.seed) head += "seed " + std::to_string(o.seed) + "\n";
   // the folder holding library/ (its `use` lines find the entry there)
   std::string folder = libFolder;
   while (folder.size() > 1 && folder.back() == '/') folder.pop_back();
@@ -392,6 +405,7 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
   else if (e.view == "right") dir = Vec3(1.0f, 0.2f, 0.25f);
   else if (e.view == "below") dir = Vec3(0.3f, -0.45f, 0.8f);
   dir = normalize(dir);
+  const Vec3 aim(0, 0.37f, 0);  // a surface's test ball: the ball's middle
   // the way the camera looks, flattened: the wall stands across the far side of it
   const bool alongX = e.view == "left" || e.view == "right";
   const float away = alongX ? (e.view == "right" ? -1.0f : 1.0f) : (e.view == "front" ? 1.0f : -1.0f);
@@ -405,6 +419,17 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
     dist = std::max({dist, std::fabs(dot(p, right)) / t + dot(p, dir), std::fabs(dot(p, up)) / t + dot(p, dir)});
   }
   cam.position = centre + dir * dist, cam.target = centre;
+  if (isSurface) {
+    // the test ball: 50 mm; 0.5 m from the ball's nearest point (the ball is 0.25 m in radius),
+    // or --far: 3 m out and 1.5 m up, looking at the ball and the slab behind it
+    cam.focalLength = 50;
+    if (o.far) {
+      const Vec3 flat = normalize(Vec3(dir.x, 0, dir.z));
+      cam.position = Vec3(0, 1.5f, 0) + flat * 3.0f, cam.target = Vec3(-0.1f, 0.1f, -1.0f);
+    } else {
+      cam.position = aim + dir * (0.25f + 0.5f), cam.target = aim;
+    }
+  }
   const float floorSize = std::max(200.0f, 40 * length(box.extent()));
   const bool night = o.night || e.kind == "light" || e.kind == "sky";
   // one wall of that grey across the far side of the thing, 3 m behind its far edge
@@ -424,7 +449,7 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
     cam.autoExposure = false, cam.fStop = 2, cam.shutter = 1.0f / 50, cam.iso = 800;
   } else {
     // a dark thing (steel, iron, black) or one with a `view:` gets a pale wall behind it so its outline reads
-    const bool dark = e.tags.find("steel") != std::string::npos || e.tags.find("iron") != std::string::npos || e.tags.find("dark") != std::string::npos || e.tags.find("black") != std::string::npos;
+    const bool dark = !isSurface && (e.tags.find("steel") != std::string::npos || e.tags.find("iron") != std::string::npos || e.tags.find("dark") != std::string::npos || e.tags.find("black") != std::string::npos);
     std::snprintf(setting, sizeof setting, "ground %g, material: rgb(0.5, 0.5, 0.5)\nsun elevation: 40 deg, toward: 215 deg, lux: 60000\nsky \"physical\", haze: 1.5\n%s", floorSize,
                   (dark || !e.view.empty()) && e.view != "below" ? wallText(0.85f).c_str() : "");
   }
@@ -865,6 +890,7 @@ int main(int argc, char** argv) {
     else if (a == "--samples") o.samples = std::atoi(val().c_str());
     else if (a == "--reuse") o.reuse = true;
     else if (a == "--night") o.night = true;
+    else if (a == "--far") o.far = true;
     else if (a == "--seconds") o.seconds = std::atof(val().c_str()), o.secondsGiven = true;
     else if (a == "--filmtime") o.filmtime = std::atof(val().c_str());
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;
@@ -905,7 +931,7 @@ int main(int argc, char** argv) {
     } else if (target == "picture") {
       for (const LibraryEntry& e : entries)
         if (e.name == o.name) return libraryPicture(e, lib, o);
-      std::fprintf(stderr, "problem: no library entry called \"%s\" (loop library list shows them)\n", o.name.c_str());
+      std::fprintf(stderr, "problem: no library entry called \"%s\", so it is not a surface entry (a built-in material name is not one; loop library list shows the entries)\n", o.name.c_str());
       return 1;
     } else if (target == "list" || target == "check") {
       // each entry's triangles and size class; an entry over its size's budget fails
