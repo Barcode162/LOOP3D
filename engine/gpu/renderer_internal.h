@@ -629,6 +629,7 @@ class GpuRenderer final : public Renderer {
   std::vector<GpuMesh> meshes_;
   std::vector<Batch> batches_;
   std::vector<LightU> lights_, sortedLights_;
+  std::vector<uint8_t> lampNoShadow_;  // parallel to lights_: 1 when the lamp was set `shadows: no`
   std::vector<AABB> instBox_;          // each copy's box, in the instance buffer's order
   std::vector<InstanceU> instData_;    // the instance buffer's contents, kept to send only what moved
   std::vector<int> slotOf_;            // scene instance -> its place in the instance buffer (-1: not drawn)

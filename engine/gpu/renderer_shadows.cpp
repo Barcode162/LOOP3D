@@ -90,6 +90,10 @@ void GpuRenderer::makeLampMap(int size) {
 }
 
 void GpuRenderer::keepLampRows(std::vector<std::pair<float, uint32_t>>& rank) {
+  // a lamp set `shadows: no` goes behind the panels, so neither a map row nor
+  // one of the shader's shadow rays is ever given to it
+  auto noShadow = [&](const std::pair<float, uint32_t>& e) { return e.second < lampNoShadow_.size() && lampNoShadow_[e.second]; };
+  std::stable_partition(rank.begin(), rank.end(), [&](const auto& e) { return !noShadow(e); });
   if (!lampMapsWanted()) return;
   const int want = std::clamp(config().render.lampMaps, 0, kLampMapsMost);
   std::vector<uint32_t> top;
