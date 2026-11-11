@@ -79,6 +79,7 @@ struct VsIn {
   @location(0) pos : vec3f,
   @location(1) nrm : vec3f,
   @location(2) uv : vec2f,
+  @location(3) marks : vec4f,  // edge, hollow (docs/SURFACES.md section 6), -, -
 };
 struct VsOut {
   // invariant: the depth pre-pass and the lit pass must land on exactly the
@@ -88,10 +89,18 @@ struct VsOut {
   @location(1) nrm : vec3f,
   @location(2) uv : vec2f,
   @location(3) @interpolate(flat) mat : u32,
+  // for a surface (docs/SURFACES.md): the point and facing on the thing as it was
+  // made, its corners' marks blended, and which copy it is (its place, turn and
+  // own start in the tile)
+  @location(4) thing : vec3f,
+  @location(5) thingNrm : vec3f,
+  @location(6) marks : vec2f,
+  @location(7) @interpolate(flat) inst : u32,
 };
 
 @vertex fn vs(v : VsIn, @builtin(instance_index) ii : u32) -> VsOut {
-  let inst = instances[visibleIds[ii]];
+  let slot = visibleIds[ii];
+  let inst = instances[slot];
   var o : VsOut;
   let w = inst.model * vec4f(v.pos, 1.0);
   o.world = w.xyz;
@@ -100,6 +109,10 @@ struct VsOut {
   o.nrm = normalize(nm * v.nrm);
   o.uv = v.uv;
   o.mat = inst.material.x;
+  o.thing = v.pos;
+  o.thingNrm = v.nrm;
+  o.marks = v.marks.xy;
+  o.inst = slot;
   return o;
 }
 
@@ -440,6 +453,77 @@ fn panelLight(s : Surf, p : vec3f, L : Light) -> vec3f {
   return c * L.color.rgb;
 }
 
+// ---- surfaces (docs/SURFACES.md section 7): the same lines as surfaceAt in
+// engine/render/surface.cpp. Steps 1 to 3 are read from the baked tile; steps 4
+// to 7 are worked out here; step 8 (detail) is order M7. `p` and `n` are in the
+// surface's own space (the thing's as made, or the world's), `gx` and `gy` how
+// `p` changes across one pixel; the bumped facing comes back in that space.
+struct SurfaceHere { base : vec3f, rough : f32, metal : f32, n : vec3f };
+fn layerStep(t : f32, soft : f32) -> f32 {
+  let s = max(soft, 1e-3);
+  return smoothstep(0.5 - s * 0.5, 0.5 + s * 0.5, t);
+}
+fn surfaceHere(m : Material, p : vec3f, n : vec3f, gx : vec3f, gy : vec3f, edge : f32, hollow : f32) -> SurfaceHere {
+  // until M6: the tile laid on from the side the facing points at most (as the film's planarAxes)
+  let a = abs(n);
+  var u = vec2f(p.x, p.y);
+  var ux = vec2f(gx.x, gx.y);
+  var uy = vec2f(gy.x, gy.y);
+  var ax = vec3f(1.0, 0.0, 0.0);
+  var ay = vec3f(0.0, 1.0, 0.0);
+  if (a.y >= a.x && a.y >= a.z) {
+    u = p.xz; ux = gx.xz; uy = gy.xz; ay = vec3f(0.0, 0.0, 1.0);
+  } else if (a.x >= a.z) {
+    u = p.zy; ux = gx.zy; uy = gy.zy; ax = vec3f(0.0, 0.0, 1.0);
+  }
+  let tile = max(m.surf0.z, 1e-4);
+  let t = u / tile;
+  let col = textureSampleGrad(modelTex, modelSampler, t, i32(m.surf0.x), ux / tile, uy / tile);
+  let shp = textureSampleGrad(modelTex, modelSampler, t, i32(m.surf0.y), ux / tile, uy / tile);
+  var color = srgbToLinear(col.rgb);
+  let b = col.a;  // the tile's height, 0 to 1
+  var rough = shp.b;
+  var metal = shp.a;
+  // the bumped facing: the tile's two sideways parts along the tile's two ways
+  let f = shp.rg * 2.0 - 1.0;
+  let fz = sqrt(max(1.0 - dot(f, f), 0.0));
+  let tx = normalize(ax - n * dot(ax, n));
+  let ty = normalize(ay - n * dot(ay, n));
+  let nb = normalize(n * fz + tx * f.x + ty * f.y);
+  // 4. large change
+  if (m.surf0.w >= 0.0 && m.surf1.x > 0.0) {
+    let side = 8.0 * max(m.surf1.x, 0.01);
+    let w = textureSampleGrad(modelTex, modelSampler, u / side, i32(m.surf0.w), ux / side, uy / side) * 2.0 - 1.0;
+    color = color * max(0.0, 1.0 + m.surf1.y * w.x);
+    color = mix(color, m.surf2.rgb, clamp(m.surf1.y * max(w.y, 0.0), 0.0, 1.0));
+    rough += m.surf1.z * w.z;
+  }
+  // 5. the coat that faces a way
+  if (m.coat1.y > 0.0) {
+    var fc = 0.0;
+    let kind = i32(m.coat2.x);
+    if (kind == 1) { fc = clamp((n.y - 0.3) / 0.4, 0.0, 1.0); }
+    if (kind == 2) { fc = clamp((-n.y - 0.3) / 0.4, 0.0, 1.0); }
+    if (kind == 3) { fc = 1.0 - abs(n.y); }
+    let bb = select(b, 1.0 - b, i32(m.coat2.y) == 2);
+    let k = layerStep(fc * m.coat1.y * 2.0 * (1.0 + (bb - 0.5) * 2.0 * m.coat1.z), m.coat1.w);
+    color = mix(color, m.coat0.rgb, k); rough = mix(rough, m.coat0.w, k); metal = mix(metal, m.coat1.x, k);
+  }
+  // 6. wear, on edges
+  if (m.wear1.y > 0.0 && edge > 0.0) {
+    let k = layerStep(edge * m.wear1.y * 2.0 * (1.0 + (b - 0.5) * 2.0 * m.wear1.z), m.wear1.w);
+    color = mix(color, m.wear0.rgb, k); rough = mix(rough, m.wear0.w, k); metal = mix(metal, m.wear1.x, k);
+  }
+  // 7. dirt, in hollows, over the wear
+  if (m.dirt1.y > 0.0 && hollow > 0.0) {
+    let k = layerStep(hollow * m.dirt1.y * 2.0 * (1.0 + (0.5 - b) * 2.0 * m.dirt1.z), m.dirt1.w);
+    color = mix(color, m.dirt0.rgb, k); rough = mix(rough, m.dirt0.w, k); metal = mix(metal, m.dirt1.x, k);
+  }
+  // 9.
+  return SurfaceHere(color, clamp(rough, 0.03, 1.0), clamp(metal, 0.0, 1.0), nb);
+}
+fn unitOf(v : u32) -> f32 { return f32(v >> 8u) * (1.0 / 16777216.0); }
+
 var<private> resolving : bool = false;  // shading the visibility picture: never cut holes
 fn shade(i : VsOut, front : bool) -> Shaded {
   let m = materials[i.mat];
@@ -515,7 +599,31 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       }
     }
   }
-  let metal = m.props.x * metalScale;
+  var metal = m.props.x * metalScale;
+  if (m.surf0.x >= 0.0) {
+    // a surface: its stack, on the thing as it was made (or in the world)
+    let I = instances[i.inst];
+    let nm = mat3x3f(I.normal0.xyz, I.normal1.xyz, I.normal2.xyz);
+    let own = m.surf1.w < 0.5;
+    var sp = i.world;
+    var sn = n;
+    var gx = slopeWorldX;
+    var gy = slopeWorldY;
+    if (own) {
+      // each thing starts at its own place in the tile (the film's hash of its number)
+      let k = I.material.z;
+      sp = i.thing + vec3f(unitOf(k), unitOf(hash32(k)), unitOf(hash32(k ^ 0x5bd1e995u))) * m.surf0.z;
+      sn = normalize(i.thingNrm) * select(-1.0, 1.0, front);
+      let back = transpose(nm);  // the world to the thing (its linear part)
+      gx = back * slopeWorldX;
+      gy = back * slopeWorldY;
+    }
+    let h = surfaceHere(m, sp, sn, gx, gy, i.marks.x, i.marks.y);
+    base = h.base;
+    rough = h.rough;
+    metal = h.metal;
+    n = select(h.n, normalize(nm * h.n), own);
+  }
   let glass = m.props.y * (1.0 - metal);
   let alpha = max(rough * rough, 0.002);
   let nv = max(dot(n, v), 1e-4);

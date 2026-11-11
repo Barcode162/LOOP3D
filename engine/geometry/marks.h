@@ -18,4 +18,13 @@ struct Marks {
 
 Marks measureMarks(const Mesh& m);
 
+// The vertices where the marks change, for the simplifier (simplify.h's
+// `locked`): 0 for a vertex whose neighbours (across a triangle's edge) all
+// have marks within `step` (0 to 255) of its own, else a number of 2 or more
+// for its marks' kind (edge and hollow in eighths), so it may only slide onto a
+// vertex of the same kind. A simpler mesh then still holds each worn or dirty
+// band to its width: dropping a flat point beside a rounding would stretch the
+// rounding's wear across the whole face (the cluster cook uses it).
+std::vector<uint8_t> markBorders(const Mesh& m, const Marks& marks, int step = 16);
+
 }  // namespace loop

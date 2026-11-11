@@ -20,8 +20,10 @@ struct SimplifyResult {
   float error = 0;                // the farthest the surface moved, in the mesh's units (metres)
 };
 
-// `indices`: triangles over `positions`. `locked[v]` (empty: none): v never
-// goes. Collapses the cheapest edges until `targetTriangles` remain, or no
+// `indices`: triangles over `positions`. `locked[v]` (empty: none): 0 free, 1
+// v never goes, 2 and more: v may go only onto a vertex of the same number (it
+// slides along a band of its own kind, never off it). A list shorter than
+// `positions` leaves the rest free. Collapses the cheapest edges until `targetTriangles` remain, or no
 // collapse is left that keeps every triangle facing the way it did and the
 // surface within `maxError`.
 SimplifyResult simplify(const std::vector<Vec3>& positions, const std::vector<uint32_t>& indices, size_t targetTriangles,

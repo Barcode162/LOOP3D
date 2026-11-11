@@ -11,7 +11,8 @@
     "the_woods",
     "two_rooms",
     "windows",
-    "roughness"
+    "roughness",
+    "surface_box"
   ],
   "stills": "stills"
 }

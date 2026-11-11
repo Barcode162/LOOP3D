@@ -27,6 +27,7 @@
 #include "engine/render/pathtracer.h"
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
+#include "engine/render/surface_bake.h"
 
 namespace loop::gpu {
 
@@ -114,7 +115,19 @@ struct MaterialU {
   Vec4 tex2;  // alpha cutoff, least roughness, -, -
   Vec4 coat;  // clear coat roughness, specular, -, -
   Vec4 sss;   // subsurface colour, -
+  // a surface (docs/SURFACES.md; order M5): its baked tile and the numbers the
+  // shader works out where it is drawn (steps 4 to 7). surf0.x < 0: not a surface.
+  Vec4 surf0{-1, -1, 1, -1};  // colour layer, shape layer (-1 none), tile (m), wander layer (-1 none)
+  Vec4 surf1;  // slow change: size (m), amount, roughness; world space (1) or the thing's (0)
+  Vec4 surf2;  // slow change's tint, -
+  Vec4 wear0, wear1;  // wear: colour, roughness; metal, amount (0 off), ragged, soft
+  Vec4 dirt0, dirt1;  // dirt: the same
+  Vec4 coat0, coat1, coat2;  // the coat that faces a way: colour, roughness; metal, cover (0 off), ragged, soft; facing (1 up, 2 down, 3 side), sits (0 any, 1 high, 2 low), -, -
 };
+// a surface's numbers for the shader; which meshes a scene draws in a surface, and a corner's marks as one vertex number (renderer_scene.cpp)
+void surfaceNumbers(const SurfaceRecipe& r, int layer, int wander, MaterialU& u);
+std::vector<char> meshesInSurfaces(const Scene& scene);
+float packedMarks(const Marks* marks, size_t i);
 struct InstanceU {
   Mat4 model;
   Vec4 n0, n1, n2;
@@ -390,7 +403,9 @@ class GpuRenderer final : public Renderer {
 
   void runCull(wgpu::CommandEncoder& enc, const ClusterList& L);
 
-  GpuMesh upload(const Mesh& m);
+  // `marks`: the mesh's edge and hollow marks (docs/SURFACES.md section 6), for
+  // a mesh drawn in a surface; without them its corners carry none.
+  GpuMesh upload(const Mesh& m, const Marks* marks = nullptr);
 
   // What each pass draws this frame: only the copies its view can see
   // (render.cull), in the batches' order; `first` of a draw is where its
@@ -424,6 +439,7 @@ class GpuRenderer final : public Renderer {
   // render.textureSize square (a square holds any picture: models read it by
   // 0..1 coordinates), with each smaller copy averaged from the one above.
   void uploadModelTextures(const Scene& scene);
+  bool surfacesChanged(const Scene& scene) const;
 
   void uploadSky(const SkyModel& m);
 
@@ -478,6 +494,9 @@ class GpuRenderer final : public Renderer {
   wgpu::Texture modelTex_;
   wgpu::TextureView modelView_;
   std::vector<int> texLayer_;  // scene texture -> layer (-1: no room)
+  std::vector<int> surfLayer_;  // scene surface -> its colour layer (its shape layer is the next; -1: none)
+  int wanderLayer_ = -1;        // the wander picture's layer (-1: no surface needs it)
+  std::vector<uint64_t> surfUploaded_;  // the fingerprints of the surfaces whose pictures are up
   size_t texUploaded_ = 0;
   int texSize_ = 0;
   uint32_t maxLayers_ = 256;

@@ -47,3 +47,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | MAT1 | S | lead | 25 | 60 | 2026-11-11 |
 | M4 | M | builder | 8 | 12 | 2026-11-11 |
 | M8 | S | builder | 4 | 10 | 2026-11-11 |
+| M5 | L | lead | 120 | 44 | 2026-11-11 |

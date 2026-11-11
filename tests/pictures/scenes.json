@@ -20,6 +20,7 @@
     {"name": "the_woods", "filmtime": 5},
     {"name": "bar"},
     {"name": "two_rooms"},
-    {"name": "windows"}
+    {"name": "windows"},
+    {"name": "surface_box"}
   ]
 }

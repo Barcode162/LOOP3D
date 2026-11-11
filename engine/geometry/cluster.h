@@ -58,7 +58,9 @@ std::vector<std::vector<uint32_t>> cutIntoClusters(const std::vector<Vec3>& posi
 
 // The whole tree for a mesh. `parallel`: its groups shared over every core
 // (the same tree; not from inside another job of the shared job system).
-ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles = 128, bool parallel = false);
+// `keep` (empty: none): simplify's `locked` for the mesh's vertices: for a mesh
+// drawn in a surface, where its marks change (markBorders).
+ClusterTree buildClusterTree(const Mesh& mesh, int maxTriangles = 128, bool parallel = false, const std::vector<uint8_t>& keep = {});
 
 // How big an error of `error` looks, in pixels, from `eye` for something
 // inside `sphere`: `perPixel` is the screen's pixels per metre at 1 m

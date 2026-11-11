@@ -103,8 +103,21 @@ Mat4 frameShadowViewProj(const FrameView& v, Vec3 towardSun, int shadowMapSize) 
   return Mat4::ortho(lc.x - R, lc.x + R, lc.y - R, lc.y + R, -lc.z - R * 4, -lc.z + R * 4) * lv;
 }
 
+void countPictures(const Scene& scene, int textureSize, size_t& layers, size_t& surfaceLayers, uint64_t& bytes) {
+  surfaceLayers = scene.surfaces.size() * 2;
+  bool wander = false;
+  for (const SurfaceRecipe& r : scene.surfaces) wander = wander || r.varyLarge > 0;
+  if (wander) ++surfaceLayers;
+  layers = scene.textures.size() + surfaceLayers;
+  // one layer with its chain of smaller copies, down to a pixel
+  uint64_t one = 0;
+  for (int s = std::clamp(textureSize, 16, 2048); s >= 1; s /= 2) one += static_cast<uint64_t>(s) * s * 4;
+  bytes = std::max<size_t>(layers, 1) * one;
+}
+
 FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples) {
   FrameCost c;
+  countPictures(scene, view.textureSize, c.pictureLayers, c.surfaceLayers, c.pictureBytes);
   const Light* sun = nullptr;
   int lamps = 0;
   for (const Light& l : scene.lights) {

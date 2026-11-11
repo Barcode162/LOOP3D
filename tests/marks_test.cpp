@@ -150,3 +150,62 @@ TEST(marks_a_hundred_thousand_triangles_quickly) {
   CHECK(k.edge.size() == m.vertexCount());
   CHECK(ms < 600.0);  // wanted under 300 ms on a quiet core (about 200 measured); the bound is loose so a busy machine does not fail it
 }
+
+namespace {
+// The plinth of projects/samples/surface_box.loop: a rounded rim, a groove 1 cm
+// wide and deep, and points on the flat ring so its wear stays on the rim.
+Mesh groovedPlinth() {
+  std::vector<Vec2> p = {{0.3f, 0}, {0.3f, 0.11f}, {0.297f, 0.117f}, {0.29f, 0.12f}, {0.28f, 0.12f}, {0.24f, 0.12f}, {0.2f, 0.12f},
+                         {0.19f, 0.12f}, {0.188f, 0.118f}, {0.185f, 0.112f}, {0.182f, 0.11f}, {0.178f, 0.11f}, {0.175f, 0.112f},
+                         {0.172f, 0.118f}, {0.17f, 0.12f}, {0.16f, 0.12f}, {0, 0.12f}};
+  return shapes::lathe(p, 96);
+}
+// How much of the surface wears: each triangle's area times its corners' mean edge mark.
+double wornArea(const Mesh& m, const Marks& k, const std::vector<uint32_t>& tris, const ClusterTree* tree) {
+  auto at = [&](uint32_t v) {
+    if (v < m.positions.size()) return std::pair<Vec3, float>{m.positions[v], k.edge[v] / 255.0f};
+    const uint32_t x = v - static_cast<uint32_t>(m.positions.size());
+    return std::pair<Vec3, float>{tree->extraPositions[x], k.edge[tree->extraSource[x]] / 255.0f};
+  };
+  double sum = 0;
+  for (size_t t = 0; t + 2 < tris.size(); t += 3) {
+    auto [a, ea] = at(tris[t]);
+    auto [b, eb] = at(tris[t + 1]);
+    auto [c, ec] = at(tris[t + 2]);
+    sum += 0.5 * length(cross(b - a, c - a)) * (ea + eb + ec) / 3;
+  }
+  return sum;
+}
+// What the tree draws when its shape may be `e` metres off (each cluster whose own error is within it
+// and its replacement's is not): `e` of a millimetre is the plinth seen close up.
+std::vector<uint32_t> cutAt(const ClusterTree& t, float e) {
+  std::vector<uint32_t> tris;
+  for (const Cluster& c : t.clusters)
+    if (c.error <= e && e < c.parentError) tris.insert(tris.end(), t.indices.begin() + c.first, t.indices.begin() + c.first + c.count * 3);
+  return tris;
+}
+}  // namespace
+
+TEST(marks_simpler_levels_keep_the_wear_as_narrow) {
+  // found on the phone (order M5): the cluster drawing dropped the flat points beside the plinth's rim
+  // (they cost no shape), and the rim's wear spread across the whole top as bare steel
+  Mesh m = groovedPlinth();
+  Marks k = measureMarks(m);
+  std::vector<uint8_t> keep = markBorders(m, k);
+  size_t kept = 0;
+  for (uint8_t b : keep) kept += b != 0;
+  CHECK(kept > 0 && kept < m.positions.size());  // the borders only, not every point
+  const double full = wornArea(m, k, m.indices, nullptr);
+  ClusterTree plain = buildClusterTree(m), keeping = buildClusterTree(m, 128, false, keep);
+  // close up (the shape within a millimetre): dropping the flat points moves no shape, so the plain tree
+  // drops them there and its wear spreads; the tree keeping the borders holds the band to its width
+  const double p = wornArea(m, k, cutAt(plain, 0.001f), &plain), q = wornArea(m, k, cutAt(keeping, 0.001f), &keeping);
+  // far away, the borders slide along their bands only as far as the shape may move, so the band widens
+  // by about as much as the shape is off (under a pixel where the drawing chooses that level)
+  const double pf = wornArea(m, k, cutAt(plain, 0.01f), &plain), qf = wornArea(m, k, cutAt(keeping, 0.01f), &keeping);
+  std::printf("  worn area: full %.5f m2; close: plain %.5f, keeping the borders %.5f; at 1 cm: %.5f, %.5f\n", full, p, q, pf, qf);
+  CHECK(p > full * 1.5);   // the fault, as found
+  CHECK(q < full * 1.1);   // mended
+  CHECK(qf < pf);
+  CHECK(cutAt(keeping, 0.01f).size() < m.indices.size());  // and the mesh still simplifies
+}

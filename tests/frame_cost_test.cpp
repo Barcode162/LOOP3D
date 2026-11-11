@@ -159,3 +159,25 @@ TEST(frame_cost_counts_the_cluster_way) {
     CHECK(n == engine.size() && tris == engineTris);
   }
 }
+
+TEST(frame_cost_counts_the_pictures_surfaces_add) {
+  Scene s = twoBoxes();
+  size_t layers = 0, surf = 0;
+  uint64_t bytes = 0;
+  countPictures(s, 256, layers, surf, bytes);
+  CHECK(layers == 0 && surf == 0);
+  const uint64_t one = 349524;  // 256 square, 4 bytes a pixel, and every smaller copy down to one pixel
+  CHECK(bytes == one);          // the graphics chip always holds one layer
+  SurfaceRecipe r;
+  r.base.on = true;
+  s.surfaces.push_back(r);  // a surface without slow change: two layers, colour and shape
+  countPictures(s, 256, layers, surf, bytes);
+  CHECK(layers == 2 && surf == 2 && bytes == 2 * one);
+  r.varyLarge = 1.2f;  // one with slow change brings the wander picture in, once for all
+  s.surfaces.push_back(r);
+  s.surfaces.push_back(r);
+  countPictures(s, 256, layers, surf, bytes);
+  CHECK(layers == 7 && surf == 7 && bytes == 7 * one);
+  FrameCost c = measureFrame(s, viewOf(s), 200);
+  CHECK(c.pictureLayers == 7 && c.surfaceLayers == 7 && c.pictureBytes == 7 * one);
+}

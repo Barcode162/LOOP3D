@@ -11,21 +11,25 @@ void GpuRenderer::uploadClusters(const Scene& scene) {
   std::vector<uint32_t> idx;
   std::vector<ClusterU> clusters;
   std::vector<MeshInfoU> info;
-  for (const Mesh& m : scene.meshes) {
-    auto tree = Cook::shared().clusters(m);
-    uint32_t base = static_cast<uint32_t>(verts.size() / 8);
+  const std::vector<char> marked = meshesInSurfaces(scene);
+  for (size_t mi = 0; mi < scene.meshes.size(); ++mi) {
+    const Mesh& m = scene.meshes[mi];
+    // drawn in a surface: the tree whose simpler levels keep where its marks change
+    auto tree = marked[mi] ? Cook::shared().clustersKeepingMarks(m) : Cook::shared().clusters(m);
+    std::shared_ptr<const Marks> mk = marked[mi] ? Cook::shared().marks(m) : nullptr;
+    uint32_t base = static_cast<uint32_t>(verts.size() / 9);
     info.push_back({static_cast<uint32_t>(clusters.size()), static_cast<uint32_t>(tree->clusters.size()), base, 0});
     for (size_t i = 0; i < m.positions.size(); ++i) {
       Vec3 n = i < m.normals.size() ? m.normals[i] : Vec3{0, 1, 0};
       Vec2 uv = i < m.uvs.size() ? m.uvs[i] : Vec2{};
-      verts.insert(verts.end(), {m.positions[i].x, m.positions[i].y, m.positions[i].z, n.x, n.y, n.z, uv.x, uv.y});
+      verts.insert(verts.end(), {m.positions[i].x, m.positions[i].y, m.positions[i].z, n.x, n.y, n.z, uv.x, uv.y, packedMarks(mk.get(), i)});
     }
-    // the thinned pieces' bigger corners, after the mesh's own
+    // the thinned pieces' bigger corners, after the mesh's own (each with its source's marks)
     for (size_t k = 0; k < tree->extraPositions.size(); ++k) {
       uint32_t i = tree->extraSource[k];
       Vec3 p = tree->extraPositions[k], n = i < m.normals.size() ? m.normals[i] : Vec3{0, 1, 0};
       Vec2 uv = i < m.uvs.size() ? m.uvs[i] : Vec2{};
-      verts.insert(verts.end(), {p.x, p.y, p.z, n.x, n.y, n.z, uv.x, uv.y});
+      verts.insert(verts.end(), {p.x, p.y, p.z, n.x, n.y, n.z, uv.x, uv.y, packedMarks(mk.get(), i)});
     }
     for (const Cluster& c : tree->clusters) {
       ClusterU u;
