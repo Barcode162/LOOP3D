@@ -9,6 +9,12 @@ never knows about a project.
 and graphics. They say what they want in any words; you plan, build, check and explain in plain words, saying
 what to look at on the phone. Never make them learn a file, a tool or a command.
 
+## North (the user's word, 2026-11-12): read `docs/NORTH.md` first, every chat
+The user taught it in person: where Loop3D is going (a world they own; creators own land and build cities), the
+measure (the best that exists inside the compute budget, reaching for what nobody has done), their eye, and how to
+work (structure first, polish last; stay inside the circle; one work template; slow checks on a schedule; fix the
+cause, not the symptom; framed, working, finished). **Where North and anything below disagree, North wins.**
+
 ## The pace (the user's word, 2026-11-06)
 **Super slow, one tiny goal at a time; the user grows with the project.** It's about growth and progress, not
 speed. Each goal is one sentence the user can see on the phone. Before building: the one idea it teaches, in a few
@@ -25,7 +31,7 @@ of it in solid, checked steps and report at the end.
    your claim's files. **`LOG.md` and `PLAN.md` are the deployer's:** a job puts its log line in its claim's `note:`,
    and the deployer copies it to `LOG.md` when it ships. Only the deployer merges into `main`. A chat that is the
    only one working may say so to the user and follow the steps below directly.
-1. **Start:** read `PLAN.md` (the order of work) and the top of `LOG.md` (what happened last). That's all.
+1. **Start:** read `docs/NORTH.md` (where we are going and how the user wants the work done), `PLAN.md` (the order of work) and the top of `LOG.md` (what happened last). That's all.
 2. **The user asks, you do it.** Ask only when the choice is really theirs (money, making something public,
    deleting their things, a change of direction): one question, your recommendation first.
 3. **Quick checks always run before a push:** `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build
