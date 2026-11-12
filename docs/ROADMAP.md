@@ -237,6 +237,7 @@ lines of recipe and pass the judge at two metres.
 
 ### P · People and creatures
 *Now:* a mannequin on about 17 bones.
+*The tools that make them, and the 330-bone skeleton in three rings (2026-11-11): `docs/STUDIO.md`, track T; rung 1 here is its T-B1, rung 2's bending skin its T-S1 to T-S3.*
 1. The standard skeleton: about 65 bones, names matching common rigs, human joint limits.
 2. A body grown from numbers, with skin that bends smoothly at elbows, shoulders, knees.
 3. Hands with fingers that close round what they hold.
@@ -250,6 +251,7 @@ lines of recipe and pass the judge at two metres.
 
 ### V · Moves
 *Now:* a procedural walk, run, sit, look; two-bone and chain reaching.
+*Keys, curves, layers and the cleaning of recordings are made in the Studio (`docs/STUDIO.md`, track T); rung 1's clip format is its T-K1.*
 1. Clips as text on the standard skeleton; a reader for free-licence recorded motion (BVH) that fits any body.
 2. The first 60 moves cleaned and looped (stand, walk, jog, run, turn, start, stop, sit, rise, crouch, jump,
    land, climb a step, pick up, put down, push, pull, open a door, wave, point, nod, lean, lie down).

@@ -364,3 +364,235 @@ TEST(words_surface_by_name_takes_its_own_colour_and_shine) {
   }
   fs::remove_all(root);
 }
+
+// ---- keys: the words clip and key, and the stage playing them (order T-K2)
+namespace {
+void step(looptest::SceneRun& r, int steps) {
+  for (int i = 0; i < steps; ++i) r.vm.update(1.0 / 60), r.stage.update(1.0f / 60);
+}
+}  // namespace
+
+TEST(words_keys_move_a_box_to_places_worked_out_by_hand) {
+  auto r = runScene(R"(
+let crate = box(size: vec(1, 1, 1), at: vec(9, 9, 9))
+clip crate
+  key 0 s, at: vec(-2, 0.5, 0), turn: 0
+  key 2 s, at: vec(2, 0.5, 0), turn: 90 deg, ease: "line"
+)");
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  auto& st = r->stage;
+  if (st.placed.empty() || st.clips.empty()) return;
+  CHECK_NEAR(st.placed[0].position.x, -2, 1e-5);  // it starts on its first key, not where its line put it
+  step(*r, 30);                                   // half a second: a quarter of the way
+  CHECK_NEAR(st.placed[0].position.x, -1, 1e-4);
+  CHECK_NEAR(st.placed[0].rotation.x, loop::kPi / 8, 1e-4);
+  step(*r, 30);
+  CHECK_NEAR(st.placed[0].position.x, 0, 1e-4);
+  CHECK_NEAR(st.scene.instances[st.placed[0].instance].transform.m[3][0], 0, 1e-4);  // and it is drawn there
+  step(*r, 120);                                  // past its end: it stays on its last key and stops
+  CHECK_NEAR(st.placed[0].position.x, 2, 1e-5);
+  CHECK(!st.clips[0].playing);
+}
+
+TEST(words_keys_smooth_starts_gently_and_lands_softly) {
+  auto r = runScene(R"(
+let crate = box(size: vec(1, 1, 1))
+clip crate
+  key 0 s, at: vec(0, 0, 0)
+  key 2 s, at: vec(4, 0, 0)
+)");
+  CHECK(r->ok);
+  auto& st = r->stage;
+  if (st.placed.empty()) return;
+  step(*r, 12);  // a tenth of the way in time: far less than a tenth of the way there
+  CHECK(st.placed[0].position.x > 0 && st.placed[0].position.x < 0.2f);
+  step(*r, 48);
+  CHECK_NEAR(st.placed[0].position.x, 2, 1e-3);  // half way at half time
+}
+
+TEST(words_keys_loop_and_go_back_and_forth) {
+  auto r = runScene(R"(
+let a = box(size: vec(1, 1, 1))
+let b = box(size: vec(1, 1, 1))
+clip a, loop: yes
+  key 0 s, at: vec(0, 0, 0)
+  key 1 s, at: vec(1, 0, 0), ease: "line"
+clip b, loop: "back and forth"
+  key 0 s, at: vec(0, 0, 0)
+  key 1 s, at: vec(1, 0, 0), ease: "line"
+)");
+  CHECK(r->ok);
+  auto& st = r->stage;
+  if (st.placed.size() < 2) return;
+  step(*r, 90);  // a second and a half
+  CHECK_NEAR(st.placed[0].position.x, 0.5, 1e-3);  // round again
+  CHECK_NEAR(st.placed[1].position.x, 0.5, 1e-3);  // on its way back
+  step(*r, 15);
+  CHECK_NEAR(st.placed[0].position.x, 0.75, 1e-3);
+  CHECK_NEAR(st.placed[1].position.x, 0.25, 1e-3);
+  CHECK(st.clips[0].playing && st.clips[1].playing);
+}
+
+TEST(words_a_clip_is_started_stopped_and_reversed_by_script) {
+  auto r = runScene(R"(
+let door = box(size: vec(1, 2, 0.05), at: vec(0, 1, 0))
+let swing = clip(door, play: no)
+  key 0 s, turn: 0
+  key 1 s, turn: 90 deg, ease: "line"
+when "open"
+  swing.play()
+when "close"
+  swing.reverse()
+when "wait"
+  swing.stop()
+)");
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  auto& st = r->stage;
+  if (st.placed.empty() || st.clips.empty()) return;
+  step(*r, 30);
+  CHECK_NEAR(st.placed[0].rotation.x, 0, 1e-6);  // not playing: the door is where its line put it
+  r->vm.emit("open");
+  step(*r, 31);  // the event is heard in the first step; thirty steps of swinging
+  CHECK_NEAR(st.placed[0].rotation.x, loop::kPi / 4, 0.03);
+  r->vm.emit("wait");
+  step(*r, 1);
+  const float held = st.placed[0].rotation.x;
+  step(*r, 30);
+  CHECK_NEAR(st.placed[0].rotation.x, held, 1e-6);  // stopped: it holds
+  r->vm.emit("open");
+  step(*r, 120);
+  CHECK_NEAR(st.placed[0].rotation.x, loop::kPi / 2, 1e-5);  // open, and stopped at its end
+  CHECK(!st.clips[0].playing);
+  r->vm.emit("close");
+  step(*r, 31);
+  CHECK_NEAR(st.placed[0].rotation.x, loop::kPi / 4, 0.03);  // half way shut
+  step(*r, 120);
+  CHECK_NEAR(st.placed[0].rotation.x, 0, 1e-5);
+  r->vm.emit("open");  // and it opens again from the start
+  step(*r, 16);
+  CHECK(st.placed[0].rotation.x > 0.1f);
+}
+
+TEST(words_keys_dim_a_lamp_and_turn_a_group) {
+  auto r = runScene(R"(
+let lamp = light(at: vec(0, 2, 0), lumens: 1000)
+clip lamp
+  key 0 s, lumens: 1000, at: vec(0, 2, 0)
+  key 1 s, lumens: 200, at: vec(0, 3, 0), ease: "line"
+let gate = group(at: vec(5, 0, 0))
+  let bar = box(size: vec(0.1, 0.1, 0.1), at: vec(1, 0, 0))
+  clip bar, loop: yes
+    key 0 s, at: vec(1, 0, 0)
+    key 1 s, at: vec(1, 2, 0), ease: "line"
+clip gate
+  key 0 s, turn: 0
+  key 1 s, turn: 90 deg, ease: "line"
+)");
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  auto& st = r->stage;
+  if (st.scene.lights.empty() || st.placed.empty()) return;
+  const uint64_t lights = st.lightsVersion, all = st.version;
+  step(*r, 30);
+  CHECK_NEAR(st.scene.lights[0].lumens, 600, 0.5);
+  CHECK_NEAR(st.scene.lights[0].position.y, 2.5, 1e-3);
+  CHECK(st.lightsVersion > lights);  // the cheap way: only the lamps are read again
+  CHECK(st.version == all);
+  step(*r, 30);
+  // the bar's keys were written inside the gate, measured from it: they went with it to x = 5,
+  // and now turn with it (a quarter turn puts what was 1 along x at 1 along -z); its own keys lift it
+  CHECK_NEAR(st.placed[0].position.x, 5, 1e-3);
+  CHECK_NEAR(st.placed[0].position.z, -1, 1e-3);
+  step(*r, 30);
+  CHECK_NEAR(st.placed[0].position.y, 1, 0.05);
+  CHECK_NEAR(st.placed[0].position.x, 5, 1e-3);
+}
+
+TEST(words_keys_scrub_without_the_worlds_time_moving) {
+  auto r = runScene(R"(
+let crate = box(size: vec(1, 1, 1), collide: yes)
+clip crate, play: no
+  key 0 s, at: vec(0, 0, 0)
+  key 2 s, at: vec(4, 0, 0), ease: "line"
+)");
+  CHECK(r->ok);
+  auto& st = r->stage;
+  if (st.placed.empty() || st.clips.empty()) return;
+  const uint64_t steps = st.steps;
+  st.seekClip(0, 1.5);
+  CHECK_NEAR(st.placed[0].position.x, 3, 1e-5);
+  CHECK(st.steps == steps && r->vm.time() == 0);
+  st.seekClip(0, 0.5);
+  CHECK_NEAR(st.placed[0].position.x, 1, 1e-5);
+  // a thing moved by keys is something to bump into where it comes to rest
+  st.clips[0].playing = true;
+  step(*r, 10);
+  st.collidersDirty = false;
+  step(*r, 120);  // it reaches its end, then rests
+  CHECK(st.collidersDirty || !st.clips[0].moving);
+  CHECK_NEAR(st.placed[0].position.x, 4, 1e-5);
+}
+
+TEST(words_a_clip_written_out_reads_back_the_same) {
+  const char* scene = R"(
+let crate = box(size: vec(1, 1, 1))
+let lamp = light(at: vec(0, 2, 0), lumens: 1000)
+)";
+  const std::string keys =
+      "clip crate, length: 4 s, rate: 24, loop: \"back and forth\"\n"
+      "  key 0 s, at: vec(-2, 0.5, 0), turn: 0\n"
+      "  key 0.042 s, visible: no\n"
+      "  key 1 s, at: vec(0, 1.25, 0), in: vec(0, 0.5, 0), out: vec(0, -0.5, 0)\n"
+      "  key 2 s, at: vec(2, 0.5, 0), scale: vec(2, 2, 2)\n"
+      "  key 2 s, turn: 90 deg, ease: \"line\"\n"
+      "  key 3.5 s, turn: -33.125 deg, ease: \"bounce\"\n"
+      "  key 3.5 s, tilt: 12.5 deg, ease: \"hold\"\n";
+  auto r = runScene(std::string(scene) + keys);
+  CHECK(r->ok);
+  CHECK(r->problems().empty());
+  if (r->stage.clips.empty()) return;
+  const std::string once = r->stage.clips[0].clip.script("crate");
+  if (once != keys) std::printf("%s", once.c_str());
+  CHECK(once == keys);
+  // a moment written with three decimals is back on its frame (1/24 s)
+  const loop::anim::Channel* visible = r->stage.clips[0].clip.find("visible");
+  CHECK(visible && !visible->keys.empty() && std::fabs(visible->keys[0].time - 1.0 / 24) < 1e-12);
+  auto again = runScene(std::string(scene) + once);
+  CHECK(again->ok && !again->stage.clips.empty());
+  if (again->stage.clips.empty()) return;
+  CHECK(again->stage.clips[0].clip.script("crate") == once);
+  // a clip by name, for a skeleton: bones turn by bend, side, twist
+  const std::string wave =
+      "clip \"wave\", for: \"human\"\n"
+      "  key 0 s, right_upper_arm: vec(0, 0, 0)\n"
+      "  key 0.5 s, right_upper_arm: vec(0, 72 deg, 10 deg), hips_at: vec(0, 0.02, 0)\n";
+  auto named = runScene(wave);
+  CHECK(named->ok && named->problems().empty() && !named->stage.clips.empty());
+  if (named->stage.clips.empty()) return;
+  CHECK(named->stage.clips[0].clip.script("\"wave\"") == wave);
+  CHECK(named->stage.clips[0].kind == 'n' && !named->stage.clips[0].playing);
+  // what its line said about starting is kept, for writing the line again
+  auto waits = runScene(std::string(scene) + "clip crate, play: no, speed: 2\n  key 0 s, turn: 0\n");
+  CHECK(waits->ok && !waits->stage.clips.empty() && !waits->stage.clips[0].starts && waits->stage.clips[0].startSpeed == 2);
+  if (!waits->stage.clips.empty()) CHECK(waits->stage.clips[0].clip.script("crate", "  ", ", play: no") == "  clip crate, play: no\n    key 0 s, turn: 0\n");
+}
+
+TEST(words_keys_name_their_problems) {
+  CHECK(runScene("key 1 s, at: vec(0, 0, 0)\n")->hasProblem("a key belongs to a clip"));
+  auto wrong = runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key 1 s, trun: 30 deg\n");
+  CHECK(wrong->hasProblem("has no `trun` to key") && wrong->hasProblem("did you mean `turn`"));
+  CHECK(runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key 1 s, at: 3\n")->hasProblem("three numbers"));
+  CHECK(runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key 1 s, turn: 30 deg, ease: \"bounse\"\n")->hasProblem("did you mean \"bounce\""));
+  CHECK(runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key 1 s\n")->hasProblem("needs a value"));
+  CHECK(runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key(-1 s, turn: 0)\n")->hasProblem("before the clip starts"));
+  CHECK(runScene("clip 5\n  key 1 s, at: vec(0, 0, 0)\n")->hasProblem("a clip needs what it moves"));
+  CHECK(runScene("let b = box(size: vec(1, 1, 1))\nsolid b\nclip b\n  key 1 s, turn: 0\n")->hasProblem("moved by physics"));
+  CHECK(runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key 1 s, at: vec(0, 0, 0), turn: 0, in: 1\n")->hasProblem("holds one value"));
+  // the problem names the key's own line
+  auto lined = runScene("let b = box(size: vec(1, 1, 1))\nclip b\n  key 0 s, turn: 0\n  key 1 s, lumens: 5\n");
+  bool onLine4 = false;
+  for (auto& p : lined->vm.problems()) onLine4 = onLine4 || p.line == 4;
+  CHECK(onLine4);
+}

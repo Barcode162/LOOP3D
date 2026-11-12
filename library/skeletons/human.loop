@@ -1,0 +1,93 @@
+# human · the standard human skeleton, ring 1: the 66 bones you move
+# use "human" brings it in; bones("human", at: vec(0, 0, 0)) shows it standing.
+# An adult 1.75 m tall in the rest pose: facing -z, left at -x, arms 45 degrees
+# down and out, palms down. Each bone says where it starts and ends, the way a
+# positive bend carries its tip, and how far it turns from rest: bend, side,
+# twist. A turn not named does not happen (an elbow never bends sideways).
+# Every left_ bone gets its right_ twin; on the right, side and twist run the
+# other way. Rings 2 (the bones that follow) and 3 (the face) come after.
+#
+# kind: skeleton
+# place: bones("human", at: AT)
+# credit: J Production, made in Loop3D. Proportions after Drillis and Contini (1966) and Winter, Biomechanics and Motor Control of Human Movement. Joint limits after the American Academy of Orthopaedic Surgeons, Joint Motion: Method of Measuring and Recording (1965), and Norkin and White, Measurement of Joint Motion; rounded, and shared along the spine and neck
+# licence: our own work, free for every J Production project (the measurements are published facts)
+# from: the Studio's foundation, order T-B1 (2026-11-12)
+# tags: skeleton, human, body, bones
+
+# the left arm's way in the rest pose, what the left palm faces, and front
+let human_arm = vec(-0.7071, -0.7071, 0)
+let human_palm = vec(0.7071, -0.7071, 0)
+let human_front = vec(0, 0, -1)
+
+# the left arm's joints
+let human_shoulder = vec(-0.185, 1.43, 0)
+let human_elbow = human_shoulder + human_arm * 0.32
+let human_wrist = human_elbow + normalize(human_arm + human_front * 0.06) * 0.26
+let human_knuckles = human_wrist + human_arm * 0.085
+
+# A finger of the left hand: its palm bone from the wrist to its knuckle, then
+# three bones that curl towards the palm. `across` is where it sits across the
+# hand (front is the thumb's side), `reach` how far its knuckle is from the
+# wrist, `fan` how much it leans from the hand's way, `cup` how far its palm
+# bone folds.
+to human_finger(name, across, reach, fan, lengths, cup)
+  let base = human_wrist + human_arm * 0.02 + human_front * across * 0.5
+  let knuckle = human_wrist + human_arm * reach + human_front * across
+  let way = normalize(human_arm + human_front * fan)
+  bone name + "_0", parent: "left_hand", from: base, to: knuckle, bends: human_palm, bend: [0, cup]
+  let a = knuckle + way * lengths[0]
+  let b = a + way * lengths[1]
+  let c = b + way * lengths[2]
+  bone name + "_1", parent: name + "_0", from: knuckle, to: a, bends: human_palm, bend: [-25 deg, 90 deg], side: [-15 deg, 15 deg]
+  bone name + "_2", parent: name + "_1", from: a, to: b, bends: human_palm, bend: [0, 105 deg]
+  bone name + "_3", parent: name + "_2", from: b, to: c, bends: human_palm, bend: [-5 deg, 80 deg]
+
+skeleton "human"
+  # ---- the middle of the body
+  bone "root", from: vec(0, 0, 0), to: vec(0, 0.1, 0), free: yes
+  bone "hips", parent: "root", from: vec(0, 0.96, 0), to: vec(0, 1.04, 0), free: yes
+  # the back: 83 degrees forward, 27 back, 35 to each side and 43 round, shared by four bones
+  bone "spine", parent: "hips", from: vec(0, 1.04, 0), to: vec(0, 1.14, -0.012), bend: [-8 deg, 25 deg], side: [-10 deg, 10 deg], twist: [-4 deg, 4 deg]
+  bone "spine_2", parent: "spine", from: vec(0, 1.14, -0.012), to: vec(0, 1.25, -0.006), bend: [-8 deg, 25 deg], side: [-10 deg, 10 deg], twist: [-6 deg, 6 deg]
+  bone "chest", parent: "spine_2", from: vec(0, 1.25, -0.006), to: vec(0, 1.36, 0.012), bend: [-6 deg, 18 deg], side: [-8 deg, 8 deg], twist: [-15 deg, 15 deg]
+  bone "upper_chest", parent: "chest", from: vec(0, 1.36, 0.012), to: vec(0, 1.47, 0.02), bend: [-5 deg, 15 deg], side: [-7 deg, 7 deg], twist: [-18 deg, 18 deg]
+  # the neck and head: 47 forward, 60 back, 43 to each side and 80 round, shared by three
+  bone "neck", parent: "upper_chest", from: vec(0, 1.47, 0.02), to: vec(0, 1.53, 0.006), bend: [-25 deg, 20 deg], side: [-18 deg, 18 deg], twist: [-30 deg, 30 deg]
+  bone "neck_2", parent: "neck", from: vec(0, 1.53, 0.006), to: vec(0, 1.595, -0.004), bend: [-20 deg, 15 deg], side: [-15 deg, 15 deg], twist: [-25 deg, 25 deg]
+  bone "head", parent: "neck_2", from: vec(0, 1.595, -0.004), to: vec(0, 1.75, -0.004), bend: [-15 deg, 12 deg], side: [-10 deg, 10 deg], twist: [-25 deg, 25 deg]
+  # the jaw opens about its hinge by the ear; a positive bend drops the chin
+  bone "jaw", parent: "head", from: vec(0, 1.6, -0.02), to: vec(0, 1.53, -0.09), bends: vec(0, -1, 0.3), bend: [0, 28 deg], side: [-8 deg, 8 deg]
+  # an eye looks along its bone; a positive bend looks down
+  bone "left_eye", parent: "head", from: vec(-0.032, 1.64, -0.085), to: vec(-0.032, 1.64, -0.11), bends: vec(0, -1, 0), bend: [-35 deg, 35 deg], side: [-45 deg, 45 deg]
+
+  # ---- the left arm (the right is its twin)
+  # the collar lifts 45, drops 10, and swings 30 forward and back
+  bone "left_collar", parent: "upper_chest", from: vec(-0.02, 1.42, -0.03), to: human_shoulder, bends: vec(0, 1, 0), bend: [-10 deg, 45 deg], side: [-30 deg, 30 deg]
+  # the upper arm, from 45 degrees out: a positive bend swings it forward, a positive side lifts it, a positive twist turns it in
+  bone "left_upper_arm", parent: "left_collar", from: human_shoulder, to: human_elbow, bends: human_front, bend: [-60 deg, 135 deg], side: [-60 deg, 135 deg], twist: [-90 deg, 70 deg]
+  # the elbow is a hinge: 150 degrees, a little past straight; the twist turns the palm (rest is palm down, so nearly all of it is the other way: palm up)
+  bone "left_forearm", parent: "left_upper_arm", from: human_elbow, to: human_wrist, bends: human_front, bend: [-5 deg, 150 deg], twist: [-160 deg, 10 deg]
+  # the wrist: 80 towards the palm, 70 back, 20 to the thumb's side, 30 to the little finger's
+  bone "left_hand", parent: "left_forearm", from: human_wrist, to: human_knuckles, bends: human_palm, bend: [-70 deg, 80 deg], side: [-30 deg, 20 deg]
+  # the thumb leaves the palm forward and closes across it
+  let thumb_base = human_wrist + human_arm * 0.025 + human_front * 0.022
+  let thumb_way = normalize(human_arm * 0.6 + human_front * 0.75 + human_palm * 0.2)
+  let thumb_bends = normalize(human_palm * 0.4 - human_front * 0.8)
+  let thumb_a = thumb_base + thumb_way * 0.045
+  let thumb_b = thumb_a + thumb_way * 0.032
+  bone "left_thumb_1", parent: "left_hand", from: thumb_base, to: thumb_a, bends: thumb_bends, bend: [-20 deg, 40 deg], side: [-25 deg, 40 deg], twist: [-15 deg, 15 deg]
+  bone "left_thumb_2", parent: "left_thumb_1", from: thumb_a, to: thumb_b, bends: thumb_bends, bend: [-5 deg, 55 deg]
+  bone "left_thumb_3", parent: "left_thumb_2", from: thumb_b, to: thumb_b + thumb_way * 0.027, bends: thumb_bends, bend: [-15 deg, 80 deg]
+  human_finger("left_index", 0.028, 0.095, 0.1, [0.043, 0.025, 0.021], 0)
+  human_finger("left_middle", 0.006, 0.098, 0.02, [0.047, 0.029, 0.022], 0)
+  human_finger("left_ring", -0.014, 0.092, -0.06, [0.043, 0.027, 0.022], 10 deg)
+  human_finger("left_little", -0.032, 0.082, -0.14, [0.034, 0.019, 0.02], 15 deg)
+
+  # ---- the left leg
+  # the hip: 120 forward, 25 back; 45 out, 30 in; 40 turned in, 45 out
+  bone "left_thigh", parent: "hips", from: vec(-0.09, 0.93, 0), to: vec(-0.092, 0.5, -0.01), bends: human_front, bend: [-25 deg, 120 deg], side: [-30 deg, 45 deg], twist: [-45 deg, 40 deg]
+  # the knee is a hinge the other way: the foot goes back
+  bone "left_shin", parent: "left_thigh", from: vec(-0.092, 0.5, -0.01), to: vec(-0.092, 0.075, 0.015), bends: vec(0, 0, 1), bend: [-3 deg, 140 deg], twist: [-10 deg, 10 deg]
+  # the ankle: 50 down, 20 up; the sole turns 35 in and 18 out
+  bone "left_foot", parent: "left_shin", from: vec(-0.092, 0.075, 0.015), to: vec(-0.097, 0.018, -0.115), bends: vec(0, -1, 0), bend: [-20 deg, 50 deg], side: [-15 deg, 15 deg], twist: [-35 deg, 18 deg]
+  bone "left_toes", parent: "left_foot", from: vec(-0.097, 0.018, -0.115), to: vec(-0.1, 0.012, -0.185), bends: vec(0, -1, 0), bend: [-70 deg, 45 deg]

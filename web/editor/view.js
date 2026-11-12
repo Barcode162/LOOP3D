@@ -175,6 +175,8 @@ window.LE = window.LE || {};
 
   // A change to the selected thing, written into its line: at, turn or scale.
   function writeBack(kind, sel, before, after, group) {
+    // in the Studio's Move bench the change is a key at a moment, not the thing's own line
+    if (V.intercept && V.intercept(kind, sel, before, after)) return;
     const lineNo = sel.line;
     const old = S.lineAt(H.text, lineNo);
     let line = old;
@@ -431,6 +433,7 @@ window.LE = window.LE || {};
   // else runs the script's text again.
   V.applyFast = (fast, dir) => {
     for (const f of fast) {
+      if (f.clipOf !== undefined) { LE.studio.applyFast(f, dir); continue; }  // a clip's keys (web/editor/studio.js)
       const s = dir === 'undo' ? f.before : f.after;
       E.thingSet(f.index, s);
     }

@@ -54,13 +54,35 @@ eq(S.soundLines('sound "fire", at: vec(1, 0, 2), volume: 0.5\n'), [{ line: 1, ki
 eq(S.setStatement('title "x"\nmode "game"\nbox\n', 'look', '"noir"'), 'title "x"\nmode "game"\nlook "noir"\nbox\n', 'look added after mode');
 eq(S.setStatement('look "golden"\n', 'look', '"noir"'), 'look "noir"\n', 'look replaced');
 
+// the Studio: a thing gets a name, and its clip's lines are put in, changed and taken out
+const scene = 'title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)  # the crate\nplinth(vec(0, 0, 2))\nlet door = box(size: vec(1, 2, 0.1))\nlet box_1 = 5\n';
+const named = S.nameThing(scene, 2);
+eq(S.lineAt(named.text, 2), 'let box_2 = box(size: vec(1, 1, 1), at: vec(0, 0.5, 0))  # the crate', 'a thing gets a name no line uses, its comment kept');
+eq(named.name, 'box_2', 'the new name');
+eq(S.lineAt(S.nameThing(scene, 3).text, 3), 'let plinth_1 = plinth(vec(0, 0, 2))', 'a call in parentheses is named as it is');
+eq(S.nameThing(scene, 4), { text: scene, name: 'door' }, 'a named thing keeps its name and its line');
+eq(S.nameThing('for i from 0 to 2\n', 1), null, 'a line that makes nothing gets no name');
+const block = 'clip door, loop: yes\n  key 0 s, turn: 0\n  key 1 s, turn: 90 deg\n';
+const keyed = S.setClipBlock(scene, 'door', 4, block);
+eq(keyed, 'title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)  # the crate\nplinth(vec(0, 0, 2))\nlet door = box(size: vec(1, 2, 0.1))\nclip door, loop: yes\n  key 0 s, turn: 0\n  key 1 s, turn: 90 deg\nlet box_1 = 5\n', 'a clip goes in right after its thing');
+eq(S.clipBlock(keyed, 'door'), { start: 5, end: 7, indent: '', held: '' }, 'the clip is found with its key lines');
+eq(S.clipBlock(keyed, 'doo'), null, 'a name that only starts the same is not it');
+eq(S.setClipBlock(keyed, 'door', 4, 'clip door\n  key 0 s, turn: 45 deg\n'), scene.replace('let box_1', 'clip door\n  key 0 s, turn: 45 deg\nlet box_1'), 'its lines are replaced, however many there were');
+eq(S.setClipBlock(keyed, 'door', 4, ''), scene, 'with no keys left the clip goes');
+const held = 'let door = box(size: vec(1, 2, 0.1))\nlet swing = clip(door, play: no)\n  key 0 s, turn: 0\n\n  key 1 s, turn: 90 deg\nwhen "use"\n  swing.play()\n';
+eq(S.clipBlock(held, 'door'), { start: 2, end: 5, indent: '', held: 'let swing = ' }, 'a clip held in a let, an empty line inside it');
+eq(S.setClipBlock(held, 'door', 1, 'clip door, play: no\n  key 0 s, turn: 10 deg\n'), 'let door = box(size: vec(1, 2, 0.1))\nlet swing = clip(door, play: no)\n  key 0 s, turn: 10 deg\nwhen "use"\n  swing.play()\n', 'a held clip keeps its let');
+eq(S.setClipBlock(held, 'door', 1, ''), 'let door = box(size: vec(1, 2, 0.1))\nlet swing = clip(door)\nwhen "use"\n  swing.play()\n', 'a held clip with no keys keeps its line, so its name still reads');
+
 // the engine reads what the editor writes
 const loop = path.join(__dirname, '..', 'build', 'loop');
 if (fs.existsSync(loop)) {
   const script = ['title "Edited"', S.moveLine('box size: vec(1, 1, 1)', [1, 0.5, 0], [1, 0.5, 0], false),
     'for i from 0 to 2', S.moveLine(rep, null, [0.5, 0, 0], true), S.turnLine('  log turn: i * 10 deg, length: 1', 0, Math.PI / 18, true),
     'let corner = vec(1, 0, 1)', S.moveLine('box at: corner, size: vec(1, 1, 1)', [0, 0, 0], [0, 1, 0], false),
-    S.lineAt(dup.text, 3), S.turnLine('box rotation: vec(0, 0, 90 deg)', Math.PI / 2, Math.PI / 2, false), ''].join('\n');
+    S.lineAt(dup.text, 3), S.turnLine('box rotation: vec(0, 0, 90 deg)', Math.PI / 2, Math.PI / 2, false),
+    S.setClipBlock(S.nameThing('box size: vec(1, 1, 1)  # a crate', 1).text, 'box_1', 1, 'clip box_1\n  key 0 s, at: vec(0, 0, 0)\n  key 1 s, at: vec(1, 0, 0)\n'),
+    S.setClipBlock(held, 'door', 1, 'clip door, play: no\n  key 0 s, turn: 10 deg\n'), S.setClipBlock(held, 'door', 1, ''), ''].join('\n');
   const f = path.join(os.tmpdir(), 'editor_source_test.loop');
   fs.writeFileSync(f, script);
   checks++;

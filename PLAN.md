@@ -14,6 +14,12 @@ phase is done when its "done when" is true on the phone.
   GitHub settings (only you can).
 - **"Switch"**, when you want the live bar to run on Loop3D (phase C).
 
+## Beside it · The Studio (`docs/STUDIO.md`, track T)
+*Your words, 2026-11-11:* shapes, bones and movement made right in the editor; the backbone of the avatars.
+*On main 2026-11-12:* the plan (T0); keys (T-K1 to T-K5: goals 1 and 2, a box slides between two keys and eases
+under your thumb; the scene "Keys"); the standard skeleton, ring 1 (T-B1: 66 bones with right joints; the scene
+"The skeleton"). *Next of its foundation:* T-S1 (skin that bends with the bones), T-E1 (the editable mesh).
+
 ## Now · The Loft (your word, 2026-11-10: the top priority)
 *Your words:* the Loft, that entire project and everything in it, is the top priority.
 *What it is:* a home of two floors under a high ceiling: a stair with a lit rail, a bed on the mezzanine, a

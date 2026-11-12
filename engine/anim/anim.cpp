@@ -45,25 +45,6 @@ Pose blend(const Pose& a, const Pose& b, float t) {
   return o;
 }
 
-Pose Clip::sample(const Skeleton& s, float t) const {
-  Pose p = Pose::rest(s);
-  if (length > 0) t = loop ? t - std::floor(t / length) * length : clamp(t, 0.0f, length);
-  for (size_t b = 0; b < tracks.size() && b < p.local.size(); ++b) {
-    const auto& k = tracks[b];
-    if (k.empty()) continue;
-    size_t i = 0;
-    while (i + 1 < k.size() && k[i + 1].time <= t) ++i;
-    const Key& a = k[i];
-    const Key& c = i + 1 < k.size() ? k[i + 1] : (loop ? k[0] : k[i]);
-    float span = i + 1 < k.size() ? c.time - a.time : (loop ? length - a.time + c.time : 1);
-    float u = span > 0 ? clamp((t - a.time) / span, 0.0f, 1.0f) : 0;
-    u = u * u * (3 - 2 * u);  // eased between keys
-    p.local[b].rotation = slerp(a.rotation, c.rotation, u);
-    p.local[b].position = s.bones[b].rest.position + vlerp(a.offset, c.offset, u);
-  }
-  return p;
-}
-
 void Spring::update(Vec3 target, float halfLife, float dt) {
   // exact critically damped step (Holden, "Spring-It-On")
   float y = 4 * 0.69314718f / std::max(halfLife, 1e-5f) / 2;

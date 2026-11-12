@@ -1,5 +1,5 @@
 #pragma once
-// Animation: skeletons and poses, clips with blending, limbs that reach
+// Animation: skeletons and poses that blend (clips of keys: clip.h), limbs that reach
 // (two-bone and chain IK), springs for follow-through, and a procedural
 // animator for people that needs no recorded motion: breathing and weight
 // shifts at rest, a walk and a run that change with speed, feet that plant
@@ -18,9 +18,17 @@ struct Bone {
   std::string name;
   int parent = -1;
   Transform rest;  // relative to the parent
+  // What a standard skeleton says of each bone (engine/anim/skeleton.h); the
+  // walker's own small skeleton leaves these as they are.
+  float length = 0;    // along the bone's own Y, to its tip (metres)
+  int ring = 1;        // 1 the ones you move, 2 the ones that follow, 3 the face
+  bool free = true;    // no limits (the root, the hips; every bone of a skeleton made in code)
+  Vec3 lo{0}, hi{0};   // how far it turns from its rest: the least and most bend, side, twist (radians)
+  int mirror = -1;     // its partner on the other side (-1: it has none)
 };
 
 struct Skeleton {
+  std::string name;    // "human" (a standard skeleton), or "" for one made in code
   std::vector<Bone> bones;
   int add(const std::string& name, int parent, Vec3 offset);
   int find(const std::string& name) const;
@@ -35,18 +43,6 @@ struct Pose {
 };
 // Mixes two poses (rotations slerped, positions lerped).
 Pose blend(const Pose& a, const Pose& b, float t);
-
-struct Clip {
-  struct Key {
-    float time;
-    Quat rotation;
-    Vec3 offset{0};  // added to the rest position
-  };
-  float length = 1;
-  bool loop = true;
-  std::vector<std::vector<Key>> tracks;  // per bone, sorted by time (empty = rest)
-  Pose sample(const Skeleton& s, float t) const;
-};
 
 // A critically damped spring: reaches its target as fast as possible
 // without wobbling past it; `halfLife` is the time to close half the gap.

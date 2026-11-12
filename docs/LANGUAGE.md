@@ -187,6 +187,19 @@ Every setting has a sensible default; give only what matters.
 - **Shots** (they play in order):
   - `shot(name, length, from: {at, look_at, lens, f_stop, focus}, to: {...}, ease, shake, fade_in, fade_out, look)`
   - `orbit(name, length, around, radius, height, from, to, lens, f_stop, look_at, ease, shake, fade_in, fade_out)`
+- **Keys** (movement made by hand; `docs/STUDIO.md`): a key pins a value to a moment, and the engine fills in every moment between.
+  - `clip crate` with `key` lines indented under it moves a thing, a lamp or a group. Name the thing first: `let crate = box(size: vec(1, 1, 1))`.
+  - `key 2 s, at: vec(2, 0.5, 0), turn: 90 deg`: at 2 seconds, be there, turned so. A thing's keys: `at`, `turn`, `tilt`, `roll`, `scale`, `visible`; a lamp's: `at`, `lumens`, `color`, `kelvin`; a group's: `at`, `turn`, `visible`. A value with no key keeps what its own line gave it.
+  - `ease:` is how the values arrive at that key from the one before: `"smooth"` (the usual way: through the keys with no overshoot, starting gently and landing softly), `"line"` (straight), `"hold"` (stay, then jump), or an ease by name (`in out in_out smoother sine back elastic bounce spring`).
+  - `in:` and `out:` give one value its own slopes at a key (in units a second), and then the curve may overshoot: `key 1 s, at: vec(0, 1.25, 0), in: vec(0, 0.5, 0), out: vec(0, -0.5, 0)`.
+  - On the `clip` line: `loop: yes` (round again; the last key meets the first with no jolt), `loop: "back and forth"`, `length: 4 s` (longer than its last key), `rate: 30` (frames a second, where the editor puts keys), `play: no` (wait to be started), `speed: 1`.
+  - The clip is a value: `let swing = clip(door, play: no)`, then `swing.play()`, `swing.reverse()`, `swing.stop()`, and its fields `.playing .time .speed .length .loop`. A door that opens when used: `when "use"` then `swing.play()`.
+  - Keys written inside a `group` are measured from the group, and move and turn with it. A `solid` thing is moved by physics and takes no keys. A thing moved by keys is something to bump into where it comes to rest.
+  - `clip "wave", for: "human"` is a clip by name for a skeleton: each `key` turns bones by `vec(bend, side, twist)`.
+- **Skeletons** (the bones a body is hung on; `docs/STUDIO.md`):
+  - `skeleton "human"` with `bone` lines indented under it writes a skeleton down by name. Every bone called `left_…` gets its `right_…` twin by itself (`mirror: no` stops that).
+  - `bone "left_forearm", parent: "left_upper_arm", from: vec(…), to: vec(…), bends: vec(0, 0, -1), bend: [-5 deg, 150 deg], twist: [-160 deg, 10 deg]`: where the bone starts and ends when the body stands at rest (metres; facing -z, its left at -x), the way a positive bend carries its tip, and how far it turns from rest, each as `[least, most]`: `bend` (like a nod), `side` (like a wave), `twist` (like a doorknob). A turn not named does not happen: an elbow has no `side`. `free: yes` is a bone with no limits (the root, the hips). A bone comes after the one it hangs from.
+  - `use "human"` brings in the library's standard human (66 bones, 1.75 m); `bones("human", at: vec(0, 0, 0), turn: 0, height: 1.75, material: "porcelain")` shows a skeleton standing in its rest pose, each bone a slim shape from its start to its tip.
 - **Physics:**
   - `solid(shape, mass, bounce, friction, velocity)`: it falls, rolls and knocks, and knocks make the material's sound by themselves (bounce and friction default to the settings `physics.bounce` and `physics.friction`)
   - `push(shape, vec(…))`, `gravity(vec(0, -9.81, 0))` (the setting `physics.gravity`, for this scene)
