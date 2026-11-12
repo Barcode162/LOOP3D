@@ -3,7 +3,7 @@
   {
    "name": "samples",
    "title": "Samples",
-   "description": "Small scenes that show what the engine does: a candlelit cabin, a living courtyard, and a two-scene story.",
+   "description": "Small scenes that show what the engine does: a candlelit cabin, a living courtyard, a two-scene story, and seven balls from mirror to chalk.",
    "start": "courtyard",
    "scenes": [
     {
@@ -34,6 +34,31 @@
     {
      "name": "windows",
      "title": "Windows",
+     "still": false
+    },
+    {
+     "name": "roughness",
+     "title": "Roughness",
+     "still": true
+    },
+    {
+     "name": "surface_box",
+     "title": "Surface Box",
+     "still": false
+    },
+    {
+     "name": "surface_linen",
+     "title": "Surface Linen",
+     "still": false
+    },
+    {
+     "name": "keys",
+     "title": "Keys",
+     "still": false
+    },
+    {
+     "name": "skeleton",
+     "title": "The skeleton",
      "still": false
     }
    ],

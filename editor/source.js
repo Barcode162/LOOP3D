@@ -244,8 +244,61 @@
     return L.join('\n');
   }
 
+  // ---- the Studio: a thing's name, and its clip's lines (the words clip and key)
+  // A thing's own name, given one when it has none: `box size: …` becomes
+  // `let box_1 = box(size: …)` (a clip names the thing it moves). {text, name},
+  // or null when the line makes nothing.
+  function nameThing(text, n) {
+    const line = lineAt(text, n), call = callOf(line);
+    if (!call || !call.word || /^(let|if|for|while|to|every|after|when|task|repeat|clip|key)$/.test(call.word)) return null;
+    if (call.name) return { text, name: call.name };
+    let k = 1, name;
+    do name = call.word + '_' + k++; while (new RegExp('(^|[^A-Za-z0-9_])' + name + '(?![A-Za-z0-9_])').test(text));
+    const { comment } = scan(line);
+    const code = line.slice(0, comment).replace(/\s+$/, ''), tail = line.slice(comment);
+    const made = call.paren
+      ? call.indent + 'let ' + name + ' = ' + code.slice(call.indent.length)
+      : call.indent + 'let ' + name + ' = ' + call.word + '(' + code.slice(call.argsAt) + ')';
+    return { text: replaceLine(text, n, made + (tail ? '  ' + tail : '')), name };
+  }
+  const indentOf = (l) => l.match(/^\s*/)[0].length;
+  // Where a thing's clip is in the text: its `clip name …` line (or `let swing =
+  // clip(name, …)`) and the `key` lines indented under it. {start, end} (lines,
+  // 1-based, both counted), its indent, and `held`: the `let swing = ` in front.
+  function clipBlock(text, name) {
+    const L = lines(text);
+    const re = new RegExp('^(\\s*)((?:let\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*)?)clip\\s*\\(?\\s*' + name + '(?![A-Za-z0-9_])');
+    for (let i = 0; i < L.length; i++) {
+      const m = L[i].match(re);
+      if (!m) continue;
+      let end = i;
+      for (let j = i + 1; j < L.length; j++) {
+        if (L[j].trim() === '') continue;           // an empty line inside the block stays in it
+        if (indentOf(L[j]) <= m[1].length) break;
+        end = j;
+      }
+      return { start: i + 1, end: end + 1, indent: m[1], held: m[2] };
+    }
+    return null;
+  }
+  // Puts a clip's lines into the text, as the engine wrote them ("clip name, …"
+  // and its key lines): over the clip's old lines, or right after the thing's
+  // line. With no lines the clip goes (a clip held in a `let` keeps its line,
+  // empty, so what uses its name still reads).
+  function setClipBlock(text, name, thingLine, block) {
+    const L = lines(text), old = clipBlock(text, name);
+    let add = block ? block.replace(/\n+$/, '').split('\n') : [];
+    if (old && old.held) {
+      if (add.length) add[0] = old.indent + old.held + 'clip(' + add[0].trim().replace(/^clip\s+/, '') + ')';
+      else add = [old.indent + old.held + 'clip(' + name + ')'];
+    }
+    if (old) L.splice(old.start - 1, old.end - old.start + 1, ...add);
+    else if (add.length) L.splice(Math.max(0, Math.min(thingLine, L.length)), 0, ...add);
+    return L.join('\n');
+  }
+
   const api = { num, vec, deg, scan, callOf, argSpan, getArg, setArg, removeArg, vecLiteral, splitOffset, moveLine, turnLine, scaleLine,
-    replaceLine, lineAt, insertAfter, usesOf, removeLine, duplicateLine, shotLines, soundLines, setStatement };
+    replaceLine, lineAt, insertAfter, usesOf, removeLine, duplicateLine, shotLines, soundLines, setStatement, nameThing, clipBlock, setClipBlock };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.LE = root.LE || {}; root.LE.source = api; }
 })(typeof window !== 'undefined' ? window : globalThis);

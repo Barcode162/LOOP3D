@@ -1,0 +1,30 @@
+# Keys: a value pinned to a moment, and the engine fills in every moment between.
+# A crate slides across the floor between two keys, turning as it goes; a ball
+# rises and falls for ever; a lamp dims and brightens.
+# What to look at: the crate starts gently and lands softly (that is "smooth",
+# the usual way to arrive at a key); the ball's loop has no jolt where its last
+# key meets its first.
+title "Keys"
+mode "game"
+
+box size: vec(14, 0.1, 10), at: vec(0, -0.05, 0), material: "floorboards"
+box size: vec(14, 4, 0.1), at: vec(0, 2, -3), material: "plaster"
+
+let crate = box(size: vec(0.8, 0.8, 0.8), at: vec(-3, 0.4, 0), material: "oak", round: 0.02)
+clip crate, loop: "back and forth"
+  key 0 s, at: vec(-3, 0.4, 0), turn: 0
+  key 3 s, at: vec(3, 0.4, 0), turn: 90 deg
+
+let ball = sphere(0.3, at: vec(0, 0.3, -1.5), material: material(color: rgb(0.7, 0.1, 0.08), roughness: 0.3))
+clip ball, loop: yes
+  key 0 s, at: vec(0, 0.3, -1.5)
+  key 0.6 s, at: vec(0, 1.6, -1.5), ease: "out"
+  key 1.2 s, at: vec(0, 0.3, -1.5), ease: "in"
+
+let lamp = light(at: vec(0, 3, 1.5), lumens: 2400, kelvin: 2900)
+clip lamp, loop: "back and forth"
+  key 0 s, lumens: 2400
+  key 2 s, lumens: 300
+
+sky "color", color: rgb(0.02, 0.02, 0.03), nits: 3
+camera at: vec(0, 1.7, 6.5), look_at: vec(0, 0.8, 0), lens: 35 mm

@@ -81,6 +81,7 @@
     document.title = titleOf(name) + ' · Loop3D Editor';
     if (location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
     const text = await H.open(name, fileText);
+    LE.studio.reset();
     firstStart = true;
     V.select(null); V.selMark = null;
     applyAll();
@@ -115,7 +116,8 @@
       const wl = store.get('ed.workLight');
       V.setWorkLight(wl === 'on' || (wl === 'auto' && !info.lights.length));
     } else V.pushCamera();
-    if (SP.pendingSelect) { V.selectLine(SP.pendingSelect); SP.pendingSelect = null; } else V.reselect();
+    if (LE.studio.open) LE.studio.refresh();
+    else if (SP.pendingSelect) { V.selectLine(SP.pendingSelect); SP.pendingSelect = null; } else V.reselect();
     SP.marks();
     SP.redraw();
   });
@@ -233,6 +235,7 @@
       '<p><b>Four spaces</b> at the bottom: Build (things), Logic (the script), Film (shots), Sound. They change the tools shown, never what a gesture does.</p>',
       '<p><b>Nothing is lost.</b> Every change is kept in this browser the moment you make it, undo survives a reload, and Menu → Versions goes back to any earlier one.</p>',
       '<p><b>The script is the world.</b> Moving a thing rewrites its line; Logic shows the line. Copy it there and paste it in the chat to keep it in the repo.</p>',
+      '<p><b>The Studio:</b> pick a thing and tap Open. On its Move bench, slide the white line to a moment and move the thing: that keeps a key. A key pins a value to a moment; the engine fills in every moment between. Done goes back to the world.</p>',
       '<p><b>Play</b> walks you through the world as it runs. Your changes stay.</p>',
       '<p>Keys: Ctrl+Z undo, Ctrl+Shift+Z redo, Delete removes, Ctrl+D copies, Esc lets go, P plays, 1 to 4 pick a space, Ctrl+K finds anything.</p>'].join(''));
   }
@@ -300,6 +303,17 @@
     }
     if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); step(e.shiftKey ? 'redo' : 'undo'); return; }
     if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); step('redo'); return; }
+    if (LE.studio.open) {
+      // in the Studio: Esc is Done, Space plays, Delete removes the picked key (never the thing)
+      if (mod) return;
+      if (e.key === 'Escape') LE.studio.leave();
+      else if (e.key === ' ') { e.preventDefault(); LE.studio.togglePlay(); }
+      else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); LE.studio.removeKey(); }
+      else if (e.key === 'k' || e.key === 'K') LE.studio.keyHere();
+      else if (e.key === 'f' || e.key === 'F') V.frame();
+      else if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ShiftLeft', 'ShiftRight'].includes(e.code)) V.keyDown(e.code);
+      return;
+    }
     if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); if (V.sel) dupe(); return; }
     if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); LE.toast('Every change is already kept. To keep it in the repo: Logic → Copy, then paste it in the chat.'); return; }
     if (mod) return;

@@ -1,0 +1,35 @@
+# Seven balls, one colour, one thing changing: roughness.
+# From left to right the same red goes from a mirror (roughness 0.02) to chalk (1.0).
+# What to look at: the white square on each ball is the softbox lamp, the small dot is a bulb. On the smooth
+# balls they are sharp; as roughness rises they spread into a soft glow, then into nothing. The colour never
+# changes, only the shine.
+# `dialled: no` is the BEFORE picture: every ball gets the same middling shine (0.5), so all seven read as one
+# plastic. Render it:  loop render projects/samples/roughness.loop --quality cinema
+title "Roughness"
+mode "movie"
+
+let dialled = yes
+
+# the same red, a non-metal (a real red paint is about 0.5 / 0.05 / 0.04)
+let red = rgb(0.5, 0.05, 0.04)
+let rough = [0.02, 0.12, 0.25, 0.4, 0.6, 0.8, 1.0]
+
+# a dark studio floor (a little shiny, so the balls show in it) and a dim back wall
+box size: vec(20, 0.1, 30), at: vec(0, -0.05, 6), material: material(color: rgb(0.03, 0.03, 0.032), roughness: 0.25)
+box size: vec(16, 5, 0.1), at: vec(0, 2.5, -4.5), material: material(color: rgb(0.1, 0.1, 0.105), roughness: 0.9)
+
+for i from 0 to 6
+  let r = rough[i] if dialled else 0.5
+  sphere(0.42, at: vec(-3.0 + i * 1.0, 0.42, 0), material: material(color: red, roughness: r))
+
+# the lamps the balls will show: a big softbox (a square highlight) and a small bulb (a round one)
+panel_light at: vec(-3.5, 3.2, 4.5), facing: vec(0.5, -0.55, -0.65), size: vec(2.6, 2.6), lumens: 60000, kelvin: 5000
+light at: vec(4.5, 2.6, 7.0), lumens: 3000, kelvin: 3200, radius: 0.04
+light at: vec(0, 4, -2), lumens: 1500, kelvin: 4500, radius: 0.3
+
+sky "color", color: rgb(0.01, 0.01, 0.012), nits: 2
+
+look "natural"
+camera at: vec(0, 1.2, 14), look_at: vec(0, 0.4, 0), lens: 60 mm, f_stop: 4, shutter: 1 / 50 s, iso: 800, auto_exposure: no
+shot "the row", 4 s, from: {at: vec(0, 1.2, 14), look_at: vec(0, 0.4, 0), lens: 60 mm, f_stop: 4}, to: {at: vec(0, 1.2, 14), look_at: vec(0, 0.4, 0), lens: 60 mm, f_stop: 4}
+render file: "roughness.png", quality: "cinema", width: 960

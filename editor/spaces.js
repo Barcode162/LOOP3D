@@ -107,6 +107,7 @@ window.LE = window.LE || {};
   const build = {
     title: 'Build', icon: 'cube-add',
     draw() {
+      if (LE.studio && LE.studio.open) return LE.studio.draw(body);
       body.className = '';
       body.innerHTML = '';
       const sel = V.sel, mk = V.selMark;
@@ -130,6 +131,7 @@ window.LE = window.LE || {};
       }
       const t = sel.info;
       const tools = h('div', { class: 'tools' },
+        toolBtn('studio', 'Open', () => LE.studio.enter(V.sel), { title: 'Open it in the Studio: its shape, its bones and its movement (keys)' }),
         toolBtn('duplicate', 'Copy', () => this.duplicate(), { disabled: sel.line <= 0 }),
         toolBtn('delete', 'Remove', () => this.remove(), { danger: true, disabled: sel.line <= 0 }),
         toolBtn('target', 'Frame', () => V.frame()),
@@ -728,6 +730,7 @@ window.LE = window.LE || {};
     sheet.classList.remove('closed');
     document.body.classList.remove('sheet-closed');
     if (name !== 'film' && V.mode === 'film') { film.playing = false; V.setMode('edit'); }
+    if (name !== 'build' && LE.studio && LE.studio.open) LE.studio.leave(true);  // another space: the Studio's thing goes back to the world
     SP.current = name;
     tabs.forEach((b) => b.classList.toggle('on', b.dataset.space === name));
     SP.marks();

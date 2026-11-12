@@ -1,0 +1,34 @@
+# Surface box: red paint over steel, in layers (docs/SURFACES.md, order M3c).
+# The paint wears through to bare steel only on the rounded edges (the edge mark), and near-black dirt
+# gathers only in the plinth's groove (the hollow mark). Flat faces stay clean red: a knife edge or a big
+# flat face never wears. Where the ball meets the plinth it darkens by the light alone (marks never cross
+# from one thing to another).
+# Render it:  loop render projects/samples/surface_box.loop --quality good
+title "Surface Box"
+mode "movie"
+
+let paint = surface("red paint", tile: 1 m,
+  base: {color: rgb(0.62, 0.08, 0.06), roughness: 0.38, pattern: "noise", size: 5 cm, bump: 0.05 mm},
+  wear: {color: rgb(0.62, 0.62, 0.64), roughness: 0.22, metal: 1, amount: 1, ragged: 0.4},
+  dirt: {color: rgb(0.02, 0.02, 0.02), roughness: 0.9, amount: 1, ragged: 0.3})
+
+# a pale floor to stand on
+box size: vec(6, 0.1, 6), at: vec(0, -0.05, 0), material: material(color: rgb(0.55, 0.55, 0.53), roughness: 0.7)
+
+# a round plinth with a groove 1 cm wide and deep round the ball, its top edge rounded at 1 cm
+# (a lathe's outline goes from the bottom up, so its faces look outward; points on the flat ring keep the
+# groove's dirt from spreading across it: wear and dirt follow the mesh's points)
+lathe profile: [vec(0.3, 0), vec(0.3, 0.11), vec(0.297, 0.117), vec(0.29, 0.12), vec(0.28, 0.12), vec(0.24, 0.12), vec(0.2, 0.12), vec(0.19, 0.12), vec(0.188, 0.118), vec(0.185, 0.112), vec(0.182, 0.11), vec(0.178, 0.11), vec(0.175, 0.112), vec(0.172, 0.118), vec(0.17, 0.12), vec(0.16, 0.12), vec(0, 0.12)], segments: 96, at: vec(0, 0, 0), material: paint
+# a ball resting on it
+sphere(0.13, at: vec(0, 0.25, 0), material: paint)
+# a box with its edges rounded at 1 cm
+box size: vec(0.28, 0.28, 0.28), round: 0.01, steps: 4, at: vec(0.5, 0.14, 0.15), turn: 25 deg, material: paint
+
+panel_light at: vec(-1.2, 1.6, 1.4), facing: vec(0.5, -0.6, -0.6), size: vec(1.2, 1.2), lumens: 12000, kelvin: 5200
+light at: vec(1.5, 1.2, 1.0), lumens: 1500, kelvin: 3400, radius: 0.05
+sky "color", color: rgb(0.2, 0.22, 0.25), nits: 40
+
+look "natural"
+camera at: vec(0.2, 0.75, 1.35), look_at: vec(0.22, 0.13, 0.05), lens: 40 mm, f_stop: 5.6, shutter: 1 / 50 s, iso: 400, auto_exposure: no
+shot "the box", 4 s, from: {at: vec(0.2, 0.75, 1.35), look_at: vec(0.22, 0.13, 0.05), lens: 40 mm, f_stop: 5.6}, to: {at: vec(0.2, 0.75, 1.35), look_at: vec(0.22, 0.13, 0.05), lens: 40 mm, f_stop: 5.6}
+render file: "surface_box.png", quality: "good", width: 800
