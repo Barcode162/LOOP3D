@@ -2,6 +2,10 @@
 // (the first 51 come from the old UI editor, Barcode162/3D ui/icons.svg; the rest are new).
 window.LE = window.LE || {};
 LE.ICONS = {
+"way-hold": "<path d=\"M3 18h9V6h9\"/>",
+"way-line": "<path d=\"M3 18L21 6\"/>",
+"way-smooth": "<path d=\"M3 18c8 0 10-12 18-12\"/>",
+"way-free": "<path d=\"M3 18c5 0 5-8 9-8s4 4 9 4M7.5 10h9M4.5 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0M16.5 10a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0\"/>",
 "key": "<path d=\"M12 3l7 9-7 9-7-9z\"/>",
 "move": "<path d=\"M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3\"/>",
 "turn": "<path d=\"M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5\"/>",

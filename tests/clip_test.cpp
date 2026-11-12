@@ -222,6 +222,10 @@ TEST(clip_goes_to_the_editor_and_comes_back) {
   CHECK(clipFromJson(clipJson(clip), back, &why));
   CHECK(back.script("crate") == before);
   CHECK_NEAR(clipJson(clip)["duration"].number(), 4, 1e-9);
+  // each key says the slope its curve has now: its own when free, else the one worked out (flat at the first key)
+  const Json atKeys = clipJson(clip)["channels"][static_cast<size_t>(0)]["keys"];
+  CHECK_NEAR(atKeys[static_cast<size_t>(1)]["slopeOut"][static_cast<size_t>(1)].number(), -0.5, 1e-6);
+  CHECK_NEAR(atKeys[static_cast<size_t>(0)]["slopeOut"][static_cast<size_t>(0)].number(), 0, 1e-9);
   // the text of it, as the page sends it
   Json parsed;
   CHECK(Json::parse(clipJson(clip).dump(), parsed) && clipFromJson(parsed, back, &why) && back.script("crate") == before);

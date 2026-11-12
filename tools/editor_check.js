@@ -4,7 +4,7 @@
 // opens Logic, adds a shot in Film, a sound and music in Sound, and reloads (nothing
 // lost). Pictures go to <out dir>; it fails if any step goes wrong.
 //   (cd site && python3 -m http.server 8123 &)
-//   xvfb-run -a node tools/editor_check.js http://localhost:8123 <out dir>
+//   xvfb-run -a node tools/editor_check.js http://localhost:8123 <out dir> [phone | computer]
 // Run it on a virtual display: headless browsers lose WebGPU (docs/TUNING.md §8).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -84,7 +84,10 @@ async function run(browser, name, viewport, touch) {
   const ends = await p.evaluate(() => LE.engine.clips().find((c) => c.target === LE.studio.index).channels[0].keys.map((k) => k.v));
   await p.mouse.click(strip.x + strip.w * 0.25, strip.y + 10); await p.waitForTimeout(400);
   const mid = await p.evaluate(() => LE.engine.thing(LE.studio.index).position);
-  check(Math.abs(mid[0] - (ends[0][0] + ends[1][0]) / 2) < 1e-3 && Math.abs(mid[2] - (ends[0][2] + ends[1][2]) / 2) < 1e-3, name + ': at 1 s the box is half way between its two keys');
+  // between two smooth keys the box is u*u*(3 - 2u) of the way at the share u of the time (half way at half time);
+  // the click lands on a frame near 1 s, so the share is taken from the white line's own moment
+  const share = await p.evaluate(() => { const u = LE.studio.moment / 2; return u * u * (3 - 2 * u); });
+  check(share > 0.4 && share < 0.6 && [0, 2].every((k) => Math.abs(mid[k] - (ends[0][k] + (ends[1][k] - ends[0][k]) * share)) < 1e-3), name + ': near 1 s the box is half way between its two keys');
   await p.screenshot({ path: `${OUT}/${name}_studio.png` });
   await tool('Play');
   // the world's clock runs slower than a real one on a drawn-by-software test machine: wait for the end, not for a time
@@ -94,14 +97,47 @@ async function run(browser, name, viewport, touch) {
   check((await lines('^  key')).length === 1 && await p.evaluate(() => LE.engine.clips().find((c) => c.target === LE.studio.index).channels[0].keys.length === 1), name + ': undo takes the second key back, in the script and in the engine');
   await p.click('#redoBtn'); await p.waitForTimeout(600);
   check((await lines('^  key')).length === 2, name + ': redo brings it back');
+  // the curve: the second key arrives held, then free with a handle pulled, then smooth again
+  await p.mouse.click(strip.x + strip.w * 0.5, strip.y + 26 + 18); await p.waitForTimeout(500);
+  check(await p.evaluate(() => LE.studio.key && Math.abs(LE.studio.key.t - 2) < 1e-6 && !!document.querySelector('canvas.curve')), name + ': a tap on a diamond picks the key and shows its curve');
+  await tool('Held'); await p.waitForTimeout(500);
+  check((await lines('^  key 2 s, at: vec\\(.*ease: "hold"')).length === 1, name + ': Held writes ease: "hold"');
+  await p.evaluate(() => { const r = document.querySelector('.kt-touch').getBoundingClientRect(); window.scrollTo(0, 0); document.getElementById('sheetBody').scrollTop = 0; return r; });
+  const strip2 = await p.evaluate(() => { const r = document.querySelector('.kt-touch').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; });
+  await p.mouse.click(strip2.x + strip2.w * 0.375, strip2.y + 10); await p.waitForTimeout(400);
+  const heldAt = await p.evaluate(() => LE.engine.thing(LE.studio.index).position);
+  check(Math.abs(heldAt[0] - ends[0][0]) < 1e-4 && Math.abs(heldAt[2] - ends[0][2]) < 1e-4, name + ': a held key keeps the box still until its moment');
+  await p.mouse.click(strip2.x + strip2.w * 0.5, strip2.y + 26 + 18); await p.waitForTimeout(500);
+  await tool('Free'); await p.waitForTimeout(600);
+  // the curve is drawn on the page's next frame, which a slow test machine may take a while to reach
+  await p.waitForFunction(() => LE.curves.shown && LE.curves.shown.handles.some((x) => x.side === 'in'), null, { timeout: 20000 }).catch(() => {});
+  check((await lines('^  key 2 s, at: vec\\(.*, in: vec\\(.*, out: vec\\(')).length === 1, name + ': Free gives the key its own slopes (in and out)');
+  const handle = await p.evaluate(() => {
+    const c = document.querySelector('canvas.curve');
+    c.scrollIntoView({ block: 'center' });
+    const r = c.getBoundingClientRect(), hd = LE.curves.shown.handles.find((x) => x.side === 'in');
+    return hd ? { x: r.left + hd.x, y: r.top + hd.y } : null;
+  });
+  check(!!handle, name + ': a free key shows its handle');
+  if (handle) {
+    const before = (await lines('^  key 2 s'))[0];
+    await p.mouse.move(handle.x, handle.y); await p.mouse.down();
+    for (let i = 1; i <= 6; i++) { await p.mouse.move(handle.x, handle.y + i * 6); await p.waitForTimeout(30); }
+    await p.mouse.up(); await p.waitForTimeout(600);
+    const after = (await lines('^  key 2 s'))[0];
+    check(after !== before && /in: vec\(/.test(after), name + ': pulling a handle reshapes the curve (' + after.trim() + ')');
+    await p.screenshot({ path: `${OUT}/${name}_curve.png` });
+  }
+  await tool('Smooth'); await p.waitForTimeout(500);
+  check((await lines('^  key 2 s, at: vec\\([^)]*\\)$')).length === 1, name + ': Smooth takes the slopes away again');
+  await p.evaluate(() => { document.getElementById('sheetBody').scrollTop = 0; });
   await tool('Starts again'); await p.waitForTimeout(500);
   check((await lines('^clip box_1, loop: yes')).length === 1, name + ': Starts again writes loop: yes');
   await tool('Done'); await p.waitForTimeout(2500);
   check(await p.evaluate(() => !LE.studio.open && LE.logic.problems.length === 0), name + ': Done goes back to the world, and the script has no problems');
   const x0 = await p.evaluate(() => LE.engine.thing(LE.view.sel.index).position[0]);
-  await p.waitForTimeout(500);
-  const x1 = await p.evaluate(() => LE.engine.thing(LE.view.sel.index).position[0]);
-  check(Math.abs(x1 - x0) > 1e-3, name + ': back in the world the box moves by its keys');
+  const went = await p.waitForFunction((x) => Math.abs(LE.engine.thing(LE.view.sel.index).position[0] - x) > 1e-3, x0, { timeout: 20000 }).then(() => true, () => false);
+  check(went, name + ': back in the world the box moves by its keys');
   // the library: a tap on one of its pieces brings it in (its use line, once) and places it
   await p.evaluate(() => LE.view.select(null)); await p.waitForTimeout(400);
   const things0 = await p.evaluate(() => LE.spaces.refreshInfo().things.length);
@@ -141,8 +177,10 @@ async function run(browser, name, viewport, touch) {
 
 (async () => {
   const browser = await chromium.launch({ headless: false, args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-webgpu-adapter=swiftshader', '--disable-vulkan-surface'] });
-  await run(browser, 'phone', { width: 430, height: 932 }, true);
-  await run(browser, 'computer', { width: 1440, height: 900 }, false);
+  // a third word, phone or computer, runs only that one
+  const only = process.argv[4];
+  if (only !== 'computer') await run(browser, 'phone', { width: 430, height: 932 }, true);
+  if (only !== 'phone') await run(browser, 'computer', { width: 1440, height: 900 }, false);
   await browser.close();
   console.log(failed ? failed + ' failed' : 'the editor works');
   process.exit(failed ? 1 : 0);

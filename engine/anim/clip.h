@@ -100,7 +100,8 @@ std::string wayName(Way way, Ease ease);
 // A clip as data for the editor, and back: {"name", "for", "rate", "length"
 // (0: to its last key), "duration", "loop": "once" | "loop" | "back and
 // forth", "channels": [{"name", "size", "angle", "keys": [{"t", "v": [..],
-// "way", "in": [..], "out": [..]}]}]}. Reading takes what is there and
+// "way", "in": [..], "out": [..], "slopeIn", "slopeOut" (the slopes it has
+// now, for drawing handles; never read back)}]}]}. Reading takes what is there and
 // leaves the rest as it was; false with the reason when something is wrong.
 Json clipJson(const Clip& clip);
 bool clipFromJson(const Json& j, Clip& clip, std::string* why = nullptr);

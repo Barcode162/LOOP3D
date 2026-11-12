@@ -269,10 +269,17 @@ Json clipJson(const Clip& clip) {
       for (int i = 0; i < c.size; ++i) a.push(Json(static_cast<double>(v[i])));
       return a;
     };
-    for (const Key& k : c.keys) {
+    const bool cyclic = clip.repeat == Repeat::kLoop;
+    const double period = clip.duration();
+    for (size_t i = 0; i < c.keys.size(); ++i) {
+      const Key& k = c.keys[i];
       Json key = Json::object();
       key.set("t", Json(k.time)), key.set("v", numbers(k.v)), key.set("way", Json(wayName(k.way, k.ease)));
       if (k.free) key.set("in", numbers(k.in)), key.set("out", numbers(k.out));
+      // the slopes the curve has at this key now (worked out, or its own): for the editor's handles; not read back
+      float in[4], out[4];
+      for (int n = 0; n < c.size; ++n) in[n] = c.slope(static_cast<int>(i), n, false, cyclic, period), out[n] = c.slope(static_cast<int>(i), n, true, cyclic, period);
+      key.set("slopeIn", numbers(in)), key.set("slopeOut", numbers(out));
       keys.push(key);
     }
     ch.set("keys", keys);

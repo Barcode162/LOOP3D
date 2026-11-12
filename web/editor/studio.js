@@ -20,7 +20,8 @@ window.LE = window.LE || {};
   LE.studio = ST;
   const EMPTY = { channels: [], length: 0, loop: 'once', rate: 30 };
   const clone = (o) => JSON.parse(JSON.stringify(o));
-  const pack = (c) => ({ channels: clone(c.channels), length: c.length, loop: c.loop, rate: c.rate });
+  // a clip as the Studio changes and keeps it: its keys without the slopes the engine reports beside them
+  const pack = (c) => ({ channels: c.channels.map((ch) => ({ name: ch.name, size: ch.size, angle: ch.angle, keys: ch.keys.map((k) => ({ t: k.t, v: k.v.slice(), way: k.way, ...(k.in ? { in: k.in.slice() } : {}), ...(k.out ? { out: k.out.slice() } : {}) })) })), length: c.length, loop: c.loop, rate: c.rate });
   const clipOf = (index) => E.clips().find((c) => c.kind === 't' && c.target === (index ?? ST.index)) || null;
   const rate = () => (ST.clip && ST.clip.rate) || 30;
   const snap = (t) => Math.max(0, Math.round(t * rate()) / rate());
