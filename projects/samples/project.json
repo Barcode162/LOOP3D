@@ -14,7 +14,8 @@
     "roughness",
     "surface_box",
     "surface_linen",
-    "keys"
+    "keys",
+    "skeleton"
   ],
   "stills": "stills"
 }

@@ -44,7 +44,7 @@ about 70 and the rest follow by rule. The standard human:
 
 | Ring | Bones | What they are | Who moves them |
 |---|---|---|---|
-| 1 · The ones you move | **67** | Root, hips, 4 spine, 2 neck, head; each arm: collar, upper arm, forearm, hand, and 19 in the hand (4 fingers of a palm bone and 3, a thumb of 3); each leg: thigh, shin, foot, ball; 2 eyes, jaw | You, by dragging; clips key these |
+| 1 · The ones you move | **66** | Root, hips, 4 spine, 2 neck, head; each arm: collar, upper arm, forearm, hand, and 19 in the hand (4 fingers of a palm bone and 3, a thumb of 3); each leg: thigh, shin, foot, ball; 2 eyes, jaw | You, by dragging; clips key these |
 | 2 · The ones that follow | **about 110** | Twist bones along upper arm, forearm, thigh and shin (22); volume helpers at shoulder, elbow, wrist, hip, knee, ankle, knuckles (30); shoulder blades; every toe (28); ribs that breathe, belly, soft parts on springs; chains for hair, tails and loose cloth | Rules, from ring 1, every frame |
 | 3 · The face | **about 150** | Lids, brows, cheeks, nose, a ring of about 40 round the lips, tongue, teeth, ears, throat, with about 50 shape keys for what bones cannot do | About 30 face sliders drive them |
 
@@ -76,7 +76,7 @@ same brush engine paints bone weights and colours. Mirrored left to right by def
 | | Target |
 |---|---|
 | One hero body, close | 330 bones, 40 to 60 thousand triangles, 4 bones a point |
-| A body at 5 m / 15 m / a crowd | 180 / 67 / 25 bones: rings 3 then 2 fall away with distance |
+| A body at 5 m / 15 m / a crowd | 180 / 66 / 25 bones: rings 3 then 2 fall away with distance |
 | Working out all bones of one body, 10 layers | under 0.3 ms |
 | Sculpting | 300 thousand points with the brush following the thumb; a million in film |
 | Scrubbing the timeline | the pose under the thumb every frame |
@@ -118,7 +118,7 @@ These are the seams. They are decided once, by the lead, before any helper build
    (`library/clips/`) made for a skeleton by name, so every body of that skeleton can play it.
 8. **Changing a pose writes a key.** No separate "record" button to forget: on the Move bench, what you change
    at a moment is kept at that moment (undo takes it back). Nothing is lost, as everywhere in the editor.
-9. **Posing is grabbing.** On a phone you do not turn 67 bones with rings. You grab a hand and pull, the body
+9. **Posing is grabbing.** On a phone you do not turn 66 bones with rings. You grab a hand and pull, the body
    follows within its joint limits, and a tap pins what must stay (a foot on the floor, a hand on a rail).
    Turning one bone by hand is still there, second. This needs a whole-body solver with limits (T-P1).
 10. **Skinned things are drawn by their own path.** Live: bones go to the graphics chip once a frame and bend
@@ -233,7 +233,7 @@ Proof:  QUICK; editor_check.js: a key set to "held" keeps the box still until th
 See:    goal 2: the same slide, now starting gently and landing softly.
 ```
 ```
-T-B1 · The standard skeleton, ring 1: 67 bones, names, limits       hand: lead      size: M
+T-B1 · The standard skeleton, ring 1: 66 bones, names, limits       hand: lead      size: M
 Read:   engine/anim/anim.cpp (humanSkeleton), docs/STUDIO.md sections 2 and 3 (5, 6)
 Touch:  library/skeletons/human.loop (new), engine/anim/skeleton.h, engine/anim/skeleton.cpp (new),
         engine/project/library.* (the kind `skeletons`), tests/skeleton_test.cpp (new), CMakeLists.txt
@@ -242,7 +242,7 @@ Do:     1. The format: name, parent, rest, ring, limits in bend, side, twist, mi
         2. Ring 1 written out, proportions from measured bodies, limits from the published ranges of motion,
            each with its source in the card.
         3. A pose held to its limits (the nearest allowed turn, never a snap).
-Proof:  QUICK; tests: 67 bones, every left bone has its right; the rest pose stands 1.75 m; every limit holds
+Proof:  QUICK; tests: 66 bones, every left bone has its right; the rest pose stands 1.75 m; every limit holds
         when a pose is pushed past it; `loop library check` passes the entry with its credit and licence.
 Not:    rings 2 and 3 (T-B2, T-B3); any change to the walker (T-B6 maps it).
 ```

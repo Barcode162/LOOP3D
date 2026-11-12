@@ -1,0 +1,19 @@
+# The standard human skeleton: the 66 bones you move, standing at rest.
+# What to look at: the spine's gentle curve, the four bones of each finger,
+# the arms held 45 degrees out (half way through the shoulder's range, so it
+# can go as far up as down). A smaller one stands beside it: the same bones
+# at a child's height.
+title "The skeleton"
+mode "game"
+use "human"
+
+box size: vec(12, 0.1, 10), at: vec(0, -0.05, 0), material: "floorboards"
+box size: vec(12, 4, 0.1), at: vec(0, 2, -2.5), material: "plaster"
+
+bones("human", at: vec(0, 0, 0), turn: 180 deg)
+bones("human", at: vec(1.3, 0, 0), turn: 150 deg, height: 1.2)
+
+light(at: vec(-2, 3, 2.5), lumens: 3000, kelvin: 3000)
+light(at: vec(2.5, 2.5, 2), lumens: 1200, kelvin: 4500)
+sky "color", color: rgb(0.02, 0.02, 0.03), nits: 3
+camera at: vec(0.5, 1.15, 2.7), look_at: vec(0.5, 0.92, 0), lens: 35 mm
