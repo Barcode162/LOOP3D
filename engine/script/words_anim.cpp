@@ -305,6 +305,118 @@ void registerAnim(Vm& vm) {
     return Value();
   }, "key(moment, at | turn | tilt | roll | scale | visible (a lamp: at, lumens, color, kelvin), ease: \"smooth\" | \"line\" | \"hold\" | an ease's name, in, out): under a `clip` line, pins values to a moment; the engine fills in between");
 
+  // ---- skeleton: bones written down, one a line
+  vm.native("skeleton", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const std::string name = a.text(0, "name", "");
+    if (name.empty()) a.vm.fail("a skeleton needs a name, like `skeleton \"human\"` with its `bone` lines indented under it");
+    const Value* block = a.get(-1, "of");
+    if (!block) a.vm.fail("a skeleton needs its bones: `bone` lines indented under it");
+    if (s.readingBones) a.vm.fail("a skeleton can't be written inside another skeleton");
+    {
+      struct Reading {
+        Stage& s;
+        ~Reading() { s.readingBones = false; }
+      } reading{s};
+      s.bonesBeingRead.clear();
+      s.readingBones = true;
+      a.vm.call(*block, {});
+    }
+    std::vector<anim::BoneSpec> specs = std::move(s.bonesBeingRead);
+    s.bonesBeingRead.clear();
+    if (a.flag(-1, "mirror", true)) anim::addMirrors(specs);
+    anim::Skeleton sk;
+    std::string why;
+    int line = 0;
+    if (!anim::buildSkeleton(name, specs, sk, &why, &line)) a.vm.fail(why + (line > 0 ? " (the bone on line " + std::to_string(line) + ")" : ""));
+    s.skeletons[name] = std::move(sk);
+    return a.vm.text(name);
+  }, "skeleton(name, mirror: yes) with `bone` lines indented under it: a skeleton by name; every bone called left_… gets its right_… twin");
+
+  vm.native("bone", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    if (!s.readingBones) a.vm.fail("a bone belongs to a skeleton", "put it on an indented line under a `skeleton` line");
+    anim::BoneSpec b;
+    b.line = a.line;
+    b.name = a.text(0, "name", "");
+    if (b.name.empty()) a.vm.fail("a bone starts with its name, like `bone \"left_forearm\", parent: \"left_upper_arm\", from: vec(…), to: vec(…)`");
+    b.parent = a.text(-1, "parent", "");
+    b.from = a.vec(-1, "from", Vec3(0));
+    b.to = a.vec(-1, "to", b.from + Vec3(0, 0.1f, 0));
+    b.bends = a.vec(-1, "bends", Vec3(0, 0, -1));
+    b.ring = static_cast<int>(a.num(-1, "ring", 1));
+    if (b.ring < 1 || b.ring > 3) a.vm.fail("a bone's `ring` is 1 (the ones you move), 2 (the ones that follow) or 3 (the face)");
+    b.free = a.flag(-1, "free", false);
+    // how far it turns from rest, each as [least, most]; a turn not named does not happen
+    const char* turns[3] = {"bend", "side", "twist"};
+    for (int k = 0; k < 3; ++k) {
+      const Value* v = a.get(-1, turns[k]);
+      if (!v) continue;
+      List* l = v->as<List>();
+      if (!l || l->items.size() != 2 || !l->items[0].isNumber() || !l->items[1].isNumber())
+        a.vm.fail(std::string("a bone's `") + turns[k] + "` is its least and most, like " + turns[k] + ": [-10 deg, 150 deg]");
+      b.lo[k] = f32(l->items[0].n), b.hi[k] = f32(l->items[1].n);
+    }
+    for (const auto& named : a.named) {
+      static const std::vector<std::string> known = {"name", "parent", "from", "to", "bends", "ring", "free", "bend", "side", "twist"};
+      if (std::find(known.begin(), known.end(), named.first) != known.end()) continue;
+      std::string c = closest(named.first, known);
+      a.vm.fail("a bone has no `" + named.first + "`", c.empty() ? "it has: parent, from, to, bends, bend, side, twist, free, ring" : "did you mean `" + c + "`?");
+    }
+    s.bonesBeingRead.push_back(std::move(b));
+    return Value();
+  }, "bone(name, parent, from, to, bends, bend: [least, most], side: [..], twist: [..], free: no, ring: 1): under a `skeleton` line; where it starts and ends in the rest pose, the way a positive bend carries its tip, and how far it turns");
+
+  // ---- bones: a skeleton shown, each bone a slim shape from its start to its tip
+  vm.native("bones", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const std::string name = a.text(0, "skeleton", "");
+    auto found = s.skeletons.find(name);
+    if (found == s.skeletons.end()) {
+      std::vector<std::string> names;
+      for (const auto& k : s.skeletons) names.push_back(k.first);
+      std::string c = closest(name, names);
+      a.vm.fail("there's no skeleton called \"" + name + "\"", c.empty() ? "bring one in first, like `use \"human\"`" : "did you mean \"" + c + "\"?");
+    }
+    const anim::Skeleton& sk = found->second;
+    const float tall = anim::standingHeight(sk);
+    const float k = a.has(-1, "height") && tall > 0 ? f32(a.num(-1, "height", tall)) / tall : 1;
+    Transform root;
+    root.position = a.vec(-1, "at", Vec3(0));
+    root.rotation = Quat::axisAngle({0, 1, 0}, f32(a.num(-1, "turn", 0)));
+    root.scale = Vec3(k);
+    // one shape for every bone: a slim eight-sided stone, widest a tenth of the way along
+    int mesh = cachedMesh(s, "bone shape", [] {
+      Mesh m;
+      const Vec3 base{0, 0, 0}, tip{0, 1, 0};
+      const Vec3 ring[4] = {{1, 0.12f, 0}, {0, 0.12f, 1}, {-1, 0.12f, 0}, {0, 0.12f, -1}};
+      auto tri = [&](Vec3 p, Vec3 q, Vec3 r) {
+        const Vec3 n = normalize(cross(q - p, r - p));
+        uint32_t i = m.addVertex(p, n, {0, 0});
+        m.addVertex(q, n, {1, 0}), m.addVertex(r, n, {0, 1});
+        m.addTriangle(i, i + 1, i + 2);
+      };
+      for (int i = 0; i < 4; ++i) tri(ring[i], tip, ring[(i + 1) % 4]), tri(base, ring[i], ring[(i + 1) % 4]);
+      return m;
+    });
+    const Value* made = a.get(-1, "material") ? a.get(-1, "material") : a.get(-1, "made_of");
+    const int mat = made ? materialFrom(a.vm, *made) : materialFrom(a.vm, a.vm.text("porcelain"));
+    const std::vector<Transform> w = anim::Pose::rest(sk).world(sk, root);
+    std::vector<int> parts;
+    for (size_t i = 0; i < sk.bones.size(); ++i) {
+      const float len = sk.bones[i].length * k;
+      if (len <= 0) continue;
+      const float wide = std::clamp(len * 0.09f, 0.0025f, 0.03f);
+      const int pi = placePart(s, mesh, mat, w[i].position, 0, Vec3(wide, len, wide));
+      Stage::Placed& p = s.placed[pi];
+      p.quat = w[i].rotation, p.useQuat = true, p.name = sk.bones[i].name, p.line = a.line;
+      s.updateTransform(pi);
+      parts.push_back(pi);
+    }
+    ++s.version;
+    return newGroup(a.vm, s, parts, root.position);
+  }, "bones(skeleton, at, turn, height, material): shows a skeleton by name in its rest pose, each bone a slim shape from its start to its tip");
+
   // ---- the clip as a value
   vm.method("clip", "play", [](Args& a) {
     Thing* t = a.self.as<Thing>();

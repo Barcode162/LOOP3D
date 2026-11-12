@@ -18,9 +18,17 @@ struct Bone {
   std::string name;
   int parent = -1;
   Transform rest;  // relative to the parent
+  // What a standard skeleton says of each bone (engine/anim/skeleton.h); the
+  // walker's own small skeleton leaves these as they are.
+  float length = 0;    // along the bone's own Y, to its tip (metres)
+  int ring = 1;        // 1 the ones you move, 2 the ones that follow, 3 the face
+  bool free = true;    // no limits (the root, the hips; every bone of a skeleton made in code)
+  Vec3 lo{0}, hi{0};   // how far it turns from its rest: the least and most bend, side, twist (radians)
+  int mirror = -1;     // its partner on the other side (-1: it has none)
 };
 
 struct Skeleton {
+  std::string name;    // "human" (a standard skeleton), or "" for one made in code
   std::vector<Bone> bones;
   int add(const std::string& name, int parent, Vec3 offset);
   int find(const std::string& name) const;

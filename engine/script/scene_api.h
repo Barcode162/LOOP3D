@@ -19,6 +19,7 @@
 
 #include "engine/anim/anim.h"
 #include "engine/anim/clip.h"
+#include "engine/anim/skeleton.h"
 #include "engine/core/json.h"
 #include "engine/audio/audio.h"
 #include "engine/audio/music.h"
@@ -115,6 +116,10 @@ struct Stage {
     double startSpeed = 1;   // and at this speed
   };
   std::deque<Playing> clips;
+  // Standard skeletons by name (the words `skeleton` and `bone`; engine/anim/skeleton.h).
+  std::map<std::string, anim::Skeleton> skeletons;
+  std::vector<anim::BoneSpec> bonesBeingRead;  // the bones of the skeleton whose lines are being read
+  bool readingBones = false;
   std::vector<int> clipsBeingRead;  // clips whose lines are being read: `key` adds to the last
   // Puts a clip's target where the clip is at its moment. True when something changed.
   bool showClip(int clip);
