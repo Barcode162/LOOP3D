@@ -17,6 +17,7 @@
 
 #include "engine/anim/anim.h"
 #include "engine/core/ease.h"
+#include "engine/core/json.h"
 #include "engine/core/math.h"
 
 namespace loop::anim {
@@ -88,6 +89,20 @@ Quat turnFromBendSideTwist(Vec3 bst);
 // The other way. Of the twists that give the same turn, the one nearest
 // `nearTwist` (so a recording's twist never jumps a full turn).
 Vec3 bendSideTwistFromTurn(Quat q, float nearTwist = 0);
+
+// How a key arrives, by the name scripts and the editor use: "smooth", "line",
+// "hold", or an ease's name ("in", "out", "back", "bounce" ...). False for a
+// name that is none of them.
+bool wayByName(const std::string& name, Way& way, Ease& ease);
+std::string wayName(Way way, Ease ease);
+
+// A clip as data for the editor, and back: {"name", "for", "rate", "length"
+// (0: to its last key), "duration", "loop": "once" | "loop" | "back and
+// forth", "channels": [{"name", "size", "angle", "keys": [{"t", "v": [..],
+// "way", "in": [..], "out": [..]}]}]}. Reading takes what is there and
+// leaves the rest as it was; false with the reason when something is wrong.
+Json clipJson(const Clip& clip);
+bool clipFromJson(const Json& j, Clip& clip, std::string* why = nullptr);
 
 // A number as a person would write it: at most `decimals`, no "-0", no "1.500".
 std::string plainNumber(double n, int decimals = 3);

@@ -236,13 +236,112 @@ std::string written(const Channel& c, const float* v) {
 }
 
 std::string wayText(const Key& k) {
-  if (k.way == Way::kLine) return ", ease: \"line\"";
-  if (k.way == Way::kHold) return ", ease: \"hold\"";
-  if (k.way == Way::kEase) return std::string(", ease: \"") + easeName(k.ease) + "\"";
-  return "";
+  return k.way == Way::kSmooth ? "" : ", ease: \"" + wayName(k.way, k.ease) + "\"";
 }
 
 }  // namespace
+
+bool wayByName(const std::string& w, Way& way, Ease& ease) {
+  if (w == "smooth") way = Way::kSmooth;
+  else if (w == "line" || w == "straight" || w == "linear") way = Way::kLine;
+  else if (w == "hold" || w == "held" || w == "step") way = Way::kHold;
+  else if (easeByName(w, ease)) way = Way::kEase;
+  else return false;
+  return true;
+}
+
+std::string wayName(Way way, Ease ease) {
+  return way == Way::kSmooth ? "smooth" : way == Way::kLine ? "line" : way == Way::kHold ? "hold" : easeName(ease);
+}
+
+Json clipJson(const Clip& clip) {
+  Json o = Json::object();
+  o.set("name", Json(clip.name)), o.set("for", Json(clip.skeleton));
+  o.set("rate", Json(clip.rate)), o.set("length", Json(clip.length)), o.set("duration", Json(clip.duration()));
+  o.set("loop", Json(std::string(clip.repeat == Repeat::kLoop ? "loop" : clip.repeat == Repeat::kBackAndForth ? "back and forth" : "once")));
+  Json channels = Json::array();
+  for (const Channel& c : clip.channels) {
+    Json ch = Json::object();
+    ch.set("name", Json(c.name)), ch.set("size", Json(c.size)), ch.set("angle", Json(c.angle));
+    Json keys = Json::array();
+    auto numbers = [&](const float* v) {
+      Json a = Json::array();
+      for (int i = 0; i < c.size; ++i) a.push(Json(static_cast<double>(v[i])));
+      return a;
+    };
+    for (const Key& k : c.keys) {
+      Json key = Json::object();
+      key.set("t", Json(k.time)), key.set("v", numbers(k.v)), key.set("way", Json(wayName(k.way, k.ease)));
+      if (k.free) key.set("in", numbers(k.in)), key.set("out", numbers(k.out));
+      keys.push(key);
+    }
+    ch.set("keys", keys);
+    channels.push(ch);
+  }
+  o.set("channels", channels);
+  return o;
+}
+
+bool clipFromJson(const Json& j, Clip& clip, std::string* why) {
+  auto fail = [&](const std::string& what) {
+    if (why) *why = what;
+    return false;
+  };
+  if (!j.isObject()) return fail("a clip is an object");
+  Clip next = clip;  // nothing changes unless all of it reads
+  if (j.has("name")) next.name = j["name"].string();
+  if (j.has("for")) next.skeleton = j["for"].string();
+  if (j.has("rate")) {
+    next.rate = j["rate"].number(30);
+    if (next.rate <= 0) return fail("a clip's rate is frames a second, above 0");
+  }
+  if (j.has("length")) next.length = std::max(0.0, j["length"].number());
+  if (j.has("loop")) {
+    const Json& l = j["loop"];
+    const std::string w = l.isString() ? l.string() : l.boolean() ? "loop" : "once";
+    if (w == "loop" || w == "yes") next.repeat = Repeat::kLoop;
+    else if (w == "back and forth") next.repeat = Repeat::kBackAndForth;
+    else if (w == "once" || w == "no") next.repeat = Repeat::kOnce;
+    else return fail("a clip's loop is \"once\", \"loop\" or \"back and forth\"");
+  }
+  if (j.has("channels")) {
+    if (!j["channels"].isArray()) return fail("a clip's channels are a list");
+    next.channels.clear();
+    for (const Json& ch : j["channels"].items()) {
+      Channel c;
+      c.name = ch["name"].string();
+      c.size = static_cast<int>(ch["size"].number(1));
+      c.angle = ch["angle"].boolean();
+      if (c.name.empty() || c.size < 1 || c.size > 4) return fail("a channel needs a name and 1 to 4 numbers");
+      for (const Json& kj : ch["keys"].items()) {
+        Key k;
+        k.time = kj["t"].number(-1);
+        if (k.time < 0) return fail("a key's moment can't be before the clip starts");
+        auto numbers = [&](const Json& a, float* into) {
+          if (a.isNumber() && c.size == 1) return into[0] = static_cast<float>(a.number()), true;
+          if (!a.isArray() || static_cast<int>(a.size()) != c.size) return false;
+          for (int i = 0; i < c.size; ++i) into[i] = static_cast<float>(a[static_cast<size_t>(i)].number());
+          return true;
+        };
+        if (!numbers(kj["v"], k.v)) return fail("a key of `" + c.name + "` needs " + std::to_string(c.size) + " number(s)");
+        if (kj.has("way") && !wayByName(kj["way"].string(), k.way, k.ease)) return fail("there's no way to arrive called \"" + kj["way"].string() + "\"");
+        if (kj.has("in") || kj.has("out")) {
+          k.free = true;
+          if ((kj.has("in") && !numbers(kj["in"], k.in)) || (kj.has("out") && !numbers(kj["out"], k.out))) return fail("a key's slopes are shaped like its value");
+          if (!kj.has("in")) std::copy(k.out, k.out + 4, k.in);
+          if (!kj.has("out")) std::copy(k.in, k.in + 4, k.out);
+        }
+        // kept in order of time; a second key at the same moment replaces the first
+        Key& placed = c.set(k.time, k.v);
+        const double t = placed.time;
+        placed = k, placed.time = t;
+      }
+      next.channels.push_back(std::move(c));
+    }
+  }
+  clip = std::move(next);
+  return true;
+}
 
 std::string Clip::script(const std::string& target, const std::string& indent) const {
   std::string out = indent + "clip " + target;

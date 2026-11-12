@@ -48,6 +48,14 @@ window.LE = window.LE || {};
   E.view = () => { if (!has('loop_view')) return null; try { return JSON.parse(read(E.M._loop_view())); } catch (e) { return null; } };
   E.thing = (i) => { if (!has('loop_thing') || i < 0) return null; try { return JSON.parse(read(E.M._loop_thing(i))); } catch (e) { return null; } };
   E.thingSet = (i, o) => (has('loop_thing_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_thing_set(i, p)) : 0);
+  // keys (web/player.cpp: loop_clips, loop_clip_set, loop_clip_moment, loop_clip_curve)
+  E.clips = () => { if (!has('loop_clips')) return []; try { return JSON.parse(read(E.M._loop_clips())); } catch (e) { return []; } };
+  E.clipSet = (i, o) => (has('loop_clip_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_clip_set(i, p)) : -1);
+  E.clipMoment = (i) => (has('loop_clip_moment') ? E.M._loop_clip_moment(i) : -1);
+  E.clipCurve = (i, channel, from, to, count) => {
+    if (!has('loop_clip_curve')) return [];
+    try { return JSON.parse(withStr(channel, (p) => read(E.M._loop_clip_curve(i, p, from, to, count)))); } catch (e) { return []; }
+  };
   E.musicSet = (o) => (has('loop_music_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_music_set(p)) : 0);
   E.musicStep = () => (has('loop_music_step') ? E.M._loop_music_step() : -1);
   E.capture = () => new Promise((resolve) => {

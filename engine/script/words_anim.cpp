@@ -248,11 +248,7 @@ void registerAnim(Vm& vm) {
     Ease ease = Ease::kInOut;
     if (const Value* e = a.get(-1, "ease")) {
       const std::string w = e->isString() ? e->str() : "";
-      if (w == "smooth") way = anim::Way::kSmooth;
-      else if (w == "line" || w == "straight" || w == "linear") way = anim::Way::kLine;
-      else if (w == "hold" || w == "held" || w == "step") way = anim::Way::kHold;
-      else if (easeByName(w, ease)) way = anim::Way::kEase;
-      else {
+      if (!anim::wayByName(w, way, ease)) {
         std::string c = closest(w, {"smooth", "line", "hold", "in", "out", "in_out", "smoother", "sine", "back", "elastic", "bounce", "spring"});
         a.vm.fail("a key's `ease` is how it arrives: \"smooth\", \"line\", \"hold\", or an ease like \"in\", \"out\", \"back\", \"bounce\"", c.empty() ? "" : "did you mean \"" + c + "\"?");
       }

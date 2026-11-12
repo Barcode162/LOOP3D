@@ -205,3 +205,33 @@ TEST(clip_writes_itself_as_script) {
         "  key 2 s, turn: 90 deg, ease: \"line\"\n");
   CHECK(plainNumber(1.5) == "1.5" && plainNumber(-0.0001) == "0" && plainNumber(0.0333333) == "0.033");
 }
+
+TEST(clip_goes_to_the_editor_and_comes_back) {
+  Clip clip;
+  clip.repeat = Repeat::kBackAndForth, clip.length = 4, clip.rate = 24;
+  Channel& at = clip.channel("at", 3);
+  Channel& turn = clip.channel("turn", 1, true);
+  key(at, 0, -2, 0.5f, 0);
+  Key& free = key(at, 1, 0, 1.25f, 0);
+  free.free = true, free.in[1] = 0.5f, free.out[1] = -0.5f;
+  Key& b = key(turn, 2, kPi / 2);
+  b.way = Way::kEase, b.ease = Ease::kBounce;
+  const std::string before = clip.script("crate");
+  Clip back;
+  std::string why;
+  CHECK(clipFromJson(clipJson(clip), back, &why));
+  CHECK(back.script("crate") == before);
+  CHECK_NEAR(clipJson(clip)["duration"].number(), 4, 1e-9);
+  // the text of it, as the page sends it
+  Json parsed;
+  CHECK(Json::parse(clipJson(clip).dump(), parsed) && clipFromJson(parsed, back, &why) && back.script("crate") == before);
+  // only what is given changes; a wrong part changes nothing and says why
+  Json part;
+  CHECK(Json::parse("{\"loop\": \"loop\"}", part) && clipFromJson(part, back));
+  CHECK(back.repeat == Repeat::kLoop && back.channels.size() == 2);
+  CHECK(Json::parse("{\"length\": 9, \"channels\": [{\"name\": \"at\", \"size\": 3, \"keys\": [{\"t\": 0, \"v\": [1, 2]}]}]}", part));
+  CHECK(!clipFromJson(part, back, &why) && why.find("3 number") != std::string::npos);
+  CHECK(back.length == 4 && back.channels.size() == 2);
+  CHECK(Json::parse("{\"channels\": [{\"name\": \"x\", \"size\": 1, \"keys\": [{\"t\": 2, \"v\": 5}, {\"t\": 1, \"v\": [3], \"way\": \"hold\"}]}]}", part));
+  CHECK(clipFromJson(part, back) && back.channels.size() == 1 && back.channels[0].keys[0].time == 1 && back.channels[0].keys[0].way == Way::kHold);
+}

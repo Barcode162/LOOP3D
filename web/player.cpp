@@ -1068,6 +1068,95 @@ EMSCRIPTEN_KEEPALIVE int loop_thing_set(int index, const char* json) {
   return 1;
 }
 
+// ---- keys (engine/anim/clip.h; the words clip and key)
+
+// Every clip in the world: what it is on ("kind": "t" a thing, "l" a lamp,
+// "g" a group, "n" by name; "target": which one), its script line, where it
+// is in its time and whether it plays, and the clip itself (clipJson).
+EMSCRIPTEN_KEEPALIVE const char* loop_clips() {
+  static std::string out;
+  if (!g.stage) return "[]";
+  Json all = Json::array();
+  int index = 0;
+  for (const Stage::Playing& c : g.stage->clips) {
+    Json o = anim::clipJson(c.clip);
+    o.set("index", Json(index++)), o.set("kind", Json(std::string(1, c.kind))), o.set("target", Json(c.target)), o.set("line", Json(c.line));
+    o.set("moment", Json(c.clip.wrap(c.moment))), o.set("playing", Json(c.playing)), o.set("speed", Json(c.speed));
+    all.push(o);
+  }
+  out = all.dump();
+  return out.c_str();
+}
+
+// Changes a clip at once, without running the script again (the editor
+// writes the same change into the script). Any of: the clip's own settings
+// and channels (clipFromJson), "moment" (seconds: scrubbing; the world's time
+// does not move), "playing", "speed". With index -1 and {"kind": "t",
+// "target": 3} it makes a new clip on that thing, lamp or group. What the
+// clip moves is shown where the keys now say in the same frame. Returns the
+// clip's index, or -1 with the reason in the log.
+EMSCRIPTEN_KEEPALIVE int loop_clip_set(int index, const char* json) {
+  if (!g.stage) return -1;
+  Stage& st = *g.stage;
+  Json o;
+  if (!Json::parse(json ? json : "{}", o) || !o.isObject()) return -1;
+  if (index < 0) {
+    Stage::Playing p;
+    const std::string kind = o["kind"].string();
+    p.kind = kind.empty() ? 't' : kind[0];
+    p.target = static_cast<int>(o["target"].number(-1));
+    const int most = static_cast<int>(p.kind == 't' ? st.placed.size() : p.kind == 'l' ? st.scene.lights.size() : p.kind == 'g' ? st.groups.size() : 0);
+    if (p.target < 0 || p.target >= most) return -1;
+    p.line = static_cast<int>(o["line"].number(0));
+    p.playing = false;
+    st.clips.push_back(std::move(p));
+    index = static_cast<int>(st.clips.size() - 1);
+  }
+  if (index >= static_cast<int>(st.clips.size())) return -1;
+  Stage::Playing& c = st.clips[index];
+  std::string why;
+  if (!anim::clipFromJson(o, c.clip, &why)) {
+    logLine("a clip can't be changed: " + why);
+    return -1;
+  }
+  if (o.has("playing")) c.playing = o["playing"].boolean();
+  if (o.has("speed")) c.speed = o["speed"].number(1);
+  if (o.has("moment")) c.moment = std::max(0.0, o["moment"].number());
+  st.showClip(index);
+  if (!c.playing) st.collidersDirty = true;  // held: something to bump into where it now stands
+  return index;
+}
+
+// A clip's moment (seconds into itself), light enough to ask every frame; -1 if there is no such clip.
+EMSCRIPTEN_KEEPALIVE double loop_clip_moment(int index) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->clips.size())) return -1;
+  const Stage::Playing& c = g.stage->clips[index];
+  return c.clip.wrap(c.moment);
+}
+
+// One value of a clip between two moments, as the engine itself fills it in,
+// for drawing its curve: `count` rows of its numbers, evenly from `from` to
+// `to` seconds. What the editor draws is then what plays and what film renders.
+EMSCRIPTEN_KEEPALIVE const char* loop_clip_curve(int index, const char* channel, double from, double to, int count) {
+  static std::string out;
+  out = "[]";
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->clips.size()) || count < 2) return out.c_str();
+  const anim::Clip& clip = g.stage->clips[index].clip;
+  const anim::Channel* ch = clip.find(channel ? channel : "");
+  if (!ch) return out.c_str();
+  count = std::min(count, 4096);
+  Json rows = Json::array();
+  for (int i = 0; i < count; ++i) {
+    float v[4] = {0, 0, 0, 0};
+    clip.sample(*ch, from + (to - from) * i / (count - 1), v);
+    Json row = Json::array();
+    for (int k = 0; k < ch->size; ++k) row.push(Json(static_cast<double>(v[k])));
+    rows.push(row);
+  }
+  out = rows.dump();
+  return out.c_str();
+}
+
 // The music changed by the editor without running the script again (the
 // song keeps its place): {"tempo": 100, "swing": 0, "tracks": [{"instrument":
 // "kick", "pattern": "x...", "volume": 1}]}. 0, and nothing changed, if a
