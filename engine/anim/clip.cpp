@@ -343,14 +343,14 @@ bool clipFromJson(const Json& j, Clip& clip, std::string* why) {
   return true;
 }
 
-std::string Clip::script(const std::string& target, const std::string& indent) const {
+std::string Clip::script(const std::string& target, const std::string& indent, const std::string& more) const {
   std::string out = indent + "clip " + target;
   if (!skeleton.empty()) out += ", for: \"" + skeleton + "\"";
   if (length > 0) out += ", length: " + plainNumber(length) + " s";
   if (rate != 30) out += ", rate: " + plainNumber(rate);
   if (repeat == Repeat::kLoop) out += ", loop: yes";
   if (repeat == Repeat::kBackAndForth) out += ", loop: \"back and forth\"";
-  out += "\n";
+  out += more + "\n";
   // every moment that has a key, in order
   std::vector<double> moments;
   for (const Channel& c : channels)

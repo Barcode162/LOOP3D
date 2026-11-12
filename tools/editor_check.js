@@ -1,6 +1,6 @@
 // Checks the editor in a real browser, on a phone screen and a computer screen:
-// adds a box, taps it, drags it (its line is rewritten), undoes and redoes, places
-// a piece from the library,
+// adds a box, taps it, drags it (its line is rewritten), undoes and redoes, opens it in
+// the Studio (two keys, scrub, play, undo, Done), places a piece from the library,
 // opens Logic, adds a shot in Film, a sound and music in Sound, and reloads (nothing
 // lost). Pictures go to <out dir>; it fails if any step goes wrong.
 //   (cd site && python3 -m http.server 8123 &)
@@ -61,6 +61,47 @@ async function run(browser, name, viewport, touch) {
   check((await lines('^box'))[0] === box[0], name + ': undo puts it back');
   await p.click('#redoBtn'); await p.waitForTimeout(600);
   check((await lines('^box'))[0] === moved[0], name + ': redo moves it again');
+  // the Studio: open the box, give it two keys at two moments, scrub between them, play, undo, Done
+  const tool = (label) => p.evaluate((l) => { const b = [...document.querySelectorAll('#sheetBody button')].find((x) => x.textContent.trim() === l && x.offsetParent); if (!b) throw new Error('no button ' + l + ' in the sheet'); b.click(); }, label);
+  const dragThing = async (dx, dy) => {
+    const s = await spot();
+    await p.mouse.move(s.x, s.y); await p.mouse.down();
+    for (let i = 1; i <= 8; i++) { await p.mouse.move(s.x + dx * i / 8, s.y + dy * i / 8); await p.waitForTimeout(30); }
+    await p.mouse.up(); await p.waitForTimeout(700);
+  };
+  await tool('Open'); await p.waitForTimeout(600);
+  check(await p.evaluate(() => LE.studio.open && !!document.querySelector('.kt')), name + ': Open shows the Studio and its strip of time');
+  await dragThing(-60, 10);
+  const k1 = await lines('^  key');
+  check((await lines('^let box_1 = box\\(')).length === 1 && (await lines('^clip box_1')).length === 1 && k1.length === 1 && /^  key 0 s, at: vec\(/.test(k1[0]),
+    name + ': a move in the Studio names the box and keeps a key at 0 s (' + k1.join(' | ') + ')');
+  const strip = await p.evaluate(() => { const r = document.querySelector('.kt-touch').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; });
+  await p.mouse.click(strip.x + strip.w * 0.5, strip.y + 10); await p.waitForTimeout(400);
+  check(await p.evaluate(() => Math.abs(LE.studio.moment - 2) < 1e-6), name + ': a press on the strip moves the white line to 2 s');
+  await dragThing(120, -20);
+  const k2 = await lines('^  key');
+  check(k2.length === 2 && /^  key 2 s, at: vec\(/.test(k2[1]), name + ': a move at another moment is a second key (' + k2.join(' | ') + ')');
+  const ends = await p.evaluate(() => LE.engine.clips().find((c) => c.target === LE.studio.index).channels[0].keys.map((k) => k.v));
+  await p.mouse.click(strip.x + strip.w * 0.25, strip.y + 10); await p.waitForTimeout(400);
+  const mid = await p.evaluate(() => LE.engine.thing(LE.studio.index).position);
+  check(Math.abs(mid[0] - (ends[0][0] + ends[1][0]) / 2) < 1e-3 && Math.abs(mid[2] - (ends[0][2] + ends[1][2]) / 2) < 1e-3, name + ': at 1 s the box is half way between its two keys');
+  await p.screenshot({ path: `${OUT}/${name}_studio.png` });
+  await tool('Play');
+  // the world's clock runs slower than a real one on a drawn-by-software test machine: wait for the end, not for a time
+  await p.waitForFunction(() => !LE.studio.playing, null, { timeout: 60000 }).catch(() => {});
+  check(await p.evaluate(() => !LE.studio.playing && Math.abs(LE.studio.moment - 2) < 0.05), name + ': Play runs to the last key and stops there');
+  await p.click('#undoBtn'); await p.waitForTimeout(600);
+  check((await lines('^  key')).length === 1 && await p.evaluate(() => LE.engine.clips().find((c) => c.target === LE.studio.index).channels[0].keys.length === 1), name + ': undo takes the second key back, in the script and in the engine');
+  await p.click('#redoBtn'); await p.waitForTimeout(600);
+  check((await lines('^  key')).length === 2, name + ': redo brings it back');
+  await tool('Starts again'); await p.waitForTimeout(500);
+  check((await lines('^clip box_1, loop: yes')).length === 1, name + ': Starts again writes loop: yes');
+  await tool('Done'); await p.waitForTimeout(2500);
+  check(await p.evaluate(() => !LE.studio.open && LE.logic.problems.length === 0), name + ': Done goes back to the world, and the script has no problems');
+  const x0 = await p.evaluate(() => LE.engine.thing(LE.view.sel.index).position[0]);
+  await p.waitForTimeout(500);
+  const x1 = await p.evaluate(() => LE.engine.thing(LE.view.sel.index).position[0]);
+  check(Math.abs(x1 - x0) > 1e-3, name + ': back in the world the box moves by its keys');
   // the library: a tap on one of its pieces brings it in (its use line, once) and places it
   await p.evaluate(() => LE.view.select(null)); await p.waitForTimeout(400);
   const things0 = await p.evaluate(() => LE.spaces.refreshInfo().things.length);
@@ -92,7 +133,7 @@ async function run(browser, name, viewport, touch) {
   await p.reload();
   await ready();
   await p.waitForTimeout(1500);
-  check((await lines('^(box|shot|sound|track)')).length === 5, name + ': a reload keeps every change');
+  check((await lines('^(let box_1 = box|clip box_1|  key|shot|sound|track)')).length === 8, name + ': a reload keeps every change');
   check(await p.evaluate(() => LE.history.undo.length >= 4), name + ': and undo still knows them');
   check(!errs.length, name + ': no page errors' + (errs.length ? '\n' + errs.join('\n') : ''));
   await ctx.close();

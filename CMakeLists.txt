@@ -61,7 +61,7 @@ else()
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=64MB
     -sSTACK_SIZE=2MB
-    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_meter,_loop_capture,_loop_audio,_loop_choose,_loop_set_autoplay,_loop_perf_begin,_loop_perf_end,_loop_perf_part,_loop_perf_go,_loop_perf_graph,_loop_set_option,_loop_set_look,_loop_set_world,_loop_scene_json,_loop_log,_loop_set_setting,_loop_get_setting,_loop_settings_json,_loop_set_project_settings,_loop_edit_camera,_loop_pick,_loop_view,_loop_thing,_loop_thing_set,_loop_music_set,_loop_music_step,_loop_clips,_loop_clip_set,_loop_clip_moment,_loop_clip_curve"
+    "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_loop_run_script,_loop_key,_loop_move,_loop_look,_loop_set_mode,_loop_set_quality,_loop_emit,_loop_stats,_loop_meter,_loop_capture,_loop_audio,_loop_choose,_loop_set_autoplay,_loop_perf_begin,_loop_perf_end,_loop_perf_part,_loop_perf_go,_loop_perf_graph,_loop_set_option,_loop_set_look,_loop_set_world,_loop_scene_json,_loop_log,_loop_set_setting,_loop_get_setting,_loop_settings_json,_loop_set_project_settings,_loop_edit_camera,_loop_pick,_loop_view,_loop_thing,_loop_thing_set,_loop_music_set,_loop_music_step,_loop_clips,_loop_clip_set,_loop_clip_moment,_loop_clip_curve,_loop_clip_script,_loop_clip_playing"
     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString,stringToUTF8,lengthBytesUTF8,HEAPU8,HEAPF32,FS"
     -sFORCE_FILESYSTEM=1
     ${LOOP_OPT})

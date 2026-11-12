@@ -111,6 +111,8 @@ struct Stage {
     double speed = 1;   // 1 forwards, -1 backwards
     bool playing = true;
     bool moving = false;  // it changed its target in the last step
+    bool starts = true;      // what its line says: it plays from the start (`play: no` waits to be started)
+    double startSpeed = 1;   // and at this speed
   };
   std::deque<Playing> clips;
   std::vector<int> clipsBeingRead;  // clips whose lines are being read: `key` adds to the last

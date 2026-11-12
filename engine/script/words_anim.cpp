@@ -217,8 +217,9 @@ void registerAnim(Vm& vm) {
     p.clip.rate = a.num(-1, "rate", 30);
     if (p.clip.rate <= 0) a.vm.fail("a clip's `rate` is frames a second, above 0");
     if (const Value* loop = a.get(-1, "loop")) setRepeat(a.vm, p.clip, *loop);
-    p.playing = a.flag(-1, "play", true) && p.kind != 'n';
-    p.speed = a.num(-1, "speed", 1);
+    p.starts = a.flag(-1, "play", true);
+    p.playing = p.starts && p.kind != 'n';
+    p.speed = p.startSpeed = a.num(-1, "speed", 1);
     s.clips.push_back(std::move(p));
     const int ci = static_cast<int>(s.clips.size() - 1);
     if (const Value* block = a.get(-1, "of")) {

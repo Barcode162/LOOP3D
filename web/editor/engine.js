@@ -52,6 +52,8 @@ window.LE = window.LE || {};
   E.clips = () => { if (!has('loop_clips')) return []; try { return JSON.parse(read(E.M._loop_clips())); } catch (e) { return []; } };
   E.clipSet = (i, o) => (has('loop_clip_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_clip_set(i, p)) : -1);
   E.clipMoment = (i) => (has('loop_clip_moment') ? E.M._loop_clip_moment(i) : -1);
+  E.clipPlaying = (i) => (has('loop_clip_playing') ? !!E.M._loop_clip_playing(i) : false);
+  E.clipScript = (i, target, indent) => (has('loop_clip_script') ? withStr(target, (p) => withStr(indent || '', (q) => read(E.M._loop_clip_script(i, p, q)))) : '');
   E.clipCurve = (i, channel, from, to, count) => {
     if (!has('loop_clip_curve')) return [];
     try { return JSON.parse(withStr(channel, (p) => read(E.M._loop_clip_curve(i, p, from, to, count)))); } catch (e) { return []; }

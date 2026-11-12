@@ -78,7 +78,8 @@ struct Clip {
   // The clip as Looped Script: a `clip` line and its `key` lines under it.
   // `target` is what follows the word clip (a thing's name, or the clip's own
   // name in quotes); `indent` goes before every line.
-  std::string script(const std::string& target, const std::string& indent = "") const;
+  // `more` is added to the clip line's settings (", play: no").
+  std::string script(const std::string& target, const std::string& indent = "", const std::string& more = "") const;
 };
 
 // A bone's turn from its rest as three angles a person can read (radians):

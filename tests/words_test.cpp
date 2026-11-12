@@ -573,6 +573,10 @@ let lamp = light(at: vec(0, 2, 0), lumens: 1000)
   if (named->stage.clips.empty()) return;
   CHECK(named->stage.clips[0].clip.script("\"wave\"") == wave);
   CHECK(named->stage.clips[0].kind == 'n' && !named->stage.clips[0].playing);
+  // what its line said about starting is kept, for writing the line again
+  auto waits = runScene(std::string(scene) + "clip crate, play: no, speed: 2\n  key 0 s, turn: 0\n");
+  CHECK(waits->ok && !waits->stage.clips.empty() && !waits->stage.clips[0].starts && waits->stage.clips[0].startSpeed == 2);
+  if (!waits->stage.clips.empty()) CHECK(waits->stage.clips[0].clip.script("crate", "  ", ", play: no") == "  clip crate, play: no\n    key 0 s, turn: 0\n");
 }
 
 TEST(words_keys_name_their_problems) {

@@ -1082,6 +1082,7 @@ EMSCRIPTEN_KEEPALIVE const char* loop_clips() {
     Json o = anim::clipJson(c.clip);
     o.set("index", Json(index++)), o.set("kind", Json(std::string(1, c.kind))), o.set("target", Json(c.target)), o.set("line", Json(c.line));
     o.set("moment", Json(c.clip.wrap(c.moment))), o.set("playing", Json(c.playing)), o.set("speed", Json(c.speed));
+    o.set("starts", Json(c.starts));
     all.push(o);
   }
   out = all.dump();
@@ -1121,10 +1122,30 @@ EMSCRIPTEN_KEEPALIVE int loop_clip_set(int index, const char* json) {
   }
   if (o.has("playing")) c.playing = o["playing"].boolean();
   if (o.has("speed")) c.speed = o["speed"].number(1);
+  if (o.has("starts")) c.starts = o["starts"].boolean(true);
   if (o.has("moment")) c.moment = std::max(0.0, o["moment"].number());
   st.showClip(index);
   if (!c.playing) st.collidersDirty = true;  // held: something to bump into where it now stands
   return index;
+}
+
+// A clip as its script lines (`clip <target>` and its `key` lines), written
+// by the engine itself so the editor and the engine never write it two ways.
+EMSCRIPTEN_KEEPALIVE const char* loop_clip_script(int index, const char* target, const char* indent) {
+  static std::string out;
+  out.clear();
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->clips.size())) return out.c_str();
+  const Stage::Playing& c = g.stage->clips[index];
+  std::string more;
+  if (!c.starts) more += ", play: no";
+  if (c.startSpeed != 1) more += ", speed: " + anim::plainNumber(c.startSpeed);
+  out = c.clip.script(target ? target : "", indent ? indent : "", more);
+  return out.c_str();
+}
+
+// 1 while a clip plays, 0 while it is held (or there is no such clip).
+EMSCRIPTEN_KEEPALIVE int loop_clip_playing(int index) {
+  return g.stage && index >= 0 && index < static_cast<int>(g.stage->clips.size()) && g.stage->clips[index].playing ? 1 : 0;
 }
 
 // A clip's moment (seconds into itself), light enough to ask every frame; -1 if there is no such clip.
