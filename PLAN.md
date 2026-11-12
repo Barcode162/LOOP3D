@@ -14,11 +14,26 @@ phase is done when its "done when" is true on the phone.
   GitHub settings (only you can).
 - **"Switch"**, when you want the live bar to run on Loop3D (phase C).
 
-## Beside it · The Studio (`docs/STUDIO.md`, track T)
+## Beside it · The Studio (`docs/STUDIO.md`, track T) · paused 2026-11-12, to be picked up in a few days
 *Your words, 2026-11-11:* shapes, bones and movement made right in the editor; the backbone of the avatars.
-*On main 2026-11-12:* the plan (T0); keys (T-K1 to T-K5: goals 1 and 2, a box slides between two keys and eases
-under your thumb; the scene "Keys"); the standard skeleton, ring 1 (T-B1: 66 bones with right joints; the scene
-"The skeleton"). *Next of its foundation:* T-S1 (skin that bends with the bones), T-E1 (the editable mesh).
+*Where it stands (written 2026-11-12 for the next chat; all of it is on `main` and live, commit fa75974):*
+- **Done by the first chat** (branch `claude/3d-editor-animations-rigging-sqjd71`): the plan (T0); keys, T-K1 to
+  T-K5 (the clip format, the words `clip` and `key`, the engine's hands for keys, the editor's Move bench with its
+  timeline, the curve under your thumb; the scene "Keys"); and the first half of the skeleton, T-B1: the words
+  `skeleton`, `bone`, `bones`, the builder with mirroring and joint limits (`engine/anim/skeleton.*`), and
+  `library/skeletons/human.loop`. It was cut off by the usage limit before T-B1's tests.
+- **Done by the second chat** (2026-11-12): T-B1's nine tests (`tests/skeleton_test.cpp`), the words in
+  `docs/LANGUAGE.md`, the scene "The skeleton" (`projects/samples/skeleton.loop`), the deploy of all the above to
+  `main`, the public player and the recording page.
+- **Open, a missing bone:** the plan asked for 67 bones in ring 1; the skeleton has 66 (the plan's own list adds
+  up to 66). The second chat changed the plan's number to 66 without asking. The user counts this as a bone
+  missing: the next chat settles with the user which bone the 67th is, adds it, and puts the number back.
+- **Not started:** T-S1 (skin that bends with the bones: no mesh bends yet, in film or live) and T-E1 (the
+  editable mesh: no shape can be edited by its points yet). Their claims in `work/claims/` still say "working"
+  from the first chat; nothing was built for either, and the next chat that takes one re-claims it.
+- **Not done either:** the Loop3D Workshop dashboard does not exist as a page yet; the 12 picture tests were not
+  run for this deploy (the renderer did not change).
+*Next goal when work resumes:* settle the missing bone, then T-S1 (goal 7: an arm of three bones bends with no gap).
 
 ## Now · The Loft (your word, 2026-11-10: the top priority)
 *Your words:* the Loft, that entire project and everything in it, is the top priority.
