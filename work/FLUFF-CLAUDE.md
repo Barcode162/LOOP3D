@@ -40,6 +40,8 @@ This notebook is the simple version of the repo's existing board (`work/claims/`
 
 **Read first:** `CLAUDE.md`, `docs/NORTH.md` §4, `projects/bar3d/TRANSFER.md`, `docs/MODELS.md` (Fable plans first, then Sonnet builds).
 
+**How to run it — tiers, agents, and tokens (Joshua, 2026-11-13):** Fable 5.2, medium effort, plans first. The plan must name the agents to use, each with the correct tier, the correct smarts, and the correct effort level, per `docs/MODELS.md` waves: Top writes the order cards once, Workhorse (Sonnet 5.5 — builder, asset-smith, judge) carries them out, many at once where their Touch lists don't overlap, Quick (Haiku 5.5 — checker) checks and reports, Strong (Opus 5.5) merges and fixes the odd failure, Top judges the picture. Spend Top rarely, only where it changes the result. Token conservation is the job: record what we do and how much we use, don't guess. In the report, list every agent used, its tier and effort, what it did, and any usage numbers Claude actually showed. If no usage number was shown, write "not shown" — never invent a token count.
+
 **Do these 10, in one shot, then fix only what isn't perfect:**
 1. **New lighting only.** LOOP3D light everywhere in the bar. Light only from real light sources. Fix the dark oval patch on the hall floor in cinema stills. Lamps breathe, buzz, and thump to music per the rig; the switch by the door dims the bar to 25%.
 2. **Bar layout, as it was.** `projects/bar3d/` — 507 things, 167 models, 3 rooms. Fix the hitboxes: stools are separate things you can sit on, not connected, no huge boxes. Walls, furniture and raised floors block you where they should, and nowhere else.
@@ -74,3 +76,4 @@ All must pass, except the pre-existing failures already named in Job 1 (4 librar
 - Proof command and its last lines:
 - What Joshua should look at on his phone:
 - Anything odd / left undone:
+- Agents used (tier, effort, what each did) and usage: _record what Claude actually showed; "not shown" if it didn't show a number — never guess_
