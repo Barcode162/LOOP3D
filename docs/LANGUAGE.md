@@ -199,7 +199,7 @@ Every setting has a sensible default; give only what matters.
 - **Skeletons** (the bones a body is hung on; `docs/STUDIO.md`):
   - `skeleton "human"` with `bone` lines indented under it writes a skeleton down by name. Every bone called `left_…` gets its `right_…` twin by itself (`mirror: no` stops that).
   - `bone "left_forearm", parent: "left_upper_arm", from: vec(…), to: vec(…), bends: vec(0, 0, -1), bend: [-5 deg, 150 deg], twist: [-160 deg, 10 deg]`: where the bone starts and ends when the body stands at rest (metres; facing -z, its left at -x), the way a positive bend carries its tip, and how far it turns from rest, each as `[least, most]`: `bend` (like a nod), `side` (like a wave), `twist` (like a doorknob). A turn not named does not happen: an elbow has no `side`. `free: yes` is a bone with no limits (the root, the hips). A bone comes after the one it hangs from.
-  - `use "human"` brings in the library's standard human (66 bones, 1.75 m); `bones("human", at: vec(0, 0, 0), turn: 0, height: 1.75, material: "porcelain")` shows a skeleton standing in its rest pose, each bone a slim shape from its start to its tip.
+  - `use "human"` brings in the library's standard human (67 bones, 1.75 m); `bones("human", at: vec(0, 0, 0), turn: 0, height: 1.75, material: "porcelain")` shows a skeleton standing in its rest pose, each bone a slim shape from its start to its tip.
 - **Physics:**
   - `solid(shape, mass, bounce, friction, velocity)`: it falls, rolls and knocks, and knocks make the material's sound by themselves (bounce and friction default to the settings `physics.bounce` and `physics.friction`)
   - `push(shape, vec(…))`, `gravity(vec(0, -9.81, 0))` (the setting `physics.gravity`, for this scene)

@@ -40,7 +40,7 @@ Vec3 turnOf(const Skeleton& s, const Pose& p, int i) {
 }
 }  // namespace
 
-TEST(skeleton_human_has_66_bones_each_with_one_name) {
+TEST(skeleton_human_has_67_bones_each_with_one_name) {
   std::unique_ptr<looptest::SceneRun> run;
   const Skeleton* s = human(run);
   CHECK(run->problems().empty());
@@ -48,7 +48,7 @@ TEST(skeleton_human_has_66_bones_each_with_one_name) {
   if (!s) return;
   // root, hips, 4 of the back, 2 of the neck, head, jaw, 2 eyes; an arm of 4
   // and a hand of 19, twice; a leg of 4, twice
-  CHECK(s->bones.size() == 66);
+  CHECK(s->bones.size() == 67);
   std::set<std::string> names;
   int left = 0, right = 0, free = 0;
   for (size_t i = 0; i < s->bones.size(); ++i) {
@@ -59,10 +59,10 @@ TEST(skeleton_human_has_66_bones_each_with_one_name) {
     CHECK(b.ring == 1);
     left += b.name.rfind("left_", 0) == 0, right += b.name.rfind("right_", 0) == 0, free += b.free;
   }
-  CHECK(names.size() == 66);
+  CHECK(names.size() == 67);
   CHECK(left == 28 && right == 28);
   CHECK(free == 2);  // the root and the hips; every other joint has its limits
-  for (const char* n : {"root", "hips", "spine", "spine_2", "chest", "upper_chest", "neck", "neck_2", "head", "jaw", "left_eye", "left_collar",
+  for (const char* n : {"root", "hips", "coccyx", "spine", "spine_2", "chest", "upper_chest", "neck", "neck_2", "head", "jaw", "left_eye", "left_collar",
                         "left_upper_arm", "left_forearm", "left_hand", "left_thumb_3", "left_index_0", "left_little_3", "right_middle_2",
                         "left_thigh", "left_shin", "left_foot", "right_toes"})
     CHECK(s->find(n) >= 0);
@@ -326,7 +326,7 @@ TEST(skeleton_bones_shows_the_human_at_a_height) {
   auto r = withHuman("bones(\"human\", at: vec(1, 0, -2), height: 1.4)\n");
   CHECK(r->ok);
   CHECK(r->problems().empty());
-  CHECK(r->stage.scene.instances.size() == 66);
+  CHECK(r->stage.scene.instances.size() == 67);
   float top = 0;
   for (const auto& p : r->stage.placed) top = std::max(top, p.position.y);
   CHECK(top > 1.2f && top < 1.4f);  // the head's bone starts under the crown

@@ -58,8 +58,13 @@ All must pass. Then `./build/loop check projects/samples/skeleton.loop` must pas
 
 *Claude Code, write here when Job 1 is done, or stuck:*
 
-- Status: _waiting_
+- Status: done, on branch `claude/amazing-goodall-lnt9ta` (not merged to main)
 - What changed, file by file:
-- Proof command and its last lines:
-- What Joshua should look at on his phone:
-- Anything odd / left undone:
+  - `library/skeletons/human.loop`: added `coccyx` after `hips`; header says 67 bones; the 2026-11-13 note is on the `from:` line.
+  - `tests/skeleton_test.cpp`: test renamed to 67; both bone counts and the instance count are 67; `coccyx` added to the checked names. Left/right 28/28, free 2 and height 1.75 m unchanged.
+  - `projects/samples/skeleton.loop`: "67 bones you move".
+  - `docs/LANGUAGE.md` line 202: "(67 bones, 1.75 m)".
+- Proof: build passes; all 9 skeleton tests ok (`skeleton_human_has_67_bones_each_with_one_name` included); recorder 36 checks, 0 failed; `loop check projects/samples/skeleton.loop` says "reads fine".
+  NOT all green: `loop_tests` shows 4 failed checks (`library_picture_of_a_surface_is_the_test_ball`, library_test.cpp:161-164) and `editor_source_test` shows 1 failed ("the engine refuses the edited script"). I re-ran both with my changes stashed and got the same 4 and 1, so they were already failing before this job.
+- What Joshua should look at on his phone: "The skeleton" scene, a small bone at the back of the hips. Not looked at on a phone: the player was not rebuilt or published.
+- Anything odd / left undone: the repo's `build/` folder was made with Makefiles, so I built in a scratch folder instead. Also, before I read this file I trimmed `CLAUDE.md` by mistake (commit already pushed on this branch); Joshua can say if he wants it reverted.
