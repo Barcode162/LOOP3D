@@ -181,6 +181,15 @@ for t in place["things"]:
         c = rot_y(sd.get("at", [0, 0, 0]), turn)
         walls.append(f"blocker size: {vec([2 * h for h in half])}, at: {vec([pos[i] + c[i] for i in range(3)])}, turn: {num(turn)} deg")
 
+# the same box twice (a raised floor listed as a floor and again as a solid) is one wall, not two
+_seen, _once = set(), []
+for w in walls:
+    key = w.split("  #")[0].replace(", turn: 0 deg", "")
+    if key not in _seen:
+        _seen.add(key)
+        _once.append(w)
+walls = _once
+
 switch = next((pose(t)[0] for t in place["things"] if t["kind"] == "light-switch"), [0, 1.2, 0])
 fire = next((pose(t)[0] for t in place["things"] if t["kind"] == "light-fire"), None)
 rig = f"""# ---- the bar's life: every lamp breathes, buzzes or waves on its own
