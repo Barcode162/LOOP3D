@@ -110,6 +110,8 @@ if air.get("fogDensity"):
 lines += ['look "natural"', ""]
 
 models, lights, walls = [], [], []
+moved = [0]
+lamp_things = []
 
 
 def rig_rule(lamp_id):
@@ -137,7 +139,7 @@ for t in place["things"]:
             continue
         used.add(f)
         s = t.get("scale")
-        args = [f'model "{f}"', f"at: {vec(pos)}"]
+        args = [f'model "{f}"', f"at: {vec(pos)}", f'name: "{t["id"]}"']
         if abs(turn) > 1e-6:
             args.append(f"turn: {num(turn)} deg")
         if s is not None and abs(float(s) - 1) > 1e-6:
@@ -145,6 +147,7 @@ for t in place["things"]:
         models.append(", ".join(args))
     l = part(t, "light")
     if l:
+        lamp_things.append((t["id"], t["kind"]))
         lm = float(l.get("lumens", 100 * l.get("intensity", 1)))
         colour = light_colour(l)
         shape = l.get("shape", "point")
@@ -168,18 +171,40 @@ for t in place["things"]:
                 lamp(f"light({vec(p)}, lumens: {num(lm / count)}, {colour}, radius: 0.03)")
         else:
             lamp(f"light({vec(at)}, lumens: {num(lm)}, {colour}, radius: {num(min(float(l.get('radius', 0.05)), 0.3))})")
+    # A kind's blocks, floors and solids are written in the thing's own space:
+    # the place and turn it stands with (through its parents) carry them into
+    # the world. (The original's reader added only the place to a block and
+    # never turned it, so a turned jukebox kept an unturned footprint: here
+    # the rectangle turns with the thing, as the thing does.)
+    def own(x, z):
+        c = rot_y([x, 0, z], turn)
+        return [pos[0] + c[0], pos[2] + c[2]]
+
+    def blocker(w, h, d, at, ang, why=""):
+        line = f"blocker size: vec({num(w)}, {num(h)}, {num(d)}), at: {vec(at)}"
+        if abs(ang) > 1e-6:
+            line += f", turn: {num(ang)} deg"
+        walls.append((f"{line}  # {t['id']}" + (f", {why}" if why else ""), w * d, t["id"]))
+
     for b in part(t, "blocks") or []:
         x0, z0, x1, z1 = (float(v) for v in b[:4])
-        walls.append(f"blocker size: vec({num(abs(x1 - x0))}, 2.6, {num(abs(z1 - z0))}), at: vec({num((x0 + x1) / 2)}, 1.3, {num((z0 + z1) / 2)})")
+        cx, cz = own((x0 + x1) / 2, (z0 + z1) / 2)
+        blocker(abs(x1 - x0), 2.6, abs(z1 - z0), [cx, 1.3, cz], turn)
+        if abs(turn) > 1e-6 or any(abs(v) > 1e-6 for v in pos):
+            moved[0] += 1
     for fl in part(t, "floors") or []:
         x0, z0, x1, z1, h = (float(v) for v in fl[:5])
-        walls.append(f"blocker size: vec({num(abs(x1 - x0))}, {num(h)}, {num(abs(z1 - z0))}), at: vec({num((x0 + x1) / 2)}, {num(h / 2)}, {num((z0 + z1) / 2)})  # a raised floor: step up onto it")
+        top = pos[1] + h
+        cx, cz = own((x0 + x1) / 2, (z0 + z1) / 2)
+        blocker(abs(x1 - x0), top, abs(z1 - z0), [cx, top / 2, cz], turn, "a raised floor: step up onto it")
+        if abs(turn) > 1e-6 or any(abs(v) > 1e-6 for v in pos):
+            moved[0] += 1
     for sd in part(t, "solids") or []:
         half = sd.get("half", [0, 0, 0])
         if max(half) < 0.08 or t["kind"] in ("bottle", "glass", "pint_glass", "rocks_glass"):
             continue  # small things: walk past them
         c = rot_y(sd.get("at", [0, 0, 0]), turn)
-        walls.append(f"blocker size: {vec([2 * h for h in half])}, at: {vec([pos[i] + c[i] for i in range(3)])}, turn: {num(turn)} deg")
+        blocker(2 * half[0], 2 * half[1], 2 * half[2], [pos[i] + c[i] for i in range(3)], turn + float(sd.get("turn", 0)))
 
 switch = next((pose(t)[0] for t in place["things"] if t["kind"] == "light-switch"), [0, 1.2, 0])
 fire = next((pose(t)[0] for t in place["things"] if t["kind"] == "light-fire"), None)
@@ -197,10 +222,27 @@ to breathe(t, seed, amount: 6%, period: 8 s, speed: 0.5)
 to buzz(t, seed, amount: 12%, period: 2 s, speed: 1)
   return 1 + amount * flicker(t, speed * 4 / period, seed)
 
+# the music: the bar's rig (or a game) says "music" and "quiet"; the strings
+# and the jukebox then follow the beat. The fire has two states, "lit" and "out".
+let music_on = no
+let music_bpm = 100
+let music_start = 0
+let fire_lit = yes
+let fire_mix = 1
+
+# a hit on the beat that dies away: 1 as a period of `beats` beats begins, then
+# exp(-fade * the part of the period gone)
+to thump(t, beats, fade)
+  let period = beats * 60 / music_bpm
+  let x = (t - music_start) / period
+  return exp(-fade * (x - floor(x)))
+
 to shine(l, t)
   if l.rule == "breathe"
     return breathe(t, l.seed)
   if l.rule == "strings"
+    if music_on
+      return 1 - 1.5% + 8% * thump(t, 2, 5)
     return breathe(t, l.seed, amount: 4%, period: 9 s, speed: 0.4)
   if l.rule == "neon"
     return buzz(t, l.seed, speed: 0.8)
@@ -209,8 +251,12 @@ to shine(l, t)
   if l.rule == "sign"
     return buzz(t, l.seed, amount: 60%, period: 1.2 s)
   if l.rule == "fire"
-    return buzz(t, l.seed, amount: 40%, period: 0.5 s)
+    let lit = buzz(t, l.seed, amount: 40%, period: 0.5 s)
+    let out = 1 - 94% + 4% * noise(t * 0.5 * 4 / 3, l.seed, 0)
+    return out + (lit - out) * fire_mix
   if l.rule == "jukebox"
+    if music_on
+      return 1 - 25% + 70% * thump(t, 1, 5)
     return 1 + 20% * wave(t, 3 s)
   return 1
 """
@@ -218,7 +264,9 @@ life = f"""
 let dim = 1
 let dimTarget = 1
 every 1 / 30 s
-  dim = approach(dim, dimTarget, 2.5, 1 / 30)
+  # lights down: to 25% in about 0.3 s (the rig's "fade to 25% over 0.3 s"); the fire in 1.2 s
+  dim = approach(dim, dimTarget, 10, 1 / 30)
+  fire_mix = approach(fire_mix, 1 if fire_lit else 0, 2.5, 1 / 30)
   let t = time()
   for each l in lamps
     let k = shine(l, t)
@@ -230,12 +278,29 @@ every 1 / 30 s
 when "use"
   if near({vec(switch)}, within: 1.5 m)
     dimTarget = 25% if dimTarget == 1 else 1
+
+# the music and the fire (sent by the jukebox, the piano, the fireplace)
+when "music"
+  music_on = yes
+  music_start = time()
+when "quiet"
+  music_on = no
+when "fire off"
+  fire_lit = no
+when "fire on"
+  fire_lit = yes
 """
 sounds = ["", "# the room's sound", "room size: 0.5"]
 if fire:
     sounds.append(f'sound "fire", at: {vec(fire)}, volume: 0.6')
 lines += [f"# {len(models)} things", *models, "", rig, f"# {len(lights)} lamps (lumens and kelvin as in the bar)", *lights, life, *sounds, "",
-          f"# {len(walls)} walls, furniture and raised floors to bump into (invisible)", *walls, ""]
+          f"# {len(walls)} walls, furniture and raised floors to bump into (invisible)", *[w[0] for w in walls], ""]
+# the games' and the bar's own scripts, when they exist: `use` pastes a file in
+# at its line, so each sees every name made above it
+for u in ("bar_use_common", "bar_darts_common", "bar_piano_common", "bar_chess_common", "bar_jukebox_common", "bar_books_common", "bar_bartender_common"):
+    if (out / f"{u}.loop").exists():
+        lines += [f'use "{u}"']
+lines += [""]
 (out / "bar.loop").write_text("\n".join(lines))
 
 for f in sorted(used):
@@ -265,4 +330,9 @@ if not manifest.exists():
         "description": "The bar from joshuavelasco.com/bar, on LOOP3D.",
         "start": "bar", "scenes": ["bar"], "stills": "stills",
     }, indent=2) + "\n")
+print("the ten biggest blockers by footprint (m x m):")
+for w in sorted(walls, key=lambda w: -w[1])[:10]:
+    print(f"  {w[1]:7.2f}  {w[2]}")
+print(f"{moved[0]} blocks and floors moved to their thing's place and turn")
+print("things with a light:", ", ".join(sorted({k for _, k in lamp_things})))
 print(f"{len(models)} things, {len(lights)} lamps, {len(walls)} blockers, {len(used)} models -> {out}")
