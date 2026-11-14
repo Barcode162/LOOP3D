@@ -3,7 +3,7 @@ title:    note: one note played now (Job 2: the piano)
 hand:     builder
 size:     S
 wave:     j2
-branch:   work/J2N
+branch:   claude/peaceful-ptolemy-igl57r
 status:   done
 touch:    engine/audio/music.cpp, engine/audio/music.h, engine/script/words_music.cpp, tests/audio_test.cpp
 pictures: no
