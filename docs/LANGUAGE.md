@@ -217,6 +217,7 @@ Every setting has a sensible default; give only what matters.
   - `tempo 100, swing: 0.1`: beats a minute (4 steps a beat, 16 a bar) and a shuffle (0 straight .. 0.5)
   - `track "kick", "x...x...x...x..."`: a line of music that loops over its own length; drums take one character a step (`x` a hit, `X` a loud one, `.` nothing)
   - `track "bass", "C2 . . Eb2 - - G1 .", volume: 0.8`: notes take one word a step (a note like `C4`, `Eb3`, `F#2`, `G2!` loud; `.` a rest; `-` holds the note before)
+  - `note "keys", "Eb3", volume: 0.6, length: 1.2 s`: one note sounded now (not on a step), needs no `tempo` or `track`; a drum takes no pitch (`note "kick"`); several at once make a chord; at most 96 sounds play at once, then the oldest gives way
   - Instruments: drums `kick snare hat open_hat clap tom`; with notes `bass lead pad pluck keys bell`
   - The editor's Sound space writes these lines with a drum grid and a melody grid
 - **Story** (see [`STORY_GUIDE.md`](STORY_GUIDE.md)):
