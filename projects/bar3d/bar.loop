@@ -11,27 +11,28 @@ fog density: 0.004, color: vec(0.9, 0.85, 0.8)
 look "natural"
 
 # 507 things
-model "hall.glb", at: vec(0, 0, 0), name: "hall"
-model "bar_counter_l.glb", at: vec(0, 0, 0), name: "bar_counter_l"
-model "pint_glass.glb", at: vec(-5.6623, 1.08, -4.4295), name: "pint_glass-1"
-model "pint_glass.glb", at: vec(-3.6931, 1.08, -4.2077), name: "pint_glass-2"
-model "pint_glass.glb", at: vec(-1.7239, 1.08, -4.2914), name: "pint_glass-3"
-model "pint_glass.glb", at: vec(-0.0008, 1.08, -4.6196), name: "pint_glass-4"
-model "rocks_glass.glb", at: vec(-4.8682, 1.08, -4.3532), name: "rocks_glass-1"
-model "rocks_glass.glb", at: vec(-2.6125, 1.08, -4.266), name: "rocks_glass-2"
-model "bar_stool.glb", at: vec(-7.0405, 0, -4.0435), name: "bar_stool-1", turn: -16.319 deg
-model "bar_stool.glb", at: vec(-5.9501, 0, -3.773), name: "bar_stool-2", turn: -11.546 deg
-model "bar_stool.glb", at: vec(-4.8597, 0, -3.5964), name: "bar_stool-3", turn: -6.853 deg
-model "bar_stool.glb", at: vec(-3.7692, 0, -3.51), name: "bar_stool-4", turn: -2.206 deg
-model "bar_stool.glb", at: vec(-2.6788, 0, -3.5121), name: "bar_stool-5", turn: 2.427 deg
-model "bar_stool.glb", at: vec(-1.5884, 0, -3.6027), name: "bar_stool-6", turn: 7.075 deg
-model "bar_stool.glb", at: vec(-0.498, 0, -3.7837), name: "bar_stool-7", turn: 11.771 deg
-model "bar_stool.glb", at: vec(0.5924, 0, -4.0588), name: "bar_stool-8", turn: 16.549 deg
-model "pendant_lamp.glb", at: vec(-6.6, 3.04, -4.6), name: "pendant_lamp-1"
-model "pendant_lamp.glb", at: vec(-4.3, 3.04, -4.6), name: "pendant_lamp-2"
-model "pendant_lamp.glb", at: vec(-2, 3.04, -4.6), name: "pendant_lamp-3"
-model "pendant_lamp.glb", at: vec(0.2, 3.04, -4.6), name: "pendant_lamp-4"
-model "back_bar_tall.glb", at: vec(0, 0, 0), name: "back_bar_tall"
+let things = {}
+things["hall"] = model("hall.glb", at: vec(0, 0, 0), name: "hall")
+things["bar_counter_l"] = model("bar_counter_l.glb", at: vec(0, 0, 0), name: "bar_counter_l")
+things["pint_glass-1"] = model("pint_glass.glb", at: vec(-5.6623, 1.08, -4.4295), name: "pint_glass-1")
+things["pint_glass-2"] = model("pint_glass.glb", at: vec(-3.6931, 1.08, -4.2077), name: "pint_glass-2")
+things["pint_glass-3"] = model("pint_glass.glb", at: vec(-1.7239, 1.08, -4.2914), name: "pint_glass-3")
+things["pint_glass-4"] = model("pint_glass.glb", at: vec(-0.0008, 1.08, -4.6196), name: "pint_glass-4")
+things["rocks_glass-1"] = model("rocks_glass.glb", at: vec(-4.8682, 1.08, -4.3532), name: "rocks_glass-1")
+things["rocks_glass-2"] = model("rocks_glass.glb", at: vec(-2.6125, 1.08, -4.266), name: "rocks_glass-2")
+things["bar_stool-1"] = model("bar_stool.glb", at: vec(-7.0405, 0, -4.0435), name: "bar_stool-1", turn: -16.319 deg)
+things["bar_stool-2"] = model("bar_stool.glb", at: vec(-5.9501, 0, -3.773), name: "bar_stool-2", turn: -11.546 deg)
+things["bar_stool-3"] = model("bar_stool.glb", at: vec(-4.8597, 0, -3.5964), name: "bar_stool-3", turn: -6.853 deg)
+things["bar_stool-4"] = model("bar_stool.glb", at: vec(-3.7692, 0, -3.51), name: "bar_stool-4", turn: -2.206 deg)
+things["bar_stool-5"] = model("bar_stool.glb", at: vec(-2.6788, 0, -3.5121), name: "bar_stool-5", turn: 2.427 deg)
+things["bar_stool-6"] = model("bar_stool.glb", at: vec(-1.5884, 0, -3.6027), name: "bar_stool-6", turn: 7.075 deg)
+things["bar_stool-7"] = model("bar_stool.glb", at: vec(-0.498, 0, -3.7837), name: "bar_stool-7", turn: 11.771 deg)
+things["bar_stool-8"] = model("bar_stool.glb", at: vec(0.5924, 0, -4.0588), name: "bar_stool-8", turn: 16.549 deg)
+things["pendant_lamp-1"] = model("pendant_lamp.glb", at: vec(-6.6, 3.04, -4.6), name: "pendant_lamp-1")
+things["pendant_lamp-2"] = model("pendant_lamp.glb", at: vec(-4.3, 3.04, -4.6), name: "pendant_lamp-2")
+things["pendant_lamp-3"] = model("pendant_lamp.glb", at: vec(-2, 3.04, -4.6), name: "pendant_lamp-3")
+things["pendant_lamp-4"] = model("pendant_lamp.glb", at: vec(0.2, 3.04, -4.6), name: "pendant_lamp-4")
+things["back_bar_tall"] = model("back_bar_tall.glb", at: vec(0, 0, 0), name: "back_bar_tall")
 model "bottle_wine_3_tilt90_0.glb", at: vec(-8.62, 1.13, -7.38), name: "bottle-1", scale: vec(0.974, 0.974, 0.974)
 model "bottle_wine_2_tilt90_0.glb", at: vec(-8.45, 1.13, -7.38), name: "bottle-2", scale: vec(1.006, 1.006, 1.006)
 model "bottle_wine_2_tilt90_0.glb", at: vec(-8.28, 1.13, -7.38), name: "bottle-3", scale: vec(1.029, 1.029, 1.029)
@@ -307,38 +308,38 @@ model "bottle_whiskey_1.glb", at: vec(0.4211, 2.4175, -7.2129), name: "bottle-27
 model "bottle_wine_2.glb", at: vec(0.5663, 2.4175, -7.2641), name: "bottle-273", turn: 5.52 deg, scale: vec(1.014, 1.014, 1.014)
 model "bottle_champagne_1.glb", at: vec(0.721, 2.4175, -7.2122), name: "bottle-274", turn: -1.96 deg, scale: vec(0.982, 0.982, 0.982)
 model "bottle_champagne_1_tilt17_0.glb", at: vec(-0.55, 1.03, -7.125), name: "bottle-275", scale: vec(1.009, 1.009, 1.009)
-model "round_table.glb", at: vec(-3, 0, -0.6), name: "round_table-1"
-model "candle.glb", at: vec(-3, 0.785, -0.6), name: "candle-1"
-model "rocks_glass.glb", at: vec(-2.78, 0.785, -0.48), name: "rocks_glass-3"
-model "table_stool.glb", at: vec(-3.78, 0, -0.6), name: "table_stool-1", turn: -90 deg
-model "table_stool.glb", at: vec(-2.22, 0, -0.6), name: "table_stool-2", turn: 90 deg
-model "round_table.glb", at: vec(-0.2, 0, -1.4), name: "round_table-2", turn: 40.107 deg
-model "candle.glb", at: vec(-0.2, 0.785, -1.4), name: "candle-2"
-model "table_stool.glb", at: vec(-0.6849, 0, -2.011), name: "table_stool-3", turn: -141.566 deg
-model "table_stool.glb", at: vec(0.2849, 0, -0.789), name: "table_stool-4", turn: 38.434 deg
-model "round_table.glb", at: vec(2.4, 0, -0.4), name: "round_table-3", turn: 80.214 deg
-model "candle.glb", at: vec(2.4, 0.785, -0.4), name: "candle-3"
-model "rocks_glass.glb", at: vec(2.62, 0.785, -0.28), name: "rocks_glass-4"
-model "table_stool.glb", at: vec(2.5772, 0, -1.1596), name: "table_stool-5", turn: 166.868 deg
-model "table_stool.glb", at: vec(2.2228, 0, 0.3596), name: "table_stool-6", turn: -13.132 deg
-model "round_table.glb", at: vec(-1.6, 0, 2), name: "round_table-4", turn: 120.321 deg
-model "candle.glb", at: vec(-1.6, 0.785, 2), name: "candle-4"
-model "table_stool.glb", at: vec(-0.8948, 0, 1.6666), name: "table_stool-7", turn: 115.301 deg
-model "table_stool.glb", at: vec(-2.3052, 0, 2.3334), name: "table_stool-8", turn: -64.699 deg
-model "round_table.glb", at: vec(1.4, 0, 2.4), name: "round_table-5", turn: 160.428 deg
-model "candle.glb", at: vec(1.4, 0.785, 2.4), name: "candle-5"
-model "rocks_glass.glb", at: vec(1.62, 0.785, 2.52), name: "rocks_glass-5"
-model "table_stool.glb", at: vec(2.0995, 0, 2.7452), name: "table_stool-9", turn: 63.735 deg
-model "table_stool.glb", at: vec(0.7005, 0, 2.0548), name: "table_stool-10", turn: -116.265 deg
-model "round_table.glb", at: vec(4.2, 0, 1.6), name: "round_table-6", turn: -159.465 deg
-model "candle.glb", at: vec(4.2, 0.785, 1.6), name: "candle-6"
-model "table_stool.glb", at: vec(4.3644, 0, 2.3625), name: "table_stool-11", turn: 12.169 deg
-model "table_stool.glb", at: vec(4.0356, 0, 0.8375), name: "table_stool-12", turn: -167.831 deg
-model "string_lights.glb", at: vec(0, 0, 0), name: "string_lights"
-model "neon_cocktails.glb", at: vec(-6.3, 0, -3.465), name: "neon_cocktails"
-model "neon_game_on.glb", at: vec(9, 0, -2), name: "neon_game_on", turn: -90 deg
-model "neon_play.glb", at: vec(-3.8, 0, 7), name: "neon_play", turn: 180 deg
-model "neon_note.glb", at: vec(-7.2, 0, 7), name: "neon_note", turn: 180 deg
+things["round_table-1"] = model("round_table.glb", at: vec(-3, 0, -0.6), name: "round_table-1")
+things["candle-1"] = model("candle.glb", at: vec(-3, 0.785, -0.6), name: "candle-1")
+things["rocks_glass-3"] = model("rocks_glass.glb", at: vec(-2.78, 0.785, -0.48), name: "rocks_glass-3")
+things["table_stool-1"] = model("table_stool.glb", at: vec(-3.78, 0, -0.6), name: "table_stool-1", turn: -90 deg)
+things["table_stool-2"] = model("table_stool.glb", at: vec(-2.22, 0, -0.6), name: "table_stool-2", turn: 90 deg)
+things["round_table-2"] = model("round_table.glb", at: vec(-0.2, 0, -1.4), name: "round_table-2", turn: 40.107 deg)
+things["candle-2"] = model("candle.glb", at: vec(-0.2, 0.785, -1.4), name: "candle-2")
+things["table_stool-3"] = model("table_stool.glb", at: vec(-0.6849, 0, -2.011), name: "table_stool-3", turn: -141.566 deg)
+things["table_stool-4"] = model("table_stool.glb", at: vec(0.2849, 0, -0.789), name: "table_stool-4", turn: 38.434 deg)
+things["round_table-3"] = model("round_table.glb", at: vec(2.4, 0, -0.4), name: "round_table-3", turn: 80.214 deg)
+things["candle-3"] = model("candle.glb", at: vec(2.4, 0.785, -0.4), name: "candle-3")
+things["rocks_glass-4"] = model("rocks_glass.glb", at: vec(2.62, 0.785, -0.28), name: "rocks_glass-4")
+things["table_stool-5"] = model("table_stool.glb", at: vec(2.5772, 0, -1.1596), name: "table_stool-5", turn: 166.868 deg)
+things["table_stool-6"] = model("table_stool.glb", at: vec(2.2228, 0, 0.3596), name: "table_stool-6", turn: -13.132 deg)
+things["round_table-4"] = model("round_table.glb", at: vec(-1.6, 0, 2), name: "round_table-4", turn: 120.321 deg)
+things["candle-4"] = model("candle.glb", at: vec(-1.6, 0.785, 2), name: "candle-4")
+things["table_stool-7"] = model("table_stool.glb", at: vec(-0.8948, 0, 1.6666), name: "table_stool-7", turn: 115.301 deg)
+things["table_stool-8"] = model("table_stool.glb", at: vec(-2.3052, 0, 2.3334), name: "table_stool-8", turn: -64.699 deg)
+things["round_table-5"] = model("round_table.glb", at: vec(1.4, 0, 2.4), name: "round_table-5", turn: 160.428 deg)
+things["candle-5"] = model("candle.glb", at: vec(1.4, 0.785, 2.4), name: "candle-5")
+things["rocks_glass-5"] = model("rocks_glass.glb", at: vec(1.62, 0.785, 2.52), name: "rocks_glass-5")
+things["table_stool-9"] = model("table_stool.glb", at: vec(2.0995, 0, 2.7452), name: "table_stool-9", turn: 63.735 deg)
+things["table_stool-10"] = model("table_stool.glb", at: vec(0.7005, 0, 2.0548), name: "table_stool-10", turn: -116.265 deg)
+things["round_table-6"] = model("round_table.glb", at: vec(4.2, 0, 1.6), name: "round_table-6", turn: -159.465 deg)
+things["candle-6"] = model("candle.glb", at: vec(4.2, 0.785, 1.6), name: "candle-6")
+things["table_stool-11"] = model("table_stool.glb", at: vec(4.3644, 0, 2.3625), name: "table_stool-11", turn: 12.169 deg)
+things["table_stool-12"] = model("table_stool.glb", at: vec(4.0356, 0, 0.8375), name: "table_stool-12", turn: -167.831 deg)
+things["string_lights"] = model("string_lights.glb", at: vec(0, 0, 0), name: "string_lights")
+things["neon_cocktails"] = model("neon_cocktails.glb", at: vec(-6.3, 0, -3.465), name: "neon_cocktails")
+things["neon_game_on"] = model("neon_game_on.glb", at: vec(9, 0, -2), name: "neon_game_on", turn: -90 deg)
+things["neon_play"] = model("neon_play.glb", at: vec(-3.8, 0, 7), name: "neon_play", turn: 180 deg)
+things["neon_note"] = model("neon_note.glb", at: vec(-7.2, 0, 7), name: "neon_note", turn: 180 deg)
 model "gallery_photo_1.glb", at: vec(-5, 2.3, 7), name: "gallery_photo_1", turn: 180 deg
 model "gallery_photo_2.glb", at: vec(-4.4, 2.55, 7), name: "gallery_photo_2", turn: 180 deg
 model "gallery_photo_3.glb", at: vec(-4.45, 2.05, 7), name: "gallery_photo_3", turn: 180 deg
@@ -358,22 +359,22 @@ model "record_1.glb", at: vec(5.75, 1.9, -7.4), name: "record_1"
 model "record_2.glb", at: vec(4.75, 3.45, -7.4), name: "record_2"
 model "record_3.glb", at: vec(5.9, 2.95, -7.4), name: "record_3"
 model "wall_clock.glb", at: vec(-2.6, 3.42, -3.465), name: "wall_clock"
-model "wall_tv.glb", at: vec(0.9, 3.05, -3.465), name: "wall_tv"
+things["wall_tv"] = model("wall_tv.glb", at: vec(0.9, 3.05, -3.465), name: "wall_tv")
 model "chalk_a_frame.glb", at: vec(1.95, 0, 5.75), name: "chalk_a_frame", turn: 28.648 deg
-model "floor_plant_1.glb", at: vec(-1.85, 0, 6.7), name: "floor_plant_1"
-model "floor_plant_2.glb", at: vec(5.35, 0, 6.65), name: "floor_plant_2"
-model "floor_plant_3.glb", at: vec(-5.15, 0.15, 6.65), name: "floor_plant_3"
-model "floor_plant_4.glb", at: vec(8.55, 0, 6.6), name: "floor_plant_4"
-model "hanging_plant_1.glb", at: vec(-1.2, 2.9, 7.55), name: "hanging_plant_1"
-model "hanging_plant_2.glb", at: vec(0.8, 2.9, 7.55), name: "hanging_plant_2"
+things["floor_plant_1"] = model("floor_plant_1.glb", at: vec(-1.85, 0, 6.7), name: "floor_plant_1")
+things["floor_plant_2"] = model("floor_plant_2.glb", at: vec(5.35, 0, 6.65), name: "floor_plant_2")
+things["floor_plant_3"] = model("floor_plant_3.glb", at: vec(-5.15, 0.15, 6.65), name: "floor_plant_3")
+things["floor_plant_4"] = model("floor_plant_4.glb", at: vec(8.55, 0, 6.6), name: "floor_plant_4")
+things["hanging_plant_1"] = model("hanging_plant_1.glb", at: vec(-1.2, 2.9, 7.55), name: "hanging_plant_1")
+things["hanging_plant_2"] = model("hanging_plant_2.glb", at: vec(0.8, 2.9, 7.55), name: "hanging_plant_2")
 model "corner_speaker.glb", at: vec(-8.7, 3.35, -3.3), name: "corner_speaker-1", turn: 135 deg
 model "corner_speaker.glb", at: vec(8.7, 3.35, 6.7), name: "corner_speaker-2", turn: -135 deg
 model "corner_speaker.glb", at: vec(-8.7, 3.35, 6.7), name: "corner_speaker-3", turn: 135 deg
 model "corner_speaker.glb", at: vec(8.7, 3.35, -4), name: "corner_speaker-4", turn: -45 deg
-model "wall_sconce.glb", at: vec(-1, 0, 7), name: "wall_sconce-1", turn: 180 deg
-model "wall_sconce.glb", at: vec(-5.45, 0, 7), name: "wall_sconce-2", turn: 180 deg
-model "wall_sconce.glb", at: vec(-9, 0, -4.6), name: "wall_sconce-3", turn: 90 deg
-model "wall_sconce.glb", at: vec(-9, 0, 3.15), name: "wall_sconce-4", turn: 90 deg
+things["wall_sconce-1"] = model("wall_sconce.glb", at: vec(-1, 0, 7), name: "wall_sconce-1", turn: 180 deg)
+things["wall_sconce-2"] = model("wall_sconce.glb", at: vec(-5.45, 0, 7), name: "wall_sconce-2", turn: 180 deg)
+things["wall_sconce-3"] = model("wall_sconce.glb", at: vec(-9, 0, -4.6), name: "wall_sconce-3", turn: 90 deg)
+things["wall_sconce-4"] = model("wall_sconce.glb", at: vec(-9, 0, 3.15), name: "wall_sconce-4", turn: 90 deg)
 model "fire_extinguisher.glb", at: vec(2.75, 0, -7.4), name: "fire_extinguisher-1"
 model "fire_extinguisher.glb", at: vec(-5.6, 0, 7), name: "fire_extinguisher-2", turn: 180 deg
 model "smoke_detector.glb", at: vec(-4, 4, 0), name: "smoke_detector-1"
@@ -395,102 +396,102 @@ model "beer_crate.glb", at: vec(5.15, 0.28, -7.1), name: "beer_crate-3", turn: -
 model "beer_crate.glb", at: vec(5.65, 0, -6.65), name: "beer_crate-4", turn: 17.189 deg
 model "keg.glb", at: vec(5.75, 0, -7.1), name: "keg"
 model "bay_table.glb", at: vec(-0.2, 0, 7.25), name: "bay_table"
-model "fireplace.glb", at: vec(-8.55, 0, 0.8), name: "fireplace", turn: 90 deg
-model "painting.glb", at: vec(-8.535, 1.975, 0.8), name: "painting", turn: 90 deg
-model "mantel_clock.glb", at: vec(-8.43, 1.23, 0.8), name: "mantel_clock", turn: 90 deg
-model "candlestick.glb", at: vec(-8.43, 1.23, 0.25), name: "candlestick-1", turn: 90 deg
-model "candlestick.glb", at: vec(-8.43, 1.23, 1.35), name: "candlestick-2", turn: 90 deg
-model "mantel_photo_b.glb", at: vec(-8.49, 1.23, 0.45), name: "mantel_photo-1", turn: 78.541 deg
-model "mantel_photo_a.glb", at: vec(-8.49, 1.23, 1.12), name: "mantel_photo-2", turn: 107.189 deg
-model "mantel_books.glb", at: vec(-8.42, 1.23, 1.52), name: "mantel_books", turn: 90 deg
-model "vase.glb", at: vec(-8.42, 1.23, 0.07), name: "vase", turn: 90 deg
-model "fire_tools.glb", at: vec(-8.2, 0, 1.84), name: "fire_tools", turn: 90 deg
-model "log_basket.glb", at: vec(-8.2, 0, -0.29), name: "log_basket", turn: 90 deg
-model "rug.glb", at: vec(-7.12, 0, 0.8), name: "rug"
-model "coffee_table.glb", at: vec(-6.95, 0, 0.8), name: "coffee_table"
-model "drink_rocks_whiskey_ice.glb", at: vec(-6.75, 0.45, 1.22), name: "drink-1"
-model "drink_snifter_whiskey.glb", at: vec(-7.15, 0.45, 0.38), name: "drink-2"
+things["fireplace"] = model("fireplace.glb", at: vec(-8.55, 0, 0.8), name: "fireplace", turn: 90 deg)
+things["painting"] = model("painting.glb", at: vec(-8.535, 1.975, 0.8), name: "painting", turn: 90 deg)
+things["mantel_clock"] = model("mantel_clock.glb", at: vec(-8.43, 1.23, 0.8), name: "mantel_clock", turn: 90 deg)
+things["candlestick-1"] = model("candlestick.glb", at: vec(-8.43, 1.23, 0.25), name: "candlestick-1", turn: 90 deg)
+things["candlestick-2"] = model("candlestick.glb", at: vec(-8.43, 1.23, 1.35), name: "candlestick-2", turn: 90 deg)
+things["mantel_photo-1"] = model("mantel_photo_b.glb", at: vec(-8.49, 1.23, 0.45), name: "mantel_photo-1", turn: 78.541 deg)
+things["mantel_photo-2"] = model("mantel_photo_a.glb", at: vec(-8.49, 1.23, 1.12), name: "mantel_photo-2", turn: 107.189 deg)
+things["mantel_books"] = model("mantel_books.glb", at: vec(-8.42, 1.23, 1.52), name: "mantel_books", turn: 90 deg)
+things["vase"] = model("vase.glb", at: vec(-8.42, 1.23, 0.07), name: "vase", turn: 90 deg)
+things["fire_tools"] = model("fire_tools.glb", at: vec(-8.2, 0, 1.84), name: "fire_tools", turn: 90 deg)
+things["log_basket"] = model("log_basket.glb", at: vec(-8.2, 0, -0.29), name: "log_basket", turn: 90 deg)
+things["rug"] = model("rug.glb", at: vec(-7.12, 0, 0.8), name: "rug")
+things["coffee_table"] = model("coffee_table.glb", at: vec(-6.95, 0, 0.8), name: "coffee_table")
+things["drink-1"] = model("drink_rocks_whiskey_ice.glb", at: vec(-6.75, 0.45, 1.22), name: "drink-1")
+things["drink-2"] = model("drink_snifter_whiskey.glb", at: vec(-7.15, 0.45, 0.38), name: "drink-2")
 model "bottle_square_1.glb", at: vec(-6.93, 0.45, 1.28), name: "table_bottle-3"
-model "drink_wine_red_wine.glb", at: vec(-5.9, 0.565, 2.7), name: "drink-4"
-model "drink_coupe_pink.glb", at: vec(-0.05, 0.565, 7.15), name: "drink-5"
-model "drink_wine_white_wine.glb", at: vec(-0.35, 0.565, 7.35), name: "drink-6"
-model "drink_coupe_pink.glb", at: vec(-6.6587, 1.08, -4.6834), name: "drink-7"
-model "drink_pint_beer.glb", at: vec(-6.0704, 1.08, -4.5354), name: "drink-8"
-model "drink_wine_red_wine.glb", at: vec(-4.9766, 1.08, -4.3373), name: "drink-9"
-model "drink_martini_blue.glb", at: vec(-4.2728, 1.08, -4.261), name: "drink-10"
-model "drink_highball_cola_ice.glb", at: vec(-2.808, 1.08, -4.2277), name: "drink-11"
-model "drink_rocks_whiskey_ice.glb", at: vec(-1.9508, 1.08, -4.2863), name: "drink-12"
-model "drink_pint_beer.glb", at: vec(-0.95, 1.08, -4.4288), name: "drink-13"
-model "drink_coupe_orange.glb", at: vec(-0.3561, 1.08, -4.5522), name: "drink-14"
-model "chesterfield_sofa.glb", at: vec(-5.75, 0, 0.8), name: "chesterfield_sofa", turn: -90 deg
-model "armchair.glb", at: vec(-7.25, 0, -0.5), name: "armchair-1", turn: -51.566 deg
-model "armchair.glb", at: vec(-7.25, 0, 2.1), name: "armchair-2", turn: -128.434 deg
-model "bookshelf.glb", at: vec(-9, 0, 2.625), name: "lounge_bookshelf", turn: 90 deg
-model "floor_lamp.glb", at: vec(-6.3, 0, 2.75), name: "floor_lamp"
-model "side_table.glb", at: vec(-5.85, 0, 2.65), name: "side_table"
-model "fire_flames.glb", at: vec(-8.71, 0.12, 0.8), name: "fire_flames"
-model "chess_rook_w.glb", at: vec(-7.1425, 0.4705, 0.9925), name: "chess_rook_w-1"
-model "chess_pawn_w.glb", at: vec(-7.1425, 0.4705, 0.9375), name: "chess_pawn_w-1"
-model "chess_pawn_b.glb", at: vec(-7.1425, 0.4705, 0.6625), name: "chess_pawn_b-1"
-model "chess_rook_b.glb", at: vec(-7.1425, 0.4705, 0.6075), name: "chess_rook_b-1"
-model "chess_knight_w.glb", at: vec(-7.0875, 0.4705, 0.9925), name: "chess_knight_w-1"
-model "chess_pawn_w.glb", at: vec(-7.0875, 0.4705, 0.9375), name: "chess_pawn_w-2"
-model "chess_pawn_b.glb", at: vec(-7.0875, 0.4705, 0.6625), name: "chess_pawn_b-2"
-model "chess_knight_b.glb", at: vec(-7.0875, 0.4705, 0.6075), name: "chess_knight_b-1"
-model "chess_bishop_w.glb", at: vec(-7.0325, 0.4705, 0.9925), name: "chess_bishop_w-1"
-model "chess_pawn_w.glb", at: vec(-7.0325, 0.4705, 0.9375), name: "chess_pawn_w-3"
-model "chess_pawn_b.glb", at: vec(-7.0325, 0.4705, 0.6625), name: "chess_pawn_b-3"
-model "chess_bishop_b.glb", at: vec(-7.0325, 0.4705, 0.6075), name: "chess_bishop_b-1"
-model "chess_queen_w.glb", at: vec(-6.9775, 0.4705, 0.9925), name: "chess_queen_w-1"
-model "chess_pawn_w.glb", at: vec(-6.9775, 0.4705, 0.9375), name: "chess_pawn_w-4"
-model "chess_pawn_b.glb", at: vec(-6.9775, 0.4705, 0.6625), name: "chess_pawn_b-4"
-model "chess_queen_b.glb", at: vec(-6.9775, 0.4705, 0.6075), name: "chess_queen_b-1"
-model "chess_king_w.glb", at: vec(-6.9225, 0.4705, 0.9925), name: "chess_king_w"
-model "chess_pawn_w.glb", at: vec(-6.9225, 0.4705, 0.9375), name: "chess_pawn_w-5"
-model "chess_pawn_b.glb", at: vec(-6.9225, 0.4705, 0.6625), name: "chess_pawn_b-5"
-model "chess_king_b.glb", at: vec(-6.9225, 0.4705, 0.6075), name: "chess_king_b"
-model "chess_bishop_w.glb", at: vec(-6.8675, 0.4705, 0.9925), name: "chess_bishop_w-2"
-model "chess_pawn_w.glb", at: vec(-6.8675, 0.4705, 0.9375), name: "chess_pawn_w-6"
-model "chess_pawn_b.glb", at: vec(-6.8675, 0.4705, 0.6625), name: "chess_pawn_b-6"
-model "chess_bishop_b.glb", at: vec(-6.8675, 0.4705, 0.6075), name: "chess_bishop_b-2"
-model "chess_knight_w.glb", at: vec(-6.8125, 0.4705, 0.9925), name: "chess_knight_w-2"
-model "chess_pawn_w.glb", at: vec(-6.8125, 0.4705, 0.9375), name: "chess_pawn_w-7"
-model "chess_pawn_b.glb", at: vec(-6.8125, 0.4705, 0.6625), name: "chess_pawn_b-7"
-model "chess_knight_b.glb", at: vec(-6.8125, 0.4705, 0.6075), name: "chess_knight_b-2"
-model "chess_rook_w.glb", at: vec(-6.7575, 0.4705, 0.9925), name: "chess_rook_w-2"
-model "chess_pawn_w.glb", at: vec(-6.7575, 0.4705, 0.9375), name: "chess_pawn_w-8"
-model "chess_pawn_b.glb", at: vec(-6.7575, 0.4705, 0.6625), name: "chess_pawn_b-8"
-model "chess_rook_b.glb", at: vec(-6.7575, 0.4705, 0.6075), name: "chess_rook_b-2"
-model "chess_queen_w.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_w-2"
-model "chess_queen_b.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_b-2"
-model "chess_queen_w.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_w-3"
-model "chess_queen_b.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_b-3"
-model "piano.glb", at: vec(-8, 0.3, 5.6), name: "piano", turn: 104.897 deg
-model "stage.glb", at: vec(0, 0, 0), name: "stage"
-model "dartboard.glb", at: vec(6, 1.73, 7), name: "dartboard", turn: 180 deg
-model "chalkboard.glb", at: vec(7.7, 1.6, 7), name: "chalkboard", turn: 180 deg
-model "round_table.glb", at: vec(4.65, 0, 5), name: "round_table-7"
-model "pint_glass.glb", at: vec(4.8, 0.785, 5.1), name: "pint_glass-5"
-model "sim_rig.glb", at: vec(7.75, 0, -3), name: "sim_rig-1", turn: -90 deg
-model "sim_rig.glb", at: vec(7.75, 0, -1), name: "sim_rig-2", turn: -90 deg
-model "rhythm.glb", at: vec(7.5, 0, -5.9), name: "rhythm", turn: -45 deg
-model "jukebox.glb", at: vec(-3.8, 0, 6.55), name: "jukebox", turn: 180 deg
-model "big_mirror.glb", at: vec(0, 0, 0), name: "big_mirror"
-model "mirror_button.glb", at: vec(8.988, 1.39, 0.89), name: "mirror_button-1"
-model "mirror_button.glb", at: vec(8.988, 1.3, 0.89), name: "mirror_button-2"
-model "mirror_button.glb", at: vec(8.988, 1.21, 0.89), name: "mirror_button-3"
-model "arcade.glb", at: vec(0, 0, 0), name: "arcade"
+things["drink-4"] = model("drink_wine_red_wine.glb", at: vec(-5.9, 0.565, 2.7), name: "drink-4")
+things["drink-5"] = model("drink_coupe_pink.glb", at: vec(-0.05, 0.565, 7.15), name: "drink-5")
+things["drink-6"] = model("drink_wine_white_wine.glb", at: vec(-0.35, 0.565, 7.35), name: "drink-6")
+things["drink-7"] = model("drink_coupe_pink.glb", at: vec(-6.6587, 1.08, -4.6834), name: "drink-7")
+things["drink-8"] = model("drink_pint_beer.glb", at: vec(-6.0704, 1.08, -4.5354), name: "drink-8")
+things["drink-9"] = model("drink_wine_red_wine.glb", at: vec(-4.9766, 1.08, -4.3373), name: "drink-9")
+things["drink-10"] = model("drink_martini_blue.glb", at: vec(-4.2728, 1.08, -4.261), name: "drink-10")
+things["drink-11"] = model("drink_highball_cola_ice.glb", at: vec(-2.808, 1.08, -4.2277), name: "drink-11")
+things["drink-12"] = model("drink_rocks_whiskey_ice.glb", at: vec(-1.9508, 1.08, -4.2863), name: "drink-12")
+things["drink-13"] = model("drink_pint_beer.glb", at: vec(-0.95, 1.08, -4.4288), name: "drink-13")
+things["drink-14"] = model("drink_coupe_orange.glb", at: vec(-0.3561, 1.08, -4.5522), name: "drink-14")
+things["chesterfield_sofa"] = model("chesterfield_sofa.glb", at: vec(-5.75, 0, 0.8), name: "chesterfield_sofa", turn: -90 deg)
+things["armchair-1"] = model("armchair.glb", at: vec(-7.25, 0, -0.5), name: "armchair-1", turn: -51.566 deg)
+things["armchair-2"] = model("armchair.glb", at: vec(-7.25, 0, 2.1), name: "armchair-2", turn: -128.434 deg)
+things["lounge_bookshelf"] = model("bookshelf.glb", at: vec(-9, 0, 2.625), name: "lounge_bookshelf", turn: 90 deg)
+things["floor_lamp"] = model("floor_lamp.glb", at: vec(-6.3, 0, 2.75), name: "floor_lamp")
+things["side_table"] = model("side_table.glb", at: vec(-5.85, 0, 2.65), name: "side_table")
+things["fire_flames"] = model("fire_flames.glb", at: vec(-8.71, 0.12, 0.8), name: "fire_flames")
+things["chess_rook_w-1"] = model("chess_rook_w.glb", at: vec(-7.1425, 0.4705, 0.9925), name: "chess_rook_w-1")
+things["chess_pawn_w-1"] = model("chess_pawn_w.glb", at: vec(-7.1425, 0.4705, 0.9375), name: "chess_pawn_w-1")
+things["chess_pawn_b-1"] = model("chess_pawn_b.glb", at: vec(-7.1425, 0.4705, 0.6625), name: "chess_pawn_b-1")
+things["chess_rook_b-1"] = model("chess_rook_b.glb", at: vec(-7.1425, 0.4705, 0.6075), name: "chess_rook_b-1")
+things["chess_knight_w-1"] = model("chess_knight_w.glb", at: vec(-7.0875, 0.4705, 0.9925), name: "chess_knight_w-1")
+things["chess_pawn_w-2"] = model("chess_pawn_w.glb", at: vec(-7.0875, 0.4705, 0.9375), name: "chess_pawn_w-2")
+things["chess_pawn_b-2"] = model("chess_pawn_b.glb", at: vec(-7.0875, 0.4705, 0.6625), name: "chess_pawn_b-2")
+things["chess_knight_b-1"] = model("chess_knight_b.glb", at: vec(-7.0875, 0.4705, 0.6075), name: "chess_knight_b-1")
+things["chess_bishop_w-1"] = model("chess_bishop_w.glb", at: vec(-7.0325, 0.4705, 0.9925), name: "chess_bishop_w-1")
+things["chess_pawn_w-3"] = model("chess_pawn_w.glb", at: vec(-7.0325, 0.4705, 0.9375), name: "chess_pawn_w-3")
+things["chess_pawn_b-3"] = model("chess_pawn_b.glb", at: vec(-7.0325, 0.4705, 0.6625), name: "chess_pawn_b-3")
+things["chess_bishop_b-1"] = model("chess_bishop_b.glb", at: vec(-7.0325, 0.4705, 0.6075), name: "chess_bishop_b-1")
+things["chess_queen_w-1"] = model("chess_queen_w.glb", at: vec(-6.9775, 0.4705, 0.9925), name: "chess_queen_w-1")
+things["chess_pawn_w-4"] = model("chess_pawn_w.glb", at: vec(-6.9775, 0.4705, 0.9375), name: "chess_pawn_w-4")
+things["chess_pawn_b-4"] = model("chess_pawn_b.glb", at: vec(-6.9775, 0.4705, 0.6625), name: "chess_pawn_b-4")
+things["chess_queen_b-1"] = model("chess_queen_b.glb", at: vec(-6.9775, 0.4705, 0.6075), name: "chess_queen_b-1")
+things["chess_king_w"] = model("chess_king_w.glb", at: vec(-6.9225, 0.4705, 0.9925), name: "chess_king_w")
+things["chess_pawn_w-5"] = model("chess_pawn_w.glb", at: vec(-6.9225, 0.4705, 0.9375), name: "chess_pawn_w-5")
+things["chess_pawn_b-5"] = model("chess_pawn_b.glb", at: vec(-6.9225, 0.4705, 0.6625), name: "chess_pawn_b-5")
+things["chess_king_b"] = model("chess_king_b.glb", at: vec(-6.9225, 0.4705, 0.6075), name: "chess_king_b")
+things["chess_bishop_w-2"] = model("chess_bishop_w.glb", at: vec(-6.8675, 0.4705, 0.9925), name: "chess_bishop_w-2")
+things["chess_pawn_w-6"] = model("chess_pawn_w.glb", at: vec(-6.8675, 0.4705, 0.9375), name: "chess_pawn_w-6")
+things["chess_pawn_b-6"] = model("chess_pawn_b.glb", at: vec(-6.8675, 0.4705, 0.6625), name: "chess_pawn_b-6")
+things["chess_bishop_b-2"] = model("chess_bishop_b.glb", at: vec(-6.8675, 0.4705, 0.6075), name: "chess_bishop_b-2")
+things["chess_knight_w-2"] = model("chess_knight_w.glb", at: vec(-6.8125, 0.4705, 0.9925), name: "chess_knight_w-2")
+things["chess_pawn_w-7"] = model("chess_pawn_w.glb", at: vec(-6.8125, 0.4705, 0.9375), name: "chess_pawn_w-7")
+things["chess_pawn_b-7"] = model("chess_pawn_b.glb", at: vec(-6.8125, 0.4705, 0.6625), name: "chess_pawn_b-7")
+things["chess_knight_b-2"] = model("chess_knight_b.glb", at: vec(-6.8125, 0.4705, 0.6075), name: "chess_knight_b-2")
+things["chess_rook_w-2"] = model("chess_rook_w.glb", at: vec(-6.7575, 0.4705, 0.9925), name: "chess_rook_w-2")
+things["chess_pawn_w-8"] = model("chess_pawn_w.glb", at: vec(-6.7575, 0.4705, 0.9375), name: "chess_pawn_w-8")
+things["chess_pawn_b-8"] = model("chess_pawn_b.glb", at: vec(-6.7575, 0.4705, 0.6625), name: "chess_pawn_b-8")
+things["chess_rook_b-2"] = model("chess_rook_b.glb", at: vec(-6.7575, 0.4705, 0.6075), name: "chess_rook_b-2")
+things["chess_queen_w-2"] = model("chess_queen_w.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_w-2")
+things["chess_queen_b-2"] = model("chess_queen_b.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_b-2")
+things["chess_queen_w-3"] = model("chess_queen_w.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_w-3")
+things["chess_queen_b-3"] = model("chess_queen_b.glb", at: vec(-6.95, -0.1295, 0.8), name: "chess_queen_b-3")
+things["piano"] = model("piano.glb", at: vec(-8, 0.3, 5.6), name: "piano", turn: 104.897 deg)
+things["stage"] = model("stage.glb", at: vec(0, 0, 0), name: "stage")
+things["dartboard"] = model("dartboard.glb", at: vec(6, 1.73, 7), name: "dartboard", turn: 180 deg)
+things["chalkboard"] = model("chalkboard.glb", at: vec(7.7, 1.6, 7), name: "chalkboard", turn: 180 deg)
+things["round_table-7"] = model("round_table.glb", at: vec(4.65, 0, 5), name: "round_table-7")
+things["pint_glass-5"] = model("pint_glass.glb", at: vec(4.8, 0.785, 5.1), name: "pint_glass-5")
+things["sim_rig-1"] = model("sim_rig.glb", at: vec(7.75, 0, -3), name: "sim_rig-1", turn: -90 deg)
+things["sim_rig-2"] = model("sim_rig.glb", at: vec(7.75, 0, -1), name: "sim_rig-2", turn: -90 deg)
+things["rhythm"] = model("rhythm.glb", at: vec(7.5, 0, -5.9), name: "rhythm", turn: -45 deg)
+things["jukebox"] = model("jukebox.glb", at: vec(-3.8, 0, 6.55), name: "jukebox", turn: 180 deg)
+things["big_mirror"] = model("big_mirror.glb", at: vec(0, 0, 0), name: "big_mirror")
+things["mirror_button-1"] = model("mirror_button.glb", at: vec(8.988, 1.39, 0.89), name: "mirror_button-1")
+things["mirror_button-2"] = model("mirror_button.glb", at: vec(8.988, 1.3, 0.89), name: "mirror_button-2")
+things["mirror_button-3"] = model("mirror_button.glb", at: vec(8.988, 1.21, 0.89), name: "mirror_button-3")
+things["arcade"] = model("arcade.glb", at: vec(0, 0, 0), name: "arcade")
 model "stage_mic.glb", at: vec(-6.25, 0.3, 6.3), name: "stage_mic"
 model "stage_guitar.glb", at: vec(-5.72, 0.3, 6.62), name: "stage_guitar"
 model "stage_amp.glb", at: vec(-6.95, 0.3, 6.78), name: "stage_amp", turn: 180 deg
-model "stage_lights.glb", at: vec(-6.3, 4, 5.4), name: "stage_lights"
+things["stage_lights"] = model("stage_lights.glb", at: vec(-6.3, 4, 5.4), name: "stage_lights")
 model "stage_stool.glb", at: vec(-6.8, 0.3, 6.35), name: "stage_stool"
 model "board_darts.glb", at: vec(6, 1.73, 6.96), name: "board_darts", turn: 180 deg
 model "dart_surround.glb", at: vec(6, 1.73, 7), name: "dart_surround", turn: 180 deg
 model "dart_holder.glb", at: vec(6.72, 1.35, 7), name: "dart_holder", turn: 180 deg
 model "oche.glb", at: vec(6, 0, 4.59), name: "oche", turn: 180 deg
-model "dart_spotlights.glb", at: vec(6, 4, 5.56), name: "dart_spotlights", turn: 180 deg
-model "neon_darts.glb", at: vec(6, 0, 7), name: "neon_darts", turn: 180 deg
+things["dart_spotlights"] = model("dart_spotlights.glb", at: vec(6, 4, 5.56), name: "dart_spotlights", turn: 180 deg)
+things["neon_darts"] = model("neon_darts.glb", at: vec(6, 0, 7), name: "neon_darts", turn: 180 deg)
 model "caution_tape.glb", at: vec(-9, 0, -2.5), name: "caution_tape", turn: 90 deg
 model "plastic_sheet.glb", at: vec(-9.35, 0, -2.5), name: "plastic_sheet", turn: 90 deg
 model "sawhorse_1.glb", at: vec(-8.4, 0, -2.15), name: "sawhorse_1", turn: 90 deg
@@ -499,7 +500,7 @@ model "cone_1.glb", at: vec(-8.55, 0, -1.35), name: "cone_1", turn: 90 deg
 model "cone_2.glb", at: vec(-8.5, 0, -3.7), name: "cone_2", turn: 90 deg
 model "cone_3.glb", at: vec(-8.05, 0, -3.65), name: "cone_3", turn: 90 deg
 model "easel_sign.glb", at: vec(-8.45, 0, -0.95), name: "easel_sign", turn: 90 deg
-model "work_light.glb", at: vec(-10.65, 0, -3.172), name: "work_light", turn: 90 deg
+things["work_light"] = model("work_light.glb", at: vec(-10.65, 0, -3.172), name: "work_light", turn: 90 deg)
 model "step_ladder.glb", at: vec(-11.1, 0, -1.9), name: "step_ladder", turn: 90 deg
 model "paint_bucket_1.glb", at: vec(-10.5, 0, -2.74), name: "paint_bucket_1", turn: 90 deg
 model "paint_bucket_2.glb", at: vec(-10.95, 0, -3.46), name: "paint_bucket_2", turn: 90 deg
@@ -508,24 +509,25 @@ model "drop_cloth.glb", at: vec(-10.35, 0, -2.38), name: "drop_cloth", turn: 90 
 model "lumber.glb", at: vec(-10.05, 0, -1.88), name: "lumber", turn: 90 deg
 model "drywall.glb", at: vec(-12.15, 0, -2.962), name: "drywall", turn: 90 deg
 model "toolbox.glb", at: vec(-9.9, 0, -3.34), name: "toolbox", turn: 90 deg
-model "arcade_neon_bolt.glb", at: vec(0.46, 0, -10.1), name: "arcade_neon_bolt", turn: 90 deg
-model "arcade_neon_ring.glb", at: vec(0.46, 0, -13.2), name: "arcade_neon_ring", turn: 90 deg
-model "arcade_neon_triangle.glb", at: vec(8.34, 0, -10.2), name: "arcade_neon_triangle", turn: -90 deg
-model "arcade_neon_zigzag.glb", at: vec(8.34, 0, -13.3), name: "arcade_neon_zigzag", turn: -90 deg
-model "arcade_neon_wave.glb", at: vec(4.4, 0, -15.64), name: "arcade_neon_wave"
-model "arcade_sign_bar.glb", at: vec(3.7, 0, -7.4), name: "arcade_sign_bar"
-model "arcade_sign_inside.glb", at: vec(3.7, 0, -7.83), name: "arcade_sign_inside", turn: 180 deg
+things["arcade_neon_bolt"] = model("arcade_neon_bolt.glb", at: vec(0.46, 0, -10.1), name: "arcade_neon_bolt", turn: 90 deg)
+things["arcade_neon_ring"] = model("arcade_neon_ring.glb", at: vec(0.46, 0, -13.2), name: "arcade_neon_ring", turn: 90 deg)
+things["arcade_neon_triangle"] = model("arcade_neon_triangle.glb", at: vec(8.34, 0, -10.2), name: "arcade_neon_triangle", turn: -90 deg)
+things["arcade_neon_zigzag"] = model("arcade_neon_zigzag.glb", at: vec(8.34, 0, -13.3), name: "arcade_neon_zigzag", turn: -90 deg)
+things["arcade_neon_wave"] = model("arcade_neon_wave.glb", at: vec(4.4, 0, -15.64), name: "arcade_neon_wave")
+things["arcade_sign_bar"] = model("arcade_sign_bar.glb", at: vec(3.7, 0, -7.4), name: "arcade_sign_bar")
+things["arcade_sign_inside"] = model("arcade_sign_inside.glb", at: vec(3.7, 0, -7.83), name: "arcade_sign_inside", turn: 180 deg)
 model "arcade_bench.glb", at: vec(0.75, 0, -11.7), name: "arcade_bench", turn: 90 deg
-model "arcade_cabinet.glb", at: vec(4.4, 0, -15.2), name: "arcade_cabinet"
-model "credit_coin.glb", at: vec(0, -20, 0), name: "credit_coin"
+things["arcade_cabinet"] = model("arcade_cabinet.glb", at: vec(4.4, 0, -15.2), name: "arcade_cabinet")
+things["credit_coin"] = model("credit_coin.glb", at: vec(0, -20, 0), name: "credit_coin")
 
 # ---- the bar's life: every lamp breathes, buzzes or waves on its own
 # (the original's light rig), the light switch dims the bar
 let lamps = []
 let seeds = 0
-to lamp(l, rule, dims)
+to lamp(l, rule, dims, id)
   seeds += 1
-  lamps.push({light: l, base: l.lumens, rule: rule, dims: dims, seed: seeds * 7.31})
+  # `on` is the lamp's own switch (a tap puts it out): it follows `onTarget` over about 0.3 s
+  lamps.push({light: l, base: l.lumens, rule: rule, dims: dims, id: id, on: 1, onTarget: 1, seed: seeds * 7.31})
   return l
 
 to breathe(t, seed, amount: 6%, period: 8 s, speed: 0.5)
@@ -572,109 +574,109 @@ to shine(l, t)
   return 1
 
 # 103 lamps (lumens and kelvin as in the bar)
-lamp(light(vec(-6.6, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-1
-lamp(light(vec(-4.3, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-2
-lamp(light(vec(-2, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-3
-lamp(light(vec(0.2, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes)  # light-bulb-4
-lamp(light(vec(-6.281, 1.985, -7.054), lumens: 144, kelvin: 2700, radius: 0.3), "breathe", no)  # light-bulb-5
-lamp(light(vec(-1.544, 1.985, -7.056), lumens: 144, kelvin: 2700, radius: 0.3), "breathe", no)  # light-bulb-6
-lamp(light(vec(-4.511, 2.005, -7.123), lumens: 162, kelvin: 2700, radius: 0.03), "breathe", no)  # light-bulb-7
-lamp(light(vec(-8.0116, 3.424, -2.887), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
-lamp(light(vec(-6.8372, 3.3247, -2.0623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
-lamp(light(vec(-5.6628, 3.2253, -1.2377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
-lamp(light(vec(-4.4884, 3.126, -0.413), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-1
-lamp(light(vec(-3.3117, 3.075, 0.4117), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
-lamp(light(vec(-2.1372, 3.075, 1.2372), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
-lamp(light(vec(-0.9628, 3.075, 2.0628), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
-lamp(light(vec(0.2117, 3.075, 2.8883), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-2
-lamp(light(vec(1.3884, 3.126, 3.713), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
-lamp(light(vec(2.5628, 3.2253, 4.5377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
-lamp(light(vec(3.7372, 3.3247, 5.3623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
-lamp(light(vec(4.9116, 3.424, 6.187), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-1-3
-lamp(light(vec(-8.0116, 3.424, 6.187), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
-lamp(light(vec(-6.8372, 3.3247, 5.3623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
-lamp(light(vec(-5.6628, 3.2253, 4.5377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
-lamp(light(vec(-4.4884, 3.126, 3.713), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-1
-lamp(light(vec(-3.3117, 3.075, 2.8883), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
-lamp(light(vec(-2.1372, 3.075, 2.0628), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
-lamp(light(vec(-0.9628, 3.075, 1.2372), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
-lamp(light(vec(0.2117, 3.075, 0.4117), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-2
-lamp(light(vec(1.3884, 3.126, -0.413), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
-lamp(light(vec(2.5628, 3.2253, -1.2377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
-lamp(light(vec(3.7372, 3.3247, -2.0623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
-lamp(light(vec(4.9116, 3.424, -2.887), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-2-3
-lamp(light(vec(-3.4744, 3.4242, -2.9122), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
-lamp(light(vec(-2.4248, 3.3247, -2.1374), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
-lamp(light(vec(-1.3752, 3.2253, -1.3626), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
-lamp(light(vec(-0.3256, 3.1258, -0.5878), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-1
-lamp(light(vec(0.7242, 3.075, 0.1872), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
-lamp(light(vec(1.7747, 3.075, 0.9624), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
-lamp(light(vec(2.8253, 3.075, 1.7376), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
-lamp(light(vec(3.8758, 3.075, 2.5128), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-2
-lamp(light(vec(4.9256, 3.1258, 3.2878), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
-lamp(light(vec(5.9752, 3.2253, 4.0626), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
-lamp(light(vec(7.0248, 3.3247, 4.8374), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
-lamp(light(vec(8.0744, 3.4242, 5.6122), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-3-3
-lamp(light(vec(-7.8838, 3.4259, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
-lamp(light(vec(-6.4499, 3.3253, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
-lamp(light(vec(-5.0161, 3.2247, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
-lamp(light(vec(-3.5822, 3.1241, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-1
-lamp(light(vec(-2.1499, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
-lamp(light(vec(-0.7166, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
-lamp(light(vec(0.7166, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
-lamp(light(vec(2.1499, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-2
-lamp(light(vec(3.5822, 3.1241, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
-lamp(light(vec(5.0161, 3.2247, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
-lamp(light(vec(6.4499, 3.3253, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
-lamp(light(vec(7.8838, 3.4259, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes)  # string-light-4-3
-lamp(light(vec(8.85, 3.76, 2.3625), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
-lamp(light(vec(8.85, 3.76, 3.1875), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
-lamp(light(vec(8.85, 3.76, 4.0125), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
-lamp(light(vec(8.85, 3.76, 4.8375), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes)  # mirror-light
-lamp(light(vec(-6.366, 3.316, 4.644), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no)  # stage-spot-1
-lamp(light(vec(-6.392, 3.323, 5.414), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no)  # stage-spot-2
-lamp(light(vec(-6.354, 3.308, 6.185), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no)  # stage-spot-3
-lamp(light(vec(5.672, 3.718, 5.647), lumens: 150, kelvin: 3000, radius: 0.04), "breathe", no)  # dart-spot-1
-lamp(light(vec(6.328, 3.718, 5.647), lumens: 150, kelvin: 3000, radius: 0.04), "breathe", no)  # dart-spot-2
-lamp(light(vec(-0.2, 1.8, 7.6), lumens: 108, color: vec(0.55, 0.6, 0.9), radius: 0.3), "neon", no)  # light-neon-1
-lamp(light(vec(8.6491, 1.0489, -1.4502), lumens: 81, color: vec(0.5, 0.6, 1), radius: 0.03), "neon", no)  # light-neon-3
-lamp(light(vec(8.6629, 1.1111, -0.5878), lumens: 81, color: vec(0.5, 0.6, 1), radius: 0.03), "neon", no)  # light-neon-3
-lamp(light(vec(6.653, 1.887, -5.648), lumens: 216, color: vec(0.85, 0.4, 1), radius: 0.3), "neon", no)  # light-neon-4
-lamp(light(vec(7.0757, 3, -5.4757), lumens: 144, color: vec(1, 0.3, 0.7), radius: 0.09), "neon", no)  # light-neon-5
-lamp(panel_light(at: vec(-6.34, 3.49, -3.385), facing: vec(0, 0, 1), size: vec(2.21, 0.28, 0), lumens: 180, color: vec(1, 0.18, 0.55)), "neon", no)  # light-neon-cocktails
-lamp(panel_light(at: vec(8.92, 3.4, -2.05), facing: vec(-1, 0, 0), size: vec(2.03, 0.33, 0), lumens: 170, color: vec(0.3, 1, 0.35)), "neon", no)  # light-neon-game-on
-lamp(panel_light(at: vec(-3.76, 3.08, 6.92), facing: vec(0, 0, -1), size: vec(0.91, 0.27, 0), lumens: 110, color: vec(1, 0.55, 0.15)), "neon", no)  # light-neon-play
-lamp(panel_light(at: vec(-7.15, 2.9, 6.92), facing: vec(0, 0, -1), size: vec(0.48, 0.73, 0), lumens: 100, color: vec(1, 0.18, 0.55)), "neon", no)  # light-neon-note
-lamp(panel_light(at: vec(6.04, 2.43, 6.92), facing: vec(0, 0, -1), size: vec(1.15, 0.27, 0), lumens: 120, color: vec(1, 0.15, 0.08)), "neon", no)  # light-neon-darts
-lamp(panel_light(at: vec(0.51, 3.26, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-w
-lamp(panel_light(at: vec(8.29, 3.26, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-e
-lamp(panel_light(at: vec(4.4, 3.26, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-n
-lamp(panel_light(at: vec(4.4, 3.26, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-high-s
-lamp(panel_light(at: vec(0.51, 1, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-w
-lamp(panel_light(at: vec(8.29, 1, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-e
-lamp(panel_light(at: vec(4.4, 1, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-n
-lamp(panel_light(at: vec(4.4, 1, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no)  # light-arcade-wainscot-s
-lamp(panel_light(at: vec(0.51, 0.08, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-w
-lamp(panel_light(at: vec(8.29, 0.08, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-e
-lamp(panel_light(at: vec(4.4, 0.08, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-n
-lamp(panel_light(at: vec(4.4, 0.08, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-floor-s
-lamp(panel_light(at: vec(3.7, 2.8, -7.92), facing: vec(0, 0, 1), size: vec(1.8, 0.1, 0), lumens: 70, color: vec(1, 0.85, 0.1)), "neon", no)  # light-arcade-door
-lamp(panel_light(at: vec(0.54, 2, -10.1), facing: vec(1, 0, 0), size: vec(0.99, 1.14, 0), lumens: 140, color: vec(1, 0.85, 0.1)), "neon", no)  # light-arcade-neon-bolt
-lamp(panel_light(at: vec(0.54, 2.05, -13.2), facing: vec(1, 0, 0), size: vec(1.14, 1.14, 0), lumens: 140, color: vec(1, 0.12, 0.62)), "neon", no)  # light-arcade-neon-ring
-lamp(panel_light(at: vec(8.26, 2.21, -10.2), facing: vec(-1, 0, 0), size: vec(1.13, 0.96, 0), lumens: 140, color: vec(0.1, 0.85, 1)), "neon", no)  # light-arcade-neon-triangle
-lamp(panel_light(at: vec(8.26, 2, -13.3), facing: vec(-1, 0, 0), size: vec(1.95, 0.44, 0), lumens: 150, color: vec(0.45, 1, 0.2)), "neon", no)  # light-arcade-neon-zigzag
-lamp(panel_light(at: vec(4.4, 2.65, -15.56), facing: vec(0, 0, 1), size: vec(7.21, 0.4, 0), lumens: 300, color: vec(1, 0.12, 0.62)), "wave", no)  # light-arcade-neon-wave
-lamp(panel_light(at: vec(3.7, 3.13, -7.32), facing: vec(0, 0, 1), size: vec(1.6, 0.4, 0), lumens: 130, color: vec(1, 0.2, 0.65)), "sign", no)  # light-sign
-lamp(panel_light(at: vec(3.7, 2.95, -7.91), facing: vec(0, 0, -1), size: vec(1.4, 0.35, 0), lumens: 110, color: vec(1, 0.2, 0.65)), "neon", no)  # light-arcade-sign-inside
-lamp(panel_light(at: vec(-1, 2.09, 6.76), facing: vec(0, 0, -1), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-1
-lamp(panel_light(at: vec(-5.45, 2.09, 6.76), facing: vec(0, 0, -1), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-2
-lamp(panel_light(at: vec(-8.76, 2.09, -4.6), facing: vec(1, 0, 0), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-3
-lamp(panel_light(at: vec(-8.76, 2.09, 3.15), facing: vec(1, 0, 0), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no)  # light-wall-sconce-4
-lamp(panel_light(at: vec(4.4, 1.35, -14.7), facing: vec(0, 0, 1), size: vec(0.5, 0.4, 0), lumens: 110, color: vec(0.8, 0.85, 1)), "neon", no)  # light-arcade-cabinet-screen
-lamp(light(vec(-8.57, 0.161, 0.8), lumens: 324, kelvin: 1700, radius: 0.03), "fire", no)  # light-fire
-lamp(light(vec(-6.3, 1.5, 2.75), lumens: 198, kelvin: 2400, radius: 0.04), "breathe", no)  # light-bulb-8
-lamp(panel_light(at: vec(-3.8, 0.875, 6.279), facing: vec(0, -0.001, -1), size: vec(1.29, 0.82, 0), lumens: 162, color: vec(1, 0.45, 0.25)), "jukebox", no)  # light-jukebox
-lamp(light(vec(-10.8, 1.8, -3.1), lumens: 288, kelvin: 3800, radius: 0.12), "neon", no)  # light-neon-6
+lamp(light(vec(-6.6, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes, "light-bulb-1")  # light-bulb-1
+lamp(light(vec(-4.3, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes, "light-bulb-2")  # light-bulb-2
+lamp(light(vec(-2, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes, "light-bulb-3")  # light-bulb-3
+lamp(light(vec(0.2, 2.11, -4.6), lumens: 360, kelvin: 2700, radius: 0.08), "breathe", yes, "light-bulb-4")  # light-bulb-4
+lamp(light(vec(-6.281, 1.985, -7.054), lumens: 144, kelvin: 2700, radius: 0.3), "breathe", no, "light-bulb-5")  # light-bulb-5
+lamp(light(vec(-1.544, 1.985, -7.056), lumens: 144, kelvin: 2700, radius: 0.3), "breathe", no, "light-bulb-6")  # light-bulb-6
+lamp(light(vec(-4.511, 2.005, -7.123), lumens: 162, kelvin: 2700, radius: 0.03), "breathe", no, "light-bulb-7")  # light-bulb-7
+lamp(light(vec(-8.0116, 3.424, -2.887), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-1")  # string-light-1-1
+lamp(light(vec(-6.8372, 3.3247, -2.0623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-1")  # string-light-1-1
+lamp(light(vec(-5.6628, 3.2253, -1.2377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-1")  # string-light-1-1
+lamp(light(vec(-4.4884, 3.126, -0.413), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-1")  # string-light-1-1
+lamp(light(vec(-3.3117, 3.075, 0.4117), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-2")  # string-light-1-2
+lamp(light(vec(-2.1372, 3.075, 1.2372), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-2")  # string-light-1-2
+lamp(light(vec(-0.9628, 3.075, 2.0628), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-2")  # string-light-1-2
+lamp(light(vec(0.2117, 3.075, 2.8883), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-2")  # string-light-1-2
+lamp(light(vec(1.3884, 3.126, 3.713), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-3")  # string-light-1-3
+lamp(light(vec(2.5628, 3.2253, 4.5377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-3")  # string-light-1-3
+lamp(light(vec(3.7372, 3.3247, 5.3623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-3")  # string-light-1-3
+lamp(light(vec(4.9116, 3.424, 6.187), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-1-3")  # string-light-1-3
+lamp(light(vec(-8.0116, 3.424, 6.187), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-1")  # string-light-2-1
+lamp(light(vec(-6.8372, 3.3247, 5.3623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-1")  # string-light-2-1
+lamp(light(vec(-5.6628, 3.2253, 4.5377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-1")  # string-light-2-1
+lamp(light(vec(-4.4884, 3.126, 3.713), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-1")  # string-light-2-1
+lamp(light(vec(-3.3117, 3.075, 2.8883), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-2")  # string-light-2-2
+lamp(light(vec(-2.1372, 3.075, 2.0628), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-2")  # string-light-2-2
+lamp(light(vec(-0.9628, 3.075, 1.2372), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-2")  # string-light-2-2
+lamp(light(vec(0.2117, 3.075, 0.4117), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-2")  # string-light-2-2
+lamp(light(vec(1.3884, 3.126, -0.413), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-3")  # string-light-2-3
+lamp(light(vec(2.5628, 3.2253, -1.2377), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-3")  # string-light-2-3
+lamp(light(vec(3.7372, 3.3247, -2.0623), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-3")  # string-light-2-3
+lamp(light(vec(4.9116, 3.424, -2.887), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-2-3")  # string-light-2-3
+lamp(light(vec(-3.4744, 3.4242, -2.9122), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-1")  # string-light-3-1
+lamp(light(vec(-2.4248, 3.3247, -2.1374), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-1")  # string-light-3-1
+lamp(light(vec(-1.3752, 3.2253, -1.3626), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-1")  # string-light-3-1
+lamp(light(vec(-0.3256, 3.1258, -0.5878), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-1")  # string-light-3-1
+lamp(light(vec(0.7242, 3.075, 0.1872), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-2")  # string-light-3-2
+lamp(light(vec(1.7747, 3.075, 0.9624), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-2")  # string-light-3-2
+lamp(light(vec(2.8253, 3.075, 1.7376), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-2")  # string-light-3-2
+lamp(light(vec(3.8758, 3.075, 2.5128), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-2")  # string-light-3-2
+lamp(light(vec(4.9256, 3.1258, 3.2878), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-3")  # string-light-3-3
+lamp(light(vec(5.9752, 3.2253, 4.0626), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-3")  # string-light-3-3
+lamp(light(vec(7.0248, 3.3247, 4.8374), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-3")  # string-light-3-3
+lamp(light(vec(8.0744, 3.4242, 5.6122), lumens: 33.75, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-3-3")  # string-light-3-3
+lamp(light(vec(-7.8838, 3.4259, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-1")  # string-light-4-1
+lamp(light(vec(-6.4499, 3.3253, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-1")  # string-light-4-1
+lamp(light(vec(-5.0161, 3.2247, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-1")  # string-light-4-1
+lamp(light(vec(-3.5822, 3.1241, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-1")  # string-light-4-1
+lamp(light(vec(-2.1499, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-2")  # string-light-4-2
+lamp(light(vec(-0.7166, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-2")  # string-light-4-2
+lamp(light(vec(0.7166, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-2")  # string-light-4-2
+lamp(light(vec(2.1499, 3.075, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-2")  # string-light-4-2
+lamp(light(vec(3.5822, 3.1241, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-3")  # string-light-4-3
+lamp(light(vec(5.0161, 3.2247, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-3")  # string-light-4-3
+lamp(light(vec(6.4499, 3.3253, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-3")  # string-light-4-3
+lamp(light(vec(7.8838, 3.4259, 2.2), lumens: 37.5, kelvin: 5000, radius: 0.03), "strings", yes, "string-light-4-3")  # string-light-4-3
+lamp(light(vec(8.85, 3.76, 2.3625), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes, "mirror-light")  # mirror-light
+lamp(light(vec(8.85, 3.76, 3.1875), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes, "mirror-light")  # mirror-light
+lamp(light(vec(8.85, 3.76, 4.0125), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes, "mirror-light")  # mirror-light
+lamp(light(vec(8.85, 3.76, 4.8375), lumens: 120, kelvin: 2700, radius: 0.03), "breathe", yes, "mirror-light")  # mirror-light
+lamp(light(vec(-6.366, 3.316, 4.644), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no, "stage-spot-1")  # stage-spot-1
+lamp(light(vec(-6.392, 3.323, 5.414), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no, "stage-spot-2")  # stage-spot-2
+lamp(light(vec(-6.354, 3.308, 6.185), lumens: 200, kelvin: 3000, radius: 0.07), "breathe", no, "stage-spot-3")  # stage-spot-3
+lamp(light(vec(5.672, 3.718, 5.647), lumens: 150, kelvin: 3000, radius: 0.04), "breathe", no, "dart-spot-1")  # dart-spot-1
+lamp(light(vec(6.328, 3.718, 5.647), lumens: 150, kelvin: 3000, radius: 0.04), "breathe", no, "dart-spot-2")  # dart-spot-2
+lamp(light(vec(-0.2, 1.8, 7.6), lumens: 108, color: vec(0.55, 0.6, 0.9), radius: 0.3), "neon", no, "light-neon-1")  # light-neon-1
+lamp(light(vec(8.6491, 1.0489, -1.4502), lumens: 81, color: vec(0.5, 0.6, 1), radius: 0.03), "neon", no, "light-neon-3")  # light-neon-3
+lamp(light(vec(8.6629, 1.1111, -0.5878), lumens: 81, color: vec(0.5, 0.6, 1), radius: 0.03), "neon", no, "light-neon-3")  # light-neon-3
+lamp(light(vec(6.653, 1.887, -5.648), lumens: 216, color: vec(0.85, 0.4, 1), radius: 0.3), "neon", no, "light-neon-4")  # light-neon-4
+lamp(light(vec(7.0757, 3, -5.4757), lumens: 144, color: vec(1, 0.3, 0.7), radius: 0.09), "neon", no, "light-neon-5")  # light-neon-5
+lamp(panel_light(at: vec(-6.34, 3.49, -3.385), facing: vec(0, 0, 1), size: vec(2.21, 0.28, 0), lumens: 180, color: vec(1, 0.18, 0.55)), "neon", no, "light-neon-cocktails")  # light-neon-cocktails
+lamp(panel_light(at: vec(8.92, 3.4, -2.05), facing: vec(-1, 0, 0), size: vec(2.03, 0.33, 0), lumens: 170, color: vec(0.3, 1, 0.35)), "neon", no, "light-neon-game-on")  # light-neon-game-on
+lamp(panel_light(at: vec(-3.76, 3.08, 6.92), facing: vec(0, 0, -1), size: vec(0.91, 0.27, 0), lumens: 110, color: vec(1, 0.55, 0.15)), "neon", no, "light-neon-play")  # light-neon-play
+lamp(panel_light(at: vec(-7.15, 2.9, 6.92), facing: vec(0, 0, -1), size: vec(0.48, 0.73, 0), lumens: 100, color: vec(1, 0.18, 0.55)), "neon", no, "light-neon-note")  # light-neon-note
+lamp(panel_light(at: vec(6.04, 2.43, 6.92), facing: vec(0, 0, -1), size: vec(1.15, 0.27, 0), lumens: 120, color: vec(1, 0.15, 0.08)), "neon", no, "light-neon-darts")  # light-neon-darts
+lamp(panel_light(at: vec(0.51, 3.26, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no, "light-arcade-high-w")  # light-arcade-high-w
+lamp(panel_light(at: vec(8.29, 3.26, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no, "light-arcade-high-e")  # light-arcade-high-e
+lamp(panel_light(at: vec(4.4, 3.26, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no, "light-arcade-high-n")  # light-arcade-high-n
+lamp(panel_light(at: vec(4.4, 3.26, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 160, color: vec(0.1, 0.85, 1)), "neon", no, "light-arcade-high-s")  # light-arcade-high-s
+lamp(panel_light(at: vec(0.51, 1, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no, "light-arcade-wainscot-w")  # light-arcade-wainscot-w
+lamp(panel_light(at: vec(8.29, 1, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no, "light-arcade-wainscot-e")  # light-arcade-wainscot-e
+lamp(panel_light(at: vec(4.4, 1, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no, "light-arcade-wainscot-n")  # light-arcade-wainscot-n
+lamp(panel_light(at: vec(4.4, 1, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 140, color: vec(0.6, 0.3, 1)), "neon", no, "light-arcade-wainscot-s")  # light-arcade-wainscot-s
+lamp(panel_light(at: vec(0.51, 0.08, -11.755), facing: vec(1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no, "light-arcade-floor-w")  # light-arcade-floor-w
+lamp(panel_light(at: vec(8.29, 0.08, -11.755), facing: vec(-1, 0, 0), size: vec(7.59, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no, "light-arcade-floor-e")  # light-arcade-floor-e
+lamp(panel_light(at: vec(4.4, 0.08, -15.59), facing: vec(0, 0, 1), size: vec(7.7, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no, "light-arcade-floor-n")  # light-arcade-floor-n
+lamp(panel_light(at: vec(4.4, 0.08, -7.92), facing: vec(0, 0, -1), size: vec(7.7, 0.12, 0), lumens: 100, color: vec(1, 0.12, 0.62)), "neon", no, "light-arcade-floor-s")  # light-arcade-floor-s
+lamp(panel_light(at: vec(3.7, 2.8, -7.92), facing: vec(0, 0, 1), size: vec(1.8, 0.1, 0), lumens: 70, color: vec(1, 0.85, 0.1)), "neon", no, "light-arcade-door")  # light-arcade-door
+lamp(panel_light(at: vec(0.54, 2, -10.1), facing: vec(1, 0, 0), size: vec(0.99, 1.14, 0), lumens: 140, color: vec(1, 0.85, 0.1)), "neon", no, "light-arcade-neon-bolt")  # light-arcade-neon-bolt
+lamp(panel_light(at: vec(0.54, 2.05, -13.2), facing: vec(1, 0, 0), size: vec(1.14, 1.14, 0), lumens: 140, color: vec(1, 0.12, 0.62)), "neon", no, "light-arcade-neon-ring")  # light-arcade-neon-ring
+lamp(panel_light(at: vec(8.26, 2.21, -10.2), facing: vec(-1, 0, 0), size: vec(1.13, 0.96, 0), lumens: 140, color: vec(0.1, 0.85, 1)), "neon", no, "light-arcade-neon-triangle")  # light-arcade-neon-triangle
+lamp(panel_light(at: vec(8.26, 2, -13.3), facing: vec(-1, 0, 0), size: vec(1.95, 0.44, 0), lumens: 150, color: vec(0.45, 1, 0.2)), "neon", no, "light-arcade-neon-zigzag")  # light-arcade-neon-zigzag
+lamp(panel_light(at: vec(4.4, 2.65, -15.56), facing: vec(0, 0, 1), size: vec(7.21, 0.4, 0), lumens: 300, color: vec(1, 0.12, 0.62)), "wave", no, "light-arcade-neon-wave")  # light-arcade-neon-wave
+lamp(panel_light(at: vec(3.7, 3.13, -7.32), facing: vec(0, 0, 1), size: vec(1.6, 0.4, 0), lumens: 130, color: vec(1, 0.2, 0.65)), "sign", no, "light-sign")  # light-sign
+lamp(panel_light(at: vec(3.7, 2.95, -7.91), facing: vec(0, 0, -1), size: vec(1.4, 0.35, 0), lumens: 110, color: vec(1, 0.2, 0.65)), "neon", no, "light-arcade-sign-inside")  # light-arcade-sign-inside
+lamp(panel_light(at: vec(-1, 2.09, 6.76), facing: vec(0, 0, -1), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no, "light-wall-sconce-1")  # light-wall-sconce-1
+lamp(panel_light(at: vec(-5.45, 2.09, 6.76), facing: vec(0, 0, -1), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no, "light-wall-sconce-2")  # light-wall-sconce-2
+lamp(panel_light(at: vec(-8.76, 2.09, -4.6), facing: vec(1, 0, 0), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no, "light-wall-sconce-3")  # light-wall-sconce-3
+lamp(panel_light(at: vec(-8.76, 2.09, 3.15), facing: vec(1, 0, 0), size: vec(0.12, 0.12, 0), lumens: 200, kelvin: 2700), "breathe", no, "light-wall-sconce-4")  # light-wall-sconce-4
+lamp(panel_light(at: vec(4.4, 1.35, -14.7), facing: vec(0, 0, 1), size: vec(0.5, 0.4, 0), lumens: 110, color: vec(0.8, 0.85, 1)), "neon", no, "light-arcade-cabinet-screen")  # light-arcade-cabinet-screen
+lamp(light(vec(-8.57, 0.161, 0.8), lumens: 324, kelvin: 1700, radius: 0.03), "fire", no, "light-fire")  # light-fire
+lamp(light(vec(-6.3, 1.5, 2.75), lumens: 198, kelvin: 2400, radius: 0.04), "breathe", no, "light-bulb-8")  # light-bulb-8
+lamp(panel_light(at: vec(-3.8, 0.875, 6.279), facing: vec(0, -0.001, -1), size: vec(1.29, 0.82, 0), lumens: 162, color: vec(1, 0.45, 0.25)), "jukebox", no, "light-jukebox")  # light-jukebox
+lamp(light(vec(-10.8, 1.8, -3.1), lumens: 288, kelvin: 3800, radius: 0.12), "neon", no, "light-neon-6")  # light-neon-6
 
 let dim = 1
 let dimTarget = 1
@@ -687,7 +689,8 @@ every 1 / 30 s
     let k = shine(l, t)
     if l.dims
       k = k * dim
-    l.light.lumens = l.base * k
+    l.on = approach(l.on, l.onTarget, 10, 1 / 30)
+    l.light.lumens = l.base * k * l.on
 
 # the light switch by the door: lights down over the bar, and up again
 when "use"
@@ -706,9 +709,86 @@ when "fire on"
   fire_lit = yes
 
 
+# ---- what a tap or Use can find (bar_use_common.loop answers them)
+# 161 things the script holds; each seat of every thing, where its hip is (in the world)
+let seats = [
+  {thing: "bar_stool-1", name: "Bar stool", kind: "stool", hip: vec(-7.0405, 0.84, -4.0435), facing: 16.319, low: 0},
+  {thing: "bar_stool-2", name: "Bar stool", kind: "stool", hip: vec(-5.9501, 0.84, -3.773), facing: 11.546, low: 0},
+  {thing: "bar_stool-3", name: "Bar stool", kind: "stool", hip: vec(-4.8597, 0.84, -3.5964), facing: 6.853, low: 0},
+  {thing: "bar_stool-4", name: "Bar stool", kind: "stool", hip: vec(-3.7692, 0.84, -3.51), facing: 2.206, low: 0},
+  {thing: "bar_stool-5", name: "Bar stool", kind: "stool", hip: vec(-2.6788, 0.84, -3.5121), facing: -2.427, low: 0},
+  {thing: "bar_stool-6", name: "Bar stool", kind: "stool", hip: vec(-1.5884, 0.84, -3.6027), facing: -7.075, low: 0},
+  {thing: "bar_stool-7", name: "Bar stool", kind: "stool", hip: vec(-0.498, 0.84, -3.7837), facing: -11.771, low: 0},
+  {thing: "bar_stool-8", name: "Bar stool", kind: "stool", hip: vec(0.5924, 0.84, -4.0588), facing: -16.549, low: 0},
+  {thing: "table_stool-1", name: "Stool", kind: "stool", hip: vec(-3.78, 0.62, -0.6), facing: 90, low: 0.1},
+  {thing: "table_stool-2", name: "Stool", kind: "stool", hip: vec(-2.22, 0.62, -0.6), facing: -90, low: 0.1},
+  {thing: "table_stool-3", name: "Stool", kind: "stool", hip: vec(-0.6849, 0.62, -2.011), facing: 141.566, low: 0.1},
+  {thing: "table_stool-4", name: "Stool", kind: "stool", hip: vec(0.2849, 0.62, -0.789), facing: -38.434, low: 0.1},
+  {thing: "table_stool-5", name: "Stool", kind: "stool", hip: vec(2.5772, 0.62, -1.1596), facing: -166.868, low: 0.1},
+  {thing: "table_stool-6", name: "Stool", kind: "stool", hip: vec(2.2228, 0.62, 0.3596), facing: 13.132, low: 0.1},
+  {thing: "table_stool-7", name: "Stool", kind: "stool", hip: vec(-0.8948, 0.62, 1.6666), facing: -115.301, low: 0.1},
+  {thing: "table_stool-8", name: "Stool", kind: "stool", hip: vec(-2.3052, 0.62, 2.3334), facing: 64.699, low: 0.1},
+  {thing: "table_stool-9", name: "Stool", kind: "stool", hip: vec(2.0995, 0.62, 2.7452), facing: -63.735, low: 0.1},
+  {thing: "table_stool-10", name: "Stool", kind: "stool", hip: vec(0.7005, 0.62, 2.0548), facing: 116.265, low: 0.1},
+  {thing: "table_stool-11", name: "Stool", kind: "stool", hip: vec(4.3644, 0.62, 2.3625), facing: -12.169, low: 0.1},
+  {thing: "table_stool-12", name: "Stool", kind: "stool", hip: vec(4.0356, 0.62, 0.8375), facing: 167.831, low: 0.1},
+  {thing: "chesterfield_sofa", name: "Sofa", kind: "sofa", hip: vec(-5.85, 0.55, 0.1), facing: -90, low: 1},
+  {thing: "chesterfield_sofa", name: "Sofa", kind: "sofa", hip: vec(-5.85, 0.55, 0.8), facing: -90, low: 1},
+  {thing: "chesterfield_sofa", name: "Sofa", kind: "sofa", hip: vec(-5.85, 0.55, 1.5), facing: -90, low: 1},
+  {thing: "armchair-1", name: "Armchair", kind: "chair", hip: vec(-7.2892, 0.55, -0.4689), facing: -128.434, low: 0.8},
+  {thing: "armchair-2", name: "Armchair", kind: "chair", hip: vec(-7.2892, 0.55, 2.0689), facing: -51.566, low: 0.8},
+  {thing: "window-seat", name: "Window seat", kind: "chair", hip: vec(-1.4, 0.56, 7.5), facing: 0, low: 0.6},
+  {thing: "window-seat", name: "Window seat", kind: "chair", hip: vec(-0.2, 0.56, 7.5), facing: 0, low: 0.6},
+  {thing: "window-seat", name: "Window seat", kind: "chair", hip: vec(1, 0.56, 7.5), facing: 0, low: 0.6},
+  {thing: "piano", name: "Piano bench", kind: "piano-bench", hip: vec(-8.5992, 0.9, 5.7594), facing: 75.103, low: 0.2},
+  {thing: "piano", name: "Stage stool", kind: "stool", hip: vec(-6.8, 1.14, 6.35), facing: 45, low: 0},
+  {thing: "sim_rig-1", name: "Racing sim", kind: "sim", hip: vec(7.55, 0.4, -3), facing: 90, low: 1},
+  {thing: "sim_rig-2", name: "Racing sim", kind: "sim", hip: vec(7.55, 0.4, -1), facing: 90, low: 1},
+  {thing: "rhythm", name: "Beanbag", kind: "sofa", hip: vec(7.3586, 0.35, -4.1322), facing: -135, low: 1},
+  {thing: "arcade-bench", name: "Arcade bench", kind: "sofa", hip: vec(0.78, 0.48, -12.2), facing: 90, low: 1},
+  {thing: "arcade-bench", name: "Arcade bench", kind: "sofa", hip: vec(0.78, 0.48, -11.2), facing: 90, low: 1},
+]
+# the lamps a person can touch, and the lights each puts out
+let lamp_things = {
+  "pendant_lamp-1": ["light-bulb-1"],
+  "pendant_lamp-2": ["light-bulb-2"],
+  "pendant_lamp-3": ["light-bulb-3"],
+  "pendant_lamp-4": ["light-bulb-4"],
+  "floor_lamp": ["light-bulb-8"],
+}
+# the sounds a tap on a table, a counter or a clock makes (as the old bar's knock)
+let knocks = {
+  "bar_counter_l": {sound: "impact", variant: "wood", strength: 0.6},
+  "back_bar_tall": {sound: "impact", variant: "glass", strength: 0.6},
+  "round_table-1": {sound: "impact", variant: "wood", strength: 0.6},
+  "candle-1": {sound: "whoosh", variant: "stone", strength: 0.25},
+  "round_table-2": {sound: "impact", variant: "wood", strength: 0.6},
+  "candle-2": {sound: "whoosh", variant: "stone", strength: 0.25},
+  "round_table-3": {sound: "impact", variant: "wood", strength: 0.6},
+  "candle-3": {sound: "whoosh", variant: "stone", strength: 0.25},
+  "round_table-4": {sound: "impact", variant: "wood", strength: 0.6},
+  "candle-4": {sound: "whoosh", variant: "stone", strength: 0.25},
+  "round_table-5": {sound: "impact", variant: "wood", strength: 0.6},
+  "candle-5": {sound: "whoosh", variant: "stone", strength: 0.25},
+  "round_table-6": {sound: "impact", variant: "wood", strength: 0.6},
+  "candle-6": {sound: "whoosh", variant: "stone", strength: 0.25},
+  "mantel_clock": {sound: "impact", variant: "wood", strength: 0.4},
+  "candlestick-1": {sound: "bell", variant: "metal", strength: 0.3},
+  "candlestick-2": {sound: "bell", variant: "metal", strength: 0.3},
+  "vase": {sound: "impact", variant: "glass", strength: 0.4},
+  "coffee_table": {sound: "impact", variant: "wood", strength: 0.6},
+  "dartboard": {sound: "impact", variant: "wood", strength: 0.5},
+  "chalkboard": {sound: "impact", variant: "wood", strength: 0.5},
+  "round_table-7": {sound: "impact", variant: "wood", strength: 0.6},
+}
+let switch_at = vec(2.25, 1.2, 6.95)
+let fire_at = vec(-8.57, 0.161, 0.8)
+let fire_box = [vec(-8.9, 0.1, 0), vec(-8.1, 1.1, 1.6)]
+let fire_names = ["fireplace"]
+
 # the room's sound
 room size: 0.5
-sound "fire", at: vec(-8.57, 0.161, 0.8), volume: 0.6
+let fire_sound = sound("fire", at: vec(-8.57, 0.161, 0.8), volume: 0.6)
 
 # 293 walls, furniture and raised floors to bump into (invisible)
 blocker size: vec(3.5, 2.6, 2), at: vec(8.25, 1.3, -7.4)  # hall
@@ -1005,3 +1085,4 @@ blocker size: vec(0.5, 0.46, 2), at: vec(0.75, 0.23, -11.7)  # arcade
 blocker size: vec(0.84, 2.6, 1), at: vec(4.4, 1.3, -15.2)  # arcade_cabinet
 blocker size: vec(0.74, 1.86, 0.88), at: vec(4.4, 0.93, -15.2)  # arcade_cabinet
 
+use "bar_use_common"

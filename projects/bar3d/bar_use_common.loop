@@ -1,0 +1,184 @@
+# What a tap (or the Use button) does in the bar: sit on a seat, put a lamp out and
+# on again, flip the light switch, put the fire out and light it again, knock on a table.
+# bar.loop pastes this at its end (`use "bar_use_common"`), so it sees what the importer
+# made above it: things, seats, lamps, lamp_things, knocks, dimTarget, fire_lit, fire_sound.
+# Written by hand, not by tools/import_bar.py.
+#
+# One place decides what a tap or Use means (find_tapped, find_by_use), so two things
+# never answer at once. When several fit, the order is: the switch, a lamp, the fire, a
+# seat (and, for a tap only, a knock). The switch also answers Use in the importer's own
+# `when "use"` rule, so here Use leaves it alone.
+
+let reach_tap = 3        # metres from the eye to the point tapped
+let reach_use = 1.5      # metres from the player, across the floor, for Use
+let seat_taken = {}      # seat number (as text) -> who sits there; one player today, a table so the room can fill it later
+let my_seat = -1         # the seat this player sits on, or -1
+let stood_at = vec(0, 0, 0)   # where the player stood before sitting
+let stood_facing = 0
+
+# ---- finding what a tap or Use meant
+
+to across(a, b)
+  return distance(vec(a.x, 0, a.z), vec(b.x, 0, b.z))
+
+to in_fire_box(p)
+  let margin = 0.1
+  return p.x > fire_box[0].x - margin and p.x < fire_box[1].x + margin and p.y > fire_box[0].y - margin and p.y < fire_box[1].y + margin and p.z > fire_box[0].z - margin and p.z < fire_box[1].z + margin
+
+# a seat in the old bar's rough box (a sitting spot built into the room has no model to tap):
+# half a metre either way of the hip, from the floor up to a little over the hip
+to on_seat_spot(s, p)
+  return abs(p.x - s.hip.x) < 0.4 and abs(p.z - s.hip.z) < 0.4 and p.y > 0 and p.y < s.hip.y + 0.2
+
+# the free seat nearest the tapped point: one of the tapped thing's own seats, or a seat
+# built into the room that the point lies on. -1 if none.
+to seat_for_tap(name, p)
+  let best = -1
+  let best_d = 100
+  for each i in seats.length
+    let s = seats[i]
+    if not seat_taken.has(text(i))
+      let fits = s.thing == name
+      if not things.has(s.thing) and on_seat_spot(s, p)
+        fits = yes
+      if fits
+        let d = distance(s.hip, p)
+        if d < best_d
+          best = i
+          best_d = d
+  return best
+
+# the free seat nearest the player (across the floor) within reach, or -1
+to seat_near_player()
+  let me = player()
+  let best = -1
+  let best_d = reach_use
+  for each i in seats.length
+    if not seat_taken.has(text(i))
+      let d = across(seats[i].hip, me)
+      if d < best_d
+        best = i
+        best_d = d
+  return best
+
+# a tap: `name` is the thing hit, `p` the point. Gives {kind: ...} or nothing.
+to find_tapped(name, p)
+  if distance(p, switch_at) <= 0.35      # the switch is a box on the wall: the wall behind it counts
+    return {kind: "switch"}
+  if lamp_things.has(name)
+    return {kind: "lamp", id: name}
+  if name in fire_names or in_fire_box(p)
+    return {kind: "fire"}
+  if not player_sitting()
+    let i = seat_for_tap(name, p)
+    if i >= 0
+      return {kind: "seat", index: i}
+  if knocks.has(name)
+    return {kind: "knock", id: name, at: p}
+  return nothing
+
+# Use: the nearest usable thing within 1.5 m of the player on the ground. Gives {kind: ...} or nothing.
+to find_by_use()
+  let me = player()
+  let near_lamp = ""
+  let near_d = reach_use
+  for each id in lamp_things.keys()
+    let d = across(things[id].position, me)
+    if d < near_d
+      near_lamp = id
+      near_d = d
+  if near_lamp != ""
+    return {kind: "lamp", id: near_lamp}
+  if across(fire_at, me) < reach_use
+    return {kind: "fire"}
+  let i = seat_near_player()
+  if i >= 0
+    return {kind: "seat", index: i}
+  return nothing
+
+# ---- what each answer does
+
+to flip_switch()
+  dimTarget = 25% if dimTarget == 1 else 1
+  sound("click", "plastic", at: switch_at, strength: 0.4)
+
+# a lamp's lights go out together and come back together, fading over about 0.3 s (the rig's loop does the fading)
+to flip_lamp(id)
+  let ids = lamp_things[id]
+  let target = 1
+  for each l in lamps
+    if l.id in ids and l.onTarget == 1
+      target = 0
+  for each l in lamps
+    if l.id in ids
+      l.onTarget = target
+  sound("click", "plastic", at: things[id].position, strength: 0.4)
+
+to flip_fire()
+  if fire_lit
+    emit "fire off"
+  else
+    emit "fire on"
+  sound("whoosh", "stone", at: fire_at, strength: 0.25)
+
+to knock(k)
+  let n = knocks[k.id]
+  sound(n.sound, n.variant, at: k.at, strength: n.strength)
+
+to sit_on(i)
+  let s = seats[i]
+  if my_seat >= 0
+    seat_taken.remove(text(my_seat))
+  else
+    stood_at = player()
+  my_seat = i
+  seat_taken[text(i)] = "me"
+  let f = radians(s.facing)
+  let ahead = vec(sin(f), 0, -cos(f))
+  stood_facing = f
+  let top = s.hip - vec(0, 0.08, 0)
+  # the eye is 0.75 m above the top of the seat; look 2 m ahead along the way the seat faces
+  move_player(at: top, look_at: vec(s.hip.x + ahead.x * 2, top.y + 0.75, s.hip.z + ahead.z * 2), sitting: yes)
+
+to stand_up()
+  if my_seat >= 0
+    seat_taken.remove(text(my_seat))
+    my_seat = -1
+  let ahead = vec(sin(stood_facing), 0, -cos(stood_facing))
+  move_player(at: stood_at, look_at: vec(stood_at.x + ahead.x * 2, 1.6, stood_at.z + ahead.z * 2))
+
+to answer(found)
+  if found.kind == "switch"
+    flip_switch()
+  else if found.kind == "lamp"
+    flip_lamp(found.id)
+  else if found.kind == "fire"
+    flip_fire()
+  else if found.kind == "seat"
+    sit_on(found.index)
+  else if found.kind == "knock"
+    knock(found)
+
+when "tap"
+  if event.hit and event.distance <= reach_tap
+    let found = find_tapped(event.name, event.at)
+    if found != nothing
+      answer(found)
+
+when "use"
+  if player_sitting()
+    stand_up()
+  else if not near(switch_at, within: reach_use)
+    let found = find_by_use()
+    if found != nothing
+      answer(found)
+
+# the stick stands the player up on its own (the engine does that): free the seat
+every 0.2 s
+  if my_seat >= 0 and not player_sitting()
+    seat_taken.remove(text(my_seat))
+    my_seat = -1
+
+# the fire's crackle goes quiet with the fire and comes back with it
+every 1 / 30 s
+  fire_sound.volume = 0.6 * fire_mix
