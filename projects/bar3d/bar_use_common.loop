@@ -159,13 +159,27 @@ to answer(found)
   else if found.kind == "knock"
     knock(found)
 
+# A game in the bar (darts, the piano, chess, the bartender's station) answers first:
+# it adds a function to `tap_first` or `use_first` that takes the event and gives back
+# yes when the tap or the Use was its own, and then nothing below answers as well.
+let tap_first = []
+let use_first = []
+to taken_first(hooks, e)
+  for each hook in hooks
+    if hook(e)
+      return yes
+  return no
+
 when "tap"
-  if event.hit and event.distance <= reach_tap
-    let found = find_tapped(event.name, event.at)
-    if found != nothing
-      answer(found)
+  if not taken_first(tap_first, event)
+    if event.hit and event.distance <= reach_tap
+      let found = find_tapped(event.name, event.at)
+      if found != nothing
+        answer(found)
 
 when "use"
+  if taken_first(use_first, event)
+    return
   if player_sitting()
     stand_up()
   else if not near(switch_at, within: reach_use)
