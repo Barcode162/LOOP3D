@@ -372,9 +372,11 @@ lines += [f"# {len(models)} things", "let things = {}", *models, "", rig, f"# {l
           f"# {len(walls)} walls, furniture and raised floors to bump into (invisible)", *[w[0] for w in walls], ""]
 # the games' and the bar's own scripts, when they exist: `use` pastes a file in
 # at its line, so each sees every name made above it
+shared = []
 for u in ("bar_use_common", "bar_darts_common", "bar_piano_common", "bar_chess_common", "bar_jukebox_common", "bar_books_common", "bar_bartender_common"):
     if (out / f"{u}.loop").exists():
         lines += [f'use "{u}"']
+        shared.append(u)
 lines += [""]
 (out / "bar.loop").write_text("\n".join(lines))
 
@@ -405,6 +407,11 @@ if not manifest.exists():
         "description": "The bar from joshuavelasco.com/bar, on LOOP3D.",
         "start": "bar", "scenes": ["bar"], "stills": "stills",
     }, indent=2) + "\n")
+# the shared scripts go with the scene to the site (project.json's "library": published, never listed)
+cover = json.loads(manifest.read_text())
+if cover.get("library", []) != shared:
+    cover["library"] = shared
+    manifest.write_text(json.dumps(cover, indent=2) + "\n")
 print("the ten biggest blockers by footprint (m x m):")
 for w in sorted(walls, key=lambda w: -w[1])[:10]:
     print(f"  {w[1]:7.2f}  {w[2]}")
