@@ -4,10 +4,10 @@ hand:     builder
 size:     S
 wave:     j2
 branch:   work/J2T
-status:   working
+status:   stuck
 touch:    web/index.html, web/player.cpp, engine/script/words_story.cpp, engine/script/scene_api.h, engine/script/scene_api.cpp, tests/scene_api_test.cpp
 pictures: no
 expected: 60
 started:  2026-11-14T16:39Z
-updated:  2026-11-14T16:39Z
-note:     claimed
+updated:  2026-11-14T16:46Z
+note:     tap + sitting built, native proof passes; web build and browser check not finished

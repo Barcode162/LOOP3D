@@ -190,6 +190,64 @@ TEST(things_know_their_line_and_can_be_picked) {
   CHECK(st.pick(Ray{Vec3(0, 0.5f, 5), Vec3(0, 0, -1)}) == 0);
 }
 
+// A tap on the view: the script hears "tap" with what was under it.
+TEST(a_tap_reaches_the_script) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  CHECK(vm.load("box size: vec(1, 1, 1), at: vec(0, 0.5, 0), name: \"lamp\"\n"
+                "let heard = \"nothing\"\nlet far = 0\nlet was_hit = no\n"
+                "when \"tap\"\n  heard = event.name\n  far = event.distance\n  was_hit = event.hit\n", "tap.loop"));
+  CHECK(st.placed.size() == 1);
+  Ray ray{Vec3(0, 0.5f, 5), normalize(Vec3(0.1f, 0, -1))};
+  Value e = st.tap(vm, ray);
+  CHECK(e.isTable());
+  Table* t = e.as<Table>();
+  CHECK(t && t->find("hit") && t->find("hit")->b);
+  CHECK(t && t->find("name") && vm.show(*t->find("name")) == "lamp");
+  float truth = 4.5f / ray.d.z * -1;  // the front face is 4.5 m along z
+  CHECK(t && t->find("distance") && std::fabs(t->find("distance")->n - truth) < 0.01);
+  Vec3 want = ray.at(truth);
+  CHECK(t && t->find("at") && length(t->find("at")->asVec() - want) < 0.01f);
+  vm.emit("tap", e);
+  vm.update(0.01);
+  CHECK(vm.show(vm.global("heard")) == "lamp");
+  CHECK(vm.global("was_hit").b);
+  // a miss: no name, no hit, the point 100 m out, the distance infinite
+  Value miss = st.tap(vm, Ray{Vec3(0, 0.5f, 5), Vec3(0, 0, 1)});
+  Table* m = miss.as<Table>();
+  CHECK(m && m->find("hit") && !m->find("hit")->b);
+  CHECK(m && m->find("name") && vm.show(*m->find("name")).empty());
+  CHECK(m && m->find("distance") && std::isinf(m->find("distance")->n));
+  CHECK(m && m->find("at") && length(m->find("at")->asVec() - Vec3(0, 0.5f, 105)) < 0.01f);
+}
+
+// Sitting: move_player(sitting: yes) keeps the player on a seat; a plain move_player ends it.
+TEST(the_player_can_sit) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  st.playerPos = Vec3(2, 0, 3);
+  CHECK(vm.load("let before = player_sitting()\n"
+                "move_player at: vec(0, 0.45, 0), look_at: vec(0, 1, -3), sitting: yes\n"
+                "let during = player_sitting()\nlet seat = player()\n", "sit.loop"));
+  CHECK(!vm.global("before").b);
+  CHECK(vm.global("during").b);
+  CHECK(st.sitting && st.teleport);
+  CHECK_NEAR(st.sitAt.y, 0.45f, 1e-5f);
+  CHECK_NEAR(st.standAt.x, 2, 1e-5f);  // where they stood before
+  CHECK_NEAR(vm.global("seat").asVec().y, 0.45f, 1e-5f);
+  Vm vm2;
+  Stage st2;
+  installStandardLibrary(vm2);
+  installSceneApi(vm2, st2);
+  st2.sitting = true;
+  CHECK(vm2.load("move_player at: vec(5, 0, 5)\nlet now = player_sitting()\n", "stand.loop"));
+  CHECK(!st2.sitting && !vm2.global("now").b);
+}
+
 // The one clock: a thing moved in a step is drawn part-way between where it
 // was and where it is, by how far the clock is into the next step; next time
 // it comes back once more, exactly where it is; things that didn't move

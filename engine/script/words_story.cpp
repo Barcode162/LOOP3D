@@ -68,12 +68,18 @@ void registerStory(Vm& vm) {
   }, "near(vec(…), within: 2 m): is the player that close (on the ground)?");
   vm.native("move_player", [](Args& a) {
     Stage& s = stageOf(a.vm);
+    bool sit = a.flag(2, "sitting", false);
+    if (!s.sitting) s.standAt = s.playerPos;  // where to stand up again
     s.teleportTo = a.vec(0, "at", s.playerPos);
-    s.teleportLook = a.vec(1, "look_at", s.teleportTo + Vec3(0, 1.6f, -1));
+    s.teleportLook = a.vec(1, "look_at", s.teleportTo + Vec3(0, sit ? kSitEyeHeight : 1.6f, -1));
     s.teleport = true;
+    s.sitting = sit;
+    if (sit) s.sitAt = s.teleportTo;
     s.playerPos = s.teleportTo;
     return Value();
-  }, "move_player(at: vec(…), look_at: vec(…)): carry the player somewhere new (feet at `at`)");
+  }, "move_player(at: vec(…), look_at: vec(…), sitting: no): carry the player somewhere new (feet at `at`); with sitting: yes, `at` is the top of a seat, the eye 0.75 m above it (kSitEyeHeight), and the player stays there until they push to walk (or move_player again)");
+  vm.native("player_sitting", [](Args& a) { return Value::boolean(stageOf(a.vm).sitting); },
+            "player_sitting(): is the player sitting (see move_player)?");
   vm.native("go_to", [](Args& a) {
     stageOf(a.vm).nextScene = a.text(0, "scene", "");
     return Value();
