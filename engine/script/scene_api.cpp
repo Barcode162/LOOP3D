@@ -2,6 +2,7 @@
 #include "engine/script/words_internal.h"
 
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <unordered_map>
 
@@ -167,6 +168,19 @@ int Stage::pick(const Ray& ray, float* distance) const {
   }
   if (distance) *distance = best;
   return hit;
+}
+
+Value Stage::tap(Vm& vm, const Ray& ray) const {
+  float t = kInf;
+  int i = pick(ray, &t);
+  bool hit = i >= 0 && t < kInf;
+  Table* e = vm.newTable();
+  Value ev = Value::object(e);
+  e->set("name", vm.text(hit ? placed[i].name : std::string()));
+  e->set("at", Value::vec(ray.at(hit ? t : 100.0f)));
+  e->set("distance", Value::number(hit ? static_cast<double>(t) : std::numeric_limits<double>::infinity()));
+  e->set("hit", Value::boolean(hit));
+  return ev;
 }
 
 void Stage::setListener(const Camera& cam) {
