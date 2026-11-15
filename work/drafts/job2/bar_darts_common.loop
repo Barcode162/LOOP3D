@@ -1,0 +1,246 @@
+# Darts in the bar, brought over from the old bar (bar/darts.cpp and cloud/games/darts.js)
+# with the same rules, and played by taps. bar.loop pastes this at its end
+# (`use "bar_darts_common"`, after `use "bar_use_common"`), so it sees `tap_first`, `use_first`,
+# `across` and `reach_use` from there. Written by hand, not by tools/import_bar.py.
+#
+# The game: 301, three darts a turn, finish on exactly zero. Going below zero, or down to 1
+# (no way to finish from there), is a bust: the turn does not count and the score goes back to
+# where the turn began. The board has the real 20 sectors in the real order, a double ring, a
+# triple ring, an outer bull (25) and a bull (50). Your hand is not perfect: a dart lands near
+# where you tapped, off by a little (the old bar's wobble, kept as it was).
+#
+# How to play: stand at the line (the oche) and tap the board. The first tap starts a game; each
+# tap after that throws a dart at the tapped spot. Use near the board, or walking away, ends it.
+# No credits are paid: accounts are another job, and the old bar paid only to logged-in players.
+# The old bar's online room (the room scores every dart) is not here: no network.
+
+# ---- the board (numbers from the old bar's files)
+# The board stands at (6, 1.73, 7) turned 180 degrees, and its face is 0.0402 m in front of
+# that point, so the face is at z = 6.9598 and looks toward -z, into the room. The thrower
+# looks toward +z, so their right is world -x: a point u to the right and v up from the middle
+# of the face is at (6 - u, 1.73 + v, 6.9598).
+let darts_face = vec(6, 1.73, 6.9598)
+let darts_oche = vec(6, 0, 4.44)            # where the old bar stood you to throw (floor)
+let darts_oche_gap = 2.52                   # metres from the oche to the face (6.9598 - 4.44)
+let darts_oche_slack = 0.6                  # the old bar let you wander this far from the oche
+let darts_throw_min = 1.92                  # nearest you may stand: the gap less the slack
+let darts_leave = 6                         # walking further than this from the board ends the game
+let darts_use_area = 4                      # Use within this of the board ends the game
+let darts_names = ["dartboard", "board_darts", "dart_surround"]   # things whose tap is the board's
+let darts_face_reach = 0.3                  # a tap this close to the middle of the face is the board's too
+let darts_numbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+let darts_spread = 0.022                    # metres: how far from the aim a dart lands, on average
+let darts_flight = 0.28                     # seconds from the hand to the board
+let darts_start = 301
+let darts_eye = 1.65                        # eye height standing (the old bar's)
+
+# ---- what the old `stateFor` shared: score left, the three darts, darts thrown.
+# A room can read this table later; nothing here sends it anywhere.
+let darts_state = {on: no, left: darts_start, turn_start: darts_start, darts: [], thrown: 0, flying: no, token: 0, games: 0}
+
+# ---- the scoring (the same as the old bar's `score`)
+# u is to the right and v is up, in metres from the middle, as the thrower sees the board.
+# Gives {pts, label}: "Miss", "BULL" (50), "25", "T20" (a triple), "D20" (a double) or "6".
+to darts_score(u, v)
+  let d = sqrt(u * u + v * v)
+  if d > 0.170
+    return {pts: 0, label: "Miss"}
+  if d < 0.0064
+    return {pts: 50, label: "BULL"}
+  if d < 0.016
+    return {pts: 25, label: "25"}
+  # clockwise from the top, as the thrower sees it
+  let ang = degrees(atan(u, v))
+  if ang < 0
+    ang += 360
+  let n = darts_numbers[floor((ang + 9) / 18) % 20]
+  if d > 0.099 and d < 0.107
+    return {pts: n * 3, label: "T" + text(n)}
+  if d > 0.162
+    return {pts: n * 2, label: "D" + text(n)}
+  return {pts: n, label: text(n)}
+
+# roughly -1..1, bunched towards 0 (four random numbers added, as the old bar did)
+to darts_wobble()
+  let s = 0
+  repeat 4 times
+    s += random() - 0.5
+  return s
+
+# ---- the darts themselves: three that are made once and used again, each a thin steel
+# barrel and a pink flight (the old bar's sizes: barrel 6 mm by 6 mm by 10 cm, flight 3.5 cm
+# square and 3 cm thick). The barrel lies along z, tip towards the board.
+let darts_pool = []
+
+to darts_make()
+  let barrel = cylinder(radius: 0.003, height: 0.1, tilt: 90 deg, at: darts_face, material: material(like: "steel", color: rgb(0.6, 0.6, 0.65)), collide: no, name: "dart_barrel")
+  let flight = box(size: vec(0.035, 0.035, 0.03), at: darts_face, material: rgb(1, 0.3, 0.6), collide: no, name: "dart_flight")
+  barrel.visible = no
+  flight.visible = no
+  return {barrel: barrel, flight: flight}
+
+# put dart `i` with its tip at `tip`; its tail points back towards the thrower (-z)
+to darts_place(i, tip)
+  while darts_pool.length <= i
+    darts_pool.push(darts_make())
+  let d = darts_pool[i]
+  d.barrel.position = tip + vec(0, 0.0004, -0.05)
+  d.flight.position = tip + vec(0, 0.0012, -0.115)
+  d.barrel.visible = yes
+  d.flight.visible = yes
+
+to darts_hide_all()
+  for each d in darts_pool
+    d.barrel.visible = no
+    d.flight.visible = no
+
+# ---- what the player reads: one short line at a time
+to darts_say(words)
+  clear_lines()
+  line(words, seconds: 2.5)
+
+# ---- a game
+to darts_begin()
+  let gs = darts_state
+  gs.on = yes
+  gs.token += 1
+  gs.left = darts_start
+  gs.turn_start = darts_start
+  gs.darts = []
+  gs.thrown = 0
+  gs.flying = no
+  darts_say("301: tap the board to throw")
+
+# the game is over (Use, or walking away): the darts come off the board
+to darts_end()
+  let gs = darts_state
+  gs.on = no
+  gs.token += 1
+  gs.darts = []
+  gs.thrown = 0
+  gs.flying = no
+  darts_hide_all()
+  clear_lines()
+
+# a turn is over (three darts, a bust or a win): darts off, next turn
+to darts_end_turn(token)
+  let gs = darts_state
+  if not gs.on or token != gs.token
+    return
+  darts_hide_all()
+  gs.darts = []
+  gs.thrown = 0
+  gs.turn_start = gs.left
+  if gs.left == 0
+    gs.left = darts_start
+    gs.turn_start = darts_start
+    darts_say("New game: 301")
+
+to darts_eye_at()
+  let me = player()
+  if player_sitting()
+    return me + vec(0, 0.75, 0)
+  return me + vec(0, darts_eye, 0)
+
+# a dart has landed at (u, v): score it, say it, and decide if the turn is over
+to darts_landed(i, u, v, token)
+  let gs = darts_state
+  let hit = darts_score(u, v)
+  let at = darts_face + vec(-u, v, 0)
+  darts_place(i, at)
+  sound("thud", "wood", at: at, strength: 0.9 if hit.pts > 0 else 0.5)
+  gs.darts.push({u: u, v: v, pts: hit.pts, label: hit.label})
+  gs.flying = no
+  let pause = 0
+  if gs.left - hit.pts < 0 or gs.left - hit.pts == 1
+    # a bust: the turn does not count; the rest of the turn's darts are not thrown
+    gs.left = gs.turn_start
+    gs.thrown = 3
+    darts_say("{hit.label} - BUST! Back to {gs.left}")
+    pause = 1.5
+  else
+    gs.left -= hit.pts
+    if gs.left == 0
+      gs.games += 1
+      darts_say("{hit.label} - Game shot! You won ({gs.games} won so far)")
+      let cheer = sound("applause", at: darts_face, volume: 0.8)
+      after 2.5 s
+        cheer.playing = no
+      gs.thrown = 3
+      pause = 2.5
+    else
+      darts_say("{hit.label} = {hit.pts} · {gs.left} left")
+      if gs.darts.length == 3
+        pause = 1.5
+  # a finished turn stays on the board 1.5 s (a win, 2.5 s), then the darts come off
+  if pause == 1.5
+    after 1.5 s
+      darts_end_turn(token)
+  else if pause == 2.5
+    after 2.5 s
+      darts_end_turn(token)
+
+# throw one dart at the aim (u, v) on the board
+to darts_throw(aim_u, aim_v)
+  let gs = darts_state
+  if gs.thrown >= 3 or gs.flying
+    return
+  let eye = darts_eye_at()
+  let u = clamp(aim_u, -0.5, 0.5) + darts_wobble() * darts_spread * 2
+  let v = clamp(aim_v, -0.5, 0.5) + darts_wobble() * darts_spread * 2
+  let i = gs.thrown
+  gs.thrown += 1
+  gs.flying = yes
+  let token = gs.token
+  let from = eye + vec(-0.15, -0.12, 0.3)
+  let tip = darts_face + vec(-u, v, 0)
+  sound("whoosh", at: eye, strength: 0.5)
+  task
+    let t0 = time()
+    let k = 0
+    while k < 1
+      k = (time() - t0) / darts_flight
+      if token != gs.token
+        return
+      if k < 1
+        let p = from + (tip - from) * k
+        p.y += 0.12 * sin(k * pi)
+        darts_place(i, p)
+      wait 1 / 60 s
+    if token == gs.token
+      darts_landed(i, u, v, token)
+
+# ---- a tap on the board: start a game, or throw (and the board never just gets knocked on)
+to darts_tap(e)
+  let on_board = e.name in darts_names
+  if not on_board and e.hit and distance(e.at, darts_face) < darts_face_reach
+    on_board = yes
+  if not on_board
+    return no
+  let gs = darts_state
+  if not gs.on
+    darts_begin()
+    return yes
+  let from_board = across(player(), darts_face)
+  if from_board < darts_throw_min
+    darts_say("Step back to the line to throw")
+    return yes
+  darts_throw(-(e.at.x - darts_face.x), e.at.y - darts_face.y)
+  return yes
+
+# Use near the board while a game is on ends it (and nothing else answers that Use)
+to darts_use(e)
+  let gs = darts_state
+  if gs.on and across(player(), darts_face) < darts_use_area
+    darts_end()
+    return yes
+  return no
+
+tap_first.push(darts_tap)
+use_first.push(darts_use)
+
+# walking away ends the game
+every 0.5 s
+  if darts_state.on and across(player(), darts_face) > darts_leave
+    darts_end()
+    darts_say("You left the darts.")

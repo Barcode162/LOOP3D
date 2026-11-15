@@ -69,11 +69,76 @@ All must pass, except the pre-existing failures already named in Job 1 (4 librar
 
 ## Claude Code's report — Job 2
 
-*Claude Code, write here when Job 2 is done, or stuck:*
+**Status (2026-11-14, first sitting): stopped by the usage limit, about a third of the way. Nothing is finished;
+five pieces are working, the rest are drafted or waiting for an engine part.** All of it is on the branch
+`claude/peaceful-ptolemy-igl57r`. Nothing is merged to `main` (only the claims). Not walked on a phone yet.
 
-- Status: _waiting_
-- What changed, file by file:
-- Proof command and its last lines:
-- What Joshua should look at on his phone:
-- Anything odd / left undone:
-- Agents used (tier, effort, what each did) and usage: _record what Claude actually showed; "not shown" if it didn't show a number — never guess_
+### The ten pieces, one honest state each
+| # | Piece | State | What is true |
+|---|---|---|---|
+| 1 | New lighting only | **working, part** | Every lamp comes from a light thing in the old world (103 lamps, no fill). The rig has its music and fire states (strings dance and the jukebox thumps when a script sends "music"; nothing sends it yet). Lights down reaches 25% in about 0.3 s. **The dark oval in film stills: not found yet** (the Opus agent was cut off after one top-down still that showed no clear oval). |
+| 2 | Layout and hitboxes | **working** | 19 blockers that stood at the middle of the world now stand at their table, jukebox, cabinet or rig, turned with it; none is left there. Each stool and table has its own small blockers. Every thing has its name. Not walked in the player. |
+| 3 | Scripts over | **working, part** | The light rig, seats, lamps, switch and fire are Looped Script. Darts, bartender and piano are **drafts, never run** (`work/drafts/job2/`). Chess: not started. |
+| 4 | Games | **not playable yet** | Darts, piano, bartender drafted (above). Chess not started. Jukebox and 4K Mania wait for recorded-sound playback. Racing sim waits for a driving body. |
+| 5 | Clickable things | **working** | A tap on a thing reaches the script (new engine part, proven in a real browser: a tap says the thing's name, a drag says nothing, the player sits). In the bar: sit on 35 seats, the 4 pendant lamps and the floor lamp go off and on, the switch, the fire, a knock on tables. Proven by a script run, not yet in the player. |
+| 6 | Multiplayer, voice, accounts | **not started** | The engine has no network part. A job of its own (and the safety rules ride on it). |
+| 7 | One good avatar | **not started** | Skin that bends with bones is not built (T-S1); the 67th bone is still on its own branch. |
+| 8 | Books, mirror, fireplace | **fire working; books and mirror not started** | The fire goes out and comes back with its sound. The mirror waits for order M60 (the live renderer has no mirror). Full books need a text screen. |
+| 9 | Arcade platformer | **not started** | It is written on three.js and WebGL, which the engine's rules forbid: it must be rebuilt in Looped Script, a job of its own. |
+| 10 | Music | **part** | New word `note` (one note at once, tested). Sample playback does not exist, so no jukebox songs; not faked. |
+
+### What changed, file by file
+- `tools/import_bar.py`, `projects/bar3d/bar.loop` (made by it): posed blockers, names, the tables `things`, `seats`,
+  `lamp_things`, `knocks`, the rig's states, `use` lines, the shared scripts listed in `project.json`.
+- `projects/bar3d/bar_use_common.loop` (new): seats, lamps, switch, fire, knocks; `tap_first` / `use_first` for games.
+- Engine: `engine/script/scene_api.*`, `words_story.cpp`, `web/player.cpp`, `web/index.html`, `CMakeLists.txt`
+  (`when "tap"`, `move_player(..., sitting: yes)`, `player_sitting()`); `engine/script/words_music.cpp` (`note`);
+  tests in `tests/scene_api_test.cpp`, `tests/audio_test.cpp`; `docs/LANGUAGE.md`.
+- `work/drafts/job2/`: three unfinished game scripts, kept so the next sitting does not start them again.
+
+### Proof (run by the lead on the merged branch)
+```
+265 tests, 0 failed checks
+45 editor source checks, 0 failed
+36 recorder checks, 0 failed
+projects/bar3d/bar.loop reads fine
+loop run projects/bar3d/bar.loop --seconds 3: 1894 things, 103 lights ... (no script error)
+site/ is ready (the web player builds)
+browser: tapped [bigbox] hit true d 3.8 / sitting true / a drag says nothing
+```
+The 4 library-picture failures and 1 editor failure named in Job 1 did not appear in these runs; the slow library
+picture test and the editor's browser check were not run.
+
+### What Joshua should look at on his phone
+Nothing yet: the player is not published from this branch. When it is: walk into a table (it stops you at the
+table, not in mid-air), tap a bar stool (you sit), tap a pendant lamp (it goes out), tap the switch by the door,
+tap the fire.
+
+### Odd, and left undone
+- The bar in the test browser lost its software graphics card (the machine was under load from five builds), so
+  there is no picture of the bar from this sitting.
+- Candles and wall sconces cannot be clicked: the old world gave candles no light and sconces no model.
+- The table's wobble on a tap is left out (only its knock came over).
+- A turned thing's footprint is now turned with it; the old engine never turned them. Say if the old way is wanted.
+- Claims J2A, J2T, J2N are done; J2D (the dark oval) is still open.
+
+### Agents used and usage (as Claude showed it; never guessed)
+| Agent | Tier | Did | Tokens | Tool uses | Time |
+|---|---|---|---|---|---|
+| Lead | Fable 5.2 (Top) | read, planned, cut 9 cards, merged, checked | not shown | not shown | not shown |
+| J2N `note` | Sonnet 5.5 builder | finished | 88,832 | 8 | 3 min |
+| J2T taps and sitting | Sonnet 5.5 builder | finished natively; lead proved it in a browser | 130,188 | 54 | 9 min |
+| J2A hitboxes and rig | Sonnet 5.5 builder | finished | 125,502 | 33 | 6 min |
+| J2U the bar answers a tap | Sonnet 5.5 builder | finished | 184,431 | 63 | 7 min |
+| J2D dark oval | Opus 5.5 | cut off by the limit, no finding | not shown | not shown | not shown |
+| Darts, piano, bartender | Sonnet 5.5 builder x3 | cut off, drafts saved | not shown | not shown | not shown |
+| Chess | Sonnet 5.5 builder | cut off, nothing written | not shown | not shown | not shown |
+
+Shown in all: 528,953 tokens by four finished agents. The five cut-off agents and the lead also spent, amount not shown.
+Effort levels were not set per agent (each ran at its own default): not shown.
+
+### What this sitting taught about spending
+- Nine agents in one sitting, five at once, is what emptied the limit; the last five were cut off mid-work and
+  their spend bought only drafts.
+- Next time: two agents at once at most, each finished and merged before the next starts; the lead on a lower tier
+  once the cards are cut (they are); no Opus lane until the rest is in.
