@@ -23,6 +23,17 @@ and what they learned, and add it to the dashboard (Loop3D Workshop). Never run 
 When the user hands over the reins for a bigger goal (2026-11-06: "I give you the reins", the editor), build all
 of it in solid, checked steps and report at the end.
 
+## Least tokens (the user's word, 2026-11-15)
+Work so each chat spends as little as it can:
+- **One tiny goal per message.** Do only that; never run ahead.
+- **Read only what the goal needs.** `docs/NORTH.md` still comes first; `PLAN.md`, `LOG.md` and other docs only
+  when the goal touches them. Search for the lines you need rather than reading whole files.
+- **No helper agents** unless the user asks for them.
+- **Quick checks only**, with their output kept short. Slow browser and picture checks only when the picture changed.
+- **Short replies:** what changed, what to look at on the phone, what's next.
+- **A fresh chat per goal:** when a goal is finished, tell the user a new chat is cheaper than continuing this one.
+- **The cheapest model that fits:** say so when the work doesn't need the tier the chat is on.
+
 ## Working
 0. **Many chats at once** (`docs/PARALLEL.md`): several chats and agents may be working on the engine at the same
    time. Before changing anything, `git pull origin main`, run `python3 tools/claims.py --remote` (the board), and claim your job with
