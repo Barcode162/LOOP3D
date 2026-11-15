@@ -25,15 +25,13 @@ phase is done when its "done when" is true on the phone.
 - **Done by the second chat** (2026-11-12): T-B1's nine tests (`tests/skeleton_test.cpp`), the words in
   `docs/LANGUAGE.md`, the scene "The skeleton" (`projects/samples/skeleton.loop`), the deploy of all the above to
   `main`, the public player and the recording page.
-- **Open, a missing bone:** the plan asked for 67 bones in ring 1; the skeleton has 66 (the plan's own list adds
-  up to 66). The second chat changed the plan's number to 66 without asking. The user counts this as a bone
-  missing: the next chat settles with the user which bone the 67th is, adds it, and puts the number back.
+- **The 67th bone, settled (2026-11-15):** the prop, a handle on the root for the thing a character holds; ring 1 is 67.
 - **Not started:** T-S1 (skin that bends with the bones: no mesh bends yet, in film or live) and T-E1 (the
   editable mesh: no shape can be edited by its points yet). Their claims in `work/claims/` still say "working"
   from the first chat; nothing was built for either, and the next chat that takes one re-claims it.
 - **Not done either:** the Loop3D Workshop dashboard does not exist as a page yet; the 12 picture tests were not
   run for this deploy (the renderer did not change).
-*Next goal when work resumes:* settle the missing bone, then T-S1 (goal 7: an arm of three bones bends with no gap).
+*Next goal when work resumes:* T-S1 (goal 7: an arm of three bones bends with no gap).
 
 ## Now · The Loft (your word, 2026-11-10: the top priority)
 *Your words:* the Loft, that entire project and everything in it, is the top priority.

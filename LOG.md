@@ -2,6 +2,7 @@
 
 One line per request, newest first: the date, what the user asked, what was done.
 
+- 2026-11-15 "work with the least tokens; merge and keep going; don't stop": the Least tokens rules written into CLAUDE.md; the missing 67th bone settled as the prop (a handle on the root for what a character holds), in library/skeletons/human.loop with its tests and docs.
 - 2026-11-12 "I will teach you; remember it for good": the user taught the destination, the measure, their eye and the way of working in one conversation; written as docs/NORTH.md (with their story word for word) and put at the top of CLAUDE.md as the first thing every chat reads, winning over older rules. Open: the one work template, and each domain's three levels.
 - 2026-11-12 "wrap up, we take a break": the Studio's standing written into PLAN.md for the next chat (who did what; open: a 67th bone, T-S1 skin and T-E1 editable shapes not started). Also this day: the player published from fa75974 to the public page and the recording page.
 - 2026-11-12 T-B1, the standard skeleton, ring 1: the words skeleton, bone and bones; library/skeletons/human.loop, 66 bones (the plan said 67; its own list adds to 66), 1.75 m at rest, every left bone with its right twin, each joint's limits as bend, side, twist from the published ranges of motion; a pose pushed past a limit is held at the nearest allowed turn; a wrong skeleton is refused by name and line. New scene projects/samples/skeleton.loop. 9 new tests, 262 in all. No picture tests run: the renderer did not change. Deployed.

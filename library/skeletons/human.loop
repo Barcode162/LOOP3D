@@ -1,4 +1,4 @@
-# human · the standard human skeleton, ring 1: the 66 bones you move
+# human · the standard human skeleton, ring 1: the 67 bones you move
 # use "human" brings it in; bones("human", at: vec(0, 0, 0)) shows it standing.
 # An adult 1.75 m tall in the rest pose: facing -z, left at -x, arms 45 degrees
 # down and out, palms down. Each bone says where it starts and ends, the way a
@@ -45,6 +45,9 @@ to human_finger(name, across, reach, fan, lengths, cup)
 skeleton "human"
   # ---- the middle of the body
   bone "root", from: vec(0, 0, 0), to: vec(0, 0.1, 0), free: yes
+  # the prop: a handle for the thing a character holds (a glass, a sword, a torch). It is not a real bone; what is
+  # held follows it, and a clip moves it from hand to hand. At rest it waits in front of the body.
+  bone "prop", parent: "root", from: vec(0, 1.1, -0.3), to: vec(0, 1.2, -0.3), free: yes
   bone "hips", parent: "root", from: vec(0, 0.96, 0), to: vec(0, 1.04, 0), free: yes
   # the back: 83 degrees forward, 27 back, 35 to each side and 43 round, shared by four bones
   bone "spine", parent: "hips", from: vec(0, 1.04, 0), to: vec(0, 1.14, -0.012), bend: [-8 deg, 25 deg], side: [-10 deg, 10 deg], twist: [-4 deg, 4 deg]
