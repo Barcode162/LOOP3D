@@ -11,11 +11,19 @@
 
 namespace loop {
 
+// The bones that pull one point of a skin, and how hard: up to 8, strongest
+// first, pulls summing to one; unused places have pull 0 (engine/anim/skin.h).
+struct Pulls {
+  uint16_t bone[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  float pull[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+};
+
 struct Mesh {
   std::vector<Vec3> positions, normals;
   std::vector<Vec2> uvs;
   std::vector<Vec4> tangents;  // xyz + handedness
   std::vector<uint32_t> indices;
+  std::vector<Pulls> pulls;    // a skin: one per point, or empty for a shape that never bends
 
   size_t vertexCount() const { return positions.size(); }
   size_t triangleCount() const { return indices.size() / 3; }

@@ -20,6 +20,7 @@
 #include "engine/anim/anim.h"
 #include "engine/anim/clip.h"
 #include "engine/anim/skeleton.h"
+#include "engine/anim/skin.h"
 #include "engine/core/json.h"
 #include "engine/audio/audio.h"
 #include "engine/audio/music.h"
@@ -118,6 +119,16 @@ struct Stage {
   std::deque<Playing> clips;
   // Standard skeletons by name (the words `skeleton` and `bone`; engine/anim/skeleton.h).
   std::map<std::string, anim::Skeleton> skeletons;
+  // Skins (the words `skin` and `pose`): a thing whose shape follows a skeleton that stands with it.
+  struct Skinned {
+    int placed = -1;         // the thing
+    std::string skeleton;    // by name, in `skeletons`
+    Transform root;          // where the skeleton stood when the skin was made
+    Mat4 meshToWorld;        // and where the thing was
+    anim::Pose pose;         // its bones now
+  };
+  std::vector<Skinned> skinned;  // Scene::bends[i] goes with skinned[i]
+  void bendSkin(int i);          // its pose into the scene's matrices
   std::vector<anim::BoneSpec> bonesBeingRead;  // the bones of the skeleton whose lines are being read
   bool readingBones = false;
   std::vector<int> clipsBeingRead;  // clips whose lines are being read: `key` adds to the last

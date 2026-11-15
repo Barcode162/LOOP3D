@@ -164,6 +164,9 @@ std::vector<std::string> lookNames();
 struct MeshInstance {
   int mesh = 0, material = 0;
   Mat4 transform;
+  // >= 0: a skin. Its mesh carries pulls, and Scene::bends[bend] holds its bones' matrices now
+  // (engine/anim/skin.h); film bends the mesh by them before building its tree.
+  int bend = -1;
 };
 
 struct Scene {
@@ -171,6 +174,7 @@ struct Scene {
   std::vector<Material> materials;
   std::vector<SurfaceRecipe> surfaces;  // the recipes `surface(...)` made; a Material points at one
   std::vector<MeshInstance> instances;
+  std::vector<std::vector<Mat4>> bends;  // each skin's bones now, one matrix a bone, in the mesh's own space
   std::vector<Light> lights;
   std::vector<Image> images;
   std::vector<Texture> textures;  // model pictures (8-bit), see Material::baseTexture

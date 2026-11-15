@@ -4,6 +4,7 @@
 // finds which copies a ray might hit. A forest of 5,000 trees costs the
 // memory of the few tree shapes, not 5,000 copies.
 #include <cstdint>
+#include <deque>
 #include <vector>
 
 #include "engine/geometry/bvh.h"
@@ -55,7 +56,8 @@ class SceneBvh {
     AABB box;
     uint32_t left = 0, count = 0;
   };
-  std::vector<Blas> blas_;
+  std::vector<Blas> blas_;   // one a mesh, then one for each skin, bent
+  std::deque<Mesh> bent_;    // the skins as their bones hold them now
   std::vector<Inst> inst_;
   std::vector<Node> top_;
   std::vector<uint32_t> order_;

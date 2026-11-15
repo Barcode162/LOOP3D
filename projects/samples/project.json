@@ -15,7 +15,8 @@
     "surface_box",
     "surface_linen",
     "keys",
-    "skeleton"
+    "skeleton",
+    "arm"
   ],
   "stills": "stills"
 }

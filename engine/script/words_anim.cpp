@@ -77,6 +77,13 @@ bool Stage::showClip(int ci) {
   return false;
 }
 
+void Stage::bendSkin(int i) {
+  Skinned& k = skinned[i];
+  const anim::Skeleton& sk = skeletons[k.skeleton];
+  scene.bends[i] = anim::bendMatrices(k.meshToWorld, anim::Pose::rest(sk).world(sk, k.root), k.pose.world(sk, k.root));
+  ++version;
+}
+
 void Stage::seekClip(int ci, double moment) {
   if (ci < 0 || ci >= static_cast<int>(clips.size())) return;
   clips[ci].moment = moment;
@@ -416,6 +423,80 @@ void registerAnim(Vm& vm) {
     ++s.version;
     return newGroup(a.vm, s, parts, root.position);
   }, "bones(skeleton, at, turn, height, material): shows a skeleton by name in its rest pose, each bone a slim shape from its start to its tip");
+
+  // ---- skin: a thing's shape follows a skeleton
+  vm.native("skin", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const Value* on = a.get(0, "thing");
+    Thing* t = on ? on->as<Thing>() : nullptr;
+    if (!t || t->cls != &kShapeClass)
+      a.vm.fail("a skin needs the thing that bends", "name the thing first, like `let arm = lathe [...]`, then `skin arm, \"arm\"`");
+    const std::string name = a.text(1, "skeleton", "");
+    auto found = s.skeletons.find(name);
+    if (found == s.skeletons.end()) {
+      std::vector<std::string> names;
+      for (const auto& k : s.skeletons) names.push_back(k.first);
+      std::string c = closest(name, names);
+      a.vm.fail("there's no skeleton called \"" + name + "\"", c.empty() ? "write one first with `skeleton` and its `bone` lines, or bring one in, like `use \"human\"`" : "did you mean \"" + c + "\"?");
+    }
+    Stage::Placed& p = placedOf(a.vm, *t);
+    if (p.body >= 0) a.vm.fail("a solid thing is moved by physics, so bones can't bend it too", "leave out `solid` for a thing with a skin");
+    for (const Stage::Skinned& k : s.skinned)
+      if (k.placed == t->id) a.vm.fail("this thing already has a skin");
+    const anim::Skeleton& sk = found->second;
+    const float tall = anim::standingHeight(sk);
+    Stage::Skinned k;
+    k.placed = t->id, k.skeleton = name;
+    // the skeleton stands where the thing is, unless told otherwise
+    k.root.position = a.vec(-1, "at", p.position);
+    k.root.rotation = Quat::axisAngle({0, 1, 0}, f32(a.num(-1, "turn", 0)));
+    k.root.scale = Vec3(a.has(-1, "height") && tall > 0 ? f32(a.num(-1, "height", tall)) / tall : 1);
+    k.pose = anim::Pose::rest(sk);
+    // the thing gets a shape of its own (others may share the one it had), with each point's bones worked out
+    MeshInstance& in = s.scene.instances[p.instance];
+    k.meshToWorld = in.transform;
+    Mesh own = s.scene.meshes[in.mesh];
+    anim::WeighOptions o;
+    o.soft = std::clamp(f32(a.num(-1, "soft", o.soft)), 0.05f, 3.0f);
+    anim::weigh(own, k.meshToWorld, sk, k.pose.world(sk, k.root), o);
+    bool any = false;
+    for (const Pulls& pl : own.pulls) any = any || pl.pull[0] > 0;
+    if (!any) a.vm.fail("no bone of \"" + name + "\" is near this thing", "a skin's skeleton stands where the thing is: check `at`");
+    in.mesh = s.scene.addMesh(std::move(own));
+    in.bend = static_cast<int>(s.skinned.size());
+    s.scene.bends.emplace_back();
+    s.skinned.push_back(std::move(k));
+    s.bendSkin(in.bend);
+    return *on;
+  }, "skin(thing, skeleton, at, turn, height, soft: 0.5): the thing's shape follows the skeleton, which stands where the thing is; each point is pulled by the bones near it, and `soft` is how round a joint bends");
+
+  // ---- pose: one bone of a skin turned from its rest
+  vm.native("pose", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const Value* on = a.get(0, "thing");
+    Thing* t = on ? on->as<Thing>() : nullptr;
+    int which = -1;
+    for (size_t i = 0; t && t->cls == &kShapeClass && i < s.skinned.size(); ++i)
+      if (s.skinned[i].placed == t->id) which = static_cast<int>(i);
+    if (which < 0) a.vm.fail("a pose needs a thing with a skin", "give it one first, like `skin arm, \"arm\"`, then `pose arm, \"forearm\", bend: 90 deg`");
+    Stage::Skinned& k = s.skinned[which];
+    const anim::Skeleton& sk = s.skeletons[k.skeleton];
+    const std::string name = a.text(1, "bone", "");
+    const int b = sk.find(name);
+    if (b < 0) {
+      std::vector<std::string> names;
+      for (const anim::Bone& bn : sk.bones) names.push_back(bn.name);
+      std::string c = closest(name, names);
+      a.vm.fail("the skeleton \"" + k.skeleton + "\" has no bone called \"" + name + "\"", c.empty() ? "" : "did you mean \"" + c + "\"?");
+    }
+    // the turn it has now, with what the line says put over it, held to the bone's limits
+    Vec3 turn = anim::bendSideTwistFromTurn(sk.bones[b].rest.rotation.conjugate() * k.pose.local[b].rotation);
+    turn.x = f32(a.num(-1, "bend", turn.x)), turn.y = f32(a.num(-1, "side", turn.y)), turn.z = f32(a.num(-1, "twist", turn.z));
+    turn = anim::heldToLimits(sk.bones[b], turn);
+    k.pose.local[b].rotation = sk.bones[b].rest.rotation * anim::turnFromBendSideTwist(turn);
+    s.bendSkin(which);
+    return *on;
+  }, "pose(thing, bone, bend, side, twist): turns one bone of a thing with a skin from its rest, no further than the bone's limits; the skin bends with it");
 
   // ---- the clip as a value
   vm.method("clip", "play", [](Args& a) {

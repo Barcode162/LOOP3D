@@ -2,18 +2,39 @@
 
 #include <numeric>
 
+#include "engine/anim/skin.h"
+
 namespace loop {
 
 void SceneBvh::build(const Scene& s) {
   blas_.assign(s.meshes.size(), {});
+  bent_.clear();
   inst_.clear();
   top_.clear();
-  std::vector<bool> used(s.meshes.size(), false);
-  for (const MeshInstance& in : s.instances)
-    if (in.mesh >= 0 && in.mesh < static_cast<int>(s.meshes.size())) used[in.mesh] = true;
-  for (size_t m = 0; m < s.meshes.size(); ++m) {
-    if (!used[m]) continue;
-    const Mesh& mesh = s.meshes[m];
+  // a skin is bent by its bones first, and gets a tree of its own
+  auto skinOf = [&](const MeshInstance& in) {
+    return in.bend >= 0 && in.bend < static_cast<int>(s.bends.size()) && in.mesh >= 0 && in.mesh < static_cast<int>(s.meshes.size()) &&
+           !s.meshes[in.mesh].pulls.empty();
+  };
+  std::vector<int> blasOf(s.instances.size(), -1);
+  std::vector<const Mesh*> toBuild(s.meshes.size(), nullptr);
+  for (size_t i = 0; i < s.instances.size(); ++i) {
+    const MeshInstance& in = s.instances[i];
+    if (in.mesh < 0 || in.mesh >= static_cast<int>(s.meshes.size())) continue;
+    if (skinOf(in)) {
+      bent_.emplace_back();
+      anim::bend(s.meshes[in.mesh], s.bends[in.bend], bent_.back());
+      blasOf[i] = static_cast<int>(toBuild.size());
+      toBuild.push_back(&bent_.back());
+    } else {
+      blasOf[i] = in.mesh;
+      toBuild[in.mesh] = &s.meshes[in.mesh];
+    }
+  }
+  blas_.assign(toBuild.size(), {});
+  for (size_t m = 0; m < toBuild.size(); ++m) {
+    if (!toBuild[m]) continue;
+    const Mesh& mesh = *toBuild[m];
     std::vector<Triangle> tris;
     tris.reserve(mesh.triangleCount());
     for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
@@ -23,15 +44,16 @@ void SceneBvh::build(const Scene& s) {
     blas_[m].bvh.build(std::move(tris));
     blas_[m].mesh = &mesh;
   }
-  for (const MeshInstance& in : s.instances) {
-    if (in.mesh < 0 || in.mesh >= static_cast<int>(s.meshes.size()) || blas_[in.mesh].bvh.empty()) continue;
+  for (size_t i = 0; i < s.instances.size(); ++i) {
+    const MeshInstance& in = s.instances[i];
+    if (blasOf[i] < 0 || blas_[blasOf[i]].bvh.empty()) continue;
     Inst I;
-    I.blas = in.mesh;
+    I.blas = blasOf[i];
     I.material = s.materials.empty() ? -1 : clamp(in.material, 0, static_cast<int>(s.materials.size()) - 1);
     I.xf = in.transform;
     I.inv = in.transform.inverse();
     I.normalXf = in.transform.linear().inverse().transposed();
-    I.box = blas_[in.mesh].bvh.bounds().transformed(in.transform);
+    I.box = blas_[I.blas].bvh.bounds().transformed(in.transform);
     const Mat4 id;
     I.identity = true;
     for (int c = 0; c < 4; ++c)

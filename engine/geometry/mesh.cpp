@@ -21,6 +21,9 @@ void Mesh::append(const Mesh& m, const Mat4& xf) {
   uint32_t base = static_cast<uint32_t>(positions.size());
   Mat3 nm = xf.linear().inverse().transposed();
   bool hasT = !m.tangents.empty() && tangents.size() == positions.size();
+  // a skin is kept only when both have one (or this mesh was empty)
+  if (!m.pulls.empty() && pulls.size() == positions.size()) pulls.insert(pulls.end(), m.pulls.begin(), m.pulls.end());
+  else pulls.clear();
   for (size_t i = 0; i < m.positions.size(); ++i) {
     positions.push_back(xf.point(m.positions[i]));
     normals.push_back(i < m.normals.size() ? normalize(nm * m.normals[i]) : Vec3{0, 1, 0});
@@ -92,6 +95,7 @@ void Mesh::flatShade() {
     for (int k = 0; k < 3; ++k) {
       uint32_t s = indices[i + k];
       out.addVertex(positions[s], n, s < uvs.size() ? uvs[s] : Vec2{});
+      if (s < pulls.size()) out.pulls.push_back(pulls[s]);
     }
     out.addTriangle(base, base + 1, base + 2);
   }
@@ -114,6 +118,7 @@ void Mesh::weld(float eps) {
     auto it = seen.find(k);
     if (it != seen.end()) { remap[i] = it->second; continue; }
     uint32_t v = out.addVertex(positions[i], i < normals.size() ? normals[i] : Vec3{}, i < uvs.size() ? uvs[i] : Vec2{});
+    if (i < pulls.size()) out.pulls.push_back(pulls[i]);
     seen.emplace(k, v);
     remap[i] = v;
   }

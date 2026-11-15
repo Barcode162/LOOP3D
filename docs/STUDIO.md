@@ -261,6 +261,8 @@ Proof:  QUICK; tests: a rest pose leaves every point where it was; no point move
         do; a tube bent 90 degrees has its volume measured and kept as the figure the helper bones (T-B2) must
         beat; the film picture of projects/samples/arm.loop bent at three angles.
 See:    goal 7: an arm of three bones bends with no gap.
+Done:   2026-11-15. The words `skin` and `pose` came with it (the sample needed them). The figure for T-B2 to beat:
+        a tube of radius 5 cm bent 90 degrees keeps 0.929 of its volume (tests/skin_test.cpp).
 ```
 ```
 T-E1 · The editable mesh                                            hand: lead      size: M
