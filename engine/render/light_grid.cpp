@@ -22,6 +22,7 @@ std::vector<GridLamp> gridLamps(const Scene& scene, int maxLamps) {
     } else if (l.kind == Light::Kind::kRect) {
       g.candela = l.lumens / kPi;
       g.kind = 2, g.facing = normalize(l.direction);
+      g.wide = 6 * length(l.size);
     } else {
       g.candela = l.lumens / (4 * kPi);
     }
@@ -90,7 +91,7 @@ float distanceToBox(Vec3 p, Vec3 lo, Vec3 hi) {
 
 }  // namespace
 
-LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int fewest, int maxCells, float tolerance) {
+LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int fewest, int maxCells, float tolerance, float share) {
   LightGrid g;
   const int n = static_cast<int>(lamps.size());
   if (n <= std::max(fewest, 1)) return g;
@@ -130,14 +131,22 @@ LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int 
     for (uint32_t k : g.groups[i].members) groupCandela[i] += lamps[k].candela;
   // ---- each cell's cut through the tree
   g.start.assign(static_cast<size_t>(g.cells()) + 1, 0);
+  g.sure.assign(static_cast<size_t>(g.cells()), 0);
+  const bool picking = share < 1;
   std::vector<std::pair<float, uint32_t>> list;
-  double sum = 0;
+  std::vector<uint32_t> wide;  // panels near enough to show their size
+  double sum = 0, sureSum = 0;
   for (int c = 0; c < g.cells(); ++c) {
     const Vec3 clo = g.cellLow(c), chi = clo + Vec3(cell), mid = g.cellCenter(c);
-    list.clear();
+    list.clear(), wide.clear();
     auto light = [&](Vec3 p, float candela) {
       Vec3 d = p - mid;
       return candela / std::max(dot(d, d), 0.25f);
+    };
+    // the most a lamp (or a group, `reach` its radius) could give anywhere in the cell
+    auto most = [&](Vec3 p, float candela, float reach) {
+      float d = std::max(distanceToBox(p, clo, chi) - reach, 0.0f);
+      return candela / std::max(d * d, 0.25f);
     };
     // all the light reaching the cell, roughly (each root as one lamp at its middle): what an error is a share of
     float total = 0;
@@ -151,7 +160,12 @@ LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int 
       int e2 = stack.back();
       stack.pop_back();
       if (e2 < n) {
-        list.push_back({light(lamps[static_cast<size_t>(e2)].position, lamps[static_cast<size_t>(e2)].candela), static_cast<uint32_t>(e2)});
+        const GridLamp& l = lamps[static_cast<size_t>(e2)];
+        if (picking && l.wide > 0 && distanceToBox(l.position, clo, chi) < l.wide) {
+          wide.push_back(static_cast<uint32_t>(e2));
+          continue;
+        }
+        list.push_back({picking ? most(l.position, l.candela, 0) : light(l.position, l.candela), static_cast<uint32_t>(e2)});
         continue;
       }
       const LightGrid::Group& grp = g.groups[static_cast<size_t>(e2 - n)];
@@ -161,19 +175,35 @@ LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int 
       const float worst = candela / std::max((near - grp.radius) * (near - grp.radius), 0.25f) -
                           candela / std::max((near + grp.radius) * (near + grp.radius), 0.25f);
       if (near >= farness * grp.radius || (tolerance > 0 && worst < tolerance * total)) {
-        list.push_back({light(grp.center, candela), static_cast<uint32_t>(e2)});
+        list.push_back({picking ? most(grp.center, candela, grp.radius) : light(grp.center, candela), static_cast<uint32_t>(e2)});
       } else {
         stack.push_back(grp.b), stack.push_back(grp.a);
       }
     }
     std::stable_sort(list.begin(), list.end(), [](auto& x, auto& y) { return x.first > y.first; });
     g.start[static_cast<size_t>(c)] = static_cast<uint32_t>(g.entries.size());
+    for (uint32_t id : wide) g.entries.push_back(id);  // first: always worked out alone
     for (auto& [w, id] : list) g.entries.push_back(id);
-    sum += static_cast<double>(list.size());
-    g.mostEntries = std::max(g.mostEntries, static_cast<int>(list.size()));
+    // the sure ones: the first holding `share` of the most light (each of the rest under them)
+    size_t sure = list.size();
+    if (picking && list.empty()) sure = 0;
+    else if (picking) {
+      double all = 0;
+      for (auto& [w, id] : list) all += w;
+      double left = all;
+      sure = 0;
+      while (sure < list.size() && left > (1.0 - share) * all) left -= list[sure++].first;
+      if (sure + 1 == list.size()) sure = list.size();  // one left over: as cheap to work it out
+    }
+    sure += wide.size();
+    g.sure[static_cast<size_t>(c)] = static_cast<uint32_t>(sure);
+    sureSum += static_cast<double>(sure);
+    sum += static_cast<double>(list.size() + wide.size());
+    g.mostEntries = std::max(g.mostEntries, static_cast<int>(list.size() + wide.size()));
   }
   g.start[static_cast<size_t>(g.cells())] = static_cast<uint32_t>(g.entries.size());
   g.averageEntries = static_cast<float>(sum / g.cells());
+  g.averageSure = static_cast<float>(sureSum / g.cells());
   return g;
 }
 

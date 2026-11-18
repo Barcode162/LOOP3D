@@ -138,7 +138,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   Vec3 towardSun = sun ? normalize(-sun->direction) : Vec3(0, 1, 0);
   c.lampsComputed = static_cast<float>(std::min({lamps, kMaxGpuLights, std::max(view.maxLights, 1)}));
   // the light grid: a pixel works out only its cell's entries (as the renderer builds it)
-  const LightGrid grid = view.lightGrid ? buildLightGrid(gridLamps(scene, kMaxGpuLights), view.lampGrouping, 8, 4096, view.lampError) : LightGrid();
+  const LightGrid grid = view.lightGrid ? buildLightGrid(gridLamps(scene, kMaxGpuLights), view.lampGrouping, 8, 4096, view.lampError, view.lampShare) : LightGrid();
   double gridEntries = 0;
 
   // ---- the passes: what each draws, and what skipping off-screen copies leaves
@@ -283,7 +283,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       matter += need, matter99 += need99;
       if (grid.on) {
         const int cell = grid.cellOf(p);
-        gridEntries += grid.start[static_cast<size_t>(cell) + 1] - grid.start[static_cast<size_t>(cell)];
+        gridEntries += grid.work(cell);
       }
       c.lampsThatMatterMost = std::max(c.lampsThatMatterMost, need);
     }
@@ -357,7 +357,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
         float lampsHere = c.lampsComputed;
         if (grid.on) {
           const int cell = grid.cellOf(ray.at(first.t));
-          lampsHere = static_cast<float>(grid.start[static_cast<size_t>(cell) + 1] - grid.start[static_cast<size_t>(cell)]);
+          lampsHere = grid.work(cell);
         }
         mShaded += sh, mWork += sh * lampsHere;
       }

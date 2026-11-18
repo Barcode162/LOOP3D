@@ -120,3 +120,39 @@ TEST(light_grid_dim_groups_stand_in_beside_bright_lamps) {
     if (!once) break;
   }
 }
+
+// render.lampShare: the sure entries come first and hold the share; with
+// share 1 every entry is sure; and every lamp is still listed once (the rest
+// are merged at each pixel, never dropped).
+TEST(light_grid_sure_lamps_hold_the_share) {
+  auto lamps = bulbs(12, 10, 120);
+  lamps[37].candela *= 40;  // one bright pendant among them
+  LightGrid all = buildLightGrid(lamps, 7, 8, 4096, 0, 1);
+  for (int c = 0; c < all.cells(); ++c) CHECK(static_cast<int>(all.sure[static_cast<size_t>(c)]) == all.count(c));
+  CHECK(all.work(0) == static_cast<float>(all.count(0)));
+  LightGrid g = buildLightGrid(lamps, 7, 8, 4096, 0, 0.95f);
+  CHECK(g.averageSure < 0.8f * g.averageEntries);  // most cells merge a real rest
+  CHECK(g.entries.size() == all.entries.size());
+  for (int c = 0; c < g.cells(); ++c) {
+    for (int t : covered(g, c)) CHECK(t == 1);
+    const int sure = static_cast<int>(g.sure[static_cast<size_t>(c)]);
+    CHECK(sure >= 1 && sure <= g.count(c));
+    CHECK(sure != g.count(c) - 1);  // one left over is worked out alone, not merged
+    CHECK(g.work(c) <= static_cast<float>(g.count(c)) + 1.0f);
+  }
+}
+
+// A panel near enough to show its size is never merged: the merged lamp is a
+// point, and a strip beside a stair edge lights it as a panel.
+TEST(light_grid_near_panels_stay_alone) {
+  auto lamps = bulbs(12, 10, 120);
+  GridLamp strip;
+  strip.position = Vec3(4, 1, 4), strip.candela = 5, strip.kind = 2, strip.facing = Vec3(0, -1, 0), strip.wide = 6;
+  lamps.push_back(strip);
+  const uint32_t k = static_cast<uint32_t>(lamps.size() - 1);
+  LightGrid g = buildLightGrid(lamps, 7, 8, 4096, 0, 0.5f);
+  const int c = g.cellOf(Vec3(4.5f, 1, 4));
+  bool alone = false;
+  for (uint32_t j = g.start[static_cast<size_t>(c)]; j < g.start[static_cast<size_t>(c)] + g.sure[static_cast<size_t>(c)]; ++j) alone |= g.entries[j] == k;
+  CHECK(alone);
+}

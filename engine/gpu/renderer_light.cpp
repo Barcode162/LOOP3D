@@ -160,21 +160,22 @@ void GpuRenderer::keepLightCache(Vec3 eye) {
   if (done) tracer_.reset();  // its tens of MB back
 }
 
-wgpu::Texture GpuRenderer::gridTexture(wgpu::TextureDimension dim, uint32_t x, uint32_t y, uint32_t z) {
+wgpu::Texture GpuRenderer::gridTexture(wgpu::TextureDimension dim, uint32_t x, uint32_t y, uint32_t z, bool two) {
   wgpu::TextureDescriptor td;
   td.size = {std::max(1u, x), std::max(1u, y), std::max(1u, z)};
-  td.format = wgpu::TextureFormat::R32Uint, td.dimension = dim;
+  td.format = two ? wgpu::TextureFormat::RG32Uint : wgpu::TextureFormat::R32Uint, td.dimension = dim;
   td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
   return device_.CreateTexture(&td);
 }
 
-void GpuRenderer::writeGridTexture(const wgpu::Texture& t, const void* data, uint32_t x, uint32_t y, uint32_t z) {
+void GpuRenderer::writeGridTexture(const wgpu::Texture& t, const void* data, uint32_t x, uint32_t y, uint32_t z, bool two) {
   wgpu::TexelCopyTextureInfo dst;
   dst.texture = t;
   wgpu::TexelCopyBufferLayout lay;
-  lay.bytesPerRow = x * 4, lay.rowsPerImage = y;
+  const uint32_t texel = two ? 8 : 4;
+  lay.bytesPerRow = x * texel, lay.rowsPerImage = y;
   wgpu::Extent3D ext{x, y, z};
-  queue_.WriteTexture(&dst, data, static_cast<size_t>(x) * y * z * 4, &lay, &ext);
+  queue_.WriteTexture(&dst, data, static_cast<size_t>(x) * y * z * texel, &lay, &ext);
 }
 
 float GpuRenderer::gridSetting() {
@@ -182,20 +183,27 @@ float GpuRenderer::gridSetting() {
   return r.lightGrid ? std::clamp(r.lampGrouping, 1.0f, 64.0f) : 0.0f;
 }
 
+// render.lampShare: the share of each cell's light its lamps worked out alone hold
+float GpuRenderer::gridShare() const { return std::clamp(config().render.lampShare, 0.5f, 1.0f); }
+
 void GpuRenderer::layOutGrid() {
   gridKey_ = gridSetting();
   gridError_ = config().render.lampError;
-  grid_ = gridKey_ > 0 ? buildLightGrid(gridLampsCpu_, gridKey_, 8, kGridCells, gridError_) : LightGrid();
+  gridShare_ = gridShare();
+  grid_ = gridKey_ > 0 ? buildLightGrid(gridLampsCpu_, gridKey_, 8, kGridCells, gridError_, gridShare_) : LightGrid();
   if (grid_.on && (gridLampsCpu_.size() != lights_.size() || grid_.entries.size() >= (1u << 20) || grid_.mostEntries >= 4096 ||
                    lights_.size() + grid_.groups.size() > 2 * static_cast<size_t>(kMaxLights)))
     grid_ = LightGrid();
   const uint32_t nx = grid_.on ? grid_.nx : 1, ny = grid_.on ? grid_.ny : 1, nz = grid_.on ? grid_.nz : 1;
-  std::vector<uint32_t> cells(static_cast<size_t>(nx) * ny * nz, 0);
+  // per cell: where its entries start (20 bits) and how many (12 bits); how many are sure
+  std::vector<uint32_t> cells(static_cast<size_t>(nx) * ny * nz * 2, 0);
   if (grid_.on)
-    for (int c = 0; c < grid_.cells(); ++c)
-      cells[static_cast<size_t>(c)] = grid_.start[static_cast<size_t>(c)] | ((grid_.start[static_cast<size_t>(c) + 1] - grid_.start[static_cast<size_t>(c)]) << 20);
-  gridCellsTex_ = gridTexture(wgpu::TextureDimension::e3D, nx, ny, nz);
-  writeGridTexture(gridCellsTex_, cells.data(), nx, ny, nz);
+    for (int c = 0; c < grid_.cells(); ++c) {
+      cells[static_cast<size_t>(c) * 2] = grid_.start[static_cast<size_t>(c)] | (static_cast<uint32_t>(grid_.count(c)) << 20);
+      cells[static_cast<size_t>(c) * 2 + 1] = grid_.sure[static_cast<size_t>(c)];
+    }
+  gridCellsTex_ = gridTexture(wgpu::TextureDimension::e3D, nx, ny, nz, true);
+  writeGridTexture(gridCellsTex_, cells.data(), nx, ny, nz, true);
   const uint32_t rows = std::max<uint32_t>(1, static_cast<uint32_t>((grid_.entries.size() + 1023) / 1024));
   gridListTex_ = gridTexture(wgpu::TextureDimension::e2D, 1024, rows, 1);
   gridCellsView_ = gridCellsTex_.CreateView(), gridListView_ = gridListTex_.CreateView();
@@ -222,7 +230,7 @@ LightU GpuRenderer::groupLamp(const LightGrid::Group& grp) const {
 }
 
 void GpuRenderer::keepGrid() {
-  if (!gridCellsTex_ || gridSetting() != gridKey_ || config().render.lampError != gridError_) layOutGrid();
+  if (!gridCellsTex_ || gridSetting() != gridKey_ || config().render.lampError != gridError_ || gridShare() != gridShare_) layOutGrid();
 }
 
 void GpuRenderer::uploadLights(const Vec3& eye) {

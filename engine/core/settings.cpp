@@ -88,6 +88,7 @@ Settings::Settings() {
   I("render.lampMaps", r.lampMaps, 0, 2, "on Phone (no rays): how many of the main lamps near you cast shadows, from shadow maps");
   I("render.lampMapSize", r.lampMapSize, 64, 1024, "each of a lamp shadow map's six views, pixels square (sharper costs memory: 256 is 3 MB for two lamps)");
   F("render.lampError", r.lampError, 0, 0.2, "a nearer group of lamps is worked out as one too when the most its light could be wrong is under this share of all the light there (lightcuts): dim lamps beside bright ones cost little (0: distance alone)");
+  F("render.lampShare", r.lampShare, 0.5, 1, "each pixel works out alone the lamps of its cell holding this share of the light there, and merges the rest into one lamp made for that point (their soft light exact; only their shine and shadows approximate); 1: every lamp alone");
   F("render.lampGrouping", r.lampGrouping, 1, 64, "how far (in its own sizes) a group of lamps must be to be worked out as one: more is closer to every lamp alone, and more work");
   B("render.cull", r.cull, "skip what a pass can't see: off screen, or outside the sun's shadow area (off: draw everything)");
   F("render.clusterError", r.clusterError, 0.01, 16, "with clusters: the most, in pixels, a simpler version of a shape may look different from its full detail (smaller: more detail, more work)");

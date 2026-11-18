@@ -26,6 +26,8 @@ struct GridLamp {
   float candela = 0;  // brightest intensity (cd): orders each cell's list
   int kind = 0;       // lamps group only with their own kind: points together,
   Vec3 facing;        // panels facing the same way (spots never group)
+  float wide = 0;     // a panel: how near it shows its size (six of its diagonals, as the renderer
+                      // lights it): nearer, it is worked out alone, never merged (render.lampShare)
 };
 std::vector<GridLamp> gridLamps(const Scene& scene, int maxLamps);
 
@@ -46,9 +48,22 @@ struct LightGrid {
   int nx = 0, ny = 0, nz = 0;
   std::vector<uint32_t> start;    // per cell, where its entries start in `entries` (cells + 1)
   std::vector<uint32_t> entries;  // lamps (< lampCount) and groups (lampCount + g), brightest at its middle first
+                                  // (with a `share` under 1: the most each could give anywhere in the cell, first)
+  std::vector<uint32_t> sure;     // per cell, how many of its first entries every pixel works out alone; the
+                                  // rest each pixel merges into one lamp of its own (render.lampShare)
+  float averageSure = 0;          // per cell
   float averageEntries = 0;       // per cell
   int mostEntries = 0;
   int cells() const { return nx * ny * nz; }
+  int count(int c) const { return static_cast<int>(start[static_cast<size_t>(c) + 1] - start[static_cast<size_t>(c)]); }
+  // a pixel's lamp work in cell c: its sure entries, and (with any left) the
+  // merged lamp: each of the rest added up (its light there, about a third of
+  // a lamp's work: no shine, no shadow), and that one lamp worked out
+  float work(int c) const {
+    const int s = static_cast<int>(sure[static_cast<size_t>(c)]);
+    return static_cast<float>(s) + (s < count(c) ? 1.0f + kWeighCost * static_cast<float>(count(c) - s) : 0.0f);
+  }
+  static constexpr float kWeighCost = 0.35f;
   int cellOf(Vec3 p) const;       // the nearest cell (a point outside takes the edge's)
   Vec3 cellCenter(int c) const;
   Vec3 cellLow(int c) const;
@@ -62,6 +77,15 @@ struct LightGrid {
 // (lit from its nearest member's place rather than its middle) is under that
 // share of all the light reaching the cell. A string of dim bulbs beside a
 // bright pendant is then one lamp; 0 keeps distance as the only rule.
-LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness = 4, int fewest = 8, int maxCells = 4096, float tolerance = 0);
+// `share` (render.lampShare): a cell's entries are ordered by the most light
+// each could give anywhere in it, and the first ones holding that share of it
+// all are `sure`, worked out alone; each pixel merges the rest into one lamp
+// made for its own point: the soft light they bring it, added up lamp by lamp
+// (exact), from their middle way, its shine as wide as they spread (only the
+// shine and the shadows of dim lamps are approximate). It is worked out at
+// the pixel, so no cell's edge shows (unlike a group standing in nearer), and
+// nothing is random, so nothing flickers. 1: every entry is worked out alone.
+LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness = 4, int fewest = 8, int maxCells = 4096, float tolerance = 0,
+                         float share = 1);
 
 }  // namespace loop

@@ -135,6 +135,7 @@ struct FrameView {
   bool lightGrid = false;          // render.lightGrid: each pixel works out its cell's lamps and far groups
   float lampGrouping = 7;          // render.lampGrouping
   float lampError = 0;             // render.lampError
+  float lampShare = 1;             // render.lampShare
   float lodBias = 0;               // world.lodBias
   bool portraitWide = true;        // cam.portraitWide: an upright screen keeps the lens's width
   // render.clusters: drawn from the cook's cluster trees, as the graphics chip

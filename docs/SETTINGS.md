@@ -119,6 +119,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Lamp shadows on Phone (main lamps) | `render.lampMaps` | 2 | 0 … 2 | live · script | `setting "render.lampMaps", 2` | Phone traces no rays: the main lamps near you (up to 2) cast shadows from shadow maps instead, six views round each bulb, drawn again only when the main lamps change. 0: no lamp shadows on Phone. |
 | Lamp shadow sharpness | `render.lampMapSize` | 256 | 128 / 256 / 512 / 1024 | live · script | `setting "render.lampMapSize", 256` | Pixels square for each of a lamp shadow map's six views: sharper costs memory (256: 3 MB for two lamps, 512: 12 MB). |
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
+| Lamps worked out alone | `render.lampShare` | 0.8 | 0.5 … 1 | live · script | `setting "render.lampShare", 0.8` | Each spot works out alone the lamps holding this share of its light, and merges the dim rest into one lamp made for that spot: their soft light stays exact, only their shine and shadows are approximate. 1: every lamp alone (more work). |
 | Dim lamps as one | `render.lampError` | 0 | 0 … 0.2 | live · script | `setting "render.lampError", 0` | A nearer group of lamps is worked out as one too, when the most its light could be wrong is under this share of the light there. Off for now: on the phone it leaves sharp dark rectangles. |
 | Ambient occlusion | `render.ao` | 1 | 0 … 3 x | live · script | `setting "render.ao", 1` | Drawing in clusters: the soft light darkens where surfaces meet (corners, under tables, round feet), found in the depth picture. 0: off. |
 | Ambient occlusion reach | `render.aoReach` | 0.6 | 0.05 … 3 m | live · script | `setting "render.aoReach", 0.6` | How far it looks for what is near a surface: small for fine creases, large for whole rooms. |
@@ -604,4 +605,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 156 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you
+11 project.json · 157 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you

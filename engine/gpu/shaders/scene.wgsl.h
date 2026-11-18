@@ -756,13 +756,15 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   // lamps each as one (a point outside the grid takes the nearest cell)
   var first = 0u;
   var last = u32(frame.params.x);
+  var sureEnd = last;
   let gridOn = frame.grid1.w > 0.5;
   if (gridOn) {
     let dims = vec3i(frame.grid1.xyz);
     let c = clamp(vec3i(floor((i.world - frame.grid0.xyz) / frame.grid0.w)), vec3i(0), dims - 1);
-    let packed = textureLoad(gridCells, c, 0).x;
-    first = packed & 0xFFFFFu;
-    last = first + (packed >> 20u);
+    let cellv = textureLoad(gridCells, c, 0);
+    first = cellv.x & 0xFFFFFu;
+    last = first + (cellv.x >> 20u);
+    sureEnd = first + min(cellv.y, cellv.x >> 20u);
   }
   var shadowed = 0u;
   // High (phase 8, render.allLampShadows, ReSTIR's idea of reusing work over
@@ -776,7 +778,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   var restW = 0.0;
   var pick = 0xffffffffu;
   var seed = u32(i.clip.x) * 1973u + u32(i.clip.y) * 9277u + u32(frame.ao.z) * 26699u;
-  for (var j = first; j < last; j++) {
+  for (var j = first; j < sureEnd; j++) {
     var k = j;
     if (gridOn) { k = textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x; }
     let L = lights[k];
@@ -831,6 +833,43 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       if (f32(seed >> 8u) / 16777216.0 * restW < w) { pick = k; }
     } else {
       lo += c;
+    }
+  }
+  // the rest of the cell's lamps (render.lampShare, engine/render/light_grid.h):
+  // the dim ones, merged here into one lamp made for this point: the light
+  // all of them bring it (each with its own distance, cone and slant, so the
+  // soft light is theirs exactly), from their middle way, its highlight as
+  // wide as they are spread. No shadow of their own (the ambient occlusion
+  // stands in, as for a lamp past the rays), or on High, the picked lamp's.
+  // Worked out at each point, so no cell's edge shows, and nothing flickers
+  if (sureEnd < last) {
+    var lit = vec3f(0.0);
+    var way = vec3f(0.0);
+    var weight = 0.0;
+    for (var j = sureEnd; j < last; j++) {
+      let L = lights[textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x];
+      let tl = L.pos.xyz - i.world;
+      let d2 = max(dot(tl, tl), L.pos.w * L.pos.w);
+      let l = tl * inverseSqrt(max(dot(tl, tl), 1e-8));
+      var I = L.color.rgb / d2;
+      if (L.dir.w > 0.5 && L.dir.w < 1.5) {
+        I *= smoothstep(L.cone.y, L.cone.x, dot(-l, L.dir.xyz));
+      } else if (L.dir.w > 1.5) {
+        I *= L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0);
+      }
+      let nl = dot(n, l);
+      let slant = select(max(nl, 0.0), abs(nl), lit2);
+      lit += I * slant;
+      let w = dot(I, vec3f(0.3333)) * slant;
+      way += l * w;
+      weight += w;
+    }
+    if (weight > 0.0) {
+      let l = select(n, normalize(way), length(way) > 1e-4 * weight);
+      let spread = 1.0 - length(way) / weight;  // 0: all from one way
+      let nl = select(max(dot(n, l), 0.0), abs(dot(n, l)), lit2);
+      var c = surfLight(sf, l, 0.5 * spread) * lit / max(nl, 0.05);
+      if (pick != 0xffffffffu) { restLight += c; } else { lo += c * mix(1.0, aoTerm, 0.7); }
     }
   }
   if (pick != 0xffffffffu) {

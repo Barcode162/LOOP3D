@@ -323,11 +323,13 @@ class GpuRenderer final : public Renderer {
   std::vector<GridLamp> gridLampsCpu_;
   float gridKey_ = -1;     // the settings the grid was laid out for
   float gridError_ = -1;   // and its render.lampError
+  float gridShare_ = -1;   // and its render.lampShare
+  float gridShare() const;
   wgpu::Texture gridCellsTex_, gridListTex_;
   wgpu::TextureView gridCellsView_, gridListView_;
   static constexpr int kGridCells = 4096;
-  wgpu::Texture gridTexture(wgpu::TextureDimension dim, uint32_t x, uint32_t y, uint32_t z);
-  void writeGridTexture(const wgpu::Texture& t, const void* data, uint32_t x, uint32_t y, uint32_t z);
+  wgpu::Texture gridTexture(wgpu::TextureDimension dim, uint32_t x, uint32_t y, uint32_t z, bool two = false);
+  void writeGridTexture(const wgpu::Texture& t, const void* data, uint32_t x, uint32_t y, uint32_t z, bool two = false);
   static float gridSetting();
   // Lays the grid out for the lamps and settings now: the tree, the cells.
   void layOutGrid();
