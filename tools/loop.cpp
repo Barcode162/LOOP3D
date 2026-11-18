@@ -18,7 +18,7 @@
 //               cluster tree (Nanite-style levels), how long it took
 //   loop library list|check|json              the library (library/): its entries; check refuses
 //               an entry with no credit or licence; json is for the site and the editor
-//   loop library picture <name> [-o out.png] [--seed n] [--night] [--case n] [--far]
+//   loop library picture <name> [-o out.png] [--seed n] [--night] [--case n] [--far] [--before]
 //               one entry placed on a neutral floor under a soft sky and one sun,
 //               seen three-quarter at 35 mm from its size, 512 by 512, quality good.
 //               --night: no sun, a black sky, a mid-grey floor and one mid-grey wall 3 m
@@ -77,7 +77,7 @@ int usage() {
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
       "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
-      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night] [--case n] [--far]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held; a surface entry: on the test ball, --far from 3 m)\n"
+      "loop library list|check|json|picture <name> [-o out.png] [--seed n] [--night] [--case n] [--far]   the library; one entry's picture (--night, or a light or sky entry: black sky, no sun, exposure held; a surface entry: on the test ball, --far from 3 m, --before the flat built-in of that name on the same rig)\n"
       "loop settings list   every engine setting, its default and range (JSON)\n"
       "loop words <json|js>  every word of the language and its help\n"
       "loop project <name.looped>  a project's cover page as JSON\n"
@@ -89,6 +89,7 @@ int usage() {
 struct Options {
   bool night = false;  // loop library picture --night
   bool far = false;    // loop library picture --far (a surface: from 3 m, 1.5 m up)
+  bool before = false; // loop library picture --before (a surface: the flat built-in material of that name on the same rig)
   bool reuse = false;  // loop score --reuse: the -o folder's saved cinema pictures
   std::string quality, look, out, choices, name;  // name: loop library picture <name>
   int seed = 0, caseNo = 0;  // caseNo: loop library picture --case n (1 to 3; 0 is the place line)
@@ -358,8 +359,8 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
     i = j;
   }
   const bool isSurface = e.kind == "surface";
-  if (o.far && !isSurface) {
-    std::fprintf(stderr, "problem: --far is for an entry of kind surface; %s is a %s\n", e.name.c_str(), e.kind.c_str());
+  if ((o.far || o.before) && !isSurface) {
+    std::fprintf(stderr, "problem: --far and --before are for an entry of kind surface; %s is a %s\n", e.name.c_str(), e.kind.c_str());
     return 1;
   }
   std::string head = "use \"" + e.name + "\"\n";
@@ -367,6 +368,9 @@ int libraryPicture(const LibraryEntry& e, const std::string& libFolder, const Op
     // the surface's own function makes the piece asked for; the test ball wears it
     head = "use \"test_ball\"\nuse \"" + e.name + "\"\n";
     place = "test_ball(" + e.name + "(seed: " + std::to_string(o.seed ? o.seed : 1) + "), vec(0, 0, 0))";
+    // --before: the flat material of the built-in list with this name (a `seed:` setting by name asks for it,
+    // not the surface), so a surface can be pictured beside what it replaces
+    if (o.before) place = "test_ball(material(\"" + e.name + "\", seed: 1), vec(0, 0, 0))";
   } else if (o.seed) head += "seed " + std::to_string(o.seed) + "\n";
   // the folder holding library/ (its `use` lines find the entry there)
   std::string folder = libFolder;
@@ -894,6 +898,7 @@ int main(int argc, char** argv) {
     else if (a == "--reuse") o.reuse = true;
     else if (a == "--night") o.night = true;
     else if (a == "--far") o.far = true;
+    else if (a == "--before") o.before = true;
     else if (a == "--seconds") o.seconds = std::atof(val().c_str()), o.secondsGiven = true;
     else if (a == "--filmtime") o.filmtime = std::atof(val().c_str());
     else if (cmd == "score" && a[0] != '-' && o.live.empty()) o.live = a;

@@ -1,3 +1,4 @@
+- 2026-11-18: Before and after of every material: library picture --before: MREV: loop library picture --before draws the flat built-in material of the same name on the same test rig (deployed)
 - 2026-11-18: Surface: steel: steel surface: satin stainless, brushed detail, check passes, 4 pictures (deployed)
 - 2026-11-18: Surface: brass: brass: satin brass with fingerprints, tarnish in hollows, 22-line surface (deployed)
 - 2026-11-18: Surface: plaster: plaster surface made: matt off-white, faint trowel marks, wear and dirt sparing; pictures in /tmp/M21 (deployed)

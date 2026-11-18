@@ -162,6 +162,35 @@ TEST(library_picture_of_a_surface_is_the_test_ball) {
   CHECK(std::system((go + "test_red --samples 8 --far --seed 2 -o far.png > far.txt 2>&1").c_str()) == 0);
   CHECK(pictureIsNotFlat(dir + "/near.png"));
   CHECK(pictureIsNotFlat(dir + "/far.png"));
+  // --before: the flat built-in of that name on the same rig (the test surface is named like a built-in: "brass")
+  {
+    FILE* g = std::fopen((dir + "/library/surfaces/brass.loop").c_str(), "w");
+    CHECK(g != nullptr);
+    if (g) {
+      std::fputs(
+          "# brass · a test brass\n#\n# kind: surface\n# place: test_ball(\"brass\", AT)\n# credit: J Production\n# licence: our own work\n# from: order MREV\n# size: chair\n\n"
+          "to brass(seed: 1)\n  return surface(\"brass\", seed: seed, tile: 1 m, base: {color: rgb(0.2, 0.7, 0.2), roughness: 0.4})\n",
+          g);
+      std::fclose(g);
+      CHECK(std::system((go + "brass --samples 8 -o brass_after.png > oa.txt 2>&1").c_str()) == 0);
+      CHECK(std::system((go + "brass --before --samples 8 -o brass_before.png > ob.txt 2>&1").c_str()) == 0);
+      CHECK(pictureIsNotFlat(dir + "/brass_after.png") && pictureIsNotFlat(dir + "/brass_before.png"));
+      // the surface's green is not the built-in brass's gold: the middle of the two pictures differs in colour
+      auto middle = [&](const std::string& path) {
+        Image img;
+        Vec3 sum{0};
+        if (readPng(path, img, false))
+          for (int y = 200; y < 300; ++y)
+            for (int x = 200; x < 300; ++x) sum += img.at(x, y).xyz();
+        return sum / 10000.0f;
+      };
+      const Vec3 after = middle(dir + "/brass_after.png"), before = middle(dir + "/brass_before.png");
+      CHECK(after.y > after.x);    // green over red: the surface
+      CHECK(before.x > before.z);  // gold: the built-in
+      // and --before is for a surface only
+      CHECK(std::system((go + "test_ball --before -o x.png > x2.txt 2>&1").c_str()) != 0);
+    }
+  }
   // the check places a surface's example on the test ball too (it said "test_ball isn't known": order M3d)
   CHECK(std::system(("cd " + dir + " && " + loop + " library check > check.txt 2>&1").c_str()) == 0);
   // a built-in material's name is not a surface entry; and --far is only for a surface
