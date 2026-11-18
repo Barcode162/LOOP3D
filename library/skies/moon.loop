@@ -1,0 +1,24 @@
+# moon · the moon: a pale disc low in the night sky with a soft halo, a little larger than life (a film's moon)
+# moon(toward, size, at, glow) hangs it 800 m from `at` (the eye) in the direction `toward` (up and out): `size`
+# degrees across (1.2; the real moon is 0.5). No lamp: it glows, and is far too dim to light a room by itself.
+#
+# kind: skie
+# place: moon(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: moon, night, sky, outside, loft
+# size: land
+# seeds: none, the same every time
+to moon(toward: vec(0.35, 0.3, -1), size: 1.2, at: vec(0, 0, 0), glow: 6)
+  let d = 800
+  let r = d * tan(size * 0.5 deg)
+  let p = at + normalize(toward) * d
+  let face = material(color: rgb(0.85, 0.85, 0.8), glow: rgb(0.85, 0.88, 0.95) * glow, roughness: 1)
+  let halo = material(color: rgb(0.05, 0.06, 0.1), glow: rgb(0.25, 0.3, 0.45) * (glow * 0.06), roughness: 1)
+  sphere(radius: r, at: p, material: face, sides: 32, collide: no)
+  # the darker seas on its face, nearer than the disc by a hair
+  for each m in [vec(-0.3, 0.25, 0.35), vec(0.2, 0.1, 0.25), vec(0.05, -0.35, 0.22)]
+    sphere(radius: r * m.z, at: p - normalize(toward) * (r * 0.92) + vec(r * m.x, r * m.y, 0), scale: vec(1, 1, 0.15), material: material(color: rgb(0.6, 0.62, 0.6), glow: rgb(0.6, 0.64, 0.72) * (glow * 0.7), roughness: 1), sides: 16, collide: no)
+  sphere(radius: r * 2.6, at: p + normalize(toward) * (r * 3), material: halo, sides: 24, collide: no)
+  return p

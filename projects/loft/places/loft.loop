@@ -146,6 +146,9 @@ use "curtain_track"
 use "splashback"
 use "extractor_hood"
 use "cat"
+use "neighbor_building"
+use "water_tower"
+use "moon"
 title "The Loft"
 mode "game"
 loft_shell(size: vec(9, 6, 12), floor: "floorboards", walls: "plaster")
@@ -199,6 +202,12 @@ track_spots(vec(1.5, 5.4, -4.6), vec(1.5, 5.4, -1.2), count: 3, aims: [vec(0.6, 
 # a little blue light on the floor by the glass, with the bars' shadows
 city_night(toward: vec(0, 0, -1), eye_height: 40, seed: 3, lit: 0.35, lamp: no, visibility: 6000)
 light(vec(0, 30, -25), lumens: 90000, kelvin: 7500, radius: 0.5)
+# the building next door across the street, off to the right so the city stays open, two water towers on its
+# roof, and the moon low over the far towers (the loft is 40 m up: the street is at y = -40)
+neighbor_building(at: vec(11, -40, -27), turn: -22 deg, width: 18, height: 45, depth: 14, lit: 0.45, seed: 4)
+water_tower(at: vec(8.5, 5.6, -31), seed: 1)
+water_tower(at: vec(13.5, 5.6, -35), size: 0.8, seed: 2)
+moon(toward: vec(0.12, 0.4, -1), at: vec(0, 1.6, 0), size: 2.2)
 # ---- lived in: the furniture, from the library
 # the kitchen under the deck: a run along the back wall, the island in front of it turned so the cook faces
 # the run and the stools sit on the room's side, under the three pendants
