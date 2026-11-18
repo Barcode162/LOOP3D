@@ -1,3 +1,4 @@
+- 2026-11-18: Surface: brass: brass: satin brass with fingerprints, tarnish in hollows, 22-line surface (deployed)
 - 2026-11-18: Surface: plaster: plaster surface made: matt off-white, faint trowel marks, wear and dirt sparing; pictures in /tmp/M21 (deployed)
 - 2026-11-18: Surface: concrete: library/surfaces/concrete.loop: grey cast concrete, soft mottle, pores coat, pour lifts; check passes, 4 pictures (deployed)
 - 2026-11-18: Surface: brick: brick surface: running bond, 215x65 mm, joint grime coat (deployed)
