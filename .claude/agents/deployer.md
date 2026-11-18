@@ -24,7 +24,7 @@ Steps:
       `xvfb-run -a node tools/picture_check.js` (a picture that already failed on main before the merge does not
       count against this job; say so).
    e. Fails: `git merge --abort`, mark it `stuck` with the failing test's name, next job.
-   f. Passes: `python3 tools/claims.py finish <code>` (its real time goes into perf/jobs.md), then delete its claim file (`git rm work/claims/<code>.md`), add one line at the top of `LOG.md`
+   f. Passes: `python3 tools/claims.py finish <code>` (its real time goes into perf/jobs.md), then delete its claim file (`git rm work/claims/<code>.md`), rewrite section 3 of `docs/START.md` (where we are, under 15 lines) if this job changed it, add one line at the top of `LOG.md`
       (date, the job's title, the claim's `note:` line, "deployed"), and commit: "Deploy <code>: <title>", ending with the
       attribution lines the session gives. `git push origin main`.
 3. If asked to publish: follow CLAUDE.md "Working" step 4 (the Publish the player workflow, or the site

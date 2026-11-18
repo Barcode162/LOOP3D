@@ -42,7 +42,9 @@ Work so each chat spends as little as it can:
    your claim's files. **`LOG.md` and `PLAN.md` are the deployer's:** a job puts its log line in its claim's `note:`,
    and the deployer copies it to `LOG.md` when it ships. Only the deployer merges into `main`. A chat that is the
    only one working may say so to the user and follow the steps below directly.
-1. **Start:** read `docs/NORTH.md` (where we are going and how the user wants the work done), `PLAN.md` (the order of work) and the top of `LOG.md` (what happened last). That's all.
+1. **Start:** read `docs/NORTH.md` (where we are going and how the user wants the work done), then `docs/START.md`
+   (where we are now, the words, and where to look for each kind of goal). That's all: `PLAN.md` and `LOG.md`
+   are opened only when the goal touches them, and searched, not read whole. The user can type `/start`.
 2. **The user asks, you do it.** Ask only when the choice is really theirs (money, making something public,
    deleting their things, a change of direction): one question, your recommendation first.
 3. **Quick checks always run before a push:** `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build
