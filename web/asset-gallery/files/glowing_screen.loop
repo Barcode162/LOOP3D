@@ -1,0 +1,11 @@
+# glowing_screen · glowing screen finish for the Loft
+# kind: surface
+# place: test_ball("glowing_screen", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to glowing_screen(seed: 1)
+  surface("glowing_screen_base", seed: seed, base: {color: rgb(0.14, 0.27, 0.39), roughness: 0.22},
+    detail: {pattern: "weave", size: 0.12 mm, bump: 0.0144 mm})
+  return material(like: "glowing_screen_base", glow: rgb(0.24, 0.56, 0.81) * 3)

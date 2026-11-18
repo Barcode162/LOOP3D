@@ -1,0 +1,13 @@
+# pan_1 · pan 1 for the Loft
+# kind: model
+# place: pan_1(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, pan 1
+
+to pan_1(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.0594, 0), vec(0.09, 0.03326), vec(0.09, 0.0378), vec(0.0819, 0.0378), vec(0.0819, 0.03289), vec(0.05049, 0.00454), vec(0, 0.00454)], segments: 32, at: vec(0, 0, 0), material: "iron"
+    box size: vec(0.17, 0.017, 0.025), at: vec(0.164, 0.03345, 0), material: "walnut"
+  return assembly

@@ -1,0 +1,24 @@
+# magazines · magazines for the Loft
+# kind: model
+# place: magazines(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, magazines
+
+to magazines(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.21, 0.005, 0.28), at: vec(0.0, 0.0025, 0), material: "plaster"
+    box size: vec(0.214, 0.003, 0.284), at: vec(0.0, 0.0015, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.214, 0.003, 0.284), at: vec(0.0, 0.0065, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.005, 0.005, 0.28), at: vec(-0.105, 0.0025, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.21, 0.005, 0.28), at: vec(0.012, 0.0105, 0), material: "plaster"
+    box size: vec(0.214, 0.003, 0.284), at: vec(0.012, 0.0095, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.214, 0.003, 0.284), at: vec(0.012, 0.0145, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.005, 0.005, 0.28), at: vec(-0.093, 0.0105, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.21, 0.005, 0.28), at: vec(0.024, 0.0185, 0), material: "plaster"
+    box size: vec(0.214, 0.003, 0.284), at: vec(0.024, 0.0175, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.214, 0.003, 0.284), at: vec(0.024, 0.0225, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.005, 0.005, 0.28), at: vec(-0.081, 0.0185, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.145, 0.002, 0.05), at: vec(0.02, 0.026, -0.067), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+  return assembly

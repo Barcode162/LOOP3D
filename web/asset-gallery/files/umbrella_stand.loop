@@ -1,0 +1,18 @@
+# umbrella_stand · umbrella stand for the Loft
+# kind: model
+# place: umbrella_stand(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, umbrella stand
+
+to umbrella_stand(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.0825, 0), vec(0.125, 0.396), vec(0.125, 0.45), vec(0.11375, 0.45), vec(0.11375, 0.3915), vec(0.07013, 0.054), vec(0, 0.054)], segments: 32, at: vec(0, 0, 0), material: "iron"
+    cylinder radius: 0.014, height: 0.74, at: vec(-0.032, 0.37, 0), material: "walnut"
+    let shape2 = sphere(0.5, at: vec(-0.013, 0.743, 0), material: "brass")
+    shape2.scale = vec(0.063, 0.026, 0.02)
+    cylinder radius: 0.014, height: 0.74, at: vec(0.032, 0.37, 0), material: "walnut"
+    let shape5 = sphere(0.5, at: vec(0.051, 0.743, 0), material: "brass")
+    shape5.scale = vec(0.063, 0.026, 0.02)
+  return assembly

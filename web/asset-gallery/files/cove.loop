@@ -1,0 +1,41 @@
+# cove · a plaster ledge on a wall with a strip of light hidden on top
+# cove(from_at, to_at, lumens, kelvin, ledge, out, wall) runs one level ledge along a wall, from `from_at` to `to_at`
+# (points on the wall's face at the ledge's top; the line runs along x or along z). The ledge is 0.1 m deep and
+# 0.04 m thick, its softened front edge carries an upstand 0.06 m high and 0.02 m thick. Behind the upstand, on
+# the ledge, lies a strip of light facing up: it washes the wall and the ceiling above and is never seen from
+# below. `out` says which way the ledge leaves the wall: -1 is towards -z for a line along x and towards -x
+# for a line along z; 1 is the other way. With `wall` above 0 a plaster wall that high stands behind it (0.3 m
+# of it below the ledge), for a bare picture; in a room leave it 0. Gives back the strip's glowing rectangle.
+#
+# kind: light
+# place: cove(AT + vec(-1.5, 0.4, 0), AT + vec(1.5, 0.4, 0), lumens: 600, kelvin: 2700, out: 1, wall: 1.4)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: cove, ledge, strip, indirect, ceiling, warm, plaster
+# size: chair
+# sockets: light
+# seeds: none, the same every time
+
+let ledge_deep = 0.1
+let ledge_thick = 0.04
+let upstand_high = 0.06
+let upstand_thick = 0.02
+let strip_gap = 0.03       # the strip stands this far from the wall, clear of the upstand
+
+to cove(from_at: vec(-2, 2.6, 2), to_at: vec(2, 2.6, 2), lumens: 600, kelvin: 2700, ledge: "plaster", out: -1, wall: 0)
+  let mid = (from_at + to_at) / 2
+  let run_x = abs(to_at.x - from_at.x)
+  let run_z = abs(to_at.z - from_at.z)
+  let on_x = run_x >= run_z
+  let len = max(run_x, run_z)
+  let dir = vec(0, 0, out) if on_x else vec(out, 0, 0)
+  let slab = vec(len, ledge_thick, ledge_deep) if on_x else vec(ledge_deep, ledge_thick, len)
+  let rise = vec(len, upstand_high, upstand_thick) if on_x else vec(upstand_thick, upstand_high, len)
+  box size: slab, at: mid + dir * (ledge_deep / 2) - vec(0, ledge_thick / 2, 0), material: ledge, round: 0.006
+  box size: rise, at: mid + dir * (ledge_deep - upstand_thick / 2) + vec(0, upstand_high / 2, 0), material: ledge, round: 0.006
+  if wall > 0
+    let back = vec(len, wall + 0.3, 0.05) if on_x else vec(0.05, wall + 0.3, len)
+    box size: back, at: mid - dir * 0.025 + vec(0, (wall - 0.3) / 2, 0), material: ledge
+  let lift = vec(0, 0.012, 0) + dir * strip_gap
+  return strip(from_at + lift, to_at + lift, lumens: lumens, kelvin: kelvin, facing: vec(0, 1, 0), width: 0.02)

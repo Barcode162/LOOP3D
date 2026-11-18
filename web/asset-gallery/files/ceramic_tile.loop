@@ -1,0 +1,11 @@
+# ceramic_tile · ceramic tile finish for the Loft
+# kind: surface
+# place: test_ball("ceramic_tile", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to ceramic_tile(seed: 1)
+  surface("ceramic_tile_base", seed: seed, base: {color: rgb(0.62, 0.74, 0.7), roughness: 0.23},
+    detail: {pattern: "speckle", size: 0.15 mm, bump: 0.0180 mm})
+  return material(like: "ceramic_tile_base", clearcoat: 0.5)

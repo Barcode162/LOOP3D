@@ -1,0 +1,18 @@
+# bedroom_rug · bedroom rug for the Loft
+# kind: model
+# place: bedroom_rug(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, bedroom rug
+
+to bedroom_rug(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(1.6, 0.014, 1), at: vec(0, 0.007, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.006
+    box size: vec(1.54, 0.002, 0.012), at: vec(0, 0.015, -0.45), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    box size: vec(1.54, 0.002, 0.012), at: vec(0, 0.015, -0.422), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    box size: vec(1.54, 0.002, 0.012), at: vec(0, 0.015, -0.394), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    box size: vec(1.54, 0.002, 0.012), at: vec(0, 0.015, 0.45), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    box size: vec(1.54, 0.002, 0.012), at: vec(0, 0.015, 0.422), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    box size: vec(1.54, 0.002, 0.012), at: vec(0, 0.015, 0.394), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+  return assembly

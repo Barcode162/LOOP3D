@@ -1,0 +1,13 @@
+# mirror_cabinet · mirror cabinet for the Loft
+# kind: model
+# place: mirror_cabinet(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, mirror cabinet
+
+to mirror_cabinet(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.65, 0.69, 0.13), at: vec(0, 0.345, 0), material: "walnut"
+    box size: vec(0.62, 0.66, 0.015), at: vec(0, 0.345, -0.071), material: "glass"
+  return assembly

@@ -1,0 +1,19 @@
+# canvas_2 · canvas 2 for the Loft
+# kind: model
+# place: canvas_2(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, canvas 2
+
+to canvas_2(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.58, 0.78, 0.028), at: vec(0, 0.39, 0), material: "walnut"
+    box size: vec(0.55, 0.75, 0.012), at: vec(0, 0.39, -0.02), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    let shape2 = sphere(0.5, at: vec(-0.025, 0.575, -0.03), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape2.scale = vec(0.23, 0.23, 0.008)
+    box size: vec(0.43, 0.032, 0.009), at: vec(-0.02, 0.146, -0.029), material: "walnut"
+    box size: vec(0.36, 0.032, 0.009), at: vec(0.003, 0.212, -0.029), material: "walnut"
+    box size: vec(0.29, 0.032, 0.009), at: vec(0.026, 0.278, -0.029), material: "walnut"
+    box size: vec(0.22, 0.032, 0.009), at: vec(0.049, 0.344, -0.029), material: "walnut"
+  return assembly

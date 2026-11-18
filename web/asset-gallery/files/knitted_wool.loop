@@ -1,0 +1,11 @@
+# knitted_wool · knitted wool finish for the Loft
+# kind: surface
+# place: test_ball("knitted_wool", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to knitted_wool(seed: 1)
+  surface("knitted_wool_base", seed: seed, base: {color: rgb(0.67, 0.45, 0.36), roughness: 0.94},
+    detail: {pattern: "weave", size: 3.4 mm, bump: 0.4080 mm})
+  return material(like: "knitted_wool_base", sheen: 0.65)

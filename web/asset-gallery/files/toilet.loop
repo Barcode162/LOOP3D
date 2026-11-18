@@ -1,0 +1,15 @@
+# toilet · toilet for the Loft
+# kind: model
+# place: toilet(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, toilet
+
+to toilet(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    cylinder radius: 0.13, height: 0.23, at: vec(0, 0.115, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    lathe profile: [vec(0, 0), vec(0.1353, 0), vec(0.205, 0.1584), vec(0.205, 0.18), vec(0.18655, 0.18), vec(0.18655, 0.1566), vec(0.115, 0.0216), vec(0, 0.0216)], segments: 32, at: vec(0, 0.2, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    box size: vec(0.37, 0.4, 0.14), at: vec(0, 0.54, 0.18), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.04
+    box size: vec(0.06, 0.012, 0.03), at: vec(0.09, 0.746, 0.18), material: "iron"
+  return assembly

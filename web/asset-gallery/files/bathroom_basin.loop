@@ -1,0 +1,15 @@
+# bathroom_basin · bathroom basin for the Loft
+# kind: model
+# place: bathroom_basin(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, bathroom basin
+
+to bathroom_basin(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.165, 0), vec(0.25, 0.1276), vec(0.25, 0.145), vec(0.2275, 0.145), vec(0.2275, 0.12615), vec(0.14025, 0.0174), vec(0, 0.0174)], segments: 32, at: vec(0, 0, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    cylinder radius: 0.014, height: 0.22, at: vec(0, 0.24, 0.19), material: "iron"
+    box size: vec(0.028, 0.028, 0.14), at: vec(0, 0.348, 0.125), material: "iron"
+    cylinder radius: 0.015, height: 0.045, at: vec(0, 0.3275, 0.064), material: "iron"
+  return assembly

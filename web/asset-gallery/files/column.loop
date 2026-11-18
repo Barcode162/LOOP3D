@@ -1,0 +1,41 @@
+# column · a steel H-column from the floor to the ceiling, on a bolted base plate, with a cap plate on top
+# column(at, height, side, material) stands it on the floor at `at` (its middle) and gives it back.
+# `height` is floor to ceiling, plates included. The flanges face front and back (z), the web runs along z.
+#
+# kind: piece
+# place: column(AT, height: 3, side: 0.2)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the Loft (2026-11-10)
+# tags: steel, column, structure, industrial, loft
+# size: chair
+# sockets: top
+# seeds: none; it takes a height (6, 3 or 2.4 m)
+
+let column_steel = material(color: 0.04, metal: 1, roughness: 0.45)
+
+let column_web = 0.01
+let column_flange = 0.015
+let column_base = 0.35
+let column_plate = 0.02
+let column_cap = 0.3
+let column_cap_plate = 0.015
+let column_bolt = 0.012
+
+to column(at, height: 6, side: 0.2, steel: column_steel)
+  let shaft = height - column_plate - column_cap_plate
+  let mid = at + vec(0, column_plate + shaft / 2, 0)
+  let fz = side / 2 - column_flange / 2
+  let group = []
+  group.push(box(size: vec(side, shaft, column_flange), at: mid + vec(0, 0, fz), material: steel, round: 0.003))
+  group.push(box(size: vec(side, shaft, column_flange), at: mid + vec(0, 0, -fz), material: steel, round: 0.003))
+  group.push(box(size: vec(column_web, shaft, side - 2 * column_flange), at: mid, material: steel, round: 0.003))
+  group.push(box(size: vec(column_base, column_plate, column_base), at: at + vec(0, column_plate / 2, 0), material: steel, round: 0.004))
+  group.push(box(size: vec(column_cap, column_cap_plate, column_cap), at: at + vec(0, height - column_cap_plate / 2, 0), material: steel, round: 0.004))
+  let o = column_base / 2 - 0.04
+  for each sx in [-1, 1]
+    for each sz in [-1, 1]
+      let p = at + vec(sx * o, column_plate, sz * o)
+      group.push(cylinder(column_bolt, 0.03, at: p + vec(0, 0.015, 0), material: steel))
+      group.push(cylinder(column_bolt * 1.6, 0.012, at: p + vec(0, 0.006, 0), material: steel))
+  return group

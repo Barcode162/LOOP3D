@@ -1,0 +1,27 @@
+# flat_books · flat books for the Loft
+# kind: model
+# place: flat_books(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, flat books
+
+to flat_books(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.15, 0.023, 0.21), at: vec(0.0, 0.0115, 0), material: "plaster"
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.0, 0.0015, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.0, 0.0245, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.005, 0.023, 0.21), at: vec(-0.075, 0.0115, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.15, 0.023, 0.21), at: vec(0.007, 0.0375, 0), material: "plaster"
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.007, 0.0275, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.007, 0.0505, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.005, 0.023, 0.21), at: vec(-0.068, 0.0375, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.15, 0.023, 0.21), at: vec(0.014, 0.0635, 0), material: "plaster"
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.014, 0.0535, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.014, 0.0765, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.005, 0.023, 0.21), at: vec(-0.061, 0.0635, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.15, 0.023, 0.21), at: vec(0.021, 0.0895, 0), material: "plaster"
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.021, 0.0795, 0), material: "walnut"
+    box size: vec(0.154, 0.003, 0.214), at: vec(0.021, 0.1025, 0), material: "walnut"
+    box size: vec(0.005, 0.023, 0.21), at: vec(-0.054, 0.0895, 0), material: "walnut"
+  return assembly

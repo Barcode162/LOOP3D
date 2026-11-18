@@ -1,0 +1,44 @@
+# radiator · a column radiator of upright steel tubes, to stand under a window
+# radiator(at, columns, height, steel) stands it on `at` (the middle of its
+# foot), facing -z: `columns` columns of two tubes each (front and back),
+# joined by a rail along the top and one along the bottom, two feet, and a
+# small valve at the right-hand end. It is `columns` x 0.045 m long.
+#
+# kind: piece
+# place: radiator(AT, columns: 14, height: 0.6)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: radiator, heating, steel, window, interior
+# size: chair
+# sockets: lie
+# seeds: none
+
+let enamel = material(color: rgb(0.86, 0.82, 0.74), metal: 0, roughness: 0.32, clearcoat: 0.3)
+let brass = material(like: "brass")
+
+to radiator(at: vec(0, 0, 0), columns: 14, height: 0.6, steel: enamel)
+  let pitch = 0.045
+  let tube = 0.03
+  let apart = 0.038
+  let length = columns * pitch
+  let foot = 0.05
+  let header = (apart + tube) / 2
+  let low = foot + header
+  let high = height - header
+  # top and bottom rails: round headers lying along the length
+  cylinder radius: header, height: length + 0.02, at: at + vec(0, low, 0), rotation: vec(0, 0, 90 deg), material: steel
+  cylinder radius: header, height: length + 0.02, at: at + vec(0, high, 0), rotation: vec(0, 0, 90 deg), material: steel
+  # the tubes, a pair to each column
+  let rise = high - low
+  for each i in range(0, columns, 1)
+    let x = (i + 0.5) * pitch - length / 2
+    cylinder radius: tube / 2, height: rise, at: at + vec(x, (low + high) / 2, -apart / 2), material: steel
+    cylinder radius: tube / 2, height: rise, at: at + vec(x, (low + high) / 2, apart / 2), material: steel
+  # two round feet under the bottom header
+  cylinder radius: 0.028, height: foot + 0.01, at: at + vec(-length / 2 + 0.05, (foot + 0.01) / 2, 0), material: steel
+  cylinder radius: 0.028, height: foot + 0.01, at: at + vec(length / 2 - 0.05, (foot + 0.01) / 2, 0), material: steel
+  # the valve at the right-hand end: a brass collar and an upright knob
+  let vx = length / 2 + 0.01
+  cylinder radius: 0.016, height: 0.04, at: at + vec(vx + 0.02, low, 0), rotation: vec(0, 0, 90 deg), material: brass
+  cylinder radius: 0.014, height: 0.06, at: at + vec(vx + 0.04, low + 0.02, 0), material: brass

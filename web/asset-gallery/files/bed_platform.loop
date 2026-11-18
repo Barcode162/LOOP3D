@@ -1,0 +1,40 @@
+# bed_platform · a low oak bed platform that floats over a recessed dark base, with a plain headboard and a mattress
+# bed_platform(at, width, length, wood, mattress) stands it with `at` the middle of the floor under it; the head is
+# towards +z, the foot (front) towards -z. The oak top is 0.25 m high and overhangs the dark base by 8 cm all
+# round, so the recess under the edge is clear for a light strip. The headboard stands 0.9 m high at the head.
+# Sockets: top is the mattress top, at + vec(0, 0.47, 0); light is the recess under the edge, 0.05 to 0.17 m up and
+# 8 cm deep all round, kept clear for a light strip; lie is each side, 0.45 m out, for a bedside table.
+# The mattress is 0.22 m thick, softly rounded, set in 10 cm from the platform's edge. No lamps of its own.
+#
+# kind: piece
+# place: bed_platform(AT + vec(0, 0, 1), width: 1.9, length: 2.1, wood: "oak", mattress: yes)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: bed, platform, oak, bedroom, loft, furniture
+# size: room
+# sockets: top, light, lie
+# seeds: no
+
+let top_h = 0.25
+let slab = 0.08
+let overhang = 0.08
+let mat_h = 0.22
+let mat_in = 0.10
+let head_h = 0.9
+let head_t = 0.06
+
+to bed_platform(at: vec(0, 0, 0), width: 1.9, length: 2.1, wood: "oak", mattress: yes)
+  let base_h = top_h - slab
+  let fabric = material(like: "fabric", color: rgb(0.62, 0.6, 0.57))
+  let dark = material(color: rgb(0.03, 0.03, 0.035), roughness: 0.8)
+  # the dark base, set back 8 cm all round: the recess under the oak is left clear
+  box size: vec(width - 2 * overhang, base_h, length - 2 * overhang), at: at + vec(0, base_h / 2, 0), material: dark, round: 0.005
+  # the oak top that seems to float
+  box size: vec(width, slab, length), at: at + vec(0, top_h - slab / 2, 0), material: wood, round: 0.003
+  # the plain headboard, at the head end, rising from the floor
+  box size: vec(width, head_h, head_t), at: at + vec(0, head_h / 2, length / 2 + head_t / 2), material: wood, round: 0.004
+  if mattress
+    let mw = width - 2 * mat_in
+    let ml = length - 2 * mat_in
+    box size: vec(mw, mat_h, ml), at: at + vec(0, top_h + mat_h / 2, 0), material: fabric, round: 0.06

@@ -1,0 +1,11 @@
+# leaves · leaves finish for the Loft
+# kind: surface
+# place: test_ball("leaves", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to leaves(seed: 1)
+  surface("leaves_base", seed: seed, base: {color: rgb(0.2, 0.4, 0.18), roughness: 0.48},
+    detail: {pattern: "brushed", size: 0.31 mm, bump: 0.0372 mm})
+  return material(like: "leaves_base", translucent: 0.4)

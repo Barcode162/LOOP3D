@@ -1,0 +1,59 @@
+# kitchen_splashback · kitchen splashback for the Loft
+# kind: piece
+# place: kitchen_splashback(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, kitchen splashback
+
+to kitchen_splashback(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.825, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.825, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.825, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.825, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.675, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.675, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.675, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.675, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.525, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.525, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.525, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.525, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.375, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.375, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.375, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.375, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.225, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.225, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.225, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.225, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.075, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.075, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.075, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(-0.075, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.075, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.075, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.075, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.075, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.225, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.225, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.225, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.225, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.375, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.375, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.375, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.375, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.525, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.525, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.525, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.525, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.675, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.675, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.675, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.675, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.825, 0.049, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.825, 0.149, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.825, 0.249, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+    box size: vec(0.148, 0.098, 0.012), at: vec(0.825, 0.349, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.002
+  return assembly

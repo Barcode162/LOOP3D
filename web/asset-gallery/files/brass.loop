@@ -1,0 +1,22 @@
+# brass · satin brass, as on a door handle or a lamp fitting: warm yellow, a soft sheen, fingerprints
+# For handles, hinges, taps and lamp fittings. Wears polished bright on edges; tarnishes dark brown-green in hollows.
+#
+# kind: surface
+# place: test_ball("brass", AT)
+# tags: metal, brass, warm, fittings
+# size: hand
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M28 (2026-11-11)
+
+let handling = 30 cm    # a thumb and a palm: the patches of fingerprints
+let brushing = 0.03 mm  # the fine lines of the satin finish
+
+to brass(seed: 1)
+  return surface("brass", seed: seed, tile: 0.5 m,
+    base: {color: rgb(0.96, 0.88, 0.62), metal: 1, roughness: 0.3},
+    vary: {large: handling, amount: 0.03, roughness: 0.1},
+    wear: {color: rgb(0.98, 0.92, 0.68), metal: 1, roughness: 0.12, amount: 0.7},
+    dirt: {color: rgb(0.20, 0.17, 0.09), roughness: 0.8, amount: 0.5},
+    detail: {pattern: "brushed", size: brushing, stretch: 30, roughness: 0.1})

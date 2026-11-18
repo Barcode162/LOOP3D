@@ -1,0 +1,18 @@
+# ladder_bookshelf · ladder bookshelf for the Loft
+# kind: model
+# place: ladder_bookshelf(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, ladder bookshelf
+
+to ladder_bookshelf(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.045, 1.85, 0.055), at: vec(-0.38, 0.925, 0), material: "walnut"
+    box size: vec(0.045, 1.85, 0.055), at: vec(0.38, 0.925, 0), material: "walnut"
+    box size: vec(0.8, 0.032, 0.38), at: vec(0, 0.166, 0), material: "oak"
+    box size: vec(0.8, 0.032, 0.338), at: vec(0, 0.536, 0), material: "oak"
+    box size: vec(0.8, 0.032, 0.296), at: vec(0, 0.906, 0), material: "oak"
+    box size: vec(0.8, 0.032, 0.254), at: vec(0, 1.276, 0), material: "oak"
+    box size: vec(0.8, 0.032, 0.212), at: vec(0, 1.646, 0), material: "oak"
+  return assembly

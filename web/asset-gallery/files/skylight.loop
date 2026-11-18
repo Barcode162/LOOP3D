@@ -1,0 +1,17 @@
+# skylight · skylight for the Loft
+# kind: piece
+# place: skylight(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, skylight
+
+to skylight(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(1.5, 0.04, 1), at: vec(0, 0.02, 0), material: "glass"
+    box size: vec(1.57, 0.09, 0.045), at: vec(0, 0.045, -0.5), material: "iron"
+    box size: vec(1.57, 0.09, 0.045), at: vec(0, 0.045, 0.5), material: "iron"
+    box size: vec(0.045, 0.09, 1), at: vec(-0.75, 0.045, 0), material: "iron"
+    box size: vec(0.045, 0.09, 1), at: vec(0, 0.045, 0), material: "iron"
+    box size: vec(0.045, 0.09, 1), at: vec(0.75, 0.045, 0), material: "iron"
+  return assembly

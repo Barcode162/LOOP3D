@@ -1,0 +1,17 @@
+# bread_loaf · bread loaf for the Loft
+# kind: model
+# place: bread_loaf(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, bread loaf
+
+to bread_loaf(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    let shape0 = sphere(0.5, at: vec(0, 0.05, 0), material: material(like: "terracotta", color: rgb(0.62, 0.28, 0.17)))
+    shape0.scale = vec(0.23, 0.1, 0.12)
+    box size: vec(0.012, 0.004, 0.063), at: vec(-0.06, 0.09, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)), roll: 12 deg
+    box size: vec(0.012, 0.004, 0.063), at: vec(-0.02, 0.09, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)), roll: 12 deg
+    box size: vec(0.012, 0.004, 0.063), at: vec(0.02, 0.09, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)), roll: 12 deg
+    box size: vec(0.012, 0.004, 0.063), at: vec(0.06, 0.09, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)), roll: 12 deg
+  return assembly

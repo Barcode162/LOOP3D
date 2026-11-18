@@ -1,0 +1,13 @@
+# sofa_cushion_4 · sofa cushion 4 for the Loft
+# kind: model
+# place: sofa_cushion_4(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, sofa cushion 4
+
+to sofa_cushion_4(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.42, 0.36, 0.15), at: vec(0, 0.18, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)), round: 0.063
+    box size: vec(0.014, 0.27, 0.005), at: vec(0.0, 0.1782, -0.075), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+  return assembly

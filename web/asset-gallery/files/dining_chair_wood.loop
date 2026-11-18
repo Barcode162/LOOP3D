@@ -1,0 +1,52 @@
+# dining_chair_wood · a plain wooden dining chair: a dished seat, four slim legs that splay a little,
+# back legs rising into a back with a curved top rail and three spindles
+# dining_chair_wood(at, turn, wood) stands one on the floor at `at`, front to -z (turn spins it about
+# its own middle), and gives the group back. Light on triangles: made to be placed six at a time.
+#
+# kind: model
+# place: dining_chair_wood(AT, turn: 0 deg, wood: "oak")
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: chair, seat, wood, dining, furniture
+# size: chair
+# sockets: seat
+# seeds: none, the same every time
+
+let chair_seat_h = 0.45
+let chair_w = 0.44
+let chair_d = 0.42
+let chair_seat_t = 0.035
+let chair_leg = 0.032
+let chair_back_h = 0.8
+let chair_splay = 4 deg
+let chair_lean = 6 deg
+
+to dining_chair_wood(at, turn: 0 deg, wood: "oak")
+  let hx = chair_w / 2 - 0.03
+  let hz = chair_d / 2 - 0.03
+  let top = chair_seat_h - chair_seat_t
+  let c = group(at: at, turn: turn)
+    # seat, with a shallow dish worn into it
+    box size: vec(chair_w, chair_seat_t, chair_d), at: vec(0, top + chair_seat_t / 2, 0), material: wood, round: 0.012, steps: 1
+    box size: vec(chair_w - 0.1, 0.012, chair_d - 0.1), at: vec(0, chair_seat_h - 0.006, 0.01), material: wood, round: 0.005, steps: 1, tilt: 1.5 deg
+    # front legs, splaying forward and out
+    for each s in [-1, 1]
+      box size: vec(chair_leg, top, chair_leg), at: vec(s * (hx + 0.012), top / 2, -hz - 0.012), material: wood, round: 0.008, steps: 1, tilt: -chair_splay
+    # back legs, rising into the back posts, leaning back
+    for each s in [-1, 1]
+      box size: vec(chair_leg, top, chair_leg), at: vec(s * (hx + 0.008), top / 2, hz + 0.012), material: wood, round: 0.008, steps: 1, tilt: chair_splay
+      box size: vec(0.03, chair_back_h - top + 0.02, 0.025), at: vec(s * hx, top + (chair_back_h - top) / 2 - 0.01, hz + 0.045), material: wood, round: 0.01, steps: 1, tilt: chair_lean
+    # aprons under the seat
+    box size: vec(chair_w - 0.08, 0.04, 0.02), at: vec(0, top - 0.03, -hz), material: wood, round: 0.006, steps: 1
+    box size: vec(chair_w - 0.08, 0.04, 0.02), at: vec(0, top - 0.03, hz + 0.01), material: wood, round: 0.006, steps: 1
+    box size: vec(0.02, 0.04, chair_d - 0.08), at: vec(-hx, top - 0.03, 0), material: wood, round: 0.006, steps: 1
+    box size: vec(0.02, 0.04, chair_d - 0.08), at: vec(hx, top - 0.03, 0), material: wood, round: 0.006, steps: 1
+    # curved top rail: a middle piece and two angled wings
+    box size: vec(0.2, 0.07, 0.022), at: vec(0, 0.76, hz + 0.1), material: wood, round: 0.01, steps: 1, tilt: chair_lean
+    for each s in [-1, 1]
+      box size: vec(0.1, 0.07, 0.022), at: vec(s * 0.145, 0.76, hz + 0.092), material: wood, round: 0.01, steps: 1, tilt: chair_lean, turn: s * 14 deg
+    # three spindles
+    for each x in [-0.08, 0, 0.08]
+      box size: vec(0.018, 0.27, 0.018), at: vec(x, 0.58, hz + 0.075), material: wood, round: 0.007, steps: 1, tilt: chair_lean
+  return c

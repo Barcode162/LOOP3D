@@ -1,0 +1,116 @@
+# skyline_near · skyline near for the Loft
+# kind: sky
+# place: skyline_near(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, skyline near
+
+to skyline_near(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(3.24505, 10.24049, 2), at: vec(-28.6, 5.12025, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-27.98, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-29.22, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-27.98, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-29.22, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-27.98, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-27.98, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-28.6, 7.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-27.98, 7.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-27.98, 8.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-28.6, 9.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(3.07975, 6.11116, 2), at: vec(-24.2, 3.05558, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-24.2, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-24.82, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-24.2, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-24.2, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-23.58, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-24.82, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.62084, 9.07443, 2), at: vec(-19.8, 4.53722, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-20.42, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-19.18, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-20.42, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-20.42, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-19.8, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-19.18, 7.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-20.42, 8.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(3.68685, 5.33218, 2), at: vec(-15.4, 2.66609, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-16.02, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-16.02, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-15.4, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-15.4, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-16.02, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.13408, 4.86934, 2), at: vec(-11.0, 2.43467, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-11.0, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-10.38, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(3.68515, 4.27255, 2), at: vec(-6.6, 2.13628, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-7.22, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-5.98, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-7.22, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-5.98, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.74386, 6.75709, 2), at: vec(-2.2, 3.37855, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(-2.2, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-2.82, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-2.2, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-1.58, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-2.2, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(-2.82, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(3.698, 9.23368, 2), at: vec(2.2, 4.61684, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(1.58, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(2.82, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(1.58, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(2.82, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(1.58, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(2.2, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(2.82, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(1.58, 7.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(3.02964, 7.80708, 2), at: vec(6.6, 3.90354, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(7.22, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(7.22, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(7.22, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(7.22, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(6.6, 6.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(7.22, 6.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.2097, 7.03065, 2), at: vec(11.0, 3.51533, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(11.0, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(11.62, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(11.0, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(11.62, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(10.38, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(11.62, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(10.38, 6.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.2059, 6.84301, 2), at: vec(15.4, 3.42151, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(15.4, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(14.78, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(15.4, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(16.02, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(14.78, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(14.78, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.17971, 6.18196, 2), at: vec(19.8, 3.09098, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.18, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.8, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(20.42, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.18, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.18, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(20.42, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.18, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.8, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(19.8, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(3.14374, 10.26373, 2), at: vec(24.2, 5.13187, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(23.58, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(24.2, 0.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(23.58, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(24.82, 4.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(23.58, 5.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(24.82, 7.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(23.58, 8.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(24.82, 8.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(24.82, 9.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(2.57312, 4.93403, 2), at: vec(28.6, 2.46702, 0), material: "walnut"
+    box size: vec(0.22, 0.33, 0.02), at: vec(29.22, 1.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(28.6, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(29.22, 2.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(27.98, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(28.6, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+    box size: vec(0.22, 0.33, 0.02), at: vec(29.22, 3.385, -1.015), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+  return assembly

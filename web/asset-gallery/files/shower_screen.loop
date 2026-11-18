@@ -1,0 +1,14 @@
+# shower_screen · shower screen for the Loft
+# kind: piece
+# place: shower_screen(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, shower screen
+
+to shower_screen(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(1, 1.95, 0.015), at: vec(0, 0.975, 0), material: "glass"
+    box size: vec(0.025, 1.95, 0.03), at: vec(-0.5, 0.975, 0), material: "iron"
+    box size: vec(1, 0.025, 0.03), at: vec(0, 0.0125, 0), material: "iron"
+  return assembly

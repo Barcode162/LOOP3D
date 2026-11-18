@@ -1,0 +1,15 @@
+# picture_light · picture light for the Loft
+# kind: light
+# place: picture_light(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, picture light
+
+to picture_light(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.08, 0.06, 0.025), at: vec(0, 0.03, 0), material: "brass"
+    box size: vec(0.018, 0.018, 0.13), at: vec(0, 0.039, -0.065), material: "brass"
+    box size: vec(0.38, 0.034, 0.045), at: vec(0, 0.042, -0.13), material: "brass"
+    light vec(0, 0.022, -0.13), lumens: 90, kelvin: 2700, radius: 0.035
+  return assembly

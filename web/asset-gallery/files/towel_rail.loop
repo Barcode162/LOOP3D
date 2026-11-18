@@ -1,0 +1,14 @@
+# towel_rail · towel rail for the Loft
+# kind: model
+# place: towel_rail(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, towel rail
+
+to towel_rail(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.6, 0.024, 0.024), at: vec(0, 0.012, 0), material: "brass"
+    box size: vec(0.025, 0.025, 0.09), at: vec(-0.285, 0.0125, 0.04), material: "brass"
+    box size: vec(0.025, 0.025, 0.09), at: vec(0.285, 0.0125, 0.04), material: "brass"
+  return assembly

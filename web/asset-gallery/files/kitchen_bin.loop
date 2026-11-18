@@ -1,0 +1,14 @@
+# kitchen_bin · kitchen bin for the Loft
+# kind: model
+# place: kitchen_bin(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, kitchen bin
+
+to kitchen_bin(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.0957, 0), vec(0.145, 0.4048), vec(0.145, 0.46), vec(0.13195, 0.46), vec(0.13195, 0.4002), vec(0.08134, 0.0552), vec(0, 0.0552)], segments: 32, at: vec(0, 0, 0), material: "iron"
+    cylinder radius: 0.148, height: 0.025, at: vec(0, 0.4725, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.07, 0.012, 0.055), at: vec(0, 0.024, -0.13), material: "iron"
+  return assembly

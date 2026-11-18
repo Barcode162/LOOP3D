@@ -1,0 +1,11 @@
+# frosted_glass · frosted glass finish for the Loft
+# kind: surface
+# place: test_ball("frosted_glass", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to frosted_glass(seed: 1)
+  surface("frosted_glass_base", seed: seed, base: {color: rgb(0.83, 0.9, 0.9), roughness: 0.45},
+    detail: {pattern: "speckle", size: 0.07 mm, bump: 0.0084 mm})
+  return material(like: "frosted_glass_base", glass: 0.86)

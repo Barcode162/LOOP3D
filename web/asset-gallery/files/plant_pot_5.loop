@@ -1,0 +1,12 @@
+# plant_pot_5 · plant pot 5 for the Loft
+# kind: model
+# place: plant_pot_5(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, plant pot 5
+
+to plant_pot_5(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.08316, 0), vec(0.099, 0.11088), vec(0.099, 0.126), vec(0.09009, 0.126), vec(0.09009, 0.10962), vec(0.07069, 0.01512), vec(0, 0.01512)], segments: 32, at: vec(0, 0, 0), material: "walnut"
+  return assembly

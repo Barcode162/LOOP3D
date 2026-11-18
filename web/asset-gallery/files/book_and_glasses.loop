@@ -1,0 +1,26 @@
+# book_and_glasses · book and glasses for the Loft
+# kind: model
+# place: book_and_glasses(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, book and glasses
+
+to book_and_glasses(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.19, 0.026, 0.14), at: vec(0, 0.013, 0), material: "plaster"
+    box size: vec(0.194, 0.003, 0.144), at: vec(0, 0.0015, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.194, 0.003, 0.144), at: vec(0, 0.0275, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.005, 0.026, 0.14), at: vec(-0.095, 0.013, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    let shape4 = sphere(0.5, at: vec(-0.028, 0.034, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape4.scale = vec(0.053, 0.008, 0.037)
+    let shape6 = sphere(0.5, at: vec(-0.028, 0.038, 0), material: "glass")
+    shape6.scale = vec(0.044, 0.008, 0.029)
+    box size: vec(0.004, 0.005, 0.066), at: vec(-0.0504, 0.0325, 0.023), material: "iron"
+    let shape9 = sphere(0.5, at: vec(0.028, 0.034, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape9.scale = vec(0.053, 0.008, 0.037)
+    let shape11 = sphere(0.5, at: vec(0.028, 0.038, 0), material: "glass")
+    shape11.scale = vec(0.044, 0.008, 0.029)
+    box size: vec(0.004, 0.005, 0.066), at: vec(0.0504, 0.0325, 0.023), material: "iron"
+    box size: vec(0.016, 0.005, 0.004), at: vec(0, 0.0355, 0), material: "iron"
+  return assembly

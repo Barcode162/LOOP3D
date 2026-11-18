@@ -1,0 +1,35 @@
+# stair_straight · a straight stair of open treads on two steel stringers, you see through between the treads
+# stair_straight(at, rises, rise, going, width, tread, steel) stands it with `at` at the middle of the first
+# rise's foot and climbs towards +z. One tread fewer than rises: the last rise meets the upper floor, which is
+# rises x rise high and starts at the top tread's back edge. No risers, no rail.
+#
+# kind: piece
+# place: stair_straight(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: stair, steps, steel, oak, loft, open
+# size: room
+# sockets: lie, top
+# seeds: no
+
+let blackened_steel = material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+
+to stair_straight(at: vec(0, 0, 0), rises: 17, rise: 0.18, going: 0.27, width: 0.95, tread: "oak", steel: blackened_steel)
+  let thick = 0.045
+  let over = 0.02
+  # the treads, each one overhanging the one below
+  for each i in range(1, rises - 1, 1)
+    let z = at.z + (i - 1) * going + going / 2 - over / 2
+    box size: vec(width, thick, going + over), at: vec(at.x, i * rise - thick / 2, z), material: tread, round: 0.006
+  # the stringers: sloping with the stair, beside the treads, feet on the floor
+  let slope = atan(rise / going)
+  let drop = 0.10
+  let deep = 0.25
+  let z0 = at.z + (deep / 2 + drop - rise) / rise * going
+  let z1 = at.z + going * (rises - 1)
+  for each side in [-1, 1]
+    let x = at.x + side * (width / 2 + 0.006)
+    let a = vec(x, (z0 - at.z) * rise / going + rise - drop, z0)
+    let b = vec(x, rises * rise - drop, z1)
+    box size: vec(0.012, deep, distance(a, b)), at: (a + b) / 2, tilt: -slope, material: steel, round: 0.003

@@ -1,0 +1,28 @@
+# glazing_wall · a wall of glass divided by thin dark bars
+# glazing_wall(at, width, height, across, up, bar, material) stands it on
+# `at` (the middle of its foot), facing along z: one sheet of glass, a frame
+# round it, and bars that cut it into `across` panes side by side and `up`
+# panes high. `bar` is how thick the bars are.
+#
+# kind: piece
+# place: glazing_wall(at: AT, width: 9, height: 6)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: glass, window, wall, loft, bars
+# size: room
+# sockets: open
+
+to glazing_wall(at: vec(0, 0, 0), width: 9, height: 6, across: 6, up: 4, bar: 0.05, material: "iron")
+  box size: vec(width, height, 0.02), at: at + vec(0, height / 2, 0), material: "glass"
+  # the frame: foot, head and the two sides
+  let frame = bar * 2
+  box size: vec(width, frame, frame), at: at + vec(0, frame / 2, 0), material: material
+  box size: vec(width, frame, frame), at: at + vec(0, height - frame / 2, 0), material: material
+  box size: vec(frame, height, frame), at: at + vec(-width / 2 + frame / 2, height / 2, 0), material: material
+  box size: vec(frame, height, frame), at: at + vec(width / 2 - frame / 2, height / 2, 0), material: material
+  # the bars between the panes
+  for each i in range(1, across, 1)
+    box size: vec(bar, height, bar), at: at + vec(-width / 2 + width * i / across, height / 2, 0), material: material
+  for each j in range(1, up, 1)
+    box size: vec(width, bar, bar), at: at + vec(0, height * j / up, 0), material: material

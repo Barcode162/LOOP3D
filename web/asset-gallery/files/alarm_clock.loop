@@ -1,0 +1,17 @@
+# alarm_clock · alarm clock for the Loft
+# kind: model
+# place: alarm_clock(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, alarm clock
+
+to alarm_clock(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    let shape0 = sphere(0.5, at: vec(0, 0.065, 0), material: "brass")
+    shape0.scale = vec(0.13, 0.13, 0.03185)
+    let shape2 = sphere(0.5, at: vec(0, 0.065, -0.01235), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)))
+    shape2.scale = vec(0.1196, 0.1196, 0.0156)
+    box size: vec(0.0052, 0.04095, 0.006), at: vec(0, 0.08547, -0.0208), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.0312, 0.0052, 0.006), at: vec(0.0143, 0.0676, -0.0208), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+  return assembly

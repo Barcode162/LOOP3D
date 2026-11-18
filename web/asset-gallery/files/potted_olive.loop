@@ -1,0 +1,146 @@
+# potted_olive · potted olive for the Loft
+# kind: model
+# place: potted_olive(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, potted olive
+
+to potted_olive(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.132, 0), vec(0.2, 0.2552), vec(0.2, 0.29), vec(0.182, 0.29), vec(0.182, 0.2523), vec(0.1122, 0.0348), vec(0, 0.0348)], segments: 32, at: vec(0, 0, 0), material: material(like: "terracotta", color: rgb(0.62, 0.28, 0.17))
+    cylinder radius: 0.178, height: 0.01, at: vec(0, 0.267, 0), material: "walnut"
+    cylinder radius: 0.005, height: 0.64004, at: vec(0.144, 0.59402, 0.0), material: "walnut"
+    let shape3 = sphere(0.5, at: vec(0.1674, 0.67323, 0.0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape3.scale = vec(0.09, 0.10241, 0.0459)
+    let shape5 = sphere(0.5, at: vec(0.15664, 0.76283, 0.01969), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape5.scale = vec(0.09, 0.10241, 0.0459)
+    let shape7 = sphere(0.5, at: vec(0.13426, 0.85244, 0.02128), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape7.scale = vec(0.09, 0.10241, 0.0459)
+    cylinder radius: 0.005, height: 0.68173, at: vec(-0.10618, 0.61486, 0.09727), material: "walnut"
+    let shape10 = sphere(0.5, at: vec(-0.12344, 0.69949, 0.11307), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape10.scale = vec(0.09, 0.10908, 0.0459)
+    let shape12 = sphere(0.5, at: vec(-0.12881, 0.79493, 0.09129), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape12.scale = vec(0.09, 0.10908, 0.0459)
+    let shape14 = sphere(0.5, at: vec(-0.11338, 0.89037, 0.075), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape14.scale = vec(0.09, 0.10908, 0.0459)
+    cylinder radius: 0.005, height: 0.72341, at: vec(0.0126, 0.63571, -0.14345), material: "walnut"
+    let shape17 = sphere(0.5, at: vec(0.01465, 0.72575, -0.16676), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape17.scale = vec(0.09, 0.11575, 0.0459)
+    let shape19 = sphere(0.5, at: vec(0.03332, 0.82703, -0.15432), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape19.scale = vec(0.09, 0.11575, 0.0459)
+    let shape21 = sphere(0.5, at: vec(0.03294, 0.9283, -0.13189), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape21.scale = vec(0.09, 0.11575, 0.0459)
+    cylinder radius: 0.005, height: 0.76509, at: vec(0.0876, 0.65655, 0.11429), material: "walnut"
+    let shape24 = sphere(0.5, at: vec(0.10184, 0.75201, 0.13286), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape24.scale = vec(0.09, 0.12242, 0.0459)
+    let shape26 = sphere(0.5, at: vec(0.07967, 0.85912, 0.1363), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape26.scale = vec(0.09, 0.12242, 0.0459)
+    let shape28 = sphere(0.5, at: vec(0.06479, 0.96624, 0.1195), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape28.scale = vec(0.09, 0.12242, 0.0459)
+    cylinder radius: 0.005, height: 0.80678, at: vec(-0.1418, 0.67739, -0.0251), material: "walnut"
+    let shape31 = sphere(0.5, at: vec(-0.16484, 0.77827, -0.02918), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape31.scale = vec(0.09, 0.12908, 0.0459)
+    let shape33 = sphere(0.5, at: vec(-0.15081, 0.89122, -0.0467), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape33.scale = vec(0.09, 0.12908, 0.0459)
+    let shape35 = sphere(0.5, at: vec(-0.1285, 1.00417, -0.04436), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape35.scale = vec(0.09, 0.12908, 0.0459)
+    cylinder radius: 0.005, height: 0.84846, at: vec(0.12151, 0.69823, -0.07727), material: "walnut"
+    let shape38 = sphere(0.5, at: vec(0.14126, 0.80453, -0.08982), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape38.scale = vec(0.09, 0.13575, 0.0459)
+    let shape40 = sphere(0.5, at: vec(0.14275, 0.92332, -0.06743), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape40.scale = vec(0.09, 0.13575, 0.0459)
+    let shape42 = sphere(0.5, at: vec(0.12471, 1.0421, -0.05409), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape42.scale = vec(0.09, 0.13575, 0.0459)
+    cylinder radius: 0.005, height: 0.89015, at: vec(-0.03741, 0.71907, 0.13905), material: "walnut"
+    let shape45 = sphere(0.5, at: vec(-0.04349, 0.83079, 0.16165), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape45.scale = vec(0.09, 0.14242, 0.0459)
+    let shape47 = sphere(0.5, at: vec(-0.05971, 0.95541, 0.14615), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape47.scale = vec(0.09, 0.14242, 0.0459)
+    let shape49 = sphere(0.5, at: vec(-0.05543, 1.08003, 0.12412), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape49.scale = vec(0.09, 0.14242, 0.0459)
+    cylinder radius: 0.005, height: 0.93183, at: vec(-0.06634, 0.73992, -0.12781), material: "walnut"
+    let shape52 = sphere(0.5, at: vec(-0.07712, 0.85705, -0.14858), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape52.scale = vec(0.09, 0.14909, 0.0459)
+    let shape54 = sphere(0.5, at: vec(-0.05469, 0.98751, -0.1481), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape54.scale = vec(0.09, 0.14909, 0.0459)
+    let shape56 = sphere(0.5, at: vec(-0.04297, 1.11797, -0.12897), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape56.scale = vec(0.09, 0.14909, 0.0459)
+    cylinder radius: 0.005, height: 0.97352, at: vec(0.13525, 0.76076, 0.04944), material: "walnut"
+    let shape59 = sphere(0.5, at: vec(0.15723, 0.88331, 0.05747), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape59.scale = vec(0.09, 0.15576, 0.0459)
+    let shape61 = sphere(0.5, at: vec(0.14036, 1.01961, 0.07227), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape61.scale = vec(0.09, 0.15576, 0.0459)
+    let shape63 = sphere(0.5, at: vec(0.1188, 1.1559, 0.06608), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape63.scale = vec(0.09, 0.15576, 0.0459)
+    cylinder radius: 0.005, height: 1.0152, at: vec(-0.13312, 0.7816, 0.0549), material: "walnut"
+    let shape66 = sphere(0.5, at: vec(-0.15476, 0.90958, 0.06382), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape66.scale = vec(0.09, 0.16243, 0.0459)
+    let shape68 = sphere(0.5, at: vec(-0.15232, 1.0517, 0.04152), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape68.scale = vec(0.09, 0.16243, 0.0459)
+    let shape70 = sphere(0.5, at: vec(-0.13223, 1.19383, 0.03152), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape70.scale = vec(0.09, 0.16243, 0.0459)
+    cylinder radius: 0.005, height: 1.05688, at: vec(0.06108, 0.80244, -0.1304), material: "walnut"
+    let shape73 = sphere(0.5, at: vec(0.07101, 0.93584, -0.15159), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape73.scale = vec(0.09, 0.1691, 0.0459)
+    let shape75 = sphere(0.5, at: vec(0.08428, 1.0838, -0.1335), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape75.scale = vec(0.09, 0.1691, 0.0459)
+    let shape77 = sphere(0.5, at: vec(0.07622, 1.23176, -0.11256), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape77.scale = vec(0.09, 0.1691, 0.0459)
+    cylinder radius: 0.005, height: 1.09857, at: vec(0.04304, 0.82328, 0.13742), material: "walnut"
+    let shape80 = sphere(0.5, at: vec(0.05004, 0.9621, 0.15975), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape80.scale = vec(0.09, 0.17577, 0.0459)
+    let shape82 = sphere(0.5, at: vec(0.02803, 1.1159, 0.15537), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape82.scale = vec(0.09, 0.17577, 0.0459)
+    let shape84 = sphere(0.5, at: vec(0.01983, 1.2697, 0.13448), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape84.scale = vec(0.09, 0.17577, 0.0459)
+    cylinder radius: 0.005, height: 1.14025, at: vec(-0.12456, 0.84413, -0.07226), material: "walnut"
+    let shape87 = sphere(0.5, at: vec(-0.1448, 0.98836, -0.084), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape87.scale = vec(0.09, 0.18244, 0.0459)
+    let shape89 = sphere(0.5, at: vec(-0.12561, 1.14799, -0.09563), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape89.scale = vec(0.09, 0.18244, 0.0459)
+    let shape91 = sphere(0.5, at: vec(-0.10546, 1.30763, -0.08578), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape91.scale = vec(0.09, 0.18244, 0.0459)
+    cylinder radius: 0.005, height: 1.18194, at: vec(0.14066, 0.86497, -0.03085), material: "walnut"
+    let shape94 = sphere(0.5, at: vec(0.16351, 1.01462, -0.03587), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape94.scale = vec(0.09, 0.18911, 0.0459)
+    let shape96 = sphere(0.5, at: vec(0.15722, 1.18009, -0.01433), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape96.scale = vec(0.09, 0.18911, 0.0459)
+    let shape98 = sphere(0.5, at: vec(0.1357, 1.34556, -0.00798), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape98.scale = vec(0.09, 0.18911, 0.0459)
+    cylinder radius: 0.005, height: 1.22362, at: vec(-0.08288, 0.88581, 0.11776), material: "walnut"
+    let shape101 = sphere(0.5, at: vec(-0.09635, 1.04088, 0.13689), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape101.scale = vec(0.09, 0.19578, 0.0459)
+    let shape103 = sphere(0.5, at: vec(-0.10626, 1.21219, 0.11676), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape103.scale = vec(0.09, 0.19578, 0.0459)
+    let shape105 = sphere(0.5, at: vec(-0.09467, 1.3835, 0.09755), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape105.scale = vec(0.09, 0.19578, 0.0459)
+    cylinder radius: 0.005, height: 1.26531, at: vec(-0.01843, 0.90665, -0.14282), material: "walnut"
+    let shape108 = sphere(0.5, at: vec(-0.02142, 1.06714, -0.16602), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape108.scale = vec(0.09, 0.20245, 0.0459)
+    let shape110 = sphere(0.5, at: vec(-0.00052, 1.24429, -0.15787), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape110.scale = vec(0.09, 0.20245, 0.0459)
+    let shape112 = sphere(0.5, at: vec(0.00392, 1.42143, -0.13588), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape112.scale = vec(0.09, 0.20245, 0.0459)
+    cylinder radius: 0.005, height: 1.30699, at: vec(0.11005, 0.92749, 0.09287), material: "walnut"
+    let shape115 = sphere(0.5, at: vec(0.12794, 1.0934, 0.10796), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape115.scale = vec(0.09, 0.20912, 0.0459)
+    let shape117 = sphere(0.5, at: vec(0.10702, 1.27638, 0.11607), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape117.scale = vec(0.09, 0.20912, 0.0459)
+    let shape119 = sphere(0.5, at: vec(0.08889, 1.45936, 0.10285), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape119.scale = vec(0.09, 0.20912, 0.0459)
+    cylinder radius: 0.005, height: 1.34867, at: vec(-0.14388, 0.94834, 0.00586), material: "walnut"
+    let shape122 = sphere(0.5, at: vec(-0.16726, 1.11966, 0.00681), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape122.scale = vec(0.09, 0.21579, 0.0459)
+    let shape124 = sphere(0.5, at: vec(-0.15731, 1.30848, -0.0133), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape124.scale = vec(0.09, 0.21579, 0.0459)
+    let shape126 = sphere(0.5, at: vec(-0.13502, 1.49729, -0.0158), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape126.scale = vec(0.09, 0.21579, 0.0459)
+    cylinder radius: 0.005, height: 1.39036, at: vec(0.10214, 0.96918, -0.10151), material: "walnut"
+    let shape129 = sphere(0.5, at: vec(0.11874, 1.14593, -0.118), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape129.scale = vec(0.09, 0.22246, 0.0459)
+    let shape131 = sphere(0.5, at: vec(0.12499, 1.34058, -0.09645), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape131.scale = vec(0.09, 0.22246, 0.0459)
+    let shape133 = sphere(0.5, at: vec(0.11023, 1.53523, -0.07955), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)))
+    shape133.scale = vec(0.09, 0.22246, 0.0459)
+  return assembly

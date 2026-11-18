@@ -1,0 +1,13 @@
+# oil_bottle · oil bottle for the Loft
+# kind: model
+# place: oil_bottle(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, oil bottle
+
+to oil_bottle(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.04, 0), vec(0.04, 0.1488), vec(0.0344, 0.1704), vec(0.016, 0.1824), vec(0.016, 0.2328), vec(0.0184, 0.2328), vec(0.0184, 0.24), vec(0, 0.24)], segments: 32, at: vec(0, 0, 0), material: "brass"
+    cylinder radius: 0.041, height: 0.078, at: vec(0, 0.113, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+  return assembly

@@ -1,0 +1,26 @@
+# concrete · grey concrete cast against smooth forms: soft mottle, a few air holes, faint pour lifts
+# For walls, floors, plinths and steps. Wears paler on chipped arrises; gathers dark grey in grooves and corners.
+#
+# kind: surface
+# place: test_ball("concrete", AT)
+# tags: concrete, grey, building
+# size: room
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M20 (2026-11-11)
+
+let mottle = 25 cm      # one soft cloud of lighter and darker cement
+let air_hole = 4 mm     # a bubble the form trapped
+let lift = 1.5 m        # one pour of the wall
+let grain = 1 mm        # a piece of aggregate
+
+to concrete(seed: 1)
+  return surface("concrete", seed: seed, tile: 2 m, space: "world",
+    base: {color: rgb(0.62, 0.62, 0.60), color2: rgb(0.52, 0.52, 0.50), roughness: 0.85,
+           pattern: "noise", size: mottle, contrast: 0.4, bump: 0.4 mm},
+    coat: {color: rgb(0.24, 0.24, 0.23), roughness: 0.9, cover: 0.03, pattern: "pores", size: air_hole, sits: "low"},
+    vary: {large: lift, amount: 0.12},
+    wear: {color: rgb(0.74, 0.74, 0.72), roughness: 0.8, amount: 0.5},
+    dirt: {color: rgb(0.30, 0.30, 0.29), roughness: 0.9, amount: 0.5},
+    detail: {pattern: "speckle", size: grain, bump: 0.05 mm})

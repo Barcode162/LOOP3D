@@ -1,0 +1,20 @@
+# laundry_basket · laundry basket for the Loft
+# kind: model
+# place: laundry_basket(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, laundry basket
+
+to laundry_basket(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.132, 0), vec(0.2, 0.4224), vec(0.2, 0.48), vec(0.182, 0.48), vec(0.182, 0.4176), vec(0.1122, 0.0576), vec(0, 0.0576)], segments: 32, at: vec(0, 0, 0), material: "oak"
+    cylinder radius: 0.136, height: 0.009, at: vec(0, 0.0045, 0), material: "walnut"
+    cylinder radius: 0.14514, height: 0.009, at: vec(0, 0.0645, 0), material: "walnut"
+    cylinder radius: 0.15429, height: 0.009, at: vec(0, 0.1245, 0), material: "walnut"
+    cylinder radius: 0.16343, height: 0.009, at: vec(0, 0.1845, 0), material: "walnut"
+    cylinder radius: 0.17257, height: 0.009, at: vec(0, 0.2445, 0), material: "walnut"
+    cylinder radius: 0.18171, height: 0.009, at: vec(0, 0.3045, 0), material: "walnut"
+    cylinder radius: 0.19086, height: 0.009, at: vec(0, 0.3645, 0), material: "walnut"
+    cylinder radius: 0.2, height: 0.009, at: vec(0, 0.4245, 0), material: "walnut"
+  return assembly

@@ -1,0 +1,17 @@
+# entry_bench · entry bench for the Loft
+# kind: model
+# place: entry_bench(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, entry bench
+
+to entry_bench(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(1.06, 0.045, 0.37), at: vec(0, 0.3975, 0), material: "oak", round: 0.009
+    box size: vec(0.045, 0.375, 0.045), at: vec(-0.48, 0.1875, -0.135), material: "walnut"
+    box size: vec(0.045, 0.375, 0.045), at: vec(-0.48, 0.1875, 0.135), material: "walnut"
+    box size: vec(0.045, 0.375, 0.045), at: vec(0.48, 0.1875, -0.135), material: "walnut"
+    box size: vec(0.045, 0.375, 0.045), at: vec(0.48, 0.1875, 0.135), material: "walnut"
+    box size: vec(1, 0.065, 0.35), at: vec(0, 0.4525, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18)), round: 0.0273
+  return assembly

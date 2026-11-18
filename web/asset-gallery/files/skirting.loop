@@ -1,0 +1,29 @@
+# skirting · a skirting board along the foot of a wall
+# skirting(from_at, to_at, height, timber, side) lays one board level on the floor,
+# from `from_at` to `to_at` (floor points at the wall's face, the line runs along x
+# or along z). The board is 0.018 m thick and stands `height` tall, lifted a
+# 2 mm shadow gap off the floor, its edges softened 6 mm. `side` says which way
+# the thickness goes, away from the wall: 1 is towards +z for a line along x
+# and towards +x for a line along z; -1 is the other way.
+#
+# kind: piece
+# place: skirting(AT + vec(-2, 0, 0), AT + vec(2, 0, 0), height: 0.12, timber: "oak")
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: skirting, baseboard, wall, trim, loft
+# size: chair
+# sockets: lie
+# seeds: none, it is made the same every time
+
+to skirting(from_at: vec(0, 0, 0), to_at: vec(4, 0, 0), height: 0.12, timber: "oak", side: 1)
+  let thick = 0.018
+  let gap = 0.002
+  let mid = (from_at + to_at) / 2
+  let run_x = abs(to_at.x - from_at.x)
+  let run_z = abs(to_at.z - from_at.z)
+  let lift = vec(0, gap + height / 2, 0)
+  if run_x >= run_z
+    box size: vec(run_x, height, thick), at: mid + lift + vec(0, 0, side * thick / 2), material: timber, round: 0.006
+  else
+    box size: vec(thick, height, run_z), at: mid + lift + vec(side * thick / 2, 0, 0), material: timber, round: 0.006

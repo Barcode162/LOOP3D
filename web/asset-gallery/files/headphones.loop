@@ -1,0 +1,45 @@
+# headphones · headphones for the Loft
+# kind: model
+# place: headphones(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, headphones
+
+to headphones(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    let shape0 = sphere(0.5, at: vec(0.084, 0.081, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape0.scale = vec(0.027, 0.028, 0.032)
+    let shape2 = sphere(0.5, at: vec(0.08189, 0.10325, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape2.scale = vec(0.027, 0.028, 0.032)
+    let shape4 = sphere(0.5, at: vec(0.07568, 0.12439, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape4.scale = vec(0.027, 0.028, 0.032)
+    let shape6 = sphere(0.5, at: vec(0.06567, 0.14335, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape6.scale = vec(0.027, 0.028, 0.032)
+    let shape8 = sphere(0.5, at: vec(0.05237, 0.15918, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape8.scale = vec(0.027, 0.028, 0.032)
+    let shape10 = sphere(0.5, at: vec(0.03645, 0.1711, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape10.scale = vec(0.027, 0.028, 0.032)
+    let shape12 = sphere(0.5, at: vec(0.01869, 0.17849, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape12.scale = vec(0.027, 0.028, 0.032)
+    let shape14 = sphere(0.5, at: vec(0.0, 0.181, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape14.scale = vec(0.027, 0.028, 0.032)
+    let shape16 = sphere(0.5, at: vec(-0.01869, 0.17849, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape16.scale = vec(0.027, 0.028, 0.032)
+    let shape18 = sphere(0.5, at: vec(-0.03645, 0.1711, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape18.scale = vec(0.027, 0.028, 0.032)
+    let shape20 = sphere(0.5, at: vec(-0.05237, 0.15918, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape20.scale = vec(0.027, 0.028, 0.032)
+    let shape22 = sphere(0.5, at: vec(-0.06567, 0.14335, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape22.scale = vec(0.027, 0.028, 0.032)
+    let shape24 = sphere(0.5, at: vec(-0.07568, 0.12439, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape24.scale = vec(0.027, 0.028, 0.032)
+    let shape26 = sphere(0.5, at: vec(-0.08189, 0.10325, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape26.scale = vec(0.027, 0.028, 0.032)
+    let shape28 = sphere(0.5, at: vec(-0.084, 0.081, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape28.scale = vec(0.027, 0.028, 0.032)
+    let shape30 = sphere(0.5, at: vec(-0.084, 0.057, 0), material: "walnut")
+    shape30.scale = vec(0.04, 0.09, 0.063)
+    let shape32 = sphere(0.5, at: vec(0.084, 0.057, 0), material: "walnut")
+    shape32.scale = vec(0.04, 0.09, 0.063)
+  return assembly

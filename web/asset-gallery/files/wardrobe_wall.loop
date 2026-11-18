@@ -1,0 +1,21 @@
+# wardrobe_wall · wardrobe wall for the Loft
+# kind: piece
+# place: wardrobe_wall(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, wardrobe wall
+
+to wardrobe_wall(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.59, 2.4, 0.6), at: vec(-1.2, 1.2, 0), material: "oak"
+    box size: vec(0.018, 0.4, 0.035), at: vec(-0.97, 1.1, -0.31), material: "brass"
+    box size: vec(0.59, 2.4, 0.6), at: vec(-0.6, 1.2, 0), material: "oak"
+    box size: vec(0.018, 0.4, 0.035), at: vec(-0.37, 1.1, -0.31), material: "brass"
+    box size: vec(0.59, 2.4, 0.6), at: vec(0.0, 1.2, 0), material: "oak"
+    box size: vec(0.018, 0.4, 0.035), at: vec(0.23, 1.1, -0.31), material: "brass"
+    box size: vec(0.59, 2.4, 0.6), at: vec(0.6, 1.2, 0), material: "oak"
+    box size: vec(0.018, 0.4, 0.035), at: vec(0.83, 1.1, -0.31), material: "brass"
+    box size: vec(0.59, 2.4, 0.6), at: vec(1.2, 1.2, 0), material: "oak"
+    box size: vec(0.018, 0.4, 0.035), at: vec(1.43, 1.1, -0.31), material: "brass"
+  return assembly

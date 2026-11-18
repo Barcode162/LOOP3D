@@ -1,0 +1,10 @@
+# terracotta · terracotta finish for the Loft
+# kind: surface
+# place: test_ball("terracotta", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to terracotta(seed: 1)
+  return surface("terracotta", seed: seed, base: {color: rgb(0.68, 0.34, 0.21), roughness: 0.89},
+    detail: {pattern: "speckle", size: 0.32 mm, bump: 0.0384 mm})

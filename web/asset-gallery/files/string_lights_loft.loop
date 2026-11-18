@@ -1,0 +1,45 @@
+# string_lights_loft · string lights loft for the Loft
+# kind: light
+# place: string_lights_loft(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, string lights loft
+
+to string_lights_loft(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.72, 0.124, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -17.1 deg
+    let shape1 = sphere(0.5, at: vec(-0.72, 0.107, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape1.scale = vec(0.028, 0.04, 0.028)
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.64, 0.09881, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -15.2 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.56, 0.07659, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -13.3 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.48, 0.05733, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -11.4 deg
+    let shape6 = sphere(0.5, at: vec(-0.48, 0.04033, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape6.scale = vec(0.028, 0.04, 0.028)
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.4, 0.04104, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -9.5 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.32, 0.0277, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -7.6 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.24, 0.01733, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -5.7 deg
+    let shape11 = sphere(0.5, at: vec(-0.24, 0.00033, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape11.scale = vec(0.028, 0.04, 0.028)
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.16, 0.00993, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -3.8 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(-0.08, 0.00548, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: -1.9 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.0, 0.004, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    let shape16 = sphere(0.5, at: vec(0.0, -0.013, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape16.scale = vec(0.028, 0.04, 0.028)
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.08, 0.00548, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 1.9 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.16, 0.00993, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 3.8 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.24, 0.01733, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 5.7 deg
+    let shape21 = sphere(0.5, at: vec(0.24, 0.00033, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape21.scale = vec(0.028, 0.04, 0.028)
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.32, 0.0277, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 7.6 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.4, 0.04104, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 9.5 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.48, 0.05733, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 11.4 deg
+    let shape26 = sphere(0.5, at: vec(0.48, 0.04033, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape26.scale = vec(0.028, 0.04, 0.028)
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.56, 0.07659, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 13.3 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.64, 0.09881, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 15.2 deg
+    box size: vec(0.082, 0.008, 0.008), at: vec(0.72, 0.124, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), roll: 17.1 deg
+    let shape31 = sphere(0.5, at: vec(0.72, 0.107, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape31.scale = vec(0.028, 0.04, 0.028)
+    light vec(0, 0.015, 0), lumens: 75, kelvin: 2700, radius: 0.035
+  return assembly

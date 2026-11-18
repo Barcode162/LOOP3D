@@ -1,0 +1,22 @@
+# sculpture_2 · sculpture 2 for the Loft
+# kind: model
+# place: sculpture_2(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, sculpture 2
+
+to sculpture_2(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.13, 0.025, 0.11), at: vec(0, 0.0125, 0), material: "walnut"
+    let shape1 = sphere(0.5, at: vec(0.02356, 0.054, 0), material: "brass")
+    shape1.scale = vec(0.105, 0.064, 0.063)
+    let shape3 = sphere(0.5, at: vec(0.02546, 0.099, 0), material: "brass")
+    shape3.scale = vec(0.096, 0.064, 0.063)
+    let shape5 = sphere(0.5, at: vec(0.00395, 0.144, 0), material: "brass")
+    shape5.scale = vec(0.087, 0.064, 0.063)
+    let shape7 = sphere(0.5, at: vec(-0.02119, 0.189, 0), material: "brass")
+    shape7.scale = vec(0.078, 0.064, 0.063)
+    let shape9 = sphere(0.5, at: vec(-0.02685, 0.234, 0), material: "brass")
+    shape9.scale = vec(0.069, 0.064, 0.063)
+  return assembly

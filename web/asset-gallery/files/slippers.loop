@@ -1,0 +1,19 @@
+# slippers · slippers for the Loft
+# kind: model
+# place: slippers(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, slippers
+
+to slippers(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    let shape0 = sphere(0.5, at: vec(-0.07, 0.016, 0), material: "walnut")
+    shape0.scale = vec(0.1, 0.032, 0.245)
+    let shape2 = sphere(0.5, at: vec(-0.07, 0.051, -0.045), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape2.scale = vec(0.104, 0.068, 0.13)
+    let shape4 = sphere(0.5, at: vec(0.07, 0.016, 0), material: "walnut")
+    shape4.scale = vec(0.1, 0.032, 0.245)
+    let shape6 = sphere(0.5, at: vec(0.07, 0.051, -0.045), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape6.scale = vec(0.104, 0.068, 0.13)
+  return assembly

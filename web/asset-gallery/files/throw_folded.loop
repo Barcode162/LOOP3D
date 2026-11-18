@@ -1,0 +1,13 @@
+# throw_folded · throw folded for the Loft
+# kind: model
+# place: throw_folded(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, throw folded
+
+to throw_folded(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.66, 0.048, 0.44), at: vec(0, 0.024, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)), round: 0.019
+    box size: vec(0.64, 0.034, 0.43), at: vec(0, 0.065, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14)), round: 0.016
+  return assembly

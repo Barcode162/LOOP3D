@@ -1,0 +1,10 @@
+# blackened_steel · blackened steel finish for the Loft
+# kind: surface
+# place: test_ball("blackened_steel", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to blackened_steel(seed: 1)
+  return surface("blackened_steel", seed: seed, base: {color: rgb(0.14, 0.15, 0.16), roughness: 0.39, metal: 1},
+    detail: {pattern: "brushed", size: 0.09 mm, bump: 0.0108 mm})

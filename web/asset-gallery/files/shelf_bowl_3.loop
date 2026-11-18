@@ -1,0 +1,12 @@
+# shelf_bowl_3 · shelf bowl 3 for the Loft
+# kind: model
+# place: shelf_bowl_3(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, shelf bowl 3
+
+to shelf_bowl_3(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.055, 0), vec(0.1, 0.0312), vec(0.12, 0.065), vec(0.113, 0.065), vec(0.08, 0.02925), vec(0, 0.008)], segments: 32, at: vec(0, 0, 0), material: "brass"
+  return assembly

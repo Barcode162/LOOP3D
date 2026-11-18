@@ -1,0 +1,47 @@
+# pendant_dome · a plain metal dome on a cord, its light falling in a cone
+# pendant_dome(at, drop, across, lumens, kelvin, shade) hangs one from the ceiling point `at`: a thin cord
+# `drop` long, a small ceiling rose, a dome `across` wide (dark outside, pale inside), a dim bulb high
+# inside it, and one spotlight at the bulb aimed straight down. The light's angle is the dome's opening,
+# so the dome owns the pool below and nothing leaves upward. Gives back the light.
+#
+# kind: light
+# place: pendant_dome(at: AT + vec(0, 2.4, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-10)
+# tags: lamp, pendant, ceiling, dome, warm
+# size: chair
+# sockets: light
+# seeds: none, the same every time
+
+let pendant_dark = material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+let pendant_pale = material(color: rgb(0.82, 0.76, 0.66), roughness: 0.55)
+let pendant_bulb = material(color: rgb(1, 0.8, 0.5), glow: rgb(1.0, 0.72, 0.38) * 200)
+
+to pendant_dome(at, drop: 1.2, across: 0.35, lumens: 800, kelvin: 2700, shade: pendant_dark)
+  let r = across / 2
+  let h = across * 0.3
+  let wall = 0.006
+  let rim_y = at.y - drop - h
+  # the dome: a half ellipse spun round, an outer skin and a slightly smaller pale inner skin
+  let outer = []
+  let inner = []
+  for each i in range(0, 9)
+    let a = i * 0.19635
+    outer.push(vec(r * sin(a), h * cos(a)))
+    inner.push(vec((r - wall) * sin(a), (h - wall) * cos(a)))
+  lathe profile: outer, segments: 40, at: vec(at.x, rim_y, at.z), material: shade, collide: no
+  lathe profile: inner, segments: 40, at: vec(at.x, rim_y, at.z), material: pendant_pale, collide: no
+  # the cord, the ceiling rose and the cap where the cord meets the dome
+  cylinder 0.004, drop, at: vec(at.x, at.y - drop / 2, at.z), material: shade, collide: no
+  cylinder 0.05, 0.03, at: vec(at.x, at.y - 0.015, at.z), material: shade, collide: no
+  cylinder 0.02, 0.03, at: vec(at.x, rim_y + h + 0.01, at.z), material: shade, collide: no
+  # the bulb, high inside the dome, and the one light that does the lighting
+  let bulb_y = rim_y + h * 0.55
+  let ball = []
+  for each i in range(0, 7)
+    let a = i * 0.5236
+    ball.push(vec(max(0, across * 0.1 * sin(a)), across * 0.1 * (0 - cos(a))))
+  lathe profile: ball, segments: 16, at: vec(at.x, bulb_y, at.z), material: pendant_bulb, collide: no
+  let open = atan((r - wall) / (bulb_y - rim_y))
+  return light(vec(at.x, bulb_y, at.z), lumens: lumens, kelvin: kelvin, radius: 0.03, aim: vec(at.x, 0, at.z), angle: open, softness: 0.85)

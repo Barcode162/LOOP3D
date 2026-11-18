@@ -1,0 +1,16 @@
+# knife_block · knife block for the Loft
+# kind: model
+# place: knife_block(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, knife block
+
+to knife_block(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.14, 0.16, 0.09), at: vec(0, 0.08, 0), material: "oak", round: 0.007
+    box size: vec(0.012, 0.09, 0.027), at: vec(-0.045, 0.205, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.012, 0.099, 0.027), at: vec(-0.015, 0.2095, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.012, 0.108, 0.027), at: vec(0.015, 0.214, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.012, 0.117, 0.027), at: vec(0.045, 0.2185, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+  return assembly

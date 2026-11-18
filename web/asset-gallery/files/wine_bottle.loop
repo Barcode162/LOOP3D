@@ -1,0 +1,13 @@
+# wine_bottle · wine bottle for the Loft
+# kind: model
+# place: wine_bottle(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, wine bottle
+
+to wine_bottle(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.04, 0), vec(0.04, 0.186), vec(0.0344, 0.213), vec(0.016, 0.228), vec(0.016, 0.291), vec(0.0184, 0.291), vec(0.0184, 0.3), vec(0, 0.3)], segments: 32, at: vec(0, 0, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    cylinder radius: 0.041, height: 0.078, at: vec(0, 0.113, 0), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+  return assembly

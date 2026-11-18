@@ -1,0 +1,16 @@
+# ceiling_niche · ceiling niche for the Loft
+# kind: piece
+# place: ceiling_niche(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, ceiling niche
+
+to ceiling_niche(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.04, 0.32, 0.18), at: vec(-0.53, 0.16, 0), material: "plaster"
+    box size: vec(0.04, 0.32, 0.18), at: vec(0.53, 0.16, 0), material: "plaster"
+    box size: vec(1.02, 0.04, 0.18), at: vec(0, 0.02, 0), material: "plaster"
+    box size: vec(1.02, 0.04, 0.18), at: vec(0, 0.3, 0), material: "plaster"
+    box size: vec(1.04, 0.25, 0.012), at: vec(0, 0.16, 0.085), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4)
+  return assembly

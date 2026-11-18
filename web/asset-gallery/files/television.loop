@@ -1,0 +1,15 @@
+# television · television for the Loft
+# kind: model
+# place: television(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, television
+
+to television(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.5544, 0.02, 0.18), at: vec(0, 0.01, 0), material: "iron"
+    box size: vec(0.055, 0.12, 0.05), at: vec(0, 0.08, 0), material: "iron"
+    box size: vec(1.32, 0.74, 0.035), at: vec(0, 0.51, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), round: 0.01
+    box size: vec(1.295, 0.715, 0.005), at: vec(0, 0.5105, -0.02), material: "glowing_screen"
+  return assembly

@@ -1,0 +1,11 @@
+# rug_weave · rug weave finish for the Loft
+# kind: surface
+# place: test_ball("rug_weave", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to rug_weave(seed: 1)
+  surface("rug_weave_base", seed: seed, base: {color: rgb(0.42, 0.22, 0.19), roughness: 0.93},
+    detail: {pattern: "weave", size: 1.7 mm, bump: 0.2040 mm})
+  return material(like: "rug_weave_base", sheen: 0.4)

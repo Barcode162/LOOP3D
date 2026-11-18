@@ -1,0 +1,20 @@
+# hob · hob for the Loft
+# kind: model
+# place: hob(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, hob
+
+to hob(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.58, 0.026, 0.5), at: vec(0, 0.013, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), round: 0.01
+    cylinder radius: 0.096, height: 0.003, at: vec(-0.145, 0.0275, -0.12), material: "iron"
+    cylinder radius: 0.087, height: 0.003, at: vec(-0.145, 0.0305, -0.12), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    cylinder radius: 0.096, height: 0.003, at: vec(-0.145, 0.0275, 0.12), material: "iron"
+    cylinder radius: 0.087, height: 0.003, at: vec(-0.145, 0.0305, 0.12), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    cylinder radius: 0.096, height: 0.003, at: vec(0.145, 0.0275, -0.12), material: "iron"
+    cylinder radius: 0.087, height: 0.003, at: vec(0.145, 0.0305, -0.12), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    cylinder radius: 0.096, height: 0.003, at: vec(0.145, 0.0275, 0.12), material: "iron"
+    cylinder radius: 0.087, height: 0.003, at: vec(0.145, 0.0305, 0.12), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+  return assembly

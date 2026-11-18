@@ -1,0 +1,17 @@
+# chimney_fireplace · chimney fireplace for the Loft
+# kind: piece
+# place: chimney_fireplace(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, chimney fireplace
+
+to chimney_fireplace(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.24, 0.95, 0.46), at: vec(-0.52, 0.475, 0), material: "concrete"
+    box size: vec(0.24, 0.95, 0.46), at: vec(0.52, 0.475, 0), material: "concrete"
+    box size: vec(1.28, 1.55, 0.46), at: vec(0, 1.725, 0), material: "plaster"
+    box size: vec(1.42, 0.08, 0.61), at: vec(0, 0.98, 0), material: "walnut"
+    box size: vec(0.84, 0.9, 0.035), at: vec(0, 0.45, 0.2), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(1.44, 0.07, 0.66), at: vec(0, 0.035, 0), material: "concrete"
+  return assembly

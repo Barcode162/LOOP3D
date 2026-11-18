@@ -1,0 +1,20 @@
+# shelf_basket · shelf basket for the Loft
+# kind: model
+# place: shelf_basket(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, shelf basket
+
+to shelf_basket(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.0792, 0), vec(0.12, 0.1056), vec(0.12, 0.12), vec(0.1092, 0.12), vec(0.1092, 0.1044), vec(0.06732, 0.0144), vec(0, 0.0144)], segments: 32, at: vec(0, 0, 0), material: "oak"
+    cylinder radius: 0.0816, height: 0.009, at: vec(0, 0.0045, 0), material: "walnut"
+    cylinder radius: 0.08709, height: 0.009, at: vec(0, 0.0195, 0), material: "walnut"
+    cylinder radius: 0.09257, height: 0.009, at: vec(0, 0.0345, 0), material: "walnut"
+    cylinder radius: 0.09806, height: 0.009, at: vec(0, 0.0495, 0), material: "walnut"
+    cylinder radius: 0.10354, height: 0.009, at: vec(0, 0.0645, 0), material: "walnut"
+    cylinder radius: 0.10903, height: 0.009, at: vec(0, 0.0795, 0), material: "walnut"
+    cylinder radius: 0.11451, height: 0.009, at: vec(0, 0.0945, 0), material: "walnut"
+    cylinder radius: 0.12, height: 0.009, at: vec(0, 0.1095, 0), material: "walnut"
+  return assembly

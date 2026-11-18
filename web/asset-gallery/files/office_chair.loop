@@ -1,0 +1,30 @@
+# office_chair · office chair for the Loft
+# kind: model
+# place: office_chair(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, office chair
+
+to office_chair(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    cylinder radius: 0.035, height: 0.43, at: vec(0, 0.215, 0), material: "iron"
+    cylinder radius: 0.032, height: 0.12, at: vec(0, 0.37, 0), material: "brass"
+    box size: vec(0.032, 0.024, 0.27), at: vec(0.0, 0.05, 0.13), turn: 0 deg, material: "iron"
+    let shape3 = sphere(0.5, at: vec(0.0, 0.025, 0.25), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape3.scale = vec(0.05, 0.05, 0.05)
+    box size: vec(0.032, 0.024, 0.27), at: vec(0.12364, 0.05, 0.04017), turn: 72 deg, material: "iron"
+    let shape6 = sphere(0.5, at: vec(0.23776, 0.025, 0.07725), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape6.scale = vec(0.05, 0.05, 0.05)
+    box size: vec(0.032, 0.024, 0.27), at: vec(0.07641, 0.05, -0.10517), turn: 144 deg, material: "iron"
+    let shape9 = sphere(0.5, at: vec(0.14695, 0.025, -0.20225), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape9.scale = vec(0.05, 0.05, 0.05)
+    box size: vec(0.032, 0.024, 0.27), at: vec(-0.07641, 0.05, -0.10517), turn: 216 deg, material: "iron"
+    let shape12 = sphere(0.5, at: vec(-0.14695, 0.025, -0.20225), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape12.scale = vec(0.05, 0.05, 0.05)
+    box size: vec(0.032, 0.024, 0.27), at: vec(-0.12364, 0.05, 0.04017), turn: 288 deg, material: "iron"
+    let shape15 = sphere(0.5, at: vec(-0.23776, 0.025, 0.07725), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)))
+    shape15.scale = vec(0.05, 0.05, 0.05)
+    box size: vec(0.48, 0.085, 0.45), at: vec(0, 0.4725, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.04
+    box size: vec(0.46, 0.43, 0.07), at: vec(0, 0.695, 0.18), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.03
+  return assembly

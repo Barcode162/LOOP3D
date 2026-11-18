@@ -1,0 +1,10 @@
+# matte_plastic · matte plastic finish for the Loft
+# kind: surface
+# place: test_ball("matte_plastic", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to matte_plastic(seed: 1)
+  return surface("matte_plastic", seed: seed, base: {color: rgb(0.23, 0.24, 0.25), roughness: 0.75},
+    detail: {pattern: "speckle", size: 0.13 mm, bump: 0.0156 mm})

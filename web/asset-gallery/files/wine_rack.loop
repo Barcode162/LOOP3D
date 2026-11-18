@@ -1,0 +1,17 @@
+# wine_rack · wine rack for the Loft
+# kind: model
+# place: wine_rack(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, wine rack
+
+to wine_rack(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.022, 0.38, 0.3), at: vec(-0.22, 0.19, 0), material: "walnut"
+    box size: vec(0.022, 0.38, 0.3), at: vec(0, 0.19, 0), material: "walnut"
+    box size: vec(0.022, 0.38, 0.3), at: vec(0.22, 0.19, 0), material: "walnut"
+    box size: vec(0.46, 0.02, 0.3), at: vec(0, 0.01, 0), material: "oak"
+    box size: vec(0.46, 0.02, 0.3), at: vec(0, 0.19, 0), material: "oak"
+    box size: vec(0.46, 0.02, 0.3), at: vec(0, 0.37, 0), material: "oak"
+  return assembly

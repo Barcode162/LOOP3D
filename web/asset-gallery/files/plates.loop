@@ -1,0 +1,15 @@
+# plates · plates for the Loft
+# kind: model
+# place: plates(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, plates
+
+to plates(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.0792, 0), vec(0.12, 0.01496), vec(0.12, 0.017), vec(0.1092, 0.017), vec(0.1092, 0.01479), vec(0.06732, 0.00204), vec(0, 0.00204)], segments: 32, at: vec(0, 0.0, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    lathe profile: [vec(0, 0), vec(0.0792, 0), vec(0.12, 0.01496), vec(0.12, 0.017), vec(0.1092, 0.017), vec(0.1092, 0.01479), vec(0.06732, 0.00204), vec(0, 0.00204)], segments: 32, at: vec(0, 0.008, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    lathe profile: [vec(0, 0), vec(0.0792, 0), vec(0.12, 0.01496), vec(0.12, 0.017), vec(0.1092, 0.017), vec(0.1092, 0.01479), vec(0.06732, 0.00204), vec(0, 0.00204)], segments: 32, at: vec(0, 0.016, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    lathe profile: [vec(0, 0), vec(0.0792, 0), vec(0.12, 0.01496), vec(0.12, 0.017), vec(0.1092, 0.017), vec(0.1092, 0.01479), vec(0.06732, 0.00204), vec(0, 0.00204)], segments: 32, at: vec(0, 0.024, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+  return assembly

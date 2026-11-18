@@ -1,0 +1,15 @@
+# sink_and_tap · sink and tap for the Loft
+# kind: model
+# place: sink_and_tap(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, sink and tap
+
+to sink_and_tap(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.1485, 0), vec(0.225, 0.1144), vec(0.225, 0.13), vec(0.20475, 0.13), vec(0.20475, 0.1131), vec(0.12623, 0.0156), vec(0, 0.0156)], segments: 32, at: vec(0, 0, 0), material: "iron"
+    cylinder radius: 0.014, height: 0.22, at: vec(0.14, 0.23, 0.16), material: "iron"
+    box size: vec(0.028, 0.028, 0.14), at: vec(0.14, 0.338, 0.095), material: "iron"
+    cylinder radius: 0.015, height: 0.045, at: vec(0.14, 0.3175, 0.034), material: "iron"
+  return assembly

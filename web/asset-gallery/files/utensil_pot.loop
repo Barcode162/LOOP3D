@@ -1,0 +1,21 @@
+# utensil_pot · utensil pot for the Loft
+# kind: model
+# place: utensil_pot(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, utensil pot
+
+to utensil_pot(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.03432, 0), vec(0.052, 0.1012), vec(0.052, 0.115), vec(0.04732, 0.115), vec(0.04732, 0.10005), vec(0.02917, 0.0138), vec(0, 0.0138)], segments: 32, at: vec(0, 0, 0), material: material(like: "terracotta", color: rgb(0.62, 0.28, 0.17))
+    cylinder radius: 0.004, height: 0.13, at: vec(-0.025, 0.155, 0), material: "oak"
+    let shape2 = sphere(0.5, at: vec(-0.025, 0.233, 0), material: "oak")
+    shape2.scale = vec(0.029, 0.046, 0.009)
+    cylinder radius: 0.004, height: 0.13, at: vec(0.0, 0.155, 0), material: "oak"
+    let shape5 = sphere(0.5, at: vec(0.0, 0.233, 0), material: "oak")
+    shape5.scale = vec(0.029, 0.046, 0.009)
+    cylinder radius: 0.004, height: 0.13, at: vec(0.025, 0.155, 0), material: "oak"
+    let shape8 = sphere(0.5, at: vec(0.025, 0.233, 0), material: "oak")
+    shape8.scale = vec(0.029, 0.046, 0.009)
+  return assembly

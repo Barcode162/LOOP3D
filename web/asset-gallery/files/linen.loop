@@ -1,0 +1,11 @@
+# linen · linen finish for the Loft
+# kind: surface
+# place: test_ball("linen", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to linen(seed: 1)
+  surface("linen_base", seed: seed, base: {color: rgb(0.8, 0.73, 0.6), roughness: 0.88},
+    detail: {pattern: "weave", size: 0.55 mm, bump: 0.0660 mm})
+  return material(like: "linen_base", sheen: 0.3)

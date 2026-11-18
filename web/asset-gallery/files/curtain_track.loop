@@ -1,0 +1,28 @@
+# curtain_track · curtain track for the Loft
+# kind: piece
+# place: curtain_track(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, curtain track
+
+to curtain_track(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(2, 0.03, 0.035), at: vec(0, 0.015, 0), material: "iron"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.9, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.78, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.66, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.54, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.42, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.3, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.18, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(-0.06, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.06, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.18, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.3, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.42, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.54, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.66, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.78, -0.0165, 0), material: "brass"
+    cylinder radius: 0.009, height: 0.033, at: vec(0.9, -0.0165, 0), material: "brass"
+  return assembly

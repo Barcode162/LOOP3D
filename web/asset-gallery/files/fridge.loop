@@ -1,0 +1,16 @@
+# fridge · fridge for the Loft
+# kind: model
+# place: fridge(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, fridge
+
+to fridge(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.72, 1.85, 0.65), at: vec(0, 0.925, 0), material: "iron", round: 0.025
+    box size: vec(0.705, 0.58, 0.044), at: vec(0, 0.29, -0.34), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.018
+    box size: vec(0.026, 0.21, 0.04), at: vec(0.27, 0.424, -0.375), material: "iron"
+    box size: vec(0.705, 1.24, 0.044), at: vec(0, 1.22, -0.34), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81)), round: 0.018
+    box size: vec(0.026, 0.21, 0.04), at: vec(0.27, 1.387, -0.375), material: "iron"
+  return assembly

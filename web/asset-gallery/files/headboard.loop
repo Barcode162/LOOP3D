@@ -1,0 +1,20 @@
+# headboard · headboard for the Loft
+# kind: model
+# place: headboard(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, headboard
+
+to headboard(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.18, 0.91, 0.088), at: vec(-0.728, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(-0.546, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(-0.364, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(-0.182, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(0.0, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(0.182, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(0.364, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(0.546, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+    box size: vec(0.18, 0.91, 0.088), at: vec(0.728, 0.455, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.035
+  return assembly

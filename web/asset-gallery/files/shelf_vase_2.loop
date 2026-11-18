@@ -1,0 +1,12 @@
+# shelf_vase_2 · shelf vase 2 for the Loft
+# kind: model
+# place: shelf_vase_2(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, shelf vase 2
+
+to shelf_vase_2(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.0418, 0), vec(0.076, 0.072), vec(0.03648, 0.15), vec(0.03192, 0.15), vec(0.0608, 0.0675), vec(0, 0.008)], segments: 32, at: vec(0, 0, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+  return assembly

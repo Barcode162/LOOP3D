@@ -1,0 +1,29 @@
+# moon_disc · moon disc for the Loft
+# kind: sky
+# place: moon_disc(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, moon disc
+
+to moon_disc(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    let shape0 = sphere(0.5, at: vec(0, 1.0, 0), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape0.scale = vec(2, 2, 0.3)
+    let shape2 = sphere(0.5, at: vec(0.0, 1.018, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape2.scale = vec(0.11, 0.096, 0.028)
+    let shape4 = sphere(0.5, at: vec(-0.20278, 1.20375, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape4.scale = vec(0.15, 0.096, 0.028)
+    let shape6 = sphere(0.5, at: vec(0.04812, 0.47011, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape6.scale = vec(0.19, 0.096, 0.028)
+    let shape8 = sphere(0.5, at: vec(0.0, 1.018, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape8.scale = vec(0.11, 0.096, 0.028)
+    let shape10 = sphere(0.5, at: vec(-0.27079, 0.97006, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape10.scale = vec(0.15, 0.096, 0.028)
+    let shape12 = sphere(0.5, at: vec(0.46412, 0.72288, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape12.scale = vec(0.19, 0.096, 0.028)
+    let shape14 = sphere(0.5, at: vec(-0.0, 1.018, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape14.scale = vec(0.11, 0.096, 0.028)
+    let shape16 = sphere(0.5, at: vec(-0.12669, 0.77392, -0.14), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58)))
+    shape16.scale = vec(0.15, 0.096, 0.028)
+  return assembly

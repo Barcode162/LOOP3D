@@ -1,0 +1,27 @@
+# books_row_8 · books row 8 for the Loft
+# kind: model
+# place: books_row_8(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, books row 8
+
+to books_row_8(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.026, 0.225, 0.143), at: vec(0.0, 0.1125, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.0, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.19972, 0.143), at: vec(0.029, 0.09986, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.029, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.14711, 0.143), at: vec(0.058, 0.07356, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.058, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.11555, 0.143), at: vec(0.087, 0.05778, 0), material: "walnut"
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.087, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.13405, 0.143), at: vec(0.116, 0.06702, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.116, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.1856, 0.143), at: vec(0.145, 0.0928, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14))
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.145, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.22281, 0.143), at: vec(0.174, 0.1114, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.174, 0.0945, -0.072), material: "brass"
+    box size: vec(0.026, 0.21146, 0.143), at: vec(0.203, 0.10573, 0), material: "walnut"
+    box size: vec(0.019, 0.009, 0.004), at: vec(0.203, 0.0945, -0.072), material: "brass"
+  return assembly

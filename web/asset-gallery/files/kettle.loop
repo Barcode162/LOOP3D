@@ -1,0 +1,16 @@
+# kettle · kettle for the Loft
+# kind: model
+# place: kettle(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, kettle
+
+to kettle(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    lathe profile: [vec(0, 0), vec(0.06072, 0), vec(0.092, 0.1584), vec(0.092, 0.18), vec(0.08372, 0.18), vec(0.08372, 0.1566), vec(0.05161, 0.0216), vec(0, 0.0216)], segments: 32, at: vec(0, 0, 0), material: "iron"
+    cylinder radius: 0.087, height: 0.017, at: vec(0, 0.1885, 0), material: "iron"
+    box size: vec(0.03, 0.12, 0.04), at: vec(0.112, 0.1, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.06, 0.025, 0.04), at: vec(0.094, 0.1605, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07))
+    box size: vec(0.055, 0.05, 0.04), at: vec(-0.09, 0.145, 0), material: "iron", roll: 28 deg
+  return assembly

@@ -1,0 +1,11 @@
+# porcelain · porcelain finish for the Loft
+# kind: surface
+# place: test_ball("porcelain", AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+
+to porcelain(seed: 1)
+  surface("porcelain_base", seed: seed, base: {color: rgb(0.92, 0.9, 0.85), roughness: 0.16},
+    detail: {pattern: "speckle", size: 0.04 mm, bump: 0.0048 mm})
+  return material(like: "porcelain_base", clearcoat: 0.8)

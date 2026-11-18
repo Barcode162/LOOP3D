@@ -1,0 +1,18 @@
+# sliding_door · sliding door for the Loft
+# kind: piece
+# place: sliding_door(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, sliding door
+
+to sliding_door(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.04, 2.15, 0.055), at: vec(-0.53, 1.075, 0), material: "iron"
+    box size: vec(0.04, 2.15, 0.055), at: vec(0.53, 1.075, 0), material: "iron"
+    box size: vec(1.02, 0.04, 0.055), at: vec(0, 0.02, 0), material: "iron"
+    box size: vec(1.02, 0.04, 0.055), at: vec(0, 2.13, 0), material: "iron"
+    box size: vec(1.02, 2.07, 0.022), at: vec(0, 1.075, 0), material: "glass"
+    box size: vec(2.3, 0.06, 0.08), at: vec(0, 2.18, 0), material: "iron"
+    box size: vec(0.024, 0.25, 0.04), at: vec(0.44, 0.975, -0.04), material: "brass"
+  return assembly

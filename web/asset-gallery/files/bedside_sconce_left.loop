@@ -1,0 +1,16 @@
+# bedside_sconce_left · bedside sconce left for the Loft
+# kind: light
+# place: bedside_sconce_left(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, bedside sconce left
+
+to bedside_sconce_left(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.09, 0.12, 0.022), at: vec(0, 0.06, 0), material: "brass"
+    box size: vec(0.16, 0.02, 0.022), at: vec(-0.069, 0.07, -0.024), material: "brass"
+    let shape2 = sphere(0.5, at: vec(-0.14, 0.094, -0.035), material: material(like: "glass", color: rgb(0.95, 0.77, 0.47), glow: rgb(0.95, 0.77, 0.47) * 4))
+    shape2.scale = vec(0.11, 0.11, 0.11)
+    light vec(-0.14, 0.083, -0.09), lumens: 90, kelvin: 2700, radius: 0.035
+  return assembly

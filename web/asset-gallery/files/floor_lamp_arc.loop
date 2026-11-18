@@ -1,0 +1,72 @@
+# floor_lamp_arc · a tall arc lamp: a heavy round base, a slim steel stem that rises and leans out over the room, a dome shade
+# floor_lamp_arc(at, turn, lumens, kelvin, on, steel) stands the base on `at`. The stem climbs straight up 0.5 m,
+# then bends through a quarter circle 1.4 m wide to reach 1.9 m high, and drops a short neck to a dome 0.32 m
+# across, pointing down (dark outside, pale inside, a dim bulb high in it). It arcs towards -z (turn turns it).
+# One spotlight at the bulb, its cone the dome's opening, does all the lighting; the bulb only glows. `on: no`
+# leaves it dark. Gives back the light.
+#
+# kind: light
+# place: floor_lamp_arc(at: vec(1.8, 0, 0.5), turn: 90 deg)   # beside a sofa, the dome over its arm
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: lamp, floor, arc, dome, warm
+# size: chair
+# sockets: light
+# seeds: none, the same every time
+
+let base_across = 0.35
+let base_high = 0.06
+let stem_radius = 0.011
+let straight_up = 0.5      # the stem is upright to here, then bends
+let reach = 1.4            # how far the arc leans out (-z)
+let top_high = 1.9         # the top of the arc
+let neck = 0.1             # the drop from the arc's end to the dome's cap
+let shade_across = 0.32
+let wall = 0.005
+let blackened_steel = material(color: rgb(0.04, 0.04, 0.04), metal: 1, roughness: 0.45)
+let arc_pale = material(color: rgb(0.82, 0.76, 0.66), roughness: 0.55)
+let arc_bulb_lit = material(color: rgb(1, 0.8, 0.5), glow: rgb(1.0, 0.72, 0.38) * 200)
+let arc_bulb_off = material(color: rgb(0.8, 0.76, 0.68), roughness: 0.3)
+
+to floor_lamp_arc(at: vec(0, 0, 0), turn: 0, lumens: 800, kelvin: 2700, on: yes, steel: blackened_steel)
+  let g = group(at: at, turn: turn)
+    # the base: a heavy disc with a rounded rim, and the foot of the stem
+    let bp = [vec(0, 0), vec(0.17, 0), vec(base_across / 2, 0.012), vec(base_across / 2, base_high - 0.012), vec(0.17, base_high), vec(0, base_high)]
+    lathe profile: bp, segments: 48, material: steel, collide: no
+    # the stem: points on a quarter circle (centre at -z by `reach`, up by `straight_up`), joined by short rods
+    let r = top_high - straight_up
+    let pts = [vec(0, 0, 0), vec(0, straight_up, 0)]
+    for each i in range(1, 13)
+      let a = i * 7.5 deg
+      pts.push(vec(0, straight_up + r * sin(a), 0 - reach * (1 - cos(a))))
+    for each i in range(0, pts.length - 1)
+      let d = pts[i + 1] - pts[i]
+      let run = sqrt(d.x * d.x + d.z * d.z)
+      let len = sqrt(run * run + d.y * d.y)
+      let yaw = atan(0 - d.z, d.x)
+      let lean = 0 - atan(run, d.y)
+      cylinder radius: stem_radius, height: len + 0.012, at: (pts[i] + pts[i + 1]) / 2, rotation: vec(yaw, 0, lean), material: steel, collide: no, sides: 12
+    # the dome shade hanging from the end of the arc
+    let top = pts[pts.length - 1]
+    let sr = shade_across / 2
+    let sh = shade_across * 0.32
+    let rim = vec(top.x, top.y - neck - sh, top.z)
+    let outer = []
+    let inner = []
+    for each i in range(0, 9)
+      let a = i * 0.19635
+      outer.push(vec(sr * sin(a), sh * cos(a)))
+      inner.push(vec((sr - wall) * sin(a), (sh - wall) * cos(a)))
+    lathe profile: outer, segments: 40, at: rim, material: steel, collide: no
+    lathe profile: inner, segments: 40, at: rim, material: arc_pale, collide: no
+    cylinder radius: 0.016, height: neck + 0.02, at: vec(top.x, top.y - neck / 2 - 0.01, top.z), material: steel, collide: no
+    # the bulb, high inside the dome, and the one lamp
+    let bulb_y = rim.y + sh * 0.55
+    let ball = []
+    for each i in range(0, 7)
+      let a = i * 0.5236
+      ball.push(vec(max(0, shade_across * 0.09 * sin(a)), shade_across * 0.09 * (0 - cos(a))))
+    lathe profile: ball, segments: 16, at: vec(top.x, bulb_y, top.z), material: (arc_bulb_lit if on else arc_bulb_off), collide: no
+    let open = atan((sr - wall) / (bulb_y - rim.y))
+    return light(vec(top.x, bulb_y, top.z), lumens: (lumens if on else 0), kelvin: kelvin, radius: 0.03, aim: vec(top.x, 0, top.z), angle: open, softness: 0.85)

@@ -1,0 +1,17 @@
+# lounge_footstool · lounge footstool for the Loft
+# kind: model
+# place: lounge_footstool(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, lounge footstool
+
+to lounge_footstool(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.48, 0.045, 0.38), at: vec(0, 0.2575, 0), material: "oak", round: 0.009
+    box size: vec(0.045, 0.235, 0.045), at: vec(-0.19, 0.1175, -0.14), material: "walnut"
+    box size: vec(0.045, 0.235, 0.045), at: vec(-0.19, 0.1175, 0.14), material: "walnut"
+    box size: vec(0.045, 0.235, 0.045), at: vec(0.19, 0.1175, -0.14), material: "walnut"
+    box size: vec(0.045, 0.235, 0.045), at: vec(0.19, 0.1175, 0.14), material: "walnut"
+    box size: vec(0.5, 0.09, 0.4), at: vec(0, 0.325, 0), material: material(like: "velvet", color: rgb(0.58, 0.21, 0.14)), round: 0.04
+  return assembly

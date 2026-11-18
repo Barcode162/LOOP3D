@@ -1,0 +1,29 @@
+# rooftop_water_towers · rooftop water towers for the Loft
+# kind: sky
+# place: rooftop_water_towers(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, rooftop water towers
+
+to rooftop_water_towers(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.095, 1.45, 0.095), at: vec(-0.62, 0.725, -0.62), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(-0.62, 0.725, 0.62), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(0.62, 0.725, -0.62), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(0.62, 0.725, 0.62), material: "iron"
+    cylinder radius: 0.97, height: 1.85, at: vec(0.0, 2.375, 0), material: "oak"
+    cylinder radius: 0.98, height: 0.04, at: vec(0.0, 1.55, 0), material: "iron"
+    cylinder radius: 0.98, height: 0.04, at: vec(0.0, 2.22, 0), material: "iron"
+    cylinder radius: 0.98, height: 0.04, at: vec(0.0, 3.2, 0), material: "iron"
+    cone 1.04, 0.43, at: vec(0.0, 3.515, 0), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(2.58, 0.725, -0.62), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(2.58, 0.725, 0.62), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(3.82, 0.725, -0.62), material: "iron"
+    box size: vec(0.095, 1.45, 0.095), at: vec(3.82, 0.725, 0.62), material: "iron"
+    cylinder radius: 0.97, height: 1.85, at: vec(3.2, 2.375, 0), material: "oak"
+    cylinder radius: 0.98, height: 0.04, at: vec(3.2, 1.55, 0), material: "iron"
+    cylinder radius: 0.98, height: 0.04, at: vec(3.2, 2.22, 0), material: "iron"
+    cylinder radius: 0.98, height: 0.04, at: vec(3.2, 3.2, 0), material: "iron"
+    cone 1.04, 0.43, at: vec(3.2, 3.515, 0), material: "iron"
+  return assembly

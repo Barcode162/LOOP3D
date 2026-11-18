@@ -1,0 +1,66 @@
+# open_laptop · open laptop for the Loft
+# kind: model
+# place: open_laptop(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, open laptop
+
+to open_laptop(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.31, 0.014, 0.2), at: vec(0, 0.007, 0), material: material(like: "plastic", color: rgb(0.065, 0.065, 0.07)), round: 0.005
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.13578, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.11315, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.09052, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.06789, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.04526, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.02263, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.0, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.02263, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.04526, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.06789, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.09052, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.11315, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.13578, 0.016, -0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.13578, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.11315, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.09052, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.06789, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.04526, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.02263, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.0, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.02263, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.04526, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.06789, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.09052, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.11315, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.13578, 0.016, -0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.13578, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.11315, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.09052, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.06789, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.04526, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.02263, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.0, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.02263, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.04526, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.06789, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.09052, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.11315, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.13578, 0.016, 0.0235), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.13578, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.11315, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.09052, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.06789, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.04526, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(-0.02263, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.0, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.02263, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.04526, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.06789, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.09052, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.11315, 0.016, 0.0705), material: "iron"
+    box size: vec(0.01953, 0.004, 0.032), at: vec(0.13578, 0.016, 0.0705), material: "iron"
+    box size: vec(0.31, 0.2, 0.013), at: vec(0, 0.114, 0.1), material: "iron", round: 0.005
+    box size: vec(0.292, 0.18, 0.003), at: vec(0, 0.114, 0.092), material: "glowing_screen"
+  return assembly

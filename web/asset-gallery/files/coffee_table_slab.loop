@@ -1,0 +1,45 @@
+# coffee_table_slab · a low coffee table: one thick oak slab on a blackened steel frame
+# coffee_table_slab(at, turn, length, wood, steel) stands on the floor at `at`, front to -z, and gives the group
+# back. The slab is 6 cm thick, edges rounded 12 mm, its top 0.36 m up; its two long edges wander a few
+# millimetres in and out, a little differently for each seed, like a live edge. Under it stand two flat steel
+# loops (40 by 8 mm bar) joined by a low rail. Books, cups or a tray go at at + vec(0, 0.36, 0).
+#
+# kind: model
+# place: coffee_table_slab(AT, turn: 0, length: 1.3, wood: "oak", seed: 1)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: table, coffee, oak, steel, loft, furniture
+# size: chair
+# sockets: top
+# seeds: any whole number
+
+let slab_steel = material(like: "iron", color: rgb(0.05, 0.05, 0.055), roughness: 0.55)
+
+to coffee_table_slab(at: vec(0, 0, 0), turn: 0, length: 1.3, wood: "oak", steel: slab_steel, seed: 1)
+  let width = 0.7
+  let thick = 0.06
+  let top = 0.36
+  let core = 0.6
+  let bars = 5
+  let bar_w = 0.04
+  let bar_t = 0.008
+  let loop_d = 0.46
+  let g = group(at: at, turn: turn)
+    box size: vec(length, thick, core), at: vec(0, top - thick / 2, 0), material: wood, round: 0.012
+    # the live edges: five pieces along each long side, each reaching out a little differently
+    let seg = length / bars
+    for each side in [-1, 1]
+      for each i in range(0, bars, 1)
+        let d = (width - core) / 2 - 0.012 + (noise(seed * 3.7 + side, i * 1.3 + 0.4, 0.5) + 1) * 0.008
+        box size: vec(seg - 0.004, thick, d), at: vec(-length / 2 + seg * (i + 0.5), top - thick / 2, side * (core / 2 + d / 2 - 0.004)), material: wood, round: 0.012
+    # two flat steel loops standing under the slab, one near each end
+    let h = top - thick - 0.002
+    for each x in [-length / 2 + 0.2, length / 2 - 0.2]
+      box size: vec(bar_t, bar_w, loop_d), at: vec(x, bar_w / 2, 0), material: steel, round: 0.002
+      box size: vec(bar_t, bar_w, loop_d), at: vec(x, h - bar_w / 2, 0), material: steel, round: 0.002
+      for each z in [-loop_d / 2 + bar_w / 2, loop_d / 2 - bar_w / 2]
+        box size: vec(bar_t, h, bar_w), at: vec(x, h / 2, z), material: steel, round: 0.002
+    # the low rail between the loops
+    box size: vec(length - 0.4, 0.03, bar_t), at: vec(0, 0.12, 0), material: steel, round: 0.002
+  return g

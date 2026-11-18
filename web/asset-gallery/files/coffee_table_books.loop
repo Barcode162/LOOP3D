@@ -1,0 +1,23 @@
+# coffee_table_books · coffee table books for the Loft
+# kind: model
+# place: coffee_table_books(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, coffee table books
+
+to coffee_table_books(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.28, 0.029, 0.19), at: vec(0.0, 0.0145, 0), material: "plaster"
+    box size: vec(0.284, 0.003, 0.194), at: vec(0.0, 0.0015, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.284, 0.003, 0.194), at: vec(0.0, 0.0305, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.005, 0.029, 0.19), at: vec(-0.14, 0.0145, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39))
+    box size: vec(0.262, 0.029, 0.19), at: vec(0.01, 0.0465, 0), material: "plaster"
+    box size: vec(0.266, 0.003, 0.194), at: vec(0.01, 0.0335, 0), material: material(like: "terracotta", color: rgb(0.62, 0.28, 0.17))
+    box size: vec(0.266, 0.003, 0.194), at: vec(0.01, 0.0625, 0), material: material(like: "terracotta", color: rgb(0.62, 0.28, 0.17))
+    box size: vec(0.005, 0.029, 0.19), at: vec(-0.121, 0.0465, 0), material: material(like: "terracotta", color: rgb(0.62, 0.28, 0.17))
+    box size: vec(0.244, 0.029, 0.19), at: vec(0.02, 0.0785, 0), material: "plaster"
+    box size: vec(0.248, 0.003, 0.194), at: vec(0.02, 0.0655, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.248, 0.003, 0.194), at: vec(0.02, 0.0945, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+    box size: vec(0.005, 0.029, 0.19), at: vec(-0.102, 0.0785, 0), material: material(like: "fabric", color: rgb(0.17, 0.32, 0.18))
+  return assembly

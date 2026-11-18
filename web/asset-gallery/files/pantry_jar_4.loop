@@ -1,0 +1,14 @@
+# pantry_jar_4 · pantry jar 4 for the Loft
+# kind: model
+# place: pantry_jar_4(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, pantry jar 4
+
+to pantry_jar_4(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    cylinder radius: 0.038, height: 0.134, at: vec(0, 0.067, 0), material: "glass"
+    cylinder radius: 0.03534, height: 0.0938, at: vec(0, 0.0509, 0), material: material(like: "porcelain", color: rgb(0.89, 0.87, 0.81))
+    cylinder radius: 0.03952, height: 0.014, at: vec(0, 0.141, 0), material: "walnut"
+  return assembly

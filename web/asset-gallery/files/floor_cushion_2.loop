@@ -1,0 +1,14 @@
+# floor_cushion_2 · floor cushion 2 for the Loft
+# kind: model
+# place: floor_cushion_2(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, floor cushion 2
+
+to floor_cushion_2(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    box size: vec(0.63, 0.13, 0.62), at: vec(0, 0.065, 0), material: material(like: "fabric", color: rgb(0.16, 0.31, 0.39)), round: 0.0546
+    box size: vec(0.014, 0.0975, 0.005), at: vec(-0.025, 0.06435, -0.31), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+    box size: vec(0.014, 0.0975, 0.005), at: vec(0.025, 0.06435, -0.31), material: material(like: "fabric", color: rgb(0.82, 0.73, 0.58))
+  return assembly

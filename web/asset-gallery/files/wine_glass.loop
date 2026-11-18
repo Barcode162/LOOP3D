@@ -1,0 +1,14 @@
+# wine_glass · wine glass for the Loft
+# kind: model
+# place: wine_glass(AT)
+# credit: Generated with OpenAI Codex for J Production
+# licence: CC0-1.0
+# from: The Loft
+# tags: loft, wine glass
+
+to wine_glass(at: vec(0, 0, 0), turn: 0)
+  let assembly = group(at: at, turn: turn)
+    cylinder radius: 0.032, height: 0.005, at: vec(0, 0.0025, 0), material: "glass"
+    cylinder radius: 0.004, height: 0.08, at: vec(0, 0.045, 0), material: "glass"
+    lathe profile: [vec(0, 0), vec(0.00864, 0), vec(0.036, 0.06512), vec(0.036, 0.074), vec(0.03276, 0.074), vec(0.03276, 0.06438), vec(0.00734, 0.00888), vec(0, 0.00888)], segments: 32, at: vec(0, 0.085, 0), material: "glass"
+  return assembly

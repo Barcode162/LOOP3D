@@ -1,0 +1,30 @@
+# step_strips · a strip of warm light under the front edge of every tread of a stair, 250 lm per metre
+# step_strips(at, rises, rise, going, width, lumens, kelvin) takes the same numbers as stair_straight and
+# puts one strip under each tread's front edge: 0.03 m in from each side, 0.02 m back from the nosing, facing
+# down and tipped a little towards the stair's foot, so each one washes the tread below while the tread above
+# hides it from anyone walking up or standing in the room. One tread fewer than rises, like the stair. Gives
+# back nothing.
+#
+# kind: light
+# place: step_strips(at: AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: stair, steps, strip, led, warm, night
+# size: room
+# sockets: light
+# seeds: none, the same every time
+
+let tread_thick = 0.045
+let tread_over = 0.02
+let tuck_in = 0.03
+let set_back = 0.02
+let under_tread = 0.003
+
+to step_strips(at: vec(0, 0, 0), rises: 17, rise: 0.18, going: 0.27, width: 0.95, lumens: 250, kelvin: 2700)
+  let reach = width / 2 - tuck_in
+  # tread i's front edge is at (i - 1) x going - over; the strip sits set_back behind that, under the tread
+  for each i in range(1, rises - 1, 1)
+    let z = at.z + (i - 1) * going - tread_over + set_back
+    let y = i * rise - tread_thick - under_tread
+    strip(vec(at.x - reach, y, z), vec(at.x + reach, y, z), lumens: lumens, kelvin: kelvin, facing: vec(0, -1, -0.6))
