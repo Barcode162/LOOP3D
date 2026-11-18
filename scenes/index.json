@@ -60,6 +60,11 @@
      "name": "skeleton",
      "title": "The skeleton",
      "still": false
+    },
+    {
+     "name": "arm",
+     "title": "The arm",
+     "still": true
     }
    ],
    "library": [],

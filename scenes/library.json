@@ -267,7 +267,7 @@
   "licence": "our own work, free for every J Production project (the measurements are published facts)",
   "name": "human",
   "place": "bones(\"human\", at: AT)",
-  "what": "the standard human skeleton, ring 1: the 66 bones you move"
+  "what": "the standard human skeleton, ring 1: the 67 bones you move"
  },
  {
   "about": "city_night(toward, eye_height, seed, lit, at, lamp) puts a dark blue-black sky with a few stars, a haze that fades far towers to blue, and 180 lit-window towers in a fan 60 degrees each side of `toward` (towards -z by default): 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from 800 to 1,500 m, none nearer than 100 m, their feet `eye_height` below `at` (the eye, the middle of the glass). Under them a dark street and, far out at 300 m, a low panel of dull orange (the streets' glow). One tall group stands off-centre and one stretch of sky is left clear; each seed puts them elsewhere. `toward` leans to -z (its z is negative). It adds ONE lamp outside, a cool panel the size of a 9 by 6 m window, 1 m outside the glass facing in (the city's own light reaching the room: 7,500 K, 300 lumens, no shadows). It is the only lamp outside; `lamp: no` leaves it out (the panel shines at the eye from the glass side). Gives back that light.",
