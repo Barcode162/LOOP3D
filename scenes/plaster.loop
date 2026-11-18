@@ -1,0 +1,23 @@
+# plaster · smooth wall plaster painted matt off-white, with faint trowel marks
+# For walls and ceilings of any room. Wears greyer and a touch shinier on knocked corners; grime is sparing.
+#
+# kind: surface
+# place: test_ball("plaster", AT)
+# tags: wall, white, indoor
+# size: room
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M21 (2026-11-11)
+
+let trowel = 40 cm      # one sweep of the trowel
+let tile_side = 2 m     # five sweeps across
+
+to plaster(seed: 1)
+  return surface("plaster", seed: seed, tile: tile_side, space: "world",
+    base: {color: rgb(0.90, 0.88, 0.84), color2: rgb(0.84, 0.82, 0.78), roughness: 0.9,
+           pattern: "noise", size: trowel, stretch: 3, contrast: 0.3, bump: 0.2 mm},
+    vary: {large: 1.2 m, amount: 0.04},
+    wear: {color: rgb(0.74, 0.73, 0.71), roughness: 0.75, amount: 0.4},
+    dirt: {color: rgb(0.45, 0.44, 0.42), roughness: 0.9, amount: 0.3},
+    detail: {pattern: "speckle", size: 1 mm, bump: 0.02 mm})

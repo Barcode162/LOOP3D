@@ -215,7 +215,9 @@ window.LE = window.LE || {};
     const mouseTurn = e.pointerType === 'mouse' && (e.button === 1 || e.button === 2);
     if (mouseTurn) { g = { kind: e.shiftKey || e.button === 1 && e.shiftKey ? 'pan' : 'orbit', x: e.clientX, y: e.clientY, moved: true }; return; }
     if (e.pointerType === 'mouse' && e.shiftKey) { g = { kind: 'pan', x: e.clientX, y: e.clientY, moved: true }; return; }
-    const h = V.sel && handleAt(e.clientX, e.clientY);
+    // the Studio's Shape bench takes a touch on one of its dots before anything else (web/editor/studio.js)
+    if (V.hook && V.hook.down && V.hook.down(e, viewRay(e.clientX, e.clientY))) { g = { kind: 'hook', moved: true }; return; }
+    const h = V.sel && !(V.hook && V.hook.quiet) && handleAt(e.clientX, e.clientY);
     if (h && editable(V.sel)) { startHandle(h, e); return; }
     const mk = markAt(e.clientX, e.clientY);
     if (mk) { pickMark(mk); if (mk.movable) startMarkMove(mk, e); return; }
@@ -230,6 +232,7 @@ window.LE = window.LE || {};
     p.x = e.clientX; p.y = e.clientY;
     if (!g) return;
     if (g.kind === 'two') return moveTwo();
+    if (g.kind === 'hook') return V.hook && V.hook.move && V.hook.move(e, viewRay(e.clientX, e.clientY));
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
     if (g.kind === 'maybe') {
       if (Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 8) return;
@@ -310,6 +313,7 @@ window.LE = window.LE || {};
       V.select(was.index >= 0 ? was.index : null);
     } else if (was.kind === 'move' || was.kind === 'lift' || was.kind === 'turn' || was.kind === 'size') finishDrag(was);
     else if (was.kind === 'mark') finishMark(was);
+    else if (was.kind === 'hook' && V.hook && V.hook.up) V.hook.up(cancelled);
   }
 
   // ---------------------------------------------------------------- marks: lamps and sounds
@@ -535,6 +539,7 @@ window.LE = window.LE || {};
       ctx.fillText(m.glyph || '♪', p[0], p[1] + 0.5);
       if (m.label) { ctx.fillStyle = 'rgba(242,242,242,0.9)'; ctx.font = '600 11px -apple-system, system-ui, sans-serif'; ctx.fillText(m.label, p[0], p[1] + 27); }
     }
+    if (V.hook && V.hook.draw && V.mode === 'edit') V.hook.draw(ctx, project, cw, ch);
     if (V.sel && V.mode === 'edit') {
       const t = E.thing(V.sel.index);
       if (t && t.visible) {
@@ -544,7 +549,7 @@ window.LE = window.LE || {};
         for (const [a, b] of EDGES) if (cs[a] && cs[b]) { ctx.moveTo(cs[a][0], cs[a][1]); ctx.lineTo(cs[b][0], cs[b][1]); }
         ctx.stroke();
         ctx.shadowBlur = 0;
-        if (V.sel.line > 0) {
+        if (V.sel.line > 0 && !(V.hook && V.hook.quiet)) {
           const wb = worldBox(t), c = mul(add(wb.lo, wb.hi), 0.5);
           const top = project([c[0], wb.hi[1], c[2]]), base = project([c[0], wb.lo[1], c[2]]), mid = project(c);
           const pts = cs.filter(Boolean);

@@ -1,0 +1,24 @@
+# leather · brown full-grain leather, a little worn: a fine pebble grain, soft sheen, slightly uneven hide
+# For sofas, armchairs, belts, book covers and saddles. Rubbed edges turn darker and shinier; dirt gathers dark in creases.
+#
+# kind: surface
+# place: test_ball("leather", AT)
+# tags: leather, brown, soft, indoor
+# size: sofa
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M38 (2026-11-11)
+
+let pebble = 1.5 mm     # one cell of the grain
+let hide = 0.4 m        # one patch of the hide taking dye differently
+let pore = 0.3 mm       # a pore, close up only
+
+to leather(seed: 1)
+  return surface("leather", seed: seed, tile: 0.25 m, clearcoat: 0.2,
+    base: {color: rgb(0.40, 0.23, 0.14), color2: rgb(0.34, 0.20, 0.12), roughness: 0.5,
+           pattern: "cells", size: pebble, contrast: 0.25, bump: 0.15 mm},
+    vary: {large: hide, amount: 0.1},
+    wear: {color: rgb(0.27, 0.15, 0.09), roughness: 0.3, amount: 0.3},
+    dirt: {color: rgb(0.12, 0.07, 0.05), roughness: 0.6, amount: 0.4},
+    detail: {pattern: "pores", size: pore, bump: 0.02 mm})

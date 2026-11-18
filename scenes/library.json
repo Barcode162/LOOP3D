@@ -280,6 +280,126 @@
   "what": "the city at night in three depths, seen from forty metres up"
  },
  {
+  "about": "For handles, hinges, taps and lamp fittings. Wears polished bright on edges; tarnishes dark brown-green in hollows.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M28 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "brass",
+  "place": "test_ball(\"brass\", AT)",
+  "what": "satin brass, as on a door handle or a lamp fitting: warm yellow, a soft sheen, fingerprints"
+ },
+ {
+  "about": "For walls, chimneys and paving of any building. Each brick takes its own tone; joints gather grime; rounded edges wear paler.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M19 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "brick",
+  "place": "test_ball(\"brick\", AT)",
+  "what": "red clay brick in running bond, 215 by 65 mm, a 10 mm mortar joint set back"
+ },
+ {
+  "about": "For walls, floors, plinths and steps. Wears paler on chipped arrises; gathers dark grey in grooves and corners.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M20 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "concrete",
+  "place": "test_ball(\"concrete\", AT)",
+  "what": "grey concrete cast against smooth forms: soft mottle, a few air holes, faint pour lifts"
+ },
+ {
+  "about": "For sofas, cushions, curtains and chairs. Wears paler and fuzzier on edges; gathers grey-brown dirt in creases.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M35 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "fabric",
+  "place": "test_ball(\"fabric\", AT)",
+  "what": "plain woven cotton-linen upholstery cloth, grey with a cool tint, slubs where the yarn is thick"
+ },
+ {
+  "about": "For room floors. The boards each take their own tone; paths wear shinier; grime gathers in a thing's creases.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M13 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "floorboards",
+  "place": "test_ball(\"floorboards\", AT)",
+  "what": "oiled oak boards, 140 mm wide, ends staggered, a dark hairline gap"
+ },
+ {
+  "about": "For sofas, armchairs, belts, book covers and saddles. Rubbed edges turn darker and shinier; dirt gathers dark in creases.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M38 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "leather",
+  "place": "test_ball(\"leather\", AT)",
+  "what": "brown full-grain leather, a little worn: a fine pebble grain, soft sheen, slightly uneven hide"
+ },
+ {
+  "about": "For floors, counters, plinths and statues. Keeps its polish; edges wear honed (duller); gathers a little dull grey dust in grooves.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M16 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "marble",
+  "place": "test_ball(\"marble\", AT)",
+  "what": "white marble, polished: near white with soft grey veins that wander"
+ },
+ {
+  "about": "For furniture, floors and beams. Wears paler and smoother on edges; gathers dark in joints.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M9 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "oak",
+  "place": "test_ball(\"oak\", AT)",
+  "what": "European oak, sawn along the trunk, sanded and oiled: arched grain, open pores, a soft sheen"
+ },
+ {
+  "about": "For walls and ceilings of any room. Wears greyer and a touch shinier on knocked corners; grime is sparing.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M21 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "plaster",
+  "place": "test_ball(\"plaster\", AT)",
+  "what": "smooth wall plaster painted matt off-white, with faint trowel marks"
+ },
+ {
+  "about": "For worktops, sinks, handles, appliances and trims. Wears smoother on edges; grime gathers dark in joints.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M31 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "steel",
+  "place": "test_ball(\"steel\", AT)",
+  "what": "satin stainless steel, the kind of a kitchen fitting: soft sheen, fine brushing, a few fingerprints"
+ },
+ {
+  "about": "For sofas, curtains, cushions and stage drapes. Wears bald, darker and shinier on edges; pale dust sits in the creases.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M36 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "velvet",
+  "place": "test_ball(\"velvet\", AT)",
+  "what": "crimson cotton velvet, its pile crushed one way and another into patches of light and dark"
+ },
+ {
+  "about": "For fine furniture and panels. Lightens and shines where handled; gathers near black in joints.",
+  "credit": "J Production, made in Loop3D",
+  "from": "order M10 (2026-11-11)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "walnut",
+  "place": "test_ball(\"walnut\", AT)",
+  "what": "black walnut heartwood, sanded and waxed: deep chocolate, fine calm grain, a satin shine"
+ },
+ {
   "about": "drifting plates lift its mountain ranges, rivers carve its valleys as it rises, lakes fill its hollows, wind from the west rains on the mountains' near side and leaves their far side dry; sand on the shores, grass, forests where it is wet and warm, bare rock high and steep. Its land and trees are made a chunk at a time round the player as they walk. The player starts on gentle land looking towards the mountains. (any whole number: each grows a different island)",
   "credit": "J Production, made in Loop3D",
   "from": "the picture pipeline's phase 10 (2026-11-10)",

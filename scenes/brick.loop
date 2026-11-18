@@ -1,0 +1,25 @@
+# brick · red clay brick in running bond, 215 by 65 mm, a 10 mm mortar joint set back
+# For walls, chimneys and paving of any building. Each brick takes its own tone; joints gather grime; rounded edges wear paler.
+#
+# kind: surface
+# place: test_ball("brick", AT)
+# tags: brick, building, outdoor, indoor
+# size: room
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M19 (2026-11-11)
+
+let brick_length = 215 mm
+let tile_side = 2 m     # about nine bricks across
+
+to brick(seed: 1)
+  return surface("brick", seed: seed, tile: tile_side, space: "world",
+    base: {color: rgb(0.60, 0.30, 0.22), color2: rgb(0.70, 0.68, 0.64), roughness: 0.85, roughness2: 0.95,
+           pattern: "bricks", size: brick_length, stretch: 3.3, piece: 0.15, bump: 3 mm},
+    coat: {color: rgb(0.20, 0.20, 0.21), roughness: 0.95, cover: 0.3, facing: "any",
+           pattern: "noise", size: 20 cm, sits: "low"},
+    vary: {large: 2 m, amount: 0.1, tint: rgb(0.45, 0.24, 0.18)},
+    wear: {color: rgb(0.74, 0.50, 0.40), roughness: 0.8, amount: 0.4},
+    dirt: {color: rgb(0.16, 0.14, 0.13), roughness: 0.95, amount: 0.4},
+    detail: {pattern: "speckle", size: 0.5 mm, bump: 0.1 mm})

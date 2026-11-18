@@ -48,7 +48,7 @@ window.LE = window.LE || {};
     return last;
   }
   async function addLine(line, label, selectIt) {
-    const at = lastThingLine();
+    const at = S.blockEnd(H.text, lastThingLine());  // after the lines under it too (a box's pulls)
     const text = S.insertAfter(H.text, at, line);
     if (!H.commit(text, label)) return;
     SP.pendingSelect = selectIt ? at + 1 : null;

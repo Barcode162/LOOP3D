@@ -1,0 +1,15 @@
+# Pull a corner: one box with a corner pulled out.
+# What to look at: a walnut block on a floor with its top-right-front corner drawn out into a point, the other
+# seven corners where a box has them. The line under the box is its hand edit: the Studio writes a line like it
+# when you drag a corner on its Shape bench, and the box keeps its own recipe.
+title "Pull a corner"
+mode "game"
+
+box size: vec(8, 0.1, 6), at: vec(0, -0.05, 0), material: "floorboards"
+box size: vec(1, 1, 1), at: vec(0, 0.5, 0), material: "walnut"
+  pull point: 8, by: vec(0.25, 0.4, 0.25)
+
+light(at: vec(-2, 3, 2.5), lumens: 3000, kelvin: 3000)
+light(at: vec(2.5, 2.5, 2), lumens: 1200, kelvin: 4500)
+sky "color", color: rgb(0.02, 0.02, 0.03), nits: 3
+camera at: vec(2.2, 1.6, 3), look_at: vec(0, 0.5, 0), lens: 50 mm

@@ -65,6 +65,11 @@
      "name": "arm",
      "title": "The arm",
      "still": true
+    },
+    {
+     "name": "pull",
+     "title": "Pull a corner",
+     "still": false
     }
    ],
    "library": [],
