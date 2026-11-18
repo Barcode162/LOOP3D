@@ -1,0 +1,23 @@
+# copper · polished copper, as on a bar tap or a lamp fitting: warm rose-orange, a soft sheen, fine brushing
+# For taps, handles, lamps, pots and trims. Wears polished bright on edges; tarnishes dark brown-green in hollows.
+#
+# kind: surface
+# place: test_ball("copper", AT)
+# tags: metal, copper, warm, fittings
+# size: hand
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: asset pack, Fluff (2026-11-17)
+
+let handling = 30 cm    # a thumb and a palm: the patches of fingerprints
+let brushing = 0.03 mm  # the fine lines of the polished finish
+
+# A metal's colour is its reflectance, written here as seen.
+to copper(seed: 1)
+  return surface("copper", seed: seed, tile: 0.5 m,
+    base: {color: rgb(0.88, 0.52, 0.34), metal: 1, roughness: 0.25},
+    vary: {large: handling, amount: 0.03, roughness: 0.1},
+    wear: {color: rgb(0.92, 0.60, 0.42), metal: 1, roughness: 0.12, amount: 0.7},
+    dirt: {color: rgb(0.15, 0.20, 0.16), roughness: 0.8, amount: 0.5},
+    detail: {pattern: "brushed", size: brushing, stretch: 30, roughness: 0.1})

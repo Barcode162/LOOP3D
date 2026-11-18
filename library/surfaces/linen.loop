@@ -1,0 +1,25 @@
+# linen · natural flax linen, undyed: a plain weave with slubs where the yarn is thick, soft and matte
+# For curtains, tablecloths, cushions and lampshades. Creases wear paler; dust sits pale in the weave.
+#
+# kind: surface
+# place: test_ball("linen", AT)
+# tags: fabric, linen, soft, indoor
+# size: sofa
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: asset pack, Fluff (2026-11-17)
+
+let thread = 1 mm       # one thread of the weave
+let slub = 8 mm         # a thick slub in the yarn: 5 to 12 mm long
+
+to linen(seed: 1)
+  return surface("linen", seed: seed, tile: 0.5 m, project: "uv",
+    base: {color: rgb(0.85, 0.80, 0.68), color2: rgb(0.76, 0.70, 0.58), roughness: 0.9,
+           pattern: "weave", size: thread, stretch: 1, bump: 0.1 mm},
+    coat: {color: rgb(0.88, 0.84, 0.74), roughness: 0.9, cover: 0.05, pattern: "speckle", size: slub,
+           stretch: 4, sits: "any"},
+    vary: {large: 0.5 m, amount: 0.06},
+    wear: {color: rgb(0.90, 0.86, 0.76), roughness: 0.9, amount: 0.5},
+    dirt: {color: rgb(0.60, 0.58, 0.52), roughness: 0.95, amount: 0.4},
+    detail: {pattern: "speckle", size: 0.2 mm, bump: 0.02 mm})
