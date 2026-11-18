@@ -19,16 +19,17 @@ reply short: what changed, what to look at on the phone, what's next, and "a new
 
 ## 3. Where we are (the deployer rewrites this section each time it ships; keep it under 15 lines)
 *Last written 2026-11-18.*
-- **Top priority: the Loft** (`projects/loft/`, PLAN "Now"). Goals 1 to 7 are in: the shell, night, the upper
+- **Top priority: the Loft** (`projects/loft/`, PLAN "Now"). Goals 1 to 8 are in: the shell, night, the upper
   floor and stair, stair strips, the bones, pools of warm light, the city through the glass, furnished from 62
-  library entries. It fits the Phone budget. **Next: goal 8, the room in the glass (LOFT8), then goal 9, marked
-  and timed on the phone (LOFT9).** Open: the bed pillows don't show; cushions look stepped; the live lamp grid
-  adds about twice the lamps it needs; the public player still shows the Loft before goal 2.
+  library entries, and the room mirrored in the glass (M60). Lamp work is 25 against the Phone budget's 24 (the
+  mirror adds 2). **Next: the lamp grid (it adds about twice the lamps a pixel needs), then goal 9, marked and
+  timed on the phone (LOFT9).** Open: the bed pillows don't show; cushions look stepped; the public player still
+  shows the Loft before goal 2.
 - **Paused: the Studio** (track T, `docs/STUDIO.md`, PLAN "Beside it"). The skeleton, skin and live bending,
   pull a corner, and extrude a face are done. Next when it resumes: goal 19b (inset, then bevel, loop cut), or keyed bones.
 - **Needs the user** (PLAN "Needs you"): play on the recording page; the three IONOS secrets for the bar (phase C).
 - **Not built yet:** the Loop3D Workshop dashboard page.
-- **The board:** empty. main is green (296 tests).
+- **The board:** empty. main is green (297 tests).
 
 ## 4. The words (what things mean here)
 | Word | Means |

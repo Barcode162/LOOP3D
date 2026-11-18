@@ -288,6 +288,82 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       c.lampsThatMatterMost = std::max(c.lampsThatMatterMost, need);
     }
   if (c.samples) c.coverage = static_cast<float>(covered) / static_cast<float>(c.samples);
+
+  // ---- the mirror (order M60): the pane the renderer picks, the room drawn
+  // again from the eye mirrored in it, what lies beyond the pane left out
+  Vec4 pane, rect(1, 1, -1, -1);
+  if (view.mirrorPane) {
+    std::vector<Pane> inView;
+    std::vector<AABB> paneBoxes;
+    for (const MeshInstance& in : scene.instances) {
+      if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size()) || !isGlass(scene, in.material)) continue;
+      Pane p;
+      if (std::fabs(in.transform.linear().determinant()) < 1e-12f || !eye.visible(meshBox[in.mesh].transformed(in.transform))) continue;
+      if (flatPane(meshBox[in.mesh], in.transform, p)) inView.push_back(p), paneBoxes.push_back(meshBox[in.mesh].transformed(in.transform));
+    }
+    c.mirror = largestPane(inView, view.camera.position, pane);
+    // where the pane is on screen: the mirror draws only there
+    for (size_t i = 0; c.mirror && i < inView.size(); ++i)
+      if (onPlane(inView[i], pane)) {
+        const Vec4 r = screenRect(paneBoxes[i], frameViewProj(view));
+        rect = rect.x > rect.z ? r : Vec4(std::min(rect.x, r.x), std::min(rect.y, r.y), std::max(rect.z, r.z), std::max(rect.w, r.w));
+      }
+  }
+  if (c.mirror) {
+    const Vec3 pn(pane.x, pane.y, pane.z);
+    const Mat4 mirrorViewProj = frameViewProj(view) * mirrorIn(pane);
+    const Frustum mf = Frustum::fromViewProj(mirrorViewProj);
+    std::set<int> batches;
+    for (const MeshInstance& in : scene.instances) {
+      if (in.mesh < 0 || in.mesh >= static_cast<int>(scene.meshes.size()) || !scene.meshes[in.mesh].triangleCount()) continue;
+      if (isGlass(scene, in.material) || std::fabs(in.transform.linear().determinant()) < 1e-12f) continue;
+      const AABB box = meshBox[in.mesh].transformed(in.transform);
+      const Vec3 far(pn.x >= 0 ? box.hi.x : box.lo.x, pn.y >= 0 ? box.hi.y : box.lo.y, pn.z >= 0 ? box.hi.z : box.lo.z);
+      if (dot(pn, far) + pane.w < 0) continue;  // wholly beyond the pane
+      if (view.cullOffscreen && !mf.visible(box)) continue;
+      const int drawn = scene.lodMesh(in.mesh, lodLevel(radiusPixels(box, view.camera.position, pixelsPerRadian), view.lodBias));
+      ++c.mirrorThings, c.mirrorTriangles += scene.meshes[drawn].triangleCount();
+      batches.insert(drawn);
+    }
+    c.mirrorDraws = batches.size();
+    // its pixels: rays from the mirrored eye, counting only what is on the eye's side
+    const Mat4 minv = mirrorViewProj.inverse();
+    int ms = 0;
+    double mShaded = 0, mWork = 0;
+    for (int y = stride / 2; y < h; y += stride * 2)
+      for (int x = stride / 2; x < w; x += stride * 2) {
+        ++ms;
+        float nx = (static_cast<float>(x) + 0.5f) / static_cast<float>(w) * 2 - 1;
+        float ny = 1 - (static_cast<float>(y) + 0.5f) / static_cast<float>(h) * 2;
+        if (nx < rect.x || nx > rect.z || ny < rect.y || ny > rect.w) continue;  // outside the pane: not drawn
+        Vec3 a = minv.point({nx, ny, 0}), b = minv.point({nx, ny, 1});
+        float reach = length(b - a);
+        Ray ray{a, (b - a) / reach};
+        // start where the ray crosses the pane's plane
+        const float da = dot(pn, a) + pane.w, dd = dot(pn, ray.d);
+        float tmin = da < 0 ? (dd > 1e-6f ? -da / dd : reach) : 0;
+        int k = 0;
+        SceneHit first;
+        for (; k < 64 && tmin < reach; ++k) {
+          SceneHit hit = bvh.closest(ray, tmin, reach);
+          if (!hit.valid()) break;
+          if (isGlass(scene, bvh.materialOf(hit.inst))) --k;  // glass is left out of the mirror
+          else if (!first.valid()) first = hit;
+          tmin = hit.t + std::max(1e-4f, hit.t * 1e-5f);
+        }
+        if (k <= 0) continue;
+        const float sh = shadedOf(k);
+        float lampsHere = c.lampsComputed;
+        if (grid.on) {
+          const int cell = grid.cellOf(ray.at(first.t));
+          lampsHere = static_cast<float>(grid.start[static_cast<size_t>(cell) + 1] - grid.start[static_cast<size_t>(cell)]);
+        }
+        mShaded += sh, mWork += sh * lampsHere;
+      }
+    // a quarter of the pixels; per covered pixel of the frame, as the rest
+    const double per = ms && c.coverage > 0 ? 0.25 / (ms * static_cast<double>(c.coverage)) : 0;
+    c.mirrorShaded = static_cast<float>(mShaded * per), c.mirrorLampWork = static_cast<float>(mWork * per);
+  }
   if (covered) {
     c.layers = static_cast<float>(layers / covered), c.frontLayers = static_cast<float>(fronts / covered);
     c.shadedPerPixel = static_cast<float>(shaded / covered);
@@ -323,8 +399,8 @@ std::vector<std::string> overBudget(const FrameCost& c, const FrameBudget& b) {
     std::snprintf(line, sizeof line, "draw calls %zu (budget %zu)", c.draws(), b.draws);
     out.push_back(line);
   }
-  if (c.shadedPerPixel > b.shadedPerPixel) {
-    std::snprintf(line, sizeof line, "surfaces shaded per pixel %.2f (budget %.2f)", static_cast<double>(c.shadedPerPixel), static_cast<double>(b.shadedPerPixel));
+  if (c.shadedPerPixel + c.mirrorShaded > b.shadedPerPixel) {
+    std::snprintf(line, sizeof line, "surfaces shaded per pixel %.2f (budget %.2f)", static_cast<double>(c.shadedPerPixel + c.mirrorShaded), static_cast<double>(b.shadedPerPixel));
     out.push_back(line);
   }
   if (c.lampWorkPerPixel() > b.lampWorkPerPixel) {

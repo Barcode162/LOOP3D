@@ -534,6 +534,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.clusters = C.render.clusters, v.clusterError = C.render.clusterError;
   v.textureSize = C.render.textureSize;
   v.lightGrid = C.render.lightGrid, v.lampGrouping = C.render.lampGrouping;
+  v.mirrorPane = C.render.mirrorPane && m.budget.quality != "ultra";
   {
     int lamps = 0;
     for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;
@@ -580,6 +581,9 @@ int budgetScene(const std::string& path, const Options& o) {
               static_cast<double>(c.lampsComputed), static_cast<double>(c.lampsThatMatter), c.lampsThatMatterMost, static_cast<double>(c.lampsFor99));
   std::printf("  lamp work per pixel           %8.0f        %8.0f if each pixel added only the lamps that matter\n",
               static_cast<double>(c.lampWorkPerPixel()), static_cast<double>(c.shadedFrontsOnly * c.lampsThatMatter));
+  if (c.mirror)
+    std::printf("  the mirror (a quarter of the pixels)  %zu things, %.2f M triangles, %zu draw calls; per pixel %.2f surfaces shaded, lamp work %.0f\n",
+                c.mirrorThings, static_cast<double>(c.mirrorTriangles) / 1e6, c.mirrorDraws, static_cast<double>(c.mirrorShaded), static_cast<double>(c.mirrorLampWork));
   if (c.lodCopies[0] + c.lodCopies[1] + c.lodCopies[2])
     std::printf("  copies with simpler versions  full %zu (%.2f M) · simpler %zu (%.2f M) · simplest %zu (%.2f M)\n", c.lodCopies[0],
                 static_cast<double>(c.lodTriangles[0]) / 1e6, c.lodCopies[1], static_cast<double>(c.lodTriangles[1]) / 1e6, c.lodCopies[2],

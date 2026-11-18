@@ -181,3 +181,46 @@ TEST(frame_cost_counts_the_pictures_surfaces_add) {
   FrameCost c = measureFrame(s, viewOf(s), 200);
   CHECK(c.pictureLayers == 7 && c.surfaceLayers == 7 && c.pictureBytes == 7 * one);
 }
+
+// The pane that mirrors the room (order M60): the renderer and `loop budget`
+// pick the same one, mirror the eye in it, and count its second drawing.
+TEST(frame_cost_a_pane_of_glass_mirrors_the_room) {
+  // a sheet of glass 6 m by 4 m, 2 cm thick, 2 m beyond the box the camera looks at
+  const AABB sheet({-3, 0, -0.01f}, {3, 4, 0.01f});
+  Pane p;
+  CHECK(flatPane(sheet, Mat4::translation({0, 0, -2}), p));
+  CHECK_NEAR(p.area, 24, 1e-3);
+  CHECK_NEAR(std::fabs(p.plane.z), 1, 1e-5);
+  // too thick, or too small, is not a pane; a turned one is
+  CHECK(!flatPane(AABB({-3, 0, -0.1f}, {3, 4, 0.1f}), Mat4(), p));
+  CHECK(!flatPane(AABB({-0.4f, 0, -0.01f}, {0.4f, 1, 0.01f}), Mat4(), p));
+  CHECK(flatPane(sheet, Mat4::rotation(Quat::axisAngle({0, 1, 0}, 0.5f)), p));
+  // a wall of two panes on one plane is one mirror, larger than a single nearer pane; its normal faces the eye
+  Pane a, b, c;
+  flatPane(sheet, Mat4::translation({-3, 0, -2}), a), flatPane(sheet, Mat4::translation({3, 0, -2}), b);
+  flatPane(AABB({-4, 0, -0.01f}, {4, 4, 0.01f}), Mat4::translation({0, 0, 1}), c);  // 32 m^2 against 48
+  Vec4 plane;
+  CHECK(largestPane({a, c, b}, {0, 1.6f, 5}, plane));
+  CHECK_NEAR(plane.z, 1, 1e-5);
+  CHECK_NEAR(plane.w, 2, 1e-4);
+  CHECK(!largestPane({}, {0, 1.6f, 5}, plane));
+  // the eye mirrored in it: 7 m in front, 7 m behind
+  const Vec3 m = mirrorIn(plane).point({0, 1.6f, 5});
+  CHECK_NEAR(m.z, -9, 1e-4);
+  CHECK_NEAR(m.y, 1.6f, 1e-5);
+  // the frame's cost: the mirror draws both boxes (one behind the eye, on its side of the glass), not the glass
+  Scene s = twoBoxes();
+  Material glass;
+  glass.transmission = 1;
+  s.add(s.addMesh(shapes::box({6, 4, 0.02f})), s.addMaterial(glass), Mat4::translation({0, 2, -2}));
+  FrameView v = viewOf(s);
+  const FrameCost off = measureFrame(s, v);
+  CHECK(!off.mirror && off.mirrorThings == 0);
+  v.mirrorPane = true;
+  const FrameCost on = measureFrame(s, v);
+  CHECK(on.mirror);
+  CHECK(on.mirrorThings == 2);
+  CHECK(on.mirrorShaded > 0);
+  CHECK(on.lampWorkPerPixel() > off.lampWorkPerPixel());
+  CHECK(on.triangles() == off.triangles() + 24);
+}

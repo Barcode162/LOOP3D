@@ -154,6 +154,27 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
   float guess = cam.autoExposure ? (sunOn_ && sunLux_ > 1000 ? 1.0f / 6000 : 1.0f / 30) : exposureFromEv100(cam.ev100());
   // lamp shadows: rays for the big soft lights (one for a small bulb)
   f.fixedExposure = {guess * std::exp2(0.0f), static_cast<float>(shadowRays_), static_cast<float>(C.render.view), C.render.occlusion};
+  // the pane that mirrors the room (order M60): the largest flat glass in
+  // view; the room drawn once more from the eye mirrored in its plane, at a
+  // quarter of the pixels, with this frame's lamps, shadows and light cache
+  Vec4 pane;
+  Mat4 mirrorViewProj;
+  mirrorOn_ = quality_ != Quality::kUltra && C.render.mirrorPane && mirrorView_ && !(skip & 32768) &&
+              choosePane(Frustum::fromViewProj(f.viewProj), cam.position, f.viewProj, pane, mirrorRect_);
+  if (mirrorOn_) {
+    const Mat4 R = mirrorIn(pane);
+    mirrorViewProj = f.viewProj * R;
+    FrameU g = f;
+    g.viewProj = mirrorViewProj;
+    g.invViewProj = mirrorViewProj.inverse();
+    g.camPos = {R.point(cam.position), time};
+    g.ao = {0, f.ao.y, f.ao.z, 0};  // no creases or screen reflections: both read the eye's own pictures
+    g.mirror = pane, g.mirror1 = {2, 0, 0, 0};
+    queue_.WriteBuffer(mirrorUbo_, 0, &g, sizeof g);
+    // the glass reads it where it lands: the drawn part of the full-size picture, halved
+    const float dw = static_cast<float>((width_ + 1) / 2), dh = static_cast<float>((height_ + 1) / 2);
+    f.mirror = pane, f.mirror1 = {1, dw / mirrorW_, dh / mirrorH_, 0};
+  }
   queue_.WriteBuffer(frameUbo_, 0, &f, sizeof f);
 
   PostU p{};
@@ -180,6 +201,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
   wgpu::CommandEncoder enc = device_.CreateCommandEncoder();
   // the eyes' exposure from last frame into the frame's constants (on the GPU)
   enc.CopyBufferToBuffer(exposureBuf_, 0, frameUbo_, offsetof(FrameU, exposure), 16);
+  if (mirrorOn_) enc.CopyBufferToBuffer(exposureBuf_, 0, mirrorUbo_, offsetof(FrameU, exposure), 16);
   bool raster = quality_ != Quality::kUltra;
   bool ultra = !raster && rayTris_ && accumBuf_ && ultraGroup_;
   if (ultra) {
@@ -280,9 +302,10 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
   const bool farStale = farWanted && farBuilding_;
   const bool shadowStale = changes_.stale(shadowMade_, shadowFrom) || (splitting && !stillDrawn_) || ((skip & 2048) && !movers_.empty());
   // ---- what each pass draws: the copies its view can see
+  const Frustum mirrorFrustum = Frustum::fromViewProj(mirrorViewProj);
   if (raster) {
     buildDrawLists(Frustum::fromViewProj(f.viewProj), Frustum::fromViewProj(f.shadowViewProj), sunOn_ && !(skip & 1), cam.position,
-                   static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f)));
+                   static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f)), mirrorOn_ ? &mirrorFrustum : nullptr, pane);
     if (clustersReady()) {
       float perPixel = static_cast<float>(height_) / (2 * std::tan(cam.fovY() * 0.5f));
       prepareList(eyeList_, sceneDraws_, f.viewProj, cam.position, perPixel, occluding && hzbValid_ ? 1.0f : 0.0f);
@@ -469,6 +492,43 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
     }
     cp.End();
   }, ultra);
+  // the mirror (order M60): the room once more, from the eye mirrored in the
+  // pane, at a quarter of the pixels; what lies beyond the pane is cut
+  graph_.add("mirror", {"scene", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"mirror"}, [&] {
+    wgpu::RenderPassColorAttachment ca;
+    ca.view = mirrorView_;
+    ca.loadOp = wgpu::LoadOp::Clear;
+    ca.storeOp = wgpu::StoreOp::Store;
+    ca.clearValue = {0, 0, 0, 0};  // nothing drawn: the glass keeps its own reflection there
+    wgpu::RenderPassDepthStencilAttachment da;
+    da.view = mirrorDepthView_;
+    da.depthLoadOp = wgpu::LoadOp::Clear;
+    da.depthStoreOp = wgpu::StoreOp::Discard;
+    da.depthClearValue = 1;
+    wgpu::RenderPassDescriptor rp;
+    rp.colorAttachmentCount = 1;
+    rp.colorAttachments = &ca;
+    rp.depthStencilAttachment = &da;
+    wgpu::PassTimestampWrites tw;
+    rp.timestampWrites = stamp(tw);
+    wgpu::RenderPassEncoder pass = enc.BeginRenderPass(&rp);
+    const uint32_t mw = (width_ + 1) / 2, mh = (height_ + 1) / 2;
+    pass.SetViewport(0, 0, static_cast<float>(mw), static_cast<float>(mh), 0, 1);
+    // only where the pane is on screen (a pixel more each way, for the glass's blend between texels)
+    {
+      const Vec4 r = mirrorRect_;
+      auto px = [](float v, uint32_t size) { return static_cast<uint32_t>(std::clamp((v * 0.5f + 0.5f) * static_cast<float>(size), 0.0f, static_cast<float>(size))); };
+      const uint32_t x0 = px(r.x, mw) > 0 ? px(r.x, mw) - 1 : 0, x1 = std::min(px(r.z, mw) + 1, mw);
+      const uint32_t y0 = px(-r.w, mh) > 0 ? px(-r.w, mh) - 1 : 0, y1 = std::min(px(-r.y, mh) + 1, mh);
+      pass.SetScissorRect(x0, y0, x1 > x0 ? x1 - x0 : 0, y1 > y0 ? y1 - y0 : 0);
+    }
+    pass.SetBindGroup(0, mirrorGroup0_);
+    pass.SetBindGroup(1, mirrorGroup1_);
+    pass.SetBindGroup(2, rayGroup_);
+    pass.SetPipeline(mirrorPipe_[rays]);
+    drawList(pass, mirrorDraws_);
+    pass.End();
+  }, raster && mirrorOn_);
   // 2. the scene, in light (HDR). With clusters: the GPU culls and picks
   // each cluster's level, one draw writes which triangle each pixel sees,
   // then every pixel is lit once; the sky and glass follow as before.
@@ -528,7 +588,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
       hzbIndex_ ^= 1;
     }
   }, clusterPath && !(skip & 64));
-  graph_.add("light", {"visibility", "depth", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr"}, [&] {
+  graph_.add("light", {"visibility", "depth", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays", "mirror"}, {"hdr"}, [&] {
     {
       wgpu::RenderPassColorAttachment ca;
       ca.view = hdrView_;
@@ -555,6 +615,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
       pass.Draw(3);
       pass.SetPipeline(skyPipe_);
       pass.Draw(3);
+      pass.SetBindGroup(3, mirrorGlassGroup_);
       pass.SetPipeline(glassPipe_[rays]);
       drawBatches(pass, true, false);
       pass.End();
@@ -602,7 +663,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
     prevCam_ = cam.position, prevScreen_[0] = width_, prevScreen_[1] = height_;
   }, clusterPath && upscaling_);
   // the drawing before clusters: each thing drawn and lit where it lands
-  graph_.add("forward", {"scene", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays"}, {"hdr", "depth"}, [&] {
+  graph_.add("forward", {"scene", "shadow map", "far shadow map", "lamp maps", "lamps", "sky", "rays", "mirror"}, {"hdr", "depth"}, [&] {
     wgpu::RenderPassColorAttachment ca;
     ca.view = g_samples > 1 ? msaaView_ : hdrView_;
     if (g_samples > 1) ca.resolveTarget = hdrView_;
@@ -643,6 +704,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
       drawBatches(pass, false, false);
       pass.SetPipeline(skyPipe_);
       pass.Draw(3);
+      pass.SetBindGroup(3, mirrorGlassGroup_);
       pass.SetPipeline(glassPipe_[rays]);
       drawBatches(pass, true, false);
     }

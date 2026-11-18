@@ -26,6 +26,16 @@ inline const char* kSceneWgsl = R"(
 @group(1) @binding(13) var cacheNY : texture_3d<f32>;
 @group(1) @binding(14) var cachePZ : texture_3d<f32>;
 @group(1) @binding(15) var cacheNZ : texture_3d<f32>;
+// the room drawn once more, mirrored in the pane's plane, at a quarter of the pixels (order M60);
+// only the glass reads it (a group of its own: the lighting step has no room for a 17th picture)
+@group(3) @binding(15) var mirrorTex : texture_2d<f32>;
+// the glass's own reflection, kept by shade() for fsGlass where the pane mirrors: what it
+// reflects without the mirror (before exposure), and how strongly
+var<private> glassRefl : vec3f;
+var<private> glassF : vec3f;
+fn mirrorHere(p : vec3f, n : vec3f) -> bool {
+  return frame.mirror1.x > 0.5 && frame.mirror1.x < 1.5 && abs(dot(p, frame.mirror.xyz) + frame.mirror.w) < 0.06 && abs(dot(n, frame.mirror.xyz)) > 0.99;
+}
 // The light falling on a surface at p facing n that isn't straight from a
 // lamp or the sun, blended between the probes round it and between the faces;
 // and (a) how much of what such a surface looks at is open sky.
@@ -901,7 +911,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // what's behind (blended)
     let g0 = (m.extra.w - 1.0) / (m.extra.w + 1.0);
     let F = schlick(vec3f(g0 * g0), nv);
-    lo += (skyRadiance(r, 0.0) * skySeen + room) * F * (occl * glass);
+    let reflected = (skyRadiance(r, 0.0) * skySeen + room) * occl;
+    // the pane that mirrors the room: fsGlass adds its reflection from the mirror's picture
+    glassRefl = reflected;
+    glassF = F * glass;
+    if (!mirrorHere(i.world, n)) { lo += reflected * F * glass; }
     outA = mix(1.0, max(F.x, 0.08), glass);
     lo = lo / max(outA, 0.08);
   }
@@ -945,10 +959,27 @@ fn takeSlopes(i : VsOut) {
   }
   return vec4f(exposed(s.color), 1.0);
 }
+// the mirror's drawing (order M60): the room seen from the eye mirrored in the
+// pane, only what is on the eye's side of it; mirrored, a surface's front
+// shows as its back
+@fragment fn fsMirror(i : VsOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
+  takeSlopes(i);
+  if (dot(i.world, frame.mirror.xyz) + frame.mirror.w < 0.0) { discard; }
+  let s = shade(i, !front);
+  return vec4f(exposed(s.color), 1.0);
+}
 @fragment fn fsGlass(i : VsOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
   takeSlopes(i);
+  glassF = vec3f(0.0);
   let s = shade(i, front);
-  return vec4f(exposed(s.color) * s.alpha, s.alpha);  // premultiplied
+  var c = exposed(s.color) * s.alpha;  // premultiplied
+  let n = normalize(i.nrm);
+  if (mirrorHere(i.world, n) && any(glassF > vec3f(0.0))) {
+    // the room in the glass: the mirror's picture where it drew one, else the glass's own reflection
+    let mc = textureSampleLevel(mirrorTex, skySampler, i.clip.xy * frame.screen.zw * frame.mirror1.yz, 0.0);
+    c += mix(exposed(glassRefl), mc.rgb, mc.a) * glassF;
+  }
+  return vec4f(c, s.alpha);
 }
 
 // ---- shadow pass

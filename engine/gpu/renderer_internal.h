@@ -106,6 +106,8 @@ struct FrameU {
   Vec4 prevCam;            // last frame's eye; w: its drawn width
   Vec4 prevScreen;         // x, y: last frame's drawn size
   Vec4 shade;              // the sun's shadow in true sizes: tan of its angular radius, the near box's width, depth (m)
+  Vec4 mirror;             // the pane that mirrors the room (order M60): its plane, normal towards the eye, d
+  Vec4 mirror1;            // 1: the glass reads the mirror picture; 2: the mirror's own drawing; yz: the drawn share of that picture
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -165,7 +167,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1552, "frame layout");
+static_assert(sizeof(FrameU) == 1584, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -451,9 +453,15 @@ class GpuRenderer final : public Renderer {
   // pass draws one version simpler (shadowLodLevel).
   int lodOf(int mesh, int level) const;
 
-  void buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn, Vec3 eyePos, float pixelsPerRadian);
+  // `mirror` (may be null): the mirror's view, drawing what is on the eye's side of `plane`
+  void buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn, Vec3 eyePos, float pixelsPerRadian, const Frustum* mirror = nullptr,
+                      Vec4 plane = {});
+  // the pane that mirrors this frame (order M60): the largest flat glass in view; false if none
+  // and where it is on screen (`rect`: low and high x, y in -1..1), where the mirror draws
+  bool choosePane(const Frustum& eye, Vec3 eyePos, const Mat4& viewProj, Vec4& plane, Vec4& rect) const;
 
   void drawBatches(wgpu::RenderPassEncoder& pass, bool glass, bool shadow);
+  void drawList(wgpu::RenderPassEncoder& pass, const std::vector<Batch>& list);
 
   void postPass(wgpu::CommandEncoder& enc, wgpu::TextureView target, wgpu::RenderPipeline& pipe, wgpu::BindGroup& group, bool load, uint32_t vw = 0,
                 uint32_t vh = 0);
@@ -696,7 +704,20 @@ class GpuRenderer final : public Renderer {
   std::vector<int> touched_;
   std::vector<uint8_t> instHidden_;    // scaled to nothing
   std::vector<uint32_t> visible_;      // this frame's draw lists (indices into the instance buffer)
-  std::vector<Batch> sceneDraws_, shadowDraws_;
+  std::vector<Batch> sceneDraws_, shadowDraws_, mirrorDraws_;
+  // per copy: the plane of a flat glass pane (normal, d; w of `paneArea_` 0: not a pane), and its area (m^2)
+  std::vector<Vec4> panePlane_;
+  std::vector<float> paneArea_;
+  // the mirror (order M60): its picture and depth at a quarter of the pixels, its own frame constants and groups
+  wgpu::Texture mirrorTex_, mirrorDepthTex_, mirrorDummyTex_;
+  wgpu::TextureView mirrorView_, mirrorDepthView_, mirrorDummyView_;
+  wgpu::Buffer mirrorUbo_;
+  wgpu::BindGroup mirrorGroup0_, mirrorGroup1_, mirrorGlassGroup_;
+  wgpu::BindGroupLayout mirrorLayout_;
+  wgpu::RenderPipeline mirrorPipe_[2];
+  uint32_t mirrorW_ = 0, mirrorH_ = 0;  // the mirror picture's size (half the full size each way)
+  bool mirrorOn_ = false;               // this frame draws it
+  Vec4 mirrorRect_;                     // where (the pane on screen, -1..1)
   std::vector<std::array<int, 2>> meshLods_;   // Scene::lods
   std::vector<uint32_t> lodScratch_[3];
   wgpu::Buffer visibleBuf_;

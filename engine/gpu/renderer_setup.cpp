@@ -24,6 +24,7 @@ GpuRenderer::GpuRenderer(std::string canvas, wgpu::Instance inst, wgpu::Surface 
   format_ = caps.formatCount > 0 ? caps.formats[0] : wgpu::TextureFormat::BGRA8Unorm;
   if (g_skipPasses & 256) format_ = wgpu::TextureFormat::RGBA8Unorm;
   frameUbo_ = buffer(sizeof(FrameU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
+  mirrorUbo_ = buffer(sizeof(FrameU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
   postUbo_ = buffer(sizeof(PostU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
   expUbo_ = buffer(sizeof(ExposureU), wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst);
   lightsBuf_ = buffer(sizeof(LightU) * kMaxLights * 2, wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst);
@@ -224,6 +225,7 @@ void GpuRenderer::buildPipelines() {
     s1.push_back(c);
   }
   scene1Layout_ = layout(s1);
+  mirrorLayout_ = layout({tex(15, F)});  // the mirror's picture, for the glass (order M60)
   postLayout_ = layout({ubo(0, F), tex(1, F), tex(2, F), samp(3, F), ssbo(4, F), ubo(5, F)});
   expLayout_ = layout({ubo(0, wgpu::ShaderStage::Compute), tex(1, wgpu::ShaderStage::Compute, false, true), ssbo(2, wgpu::ShaderStage::Compute, true)});
   std::string sceneCode = std::string("diagnostic(off, derivative_uniformity);\n") + kCommonWgsl + kRayWgsl + kSceneWgsl + kClusterDrawWgsl;
@@ -245,6 +247,8 @@ void GpuRenderer::buildPipelines() {
     return device_.CreatePipelineLayout(&d);
   };
   wgpu::PipelineLayout sceneL = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_}, "forward");
+  wgpu::PipelineLayout glassL = pipeLayout({scene0Layout_, scene1Layout_, rayLayout_, mirrorLayout_}, "glass");
+  wgpu::PipelineLayout pipeL = sceneL;
   wgpu::PipelineLayout shadowL = pipeLayout({scene0Layout_}, "shadow");
   wgpu::PipelineLayout postL = pipeLayout({postLayout_}, "bloom and film");
 
@@ -259,9 +263,9 @@ void GpuRenderer::buildPipelines() {
   vbl.attributes = attrs;
 
   auto scenePipe = [&](const char* fs, bool blend, bool writeDepth, bool sky, wgpu::CompareFunction cmp = wgpu::CompareFunction::Less, bool color = true,
-                       int lampShadows = -1) {
+                       int lampShadows = -1, int samples = 0) {
     wgpu::RenderPipelineDescriptor d;
-    d.layout = sceneL;
+    d.layout = pipeL;
     d.vertex.module = sm;
     d.vertex.entryPoint = sky ? "vsSky" : "vs";
     if (!sky) d.vertex.bufferCount = 1, d.vertex.buffers = &vbl;
@@ -296,7 +300,7 @@ void GpuRenderer::buildPipelines() {
     ds.depthWriteEnabled = writeDepth;
     ds.depthCompare = sky ? wgpu::CompareFunction::LessEqual : cmp;
     d.depthStencil = &ds;
-    d.multisample.count = static_cast<uint32_t>(g_samples);
+    d.multisample.count = static_cast<uint32_t>(samples > 0 ? samples : g_samples);
     return device_.CreateRenderPipeline(&d);
   };
   const auto L = wgpu::CompareFunction::Less, E = wgpu::CompareFunction::Equal;
@@ -306,7 +310,10 @@ void GpuRenderer::buildPipelines() {
   for (int r = 0; r < 2; ++r) {
     opaquePipe_[r] = scenePipe("fsOpaque", false, true, false, L, true, r);
     opaqueAfterDepthPipe_[r] = scenePipe("fsOpaque", false, false, false, E, true, r);
+    pipeL = glassL;
     glassPipe_[r] = scenePipe("fsGlass", true, false, false, L, true, r);
+    pipeL = sceneL;
+    mirrorPipe_[r] = scenePipe("fsMirror", false, true, false, L, true, r, 1);  // one sample a pixel
   }
   skyPipe_ = scenePipe("fsSky", false, false, true);
   // ---- the cluster drawing (render.clusters): the GPU's cull, one draw into
@@ -581,7 +588,8 @@ void GpuRenderer::makeTargets(uint32_t ow, uint32_t oh) {
     if (b) b.Destroy();
     b = nullptr;
   };
-  drop(msaaTex_), drop(depthTex_), drop(hdrTex_);
+  drop(msaaTex_), drop(depthTex_), drop(hdrTex_), drop(mirrorTex_), drop(mirrorDepthTex_);
+  mirrorView_ = mirrorDepthView_ = nullptr, mirrorW_ = mirrorH_ = 0;
   for (auto& t : bloomTex_) drop(t);
   dropBuf(accumBuf_), dropBuf(denoiseA_), dropBuf(denoiseB_);
   auto target = [&](uint32_t tw, uint32_t th, wgpu::TextureFormat f, uint32_t samples, wgpu::TextureUsage u, wgpu::Texture& keep) {
@@ -597,6 +605,10 @@ void GpuRenderer::makeTargets(uint32_t ow, uint32_t oh) {
   if (quality_ != Quality::kUltra) {  // Ultra draws with rays: no triangles, no depth
     if (g_samples > 1) msaaView_ = target(ow, oh, wgpu::TextureFormat::RGBA16Float, static_cast<uint32_t>(g_samples), attach, msaaTex_);
     depthView_ = target(ow, oh, wgpu::TextureFormat::Depth32Float, static_cast<uint32_t>(g_samples), attach, depthTex_);
+    // the mirror (order M60): the room drawn again at a quarter of the pixels
+    mirrorW_ = (ow + 1) / 2, mirrorH_ = (oh + 1) / 2;
+    mirrorView_ = target(mirrorW_, mirrorH_, wgpu::TextureFormat::RGBA16Float, 1, attach | wgpu::TextureUsage::TextureBinding, mirrorTex_);
+    mirrorDepthView_ = target(mirrorW_, mirrorH_, wgpu::TextureFormat::Depth32Float, 1, attach, mirrorDepthTex_);
     if (config().render.clusters) {
       visView_ = target(ow, oh, wgpu::TextureFormat::RG32Uint, 1, attach | wgpu::TextureUsage::TextureBinding, visTex_);
       // frame blending reads the depth, and two pictures of the past
@@ -748,6 +760,15 @@ void GpuRenderer::makeBindGroups() {
                                           texE(5, visView_), bufE(6, backBuf_)});
   }
   sceneGroup0_ = group(scene0Layout_, {bufE(0, frameUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
+  mirrorGroup0_ = group(scene0Layout_, {bufE(0, mirrorUbo_), bufE(1, lightsBuf_), bufE(2, materialsBuf_), bufE(3, instancesBuf_), bufE(5, visibleBuf_)});
+  if (!mirrorDummyTex_) {  // what the mirror's own drawing reads in the mirror's place (it can't read what it writes)
+    wgpu::TextureDescriptor td;
+    td.size = {1, 1, 1};
+    td.format = wgpu::TextureFormat::RGBA16Float;
+    td.usage = wgpu::TextureUsage::TextureBinding;
+    mirrorDummyTex_ = device_.CreateTexture(&td);
+    mirrorDummyView_ = mirrorDummyTex_.CreateView();
+  }
   if (!modelView_) uploadModelTextures(Scene());
   if (!gridCellsTex_) layOutGrid();
   if (!cacheTex_[0]) makeCacheTextures();
@@ -756,6 +777,11 @@ void GpuRenderer::makeBindGroups() {
                                        texE(6, gridCellsView_), texE(7, gridListView_), texE(8, lampMapView_),
                                        texE(10, cacheView_[0]), texE(11, cacheView_[1]), texE(12, cacheView_[2]),
                                        texE(13, cacheView_[3]), texE(14, cacheView_[4]), texE(15, cacheView_[5])});
+  mirrorGlassGroup_ = group(mirrorLayout_, {texE(15, mirrorView_ ? mirrorView_ : mirrorDummyView_)});
+  mirrorGroup1_ = group(scene1Layout_, {texE(0, shadowView_), sampE(1, shadowSampler_), texE(2, skyView_), sampE(3, linear_), texE(4, modelView_), sampE(5, repeat_),
+                                        texE(6, gridCellsView_), texE(7, gridListView_), texE(8, lampMapView_),
+                                        texE(10, cacheView_[0]), texE(11, cacheView_[1]), texE(12, cacheView_[2]),
+                                        texE(13, cacheView_[3]), texE(14, cacheView_[4]), texE(15, cacheView_[5])});
   // each pass reads one texture and writes another; the unused second slot
   // gets a texture that isn't the one being written
   for (int i = 0; i < kBloomLevels - 1; ++i)

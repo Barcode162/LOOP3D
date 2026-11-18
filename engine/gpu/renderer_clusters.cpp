@@ -195,6 +195,17 @@ void GpuRenderer::drawBatches(wgpu::RenderPassEncoder& pass, bool glass, bool sh
   }
 }
 
+void GpuRenderer::drawList(wgpu::RenderPassEncoder& pass, const std::vector<Batch>& list) {
+  for (const Batch& b : list) {
+    const GpuMesh& m = meshes_[b.mesh];
+    if (!m.indexCount) continue;
+    pass.SetVertexBuffer(0, m.vb);
+    pass.SetIndexBuffer(m.ib, wgpu::IndexFormat::Uint32);
+    pass.DrawIndexed(m.indexCount, b.count, 0, 0, b.first);
+    ++drawCalls_;
+  }
+}
+
 void GpuRenderer::postPass(wgpu::CommandEncoder& enc, wgpu::TextureView target, wgpu::RenderPipeline& pipe, wgpu::BindGroup& group, bool load, uint32_t vw, uint32_t vh) {
   wgpu::RenderPassColorAttachment ca;
   ca.view = target;

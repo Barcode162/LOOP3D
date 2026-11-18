@@ -5,6 +5,8 @@
 
 namespace loop::gpu::impl {
 
+
+
 void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged) {
   changes_.bump("shapes");
   if (scene.textures.size() != texUploaded_ || texSize_ != std::clamp(config().render.textureSize, 16, 2048) || surfacesChanged(scene))
@@ -154,7 +156,7 @@ void GpuRenderer::syncTransforms(const Scene& scene) {
   data.clear();
   data.reserve(order.size());
   batches_.clear();
-  instBox_.clear(), instHidden_.clear();
+  instBox_.clear(), instHidden_.clear(), panePlane_.clear(), paneArea_.clear();
   slotOf_.assign(scene.instances.size(), -1);
   for (uint32_t idx : order) {
     const MeshInstance& in = scene.instances[idx];
@@ -182,6 +184,9 @@ void GpuRenderer::syncTransforms(const Scene& scene) {
     // where it is, for skipping what a pass can't see; scaled to nothing = hidden
     instBox_.push_back(meshes_[in.mesh].box.transformed(in.transform));
     instHidden_.push_back(std::fabs(in.transform.linear().determinant()) < 1e-12f ? 1 : 0);
+    Pane pane;
+    if (!g || !flatPane(meshes_[in.mesh].box, in.transform, pane)) pane.area = 0;
+    panePlane_.push_back(pane.plane), paneArea_.push_back(pane.area);
   }
   if (ensureStorage(instancesBuf_, instancesCap_, sizeof(InstanceU), std::max<size_t>(1, data.size()))) bindGroupsDirty_ = true;
   if (!data.empty()) queue_.WriteBuffer(instancesBuf_, 0, data.data(), data.size() * sizeof(InstanceU));
@@ -240,6 +245,11 @@ void GpuRenderer::moveInstances(const Scene& scene, const std::vector<int>& ids,
     u.n0 = {nm.c[0], 0}, u.n1 = {nm.c[1], 0}, u.n2 = {nm.c[2], 0};
     instBox_[slot] = meshes_[scene.instances[id].mesh].box.transformed(xf);
     instHidden_[slot] = std::fabs(xf.linear().determinant()) < 1e-12f ? 1 : 0;
+    if (paneArea_[slot] > 0) {  // a pane that moved
+      Pane pane;
+      if (!flatPane(meshes_[scene.instances[id].mesh].box, xf, pane)) pane.area = 0;
+      panePlane_[slot] = pane.plane, paneArea_[slot] = pane.area;
+    }
     touched_.push_back(slot);
     movedNow_.push_back(static_cast<uint32_t>(slot));
     if (lastMoved_.size() <= static_cast<size_t>(slot)) lastMoved_.resize(slot + 1, 0);
@@ -394,15 +404,45 @@ int GpuRenderer::lodOf(int mesh, int level) const {
   return m >= 0 && m < static_cast<int>(meshes_.size()) && meshes_[m].indexCount ? m : mesh;
 }
 
-void GpuRenderer::buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn, Vec3 eyePos, float pixelsPerRadian) {
+bool GpuRenderer::choosePane(const Frustum& eye, Vec3 eyePos, const Mat4& viewProj, Vec4& plane, Vec4& rect) const {
+  std::vector<Pane> inView;
+  std::vector<uint32_t> slots;
+  for (const Batch& b : batches_) {
+    if (!b.glass) continue;
+    for (uint32_t i = b.first; i < b.first + b.count && i < paneArea_.size(); ++i)
+      if (paneArea_[i] > 0 && !instHidden_[i] && eye.visible(instBox_[i])) inView.push_back({panePlane_[i], paneArea_[i]}), slots.push_back(i);
+  }
+  if (!largestPane(inView, eyePos, plane)) return false;
+  rect = {1, 1, -1, -1};
+  for (size_t k = 0; k < inView.size(); ++k)
+    if (onPlane(inView[k], plane)) {
+      const Vec4 r = screenRect(instBox_[slots[k]], viewProj);
+      rect = rect.x > rect.z ? r : Vec4(std::min(rect.x, r.x), std::min(rect.y, r.y), std::max(rect.z, r.z), std::max(rect.w, r.w));
+    }
+  return true;
+}
+
+void GpuRenderer::buildDrawLists(const Frustum& eye, const Frustum& sun, bool sunOn, Vec3 eyePos, float pixelsPerRadian, const Frustum* mirror,
+                                 Vec4 plane) {
   const bool cull = config().render.cull;
   const float bias = config().world.lodBias;
-  visible_.clear(), sceneDraws_.clear(), shadowDraws_.clear();
-  auto list = [&](std::vector<Batch>& out, const Frustum& view, bool shadow) {
+  visible_.clear(), sceneDraws_.clear(), shadowDraws_.clear(), mirrorDraws_.clear();
+  const Vec3 pn(plane.x, plane.y, plane.z);
+  auto list = [&](std::vector<Batch>& out, const Frustum& view, bool shadow, bool mirrored = false) {
     for (const Batch& b : batches_) {
       if (shadow && b.glass) continue;
+      if (mirrored && b.glass) continue;  // glass is left out of the mirror
       if (b.mesh < 0 || b.mesh >= static_cast<int>(meshes_.size()) || !meshes_[b.mesh].indexCount) continue;
-      auto sees = [&](uint32_t i) { return !cull || (i < instHidden_.size() && !instHidden_[i] && view.visible(instBox_[i])); };
+      // the mirror skips what is wholly beyond the pane (the city behind the glass)
+      auto beyond = [&](uint32_t i) {
+        const AABB& a = instBox_[i];
+        const Vec3 far(pn.x >= 0 ? a.hi.x : a.lo.x, pn.y >= 0 ? a.hi.y : a.lo.y, pn.z >= 0 ? a.hi.z : a.lo.z);
+        return dot(pn, far) + plane.w < 0;
+      };
+      auto sees = [&](uint32_t i) {
+        if (mirrored && (i >= instBox_.size() || instHidden_[i] || beyond(i))) return false;
+        return !cull || (i < instHidden_.size() && !instHidden_[i] && view.visible(instBox_[i]));
+      };
       if (b.mesh >= static_cast<int>(meshLods_.size()) || meshLods_[b.mesh][0] < 0) {
         uint32_t start = static_cast<uint32_t>(visible_.size());
         for (uint32_t i = b.first; i < b.first + b.count; ++i)
@@ -427,6 +467,7 @@ void GpuRenderer::buildDrawLists(const Frustum& eye, const Frustum& sun, bool su
   };
   list(sceneDraws_, eye, false);
   if (sunOn) list(shadowDraws_, sun, true);
+  if (mirror) list(mirrorDraws_, *mirror, false, true);
   if (visible_.empty()) visible_.push_back(0);
   ensureStorage(visibleBuf_, visibleCap_, sizeof(uint32_t), visible_.size());
   queue_.WriteBuffer(visibleBuf_, 0, visible_.data(), visible_.size() * sizeof(uint32_t));

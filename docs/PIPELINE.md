@@ -273,6 +273,18 @@ average 18.2 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10
    where that point was (the frame's new `prevViewProj`), divided by the exposure; its weight falls near the
    picture's edges and with roughness 0.25-0.5; the light cache's or sky's reflection fills the rest. The light
    pass's group holds both pasts (which is newest flips). Score neutral (thin detail; the score halves pictures).
+   *The pane that mirrors the room, 2026-11-18 (every quality but Ultra, render.mirrorPane, order M60):* a pane is
+   flat glass under 5 cm thick and over 1 m^2; of those in view, gathered by plane, the largest mirrors
+   (`flatPane`, `largestPane` in engine/render/frame_cost.h, shared with `loop budget`). The step "mirror", before
+   the scene's own: the opaque things on the eye's side of the pane drawn the old way (no clusters) from the eye
+   mirrored in its plane (`mirrorIn`), with the frame's own lamps, shadow maps and light cache, into a picture half
+   the size each way, only inside the pane's rectangle on screen (a scissor), cut at the plane in the shader
+   (`fsMirror`; a mirrored surface's front shows as its back). Its own frame constants (no creases, no screen
+   reflections: both read the eye's pictures). `fsGlass` reads it at the pixel's own place (the mirror's picture
+   lands where the pane is) times the glass's own reflection, both faces (a sheet reflects about 8%); where it
+   drew nothing, the old light cache and sky. The picture is in a group of its own for the glass (the light pass
+   already reads 16 pictures, the most a step may). Loft: score 19.1 against 19.3 off; `loop budget` counts it
+   (the Loft's lamp work 23 to 25, budget 24: the lamp grid's extra lamps are the cause to fix).
    *Every lamp's shadow, ReSTIR's first step (High, render.allLampShadows, off):* lamps past the ones traced one by
    one add up, two are picked by their unshadowed light (streaming, a seed a pixel and frame) and traced; the sum
    times their mean visibility. Grain 7.0 (off 3.7, one pick 8.6) on the bar's floor; the bar's score 11.9 off,

@@ -39,6 +39,79 @@ inline float radiusPixels(const AABB& box, Vec3 eye, float pixelsPerRadian) {
   return r / d * pixelsPerRadian;
 }
 
+// The pane that mirrors the room (order M60): a flat glass thing under 5 cm
+// thick and over 1 m^2 the other two ways. At most one mirrors in a frame: of
+// the panes in view, gathered by plane (a wall of panes is one mirror), the
+// largest. The renderer and `loop budget` both ask these.
+struct Pane {
+  Vec4 plane;      // normal xyz and d (n.p + d = 0)
+  float area = 0;  // m^2
+};
+inline bool flatPane(const AABB& box, const Mat4& xf, Pane& out) {
+  if (!box.valid()) return false;
+  const Mat3 L = xf.linear();
+  const Vec3 e = box.extent();
+  float size[3];
+  for (int k = 0; k < 3; ++k) size[k] = e[k] * length(L.c[k]);
+  int thin = 0;
+  for (int k = 1; k < 3; ++k)
+    if (size[k] < size[thin]) thin = k;
+  const float area = size[(thin + 1) % 3] * size[(thin + 2) % 3];
+  if (!(size[thin] < 0.05f) || !(area > 1.0f)) return false;
+  const Vec3 axis = thin == 0 ? Vec3(1, 0, 0) : thin == 1 ? Vec3(0, 1, 0) : Vec3(0, 0, 1);
+  const Vec3 n = normalize(L.inverse().transposed() * axis);  // the thin way, turned as normals turn
+  out = {Vec4(n, -dot(n, xf.point(box.center()))), area};
+  return true;
+}
+// Of the panes in view, the plane that mirrors, its normal towards the eye (false: none; the eye in the glass doesn't count).
+inline bool largestPane(const std::vector<Pane>& inView, Vec3 eye, Vec4& plane) {
+  std::vector<Pane> planes;
+  for (Pane p : inView) {
+    const float side = dot(Vec3(p.plane.x, p.plane.y, p.plane.z), eye) + p.plane.w;
+    if (std::fabs(side) < 0.05f) continue;
+    if (side < 0) p.plane = p.plane * -1.0f;
+    bool joined = false;
+    for (Pane& q : planes)
+      if (dot(Vec3(q.plane.x, q.plane.y, q.plane.z), Vec3(p.plane.x, p.plane.y, p.plane.z)) > 0.999f && std::fabs(q.plane.w - p.plane.w) < 0.02f) {
+        q.area += p.area, joined = true;
+        break;
+      }
+    if (!joined) planes.push_back(p);
+  }
+  const Pane* best = nullptr;
+  for (const Pane& p : planes)
+    if (!best || p.area > best->area) best = &p;
+  if (best) plane = best->plane;
+  return best != nullptr;
+}
+// Is a pane on this plane (either way round)?
+inline bool onPlane(const Pane& p, Vec4 plane) {
+  const float c = dot(Vec3(p.plane.x, p.plane.y, p.plane.z), Vec3(plane.x, plane.y, plane.z));
+  return std::fabs(c) > 0.999f && std::fabs(p.plane.w - (c > 0 ? plane.w : -plane.w)) < 0.02f;
+}
+// Where a box lands on screen: its corners' low and high x, y in -1..1 (the
+// whole screen when a corner is behind the eye). The mirror draws only there.
+inline Vec4 screenRect(const AABB& box, const Mat4& viewProj) {
+  Vec4 r(1, 1, -1, -1);
+  for (int k = 0; k < 8; ++k) {
+    const Vec4 c = viewProj * Vec4((k & 1) ? box.hi.x : box.lo.x, (k & 2) ? box.hi.y : box.lo.y, (k & 4) ? box.hi.z : box.lo.z, 1);
+    if (c.w <= 1e-4f) return {-1, -1, 1, 1};
+    r = {std::min(r.x, c.x / c.w), std::min(r.y, c.y / c.w), std::max(r.z, c.x / c.w), std::max(r.w, c.y / c.w)};
+  }
+  return {std::clamp(r.x, -1.0f, 1.0f), std::clamp(r.y, -1.0f, 1.0f), std::clamp(r.z, -1.0f, 1.0f), std::clamp(r.w, -1.0f, 1.0f)};
+}
+
+// The mirroring in a plane: p - 2 (n.p + d) n.
+inline Mat4 mirrorIn(Vec4 plane) {
+  Mat4 R;
+  const float n[3] = {plane.x, plane.y, plane.z};
+  for (int c = 0; c < 3; ++c) {
+    for (int r = 0; r < 3; ++r) R.m[c][r] = (c == r ? 1.0f : 0.0f) - 2 * n[r] * n[c];
+    R.m[3][c] = -2 * plane.w * n[c];
+  }
+  return R;
+}
+
 // The view a frame is drawn from, set up as the live renderer sets it up.
 struct FrameView {
   Camera camera;
@@ -58,6 +131,7 @@ struct FrameView {
   // error looks under render.clusterError pixels; one draw a pass; each pixel
   // lit once). Glass is still drawn the old way.
   bool clusters = false;
+  bool mirrorPane = false;         // render.mirrorPane: the largest pane in view mirrors the room (a second drawing, a quarter of the pixels)
   float clusterError = 1;
   int textureSize = 256;           // render.textureSize: the side of every picture layer on the graphics chip
 };
@@ -92,15 +166,22 @@ struct FrameCost {
   int lampsThatMatterMost = 0;   // and at the worst point
   float lampsFor99 = 0;          // lamps giving 99% of it (average)
   float patternShare = 0;        // share of covered pixels with a computed pattern (wood, stone...)
+  // the mirror (order M60): the room drawn again from the eye mirrored in the pane, at a quarter of the pixels,
+  // the old way (no clusters, no depth first); per covered pixel of the frame
+  bool mirror = false;
+  size_t mirrorThings = 0, mirrorDraws = 0;
+  uint64_t mirrorTriangles = 0;
+  float mirrorShaded = 0;        // its fragments shaded, per covered pixel of the frame
+  float mirrorLampWork = 0;      // and their lamps worked out
   // the pictures on the graphics chip, as the renderer lays them out: each model picture one layer, each
   // surface two (its colour and shape tiles), the wander picture one if a surface's slow change reads it;
   // every layer `textureSize` square in 4 bytes a pixel, with its smaller copies (a third more)
   size_t pictureLayers = 0, surfaceLayers = 0;
   uint64_t pictureBytes = 0;
-  uint64_t triangles() const { return sceneTriangles + shadowTriangles + prepassTriangles; }
-  size_t draws() const { return sceneDraws + shadowDraws + prepassDraws; }
-  // per-pixel work today: fragments shaded x lamps each works out
-  float lampWorkPerPixel() const { return shadedPerPixel * lampsComputed; }
+  uint64_t triangles() const { return sceneTriangles + shadowTriangles + prepassTriangles + mirrorTriangles; }
+  size_t draws() const { return sceneDraws + shadowDraws + prepassDraws + mirrorDraws; }
+  // per-pixel work today: fragments shaded x lamps each works out (the mirror's too)
+  float lampWorkPerPixel() const { return shadedPerPixel * lampsComputed + mirrorLampWork; }
 };
 
 // The view's camera matrices, exactly as the renderer builds them.
