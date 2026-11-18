@@ -1,0 +1,17 @@
+# storage_box · a lidded box for a shelf, in card, linen or wood
+# storage_box(at, turn, width, height, cover) stands it on `at`: `width` (0.3 m) wide, 0.25 m deep, `height` (0.2 m) tall.
+#
+# kind: model
+# place: storage_box(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: box, storage, shelf, living, bedroom, loft
+# size: hand
+# seeds: none, the same every time
+to storage_box(at: vec(0, 0, 0), turn: 0, width: 0.3, height: 0.2, cover: material(like: "linen", color: rgb(0.58, 0.52, 0.44)))
+  let g = group(at: at, turn: turn)
+    box size: vec(width, height - 0.02, 0.25), at: vec(0, (height - 0.02) / 2, 0), material: cover, round: 0.004, collide: no
+    box size: vec(width + 0.006, 0.03, 0.256), at: vec(0, height - 0.015, 0), material: cover, round: 0.004, collide: no
+    box size: vec(0.06, 0.015, 0.004), at: vec(0, height * 0.55, -0.127), material: "brass", collide: no
+  return g

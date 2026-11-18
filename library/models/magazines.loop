@@ -1,0 +1,16 @@
+# magazines · a small pile of magazines, glossy, a little askew
+# magazines(at, turn, count, seed) piles `count` (5) on `at`: 0.21 x 0.28 m each.
+#
+# kind: model
+# place: magazines(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: magazines, papers, shelf, coffee table, living, loft
+# size: hand
+# seeds: any whole number
+to magazines(at: vec(0, 0, 0), turn: 0, count: 5, seed: 1)
+  let g = group(at: at, turn: turn)
+    for each i in range(0, count, 1)
+      box size: vec(0.21, 0.006, 0.28), at: vec(noise(seed, i, 0.1) * 0.015, 0.003 + i * 0.006, noise(seed, i, 0.6) * 0.015), turn: noise(seed, i, 0.9) * 0.2, material: material(like: "paper", color: rgb(0.5 + noise(seed, i, 1.1) * 0.4, 0.45 + noise(seed, i, 1.7) * 0.3, 0.4 + noise(seed, i, 2.3) * 0.35), roughness: 0.3), collide: no
+  return g

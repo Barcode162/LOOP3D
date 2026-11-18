@@ -1,0 +1,23 @@
+# speaker · a bookshelf speaker in walnut with a black grille, on a slim stand or on its own
+# speaker(at, turn, stand) stands it on `at`, facing -z: 0.2 m wide, 0.32 m tall; `stand: yes` raises it on a 0.6 m stand.
+#
+# kind: model
+# place: speaker(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: speaker, hifi, music, living, loft
+# size: hand
+# seeds: none, the same every time
+to speaker(at: vec(0, 0, 0), turn: 0, stand: no)
+  let y = 0
+  if stand
+    y = 0.6
+  let g = group(at: at, turn: turn)
+    if stand
+      box size: vec(0.22, 0.015, 0.22), at: vec(0, 0.0075, 0), material: "black", round: 0.004, collide: no
+      box size: vec(0.04, 0.58, 0.04), at: vec(0, 0.3, 0), material: "black", collide: no
+      box size: vec(0.18, 0.012, 0.2), at: vec(0, 0.594, 0), material: "black", collide: no
+    box size: vec(0.2, 0.32, 0.26), at: vec(0, y + 0.16, 0), material: "walnut", round: 0.006
+    box size: vec(0.18, 0.3, 0.004), at: vec(0, y + 0.16, -0.131), material: material(like: "fabric", color: rgb(0.03, 0.03, 0.03)), round: 0.002, collide: no
+  return g

@@ -1,0 +1,24 @@
+# candle_tray · a round brass tray of three pillar candles, lit, with a box of matches
+# candle_tray(at, lit, lamp) puts it on `at`: 0.3 m across, the candles 8 to 15 cm. `lit: yes` gives flames; `lamp: yes`
+# also gives one small warm light (40 lumens) among them.
+#
+# kind: model
+# place: candle_tray(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: candles, tray, coffee table, living, light, loft
+# size: hand
+# seeds: none, the same every time
+to candle_tray(at: vec(0, 0, 0), lit: yes, lamp: yes)
+  let flame = material(color: rgb(1, 0.6, 0.2), glow: kelvin(1900) * 300)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.15, 0), vec(0.15, 0.015), vec(0.143, 0.015), vec(0.143, 0.004), vec(0, 0.004)], segments: 40, material: "brass", collide: no)
+    for each c in [vec(-0.05, 0.15, -0.03), vec(0.055, 0.11, -0.02), vec(0.0, 0.08, 0.06)]
+      cylinder(radius: 0.035, height: c.y, at: vec(c.x, 0.004 + c.y / 2, c.z), material: material(like: "wax", color: rgb(0.92, 0.88, 0.8)), sides: 24, collide: no)
+      if lit
+        sphere(radius: 0.006, at: vec(c.x, 0.004 + c.y + 0.012, c.z), scale: vec(1, 2.2, 1), material: flame, sides: 8, collide: no)
+    box size: vec(0.05, 0.012, 0.035), at: vec(0.09, 0.01, 0.07), turn: 20 deg, material: material(like: "paper", color: rgb(0.7, 0.2, 0.1)), collide: no
+  if lit and lamp
+    light(at + vec(0, 0.18, 0), lumens: 40, kelvin: 1900, radius: 0.02, shadows: no)
+  return g

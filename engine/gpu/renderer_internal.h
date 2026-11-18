@@ -322,6 +322,7 @@ class GpuRenderer final : public Renderer {
   LightGrid grid_;
   std::vector<GridLamp> gridLampsCpu_;
   float gridKey_ = -1;     // the settings the grid was laid out for
+  float gridError_ = -1;   // and its render.lampError
   wgpu::Texture gridCellsTex_, gridListTex_;
   wgpu::TextureView gridCellsView_, gridListView_;
   static constexpr int kGridCells = 4096;

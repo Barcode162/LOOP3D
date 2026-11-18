@@ -1,0 +1,25 @@
+# globe_pendants · a cluster of three opal glass globes hung at different heights from one ceiling plate
+# globe_pendants(at, drops, across, lumens, kelvin) hangs them from `at` (on the ceiling), each its `drops` below
+# ([1.2, 1.5, 1.8] m), 0.22 m globes. The three share one light at their middle (`lumens` in all).
+#
+# kind: light
+# place: globe_pendants(AT + vec(0, 3, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: lamp, pendant, globes, cluster, ceiling, light, dining, stair, loft
+# size: chair
+# seeds: none, the same every time
+to globe_pendants(at, drops: [1.2, 1.5, 1.8], across: 0.22, lumens: 900, kelvin: 2700)
+  let warm = rgb(1.0, 0.72, 0.38)
+  let opal = material(color: rgb(0.95, 0.93, 0.88), roughness: 0.3, glow: warm * (lumens * 0.08))
+  cylinder(radius: 0.12, height: 0.02, at: at - vec(0, 0.01, 0), material: "brass", sides: 32, collide: no)
+  let mid = vec(0, 0, 0)
+  for each i in range(0, 3, 1)
+    let a = i * 120 deg
+    let p = at + vec(cos(a) * 0.08, 0 - drops[i], sin(a) * 0.08)
+    cylinder(radius: 0.002, height: drops[i] - across / 2, at: at + vec(cos(a) * 0.08, 0 - (drops[i] - across / 2) / 2, sin(a) * 0.08), material: "black", sides: 5, collide: no)
+    sphere(radius: across / 2, at: p, material: opal, sides: 28, collide: no)
+    mid = mid + p / 3
+  light(mid, lumens: lumens, kelvin: kelvin, radius: 0.15)
+  return mid

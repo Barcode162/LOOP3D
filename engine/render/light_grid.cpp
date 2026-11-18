@@ -90,7 +90,7 @@ float distanceToBox(Vec3 p, Vec3 lo, Vec3 hi) {
 
 }  // namespace
 
-LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int fewest, int maxCells) {
+LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int fewest, int maxCells, float tolerance) {
   LightGrid g;
   const int n = static_cast<int>(lamps.size());
   if (n <= std::max(fewest, 1)) return g;
@@ -124,6 +124,10 @@ LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int 
   }
   g.cell = cell;
   g.origin = lo - Vec3(cell);
+  // each group's light (its members' added up)
+  std::vector<float> groupCandela(g.groups.size(), 0.0f);
+  for (size_t i = 0; i < g.groups.size(); ++i)
+    for (uint32_t k : g.groups[i].members) groupCandela[i] += lamps[k].candela;
   // ---- each cell's cut through the tree
   g.start.assign(static_cast<size_t>(g.cells()) + 1, 0);
   std::vector<std::pair<float, uint32_t>> list;
@@ -135,6 +139,13 @@ LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int 
       Vec3 d = p - mid;
       return candela / std::max(dot(d, d), 0.25f);
     };
+    // all the light reaching the cell, roughly (each root as one lamp at its middle): what an error is a share of
+    float total = 0;
+    if (tolerance > 0)
+      for (int r : roots) {
+        if (r < n) total += light(lamps[static_cast<size_t>(r)].position, lamps[static_cast<size_t>(r)].candela);
+        else total += light(g.groups[static_cast<size_t>(r - n)].center, groupCandela[static_cast<size_t>(r - n)]);
+      }
     std::vector<int> stack(roots.rbegin(), roots.rend());
     while (!stack.empty()) {
       int e2 = stack.back();
@@ -144,9 +155,12 @@ LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness, int 
         continue;
       }
       const LightGrid::Group& grp = g.groups[static_cast<size_t>(e2 - n)];
-      if (distanceToBox(grp.center, clo, chi) >= farness * grp.radius) {
-        float candela = 0;
-        for (uint32_t k : grp.members) candela += lamps[k].candela;
+      const float candela = groupCandela[static_cast<size_t>(e2 - n)];
+      const float near = distanceToBox(grp.center, clo, chi);
+      // the most its light can be wrong in the cell: between its members nearest and farthest (no nearer than 0.5 m, as `light`)
+      const float worst = candela / std::max((near - grp.radius) * (near - grp.radius), 0.25f) -
+                          candela / std::max((near + grp.radius) * (near + grp.radius), 0.25f);
+      if (near >= farness * grp.radius || (tolerance > 0 && worst < tolerance * total)) {
         list.push_back({light(grp.center, candela), static_cast<uint32_t>(e2)});
       } else {
         stack.push_back(grp.b), stack.push_back(grp.a);

@@ -138,7 +138,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
   Vec3 towardSun = sun ? normalize(-sun->direction) : Vec3(0, 1, 0);
   c.lampsComputed = static_cast<float>(std::min({lamps, kMaxGpuLights, std::max(view.maxLights, 1)}));
   // the light grid: a pixel works out only its cell's entries (as the renderer builds it)
-  const LightGrid grid = view.lightGrid ? buildLightGrid(gridLamps(scene, kMaxGpuLights), view.lampGrouping, 8, 4096) : LightGrid();
+  const LightGrid grid = view.lightGrid ? buildLightGrid(gridLamps(scene, kMaxGpuLights), view.lampGrouping, 8, 4096, view.lampError) : LightGrid();
   double gridEntries = 0;
 
   // ---- the passes: what each draws, and what skipping off-screen copies leaves

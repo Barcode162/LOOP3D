@@ -1,0 +1,21 @@
+# record_player · a turntable with its lid up, a record on the platter
+# record_player(at, turn) stands it on `at`, its front towards -z: 0.43 m wide, 0.35 m deep.
+#
+# kind: model
+# place: record_player(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: record player, turntable, vinyl, music, living, loft
+# size: hand
+# seeds: none, the same every time
+to record_player(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.43, 0.06, 0.35), at: vec(0, 0.035, 0), material: "walnut", round: 0.006
+    cylinder(radius: 0.15, height: 0.012, at: vec(-0.05, 0.071, 0), material: "aluminium", sides: 40, collide: no)
+    cylinder(radius: 0.149, height: 0.003, at: vec(-0.05, 0.079, 0), material: material(color: rgb(0.01, 0.01, 0.01), roughness: 0.25), sides: 40, collide: no)
+    cylinder(radius: 0.045, height: 0.0032, at: vec(-0.05, 0.0795, 0), material: material(color: rgb(0.7, 0.2, 0.08)), sides: 20, collide: no)
+    cylinder(radius: 0.018, height: 0.03, at: vec(0.15, 0.08, 0.11), material: "aluminium", sides: 14, collide: no)
+    box size: vec(0.008, 0.008, 0.23), at: vec(0.12, 0.093, 0.02), turn: 18 deg, material: "aluminium", collide: no
+    box size: vec(0.43, 0.006, 0.35), at: vec(0, 0.24, 0.27), tilt: -75 deg, material: material(like: "glass", color: rgb(0.6, 0.6, 0.62)), collide: no
+  return g

@@ -1,0 +1,23 @@
+# pothos · a trailing pothos in a small pot: heart-shaped leaves on vines spilling down over the edge of a shelf
+# pothos(at, trail, seed) stands its pot on `at` near a shelf's edge (the edge at -z): vines hang `trail` (0.8 m) down.
+#
+# kind: model
+# place: pothos(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, pothos, trailing, vine, ivy, shelf, indoor, loft
+# size: hand
+# seeds: any whole number
+to pothos(at: vec(0, 0, 0), trail: 0.8, seed: 1)
+  let leaf = material(color: rgb(0.16, 0.36, 0.1), roughness: 0.4, clearcoat: 0.3, subsurface: 0.25)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.055, 0), vec(0.065, 0.1), vec(0.058, 0.1), vec(0, 0.095)], segments: 20, material: "clay", collide: no)
+    for each v in range(0, 4, 1)
+      let x = -0.06 + v * 0.04
+      for each i in range(0, 7, 1)
+        let t = i / 6
+        let y = 0.12 - t * trail * (0.6 + (v % 2) * 0.4)
+        let z = -0.08 - min(t * 3, 1) * 0.06
+        sphere(radius: 0.035, at: vec(x + noise(seed, v, i) * 0.04, y, z), scale: vec(0.8, 0.95, 0.12), rotation: vec(noise(seed, i, v) * 0.6, 0, 0), material: leaf, sides: 8, collide: no)
+  return g

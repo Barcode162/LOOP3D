@@ -97,3 +97,26 @@ TEST(light_grid_brightest_first) {
   CHECK(c >= 0 && g.start[static_cast<size_t>(c) + 1] > g.start[static_cast<size_t>(c)]);
   CHECK(g.entries[g.start[static_cast<size_t>(c)]] == 5u);
 }
+
+// render.lampError (lightcuts' rule): a string of dim bulbs near a bright lamp may stand in as one group even
+// when it isn't far enough by distance alone, because what it could get wrong is a sliver of the light there;
+// still every lamp is in every cell once, and with tolerance 0 nothing changes
+TEST(light_grid_dim_groups_stand_in_beside_bright_lamps) {
+  auto lamps = bulbs(12, 10, 120);
+  for (int k = 0; k < 16; ++k) {  // a string of 16 dim bulbs 3 m up
+    GridLamp b;
+    b.position = Vec3(3 + k * 0.2f, 3.0f, 6), b.candela = 0.5f;
+    lamps.push_back(b);
+  }
+  LightGrid plain = buildLightGrid(lamps, 4, 8, 4096, 0), cut = buildLightGrid(lamps, 4, 8, 4096, 0.02f);
+  LightGrid same = buildLightGrid(lamps, 4);
+  CHECK(cut.averageEntries < plain.averageEntries);
+  CHECK(same.averageEntries == plain.averageEntries);
+  for (int c = 0; c < cut.cells(); ++c) {
+    auto times = covered(cut, c);
+    bool once = true;
+    for (int t : times) once &= t == 1;
+    CHECK(once);
+    if (!once) break;
+  }
+}

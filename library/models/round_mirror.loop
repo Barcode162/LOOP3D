@@ -1,0 +1,16 @@
+# round_mirror · a round mirror in a thin brass frame, hung on a wall
+# round_mirror(at, turn, across) hangs it with `at` its middle on the wall, facing -z: `across` wide (0.8 m).
+#
+# kind: model
+# place: round_mirror(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: mirror, round mirror, wall, hall, bathroom, living, loft
+# size: chair
+# seeds: none, the same every time
+to round_mirror(at: vec(0, 0, 0), turn: 0, across: 0.8)
+  let g = group(at: at, turn: turn)
+    cylinder(radius: across / 2, height: 0.02, at: vec(0, 0, -0.01), rotation: vec(0, 90 deg, 0), material: "brass", sides: 64, collide: no)
+    cylinder(radius: across / 2 - 0.012, height: 0.004, at: vec(0, 0, -0.021), rotation: vec(0, 90 deg, 0), material: material(color: rgb(0.9, 0.9, 0.9), metal: 1, roughness: 0.02), sides: 64, collide: no)
+  return g

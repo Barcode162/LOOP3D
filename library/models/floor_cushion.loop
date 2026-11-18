@@ -1,0 +1,17 @@
+# floor_cushion · a big square floor cushion with a piped edge, to sit on by a fire
+# floor_cushion(at, turn, cover) lays it on `at`: 0.7 m square, 0.16 m thick.
+#
+# kind: model
+# place: floor_cushion(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: floor cushion, cushion, seat, living, loft
+# size: chair
+# seeds: none, the same every time
+to floor_cushion(at: vec(0, 0, 0), turn: 0, cover: material(like: "linen", color: rgb(0.45, 0.32, 0.2)))
+  let g = group(at: at, turn: turn)
+    box size: vec(0.7, 0.13, 0.7), at: vec(0, 0.065, 0), material: cover, round: 0.06, steps: 3, collide: no
+    box size: vec(0.62, 0.16, 0.62), at: vec(0, 0.08, 0), material: cover, round: 0.075, steps: 3, collide: no
+    cylinder(radius: 0.012, height: 0.01, at: vec(0, 0.16, 0), material: cover, sides: 10, collide: no)
+  return g

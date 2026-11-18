@@ -1,0 +1,21 @@
+# basket · a woven seagrass basket, round, with two rope handles
+# basket(at, across, height) stands it on `at`: `across` (0.35 m) wide, `height` (0.3 m) tall.
+#
+# kind: model
+# place: basket(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: basket, seagrass, storage, living, bedroom, bathroom, loft
+# size: chair
+# seeds: none, the same every time
+to basket(at: vec(0, 0, 0), across: 0.35, height: 0.3)
+  let grass = material(color: rgb(0.55, 0.45, 0.3), roughness: 0.95)
+  let r = across / 2
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(r * 0.9, 0), vec(r, height), vec(r * 0.95, height), vec(r * 0.86, 0.01), vec(0, 0.01)], segments: 32, material: grass, collide: no)
+    for each i in range(1, 6, 1)
+      ring(radius: r * 0.9 + r * 0.1 * i / 6, thickness: 0.006, at: vec(0, height * i / 6, 0), material: grass, sides: 32)
+    for each s in [-1, 1]
+      ring(radius: 0.035, thickness: 0.007, at: vec(s * r, height - 0.03, 0), rotation: vec(0, 0, 90 deg), material: material(color: rgb(0.75, 0.68, 0.55)), sides: 12)
+  return g

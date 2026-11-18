@@ -1,0 +1,17 @@
+# pouffe · a round knitted pouffe, soft and a little squashed
+# pouffe(at, cover) stands it on `at`: 0.5 m across, 0.36 m tall.
+#
+# kind: model
+# place: pouffe(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: pouffe, pouf, ottoman, knitted, living, loft
+# size: chair
+# seeds: none, the same every time
+to pouffe(at: vec(0, 0, 0), cover: material(like: "wool", color: rgb(0.72, 0.66, 0.56), roughness: 0.95, sheen: 0.6))
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.22, 0), vec(0.25, 0.04), vec(0.26, 0.18), vec(0.25, 0.31), vec(0.2, 0.355), vec(0, 0.36)], segments: 32, material: cover)
+    for each i in range(0, 16, 1)
+      box size: vec(0.012, 0.28, 0.012), at: vec(sin(i * 22.5 deg) * 0.258, 0.18, cos(i * 22.5 deg) * 0.258), turn: i * 22.5 deg, material: cover, round: 0.005, collide: no
+  return g

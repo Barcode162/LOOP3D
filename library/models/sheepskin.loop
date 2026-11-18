@@ -1,0 +1,19 @@
+# sheepskin · a sheepskin rug, its long pale wool in soft lumps, its outline uneven
+# sheepskin(at, turn, seed) lays it on `at`: about 1 m by 0.65 m.
+#
+# kind: model
+# place: sheepskin(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: sheepskin, fur, rug, throw, living, bedroom, loft
+# size: chair
+# seeds: any whole number
+to sheepskin(at: vec(0, 0, 0), turn: 0, seed: 1)
+  let fleece = material(like: "wool", color: rgb(0.88, 0.85, 0.78), roughness: 1, sheen: 0.9)
+  let g = group(at: at, turn: turn)
+    sphere(radius: 0.5, at: vec(0, 0.0, 0), scale: vec(1, 0.05, 0.62), material: fleece, sides: 24, collide: no)
+    for each i in range(0, 9, 1)
+      let a = i * 40 deg + noise(seed, i, 0.5)
+      sphere(radius: 0.17 + noise(seed * 3, i, 0.1) * 0.04, at: vec(cos(a) * 0.36, 0.008, sin(a) * 0.22), scale: vec(1, 0.18, 0.8), material: fleece, sides: 12, collide: no)
+  return g

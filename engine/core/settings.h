@@ -33,6 +33,7 @@ struct Config {
     bool cull = true;  // skip what a pass can't see
     bool lightGrid = true;     // lamps near a pixel alone, far groups of lamps as one each
     float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
+    float lampError = 0.02;  // a nearer group of lamps stands in as one when the light it could get wrong is under this share (lightcuts)
     bool ssr = true;     // screen reflections on High
     bool mirrorPane = true;  // the largest flat glass in view mirrors the room (order M60)
     float mirrorSmallest = 6;  // the mirror leaves out what it shows smaller than this many pixels (its radius)

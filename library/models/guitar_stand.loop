@@ -1,0 +1,28 @@
+# guitar_stand · an acoustic guitar resting on a low stand
+# guitar_stand(at, turn) stands it on `at`, its face towards -z, leaning back: about 1 m tall.
+#
+# kind: model
+# place: guitar_stand(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: guitar, music, instrument, living, loft
+# size: chair
+# seeds: none, the same every time
+to guitar_stand(at: vec(0, 0, 0), turn: 0)
+  let top = material(like: "pine", color: rgb(0.78, 0.55, 0.28), clearcoat: 0.8, roughness: 0.25)
+  let body = material(like: "walnut", clearcoat: 0.8, roughness: 0.25)
+  let g = group(at: at, turn: turn)
+    for each s in [-1, 1]
+      box size: vec(0.025, 0.02, 0.3), at: vec(s * 0.12, 0.01, 0), turn: s * 15 deg, material: "black", collide: no
+    box size: vec(0.025, 0.55, 0.025), at: vec(0, 0.29, 0.14), tilt: -14 deg, material: "black", collide: no
+    let lean = group(at: vec(0, 0.07, 0), tilt: -14 deg)
+      cylinder(radius: 0.19, height: 0.1, at: vec(0, 0.2, 0), rotation: vec(0, 90 deg, 0), scale: vec(1, 1, 1), material: body, sides: 40)
+      cylinder(radius: 0.15, height: 0.1, at: vec(0, 0.45, 0), rotation: vec(0, 90 deg, 0), material: body, sides: 40)
+      cylinder(radius: 0.188, height: 0.004, at: vec(0, 0.2, -0.051), rotation: vec(0, 90 deg, 0), material: top, sides: 40, collide: no)
+      cylinder(radius: 0.148, height: 0.004, at: vec(0, 0.45, -0.051), rotation: vec(0, 90 deg, 0), material: top, sides: 40, collide: no)
+      cylinder(radius: 0.045, height: 0.005, at: vec(0, 0.4, -0.052), rotation: vec(0, 90 deg, 0), material: "black", sides: 24, collide: no)
+      box size: vec(0.05, 0.42, 0.025), at: vec(0, 0.78, -0.03), material: "walnut", collide: no
+      box size: vec(0.075, 0.16, 0.02), at: vec(0, 1.04, -0.025), material: "walnut", round: 0.006, collide: no
+      box size: vec(0.08, 0.012, 0.02), at: vec(0, 0.12, -0.06), material: "black", collide: no
+  return g

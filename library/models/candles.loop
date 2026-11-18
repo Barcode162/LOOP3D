@@ -1,0 +1,23 @@
+# candles · three tall church candles of different heights on small brass dishes, lit or not
+# candles(at, lit, lamp) stands them on `at`: 0.15, 0.22 and 0.3 m tall. `lamp: yes` gives one small warm light (30 lumens).
+#
+# kind: model
+# place: candles(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: candles, candle, light, shelf, table, living, loft
+# size: hand
+# seeds: none, the same every time
+to candles(at: vec(0, 0, 0), lit: yes, lamp: no)
+  let flame = material(color: rgb(1, 0.6, 0.2), glow: kelvin(1900) * 300)
+  let wax = material(like: "wax", color: rgb(0.93, 0.9, 0.83))
+  let g = group(at: at)
+    for each c in [vec(-0.06, 0.3, 0), vec(0.02, 0.22, 0.04), vec(0.07, 0.15, -0.03)]
+      cylinder(radius: 0.035, height: 0.006, at: vec(c.x, 0.003, c.z), material: "brass", sides: 20, collide: no)
+      cylinder(radius: 0.02, height: c.y, at: vec(c.x, 0.006 + c.y / 2, c.z), material: wax, sides: 16, collide: no)
+      if lit
+        sphere(radius: 0.005, at: vec(c.x, 0.006 + c.y + 0.011, c.z), scale: vec(1, 2.2, 1), material: flame, sides: 8, collide: no)
+  if lit and lamp
+    light(at + vec(0, 0.3, 0), lumens: 30, kelvin: 1900, radius: 0.02, shadows: no)
+  return g

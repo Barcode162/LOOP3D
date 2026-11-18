@@ -1,0 +1,22 @@
+# wall_light · a bedside wall light: a small brass arm holding a cone shade that throws its light down
+# wall_light(at, turn, lumens, kelvin, lamp, on) fixes it (`on: no`: switched off) with `at` the point on the wall, the arm reaching out to -z 0.25 m.
+#
+# kind: light
+# place: wall_light(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: lamp, wall light, sconce, reading light, bedroom, loft
+# size: hand
+# seeds: none, the same every time
+to wall_light(at: vec(0, 0, 0), turn: 0, lumens: 220, kelvin: 2700, lamp: yes, on: yes)
+  let warm = rgb(1.0, 0.72, 0.38)
+  let inside = material(color: rgb(1, 0.9, 0.75), glow: warm * (lumens * 0.3 if on else 0))
+  let g = group(at: at, turn: turn)
+    cylinder(radius: 0.04, height: 0.015, at: vec(0, 0, -0.0075), rotation: vec(0, 90 deg, 0), material: "brass", sides: 24, collide: no)
+    box size: vec(0.012, 0.012, 0.22), at: vec(0, 0, -0.11), material: "brass", collide: no
+    lathe(profile: [vec(0.025, 0.07), vec(0.07, -0.04), vec(0.066, -0.04), vec(0.022, 0.066)], segments: 28, at: vec(0, 0, -0.24), material: "brass", collide: no)
+    cylinder(radius: 0.06, height: 0.002, at: vec(0, -0.035, -0.24), material: inside, sides: 24, collide: no)
+  if lamp and on
+    light(at + vec(0, -0.06, 0) + vec(0 - sin(turn) * 0.24, 0, 0 - cos(turn) * 0.24), lumens: lumens, kelvin: kelvin, radius: 0.03, aim: vec(0, -1, 0), angle: 110 deg)
+  return g

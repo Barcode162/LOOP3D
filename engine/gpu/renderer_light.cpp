@@ -184,7 +184,8 @@ float GpuRenderer::gridSetting() {
 
 void GpuRenderer::layOutGrid() {
   gridKey_ = gridSetting();
-  grid_ = gridKey_ > 0 ? buildLightGrid(gridLampsCpu_, gridKey_, 8, kGridCells) : LightGrid();
+  gridError_ = config().render.lampError;
+  grid_ = gridKey_ > 0 ? buildLightGrid(gridLampsCpu_, gridKey_, 8, kGridCells, gridError_) : LightGrid();
   if (grid_.on && (gridLampsCpu_.size() != lights_.size() || grid_.entries.size() >= (1u << 20) || grid_.mostEntries >= 4096 ||
                    lights_.size() + grid_.groups.size() > 2 * static_cast<size_t>(kMaxLights)))
     grid_ = LightGrid();
@@ -221,7 +222,7 @@ LightU GpuRenderer::groupLamp(const LightGrid::Group& grp) const {
 }
 
 void GpuRenderer::keepGrid() {
-  if (!gridCellsTex_ || gridSetting() != gridKey_) layOutGrid();
+  if (!gridCellsTex_ || gridSetting() != gridKey_ || config().render.lampError != gridError_) layOutGrid();
 }
 
 void GpuRenderer::uploadLights(const Vec3& eye) {

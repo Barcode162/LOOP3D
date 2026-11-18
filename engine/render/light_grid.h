@@ -57,6 +57,11 @@ struct LightGrid {
 // A group may stand in for its members from a distance of `farness` times its
 // radius (from the nearest point of a cell): the larger, the closer to working
 // every lamp out alone. With `fewest` lamps or fewer, no grid.
-LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness = 4, int fewest = 8, int maxCells = 4096);
+// `tolerance` (render.lampError) lets a nearer group stand in too, as
+// lightcuts do: when the most its light could be wrong anywhere in the cell
+// (lit from its nearest member's place rather than its middle) is under that
+// share of all the light reaching the cell. A string of dim bulbs beside a
+// bright pendant is then one lamp; 0 keeps distance as the only rule.
+LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness = 4, int fewest = 8, int maxCells = 4096, float tolerance = 0);
 
 }  // namespace loop

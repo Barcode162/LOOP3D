@@ -1,0 +1,22 @@
+# string_lights · a string of small warm bulbs hung in soft swags between two points
+# string_lights(from_at, to_at, bulbs, sag, lumens, kelvin) hangs `bulbs` (24) from `from_at` to `to_at` with `sag` (0.25 m) at each
+# swag's lowest. The bulbs glow; two lights along the string give all their `lumens` (200); `lamp: no` leaves only the glow.
+#
+# kind: light
+# place: string_lights(AT + vec(-1, 2, 0), AT + vec(1, 2, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: lights, string lights, fairy lights, festoon, light, bedroom, living, loft
+# size: chair
+# seeds: none, the same every time
+to string_lights(from_at, to_at, bulbs: 24, sag: 0.25, swags: 2, lumens: 200, kelvin: 2400, lamp: yes)
+  let bulb = material(color: rgb(1, 0.8, 0.5), glow: rgb(1.0, 0.66, 0.32) * 150)
+  for each i in range(0, bulbs, 1)
+    let t = (i + 0.5) / bulbs
+    let s = (t * swags) % 1
+    let p = from_at + (to_at - from_at) * t - vec(0, sag * 4 * s * (1 - s), 0)
+    sphere(radius: 0.012, at: p, material: bulb, sides: 8, collide: no)
+  for each k in ([0.25, 0.75] if lamp else [])
+    light(from_at + (to_at - from_at) * k - vec(0, sag * 0.7, 0), lumens: lumens / 2, kelvin: kelvin, radius: 0.3, shadows: no)
+  return from_at

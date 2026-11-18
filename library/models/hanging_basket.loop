@@ -1,0 +1,23 @@
+# hanging_basket · a hanging planter on three cords from the ceiling, a fern spilling over its rim
+# hanging_basket(at, drop, seed) hangs it with `at` the point on the ceiling: the pot `drop` (1.2 m) below it.
+#
+# kind: model
+# place: hanging_basket(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, hanging, planter, macrame, fern, ceiling, indoor, loft
+# size: chair
+# seeds: any whole number
+to hanging_basket(at: vec(0, 0, 0), drop: 1.2, seed: 1)
+  let cord = material(color: rgb(0.78, 0.72, 0.6), roughness: 1)
+  let y = at.y - drop
+  let g = group(at: vec(at.x, y, at.z))
+    lathe(profile: [vec(0, 0), vec(0.1, 0), vec(0.14, 0.16), vec(0.12, 0.16), vec(0, 0.14)], segments: 28, material: "clay", collide: no)
+    for each i in range(0, 3, 1)
+      let a = i * 120 deg
+      let foot = vec(cos(a) * 0.13, 0.12, sin(a) * 0.13)
+      let len = length(vec(0, drop, 0) - foot)
+      cylinder(radius: 0.003, height: len, at: foot / 2 + vec(0, drop / 2, 0), rotation: vec(90 deg - a, 0 - atan(0.13 / (drop - 0.12)), 0), material: cord, sides: 5, collide: no)
+    fern(at: vec(0, 0.14, 0), size: 0.55, seed: seed)
+  return g

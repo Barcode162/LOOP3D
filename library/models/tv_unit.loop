@@ -1,0 +1,22 @@
+# tv_unit · a long low media unit in oak: two sliding doors and an open middle shelf, on slim black legs
+# tv_unit(at, turn, length, wood) stands it on `at`, its front towards -z: `length` long (1.8 m), 0.45 m deep, 0.5 m tall.
+# Its top is 0.5 m up, for a TV, a record player or speakers.
+#
+# kind: model
+# place: tv_unit(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: tv unit, media unit, sideboard, credenza, living, loft
+# size: sofa
+# seeds: none, the same every time
+to tv_unit(at: vec(0, 0, 0), turn: 0, length: 1.8, wood: "oak")
+  let g = group(at: at, turn: turn)
+    box size: vec(length, 0.38, 0.45), at: vec(0, 0.31, 0), material: wood, round: 0.01, steps: 2
+    box size: vec(length * 0.3, 0.3, 0.02), at: vec(0, 0.31, -0.22), material: "black", collide: no
+    for each s in [-1, 1]
+      box size: vec(length * 0.33, 0.33, 0.012), at: vec(s * length * 0.33, 0.31, -0.231), material: wood, round: 0.004, collide: no
+      box size: vec(0.012, 0.12, 0.012), at: vec(s * (length * 0.17 + 0.03), 0.31, -0.24), material: "brass", collide: no
+      for each z in [-0.18, 0.18]
+        box size: vec(0.025, 0.12, 0.025), at: vec(s * (length / 2 - 0.08), 0.06, z), material: "black", collide: no
+  return g
