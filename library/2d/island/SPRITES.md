@@ -109,7 +109,7 @@ tiled where it fits.
 
 ## Status
 
-- Drawn so far: 102 (the 8 sheets in `INDEX.md`). Demo art is 77 of 103.
+- Drawn so far: 128 (the 10 sheets in `INDEX.md`). Demo art is complete: 103 of 103.
 - Demo needs 103; full game needs 361.
 - See `PLAN.md` for the demo-vs-full contrast and `INDEX.md` for the list of
   what is actually drawn so far.

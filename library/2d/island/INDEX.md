@@ -1,7 +1,7 @@
 # Island — a survival island farming and fishing game, Stardew Valley style
 
 2D sprite sheets, cozy pixel art. Every item in the collection is listed below,
-sheet by sheet. 8 sheets, 102 items.
+sheet by sheet. 10 sheets, 128 items.
 
 Style: cozy pixel art like Stardew Valley, each sprite labelled on its sheet.
 Credit: J Production, made in Loop3D (Fluff, 2026-11-17).
@@ -157,13 +157,49 @@ Front views repeat sheet 1; side and back views are new.
 | 19 | Carrot seed packet | Packet labelled CARROT |
 | 20 | Carrot produce | Orange carrot |
 
+## 9. stuff-ui.webp — 18 items
+
+| # | Item | What it is |
+|---|------|------------|
+| 1 | Wood Log | A cut wood log |
+| 2 | Grey Stone | A grey stone with moss |
+| 3 | Fiber Rope | A coil of fiber rope |
+| 4 | Fishing Bait (Tin) | Tin of fishing bait worms |
+| 5 | Red Mushroom | Red mushroom with white spots |
+| 6 | Wild Berries | Bunch of wild blue berries |
+| 7 | Driftwood | A piece of driftwood |
+| 8 | Green Seaweed | Green seaweed |
+| 9 | Empty Slot | Empty inventory slot |
+| 10 | Heart | Red friendship heart |
+| 11 | Stamina | Green stamina bar |
+| 12 | Clock | Round clock face |
+| 13 | Gold Coin | Gold coin with a star |
+| 14 | Menu Button | Wooden button labelled MENU |
+| 15 | Dialogue Box | Speech box for talking |
+| 16 | Blue Day Sky | Blue sky with white clouds |
+| 17 | Starry Night Sky | Dark sky with stars and a crescent moon |
+| 18 | Rain Cloud | Grey rain cloud with raindrops |
+
+## 10. ground-nature.webp — 8 items
+
+| # | Item | What it is |
+|---|------|------------|
+| 1 | Tilled Dry Soil | Tilled dry soil tile |
+| 2 | Tilled Watered Soil | Tilled watered dark soil tile |
+| 3 | Grass with Flowers | Grass ground tile with small flowers |
+| 4 | Water with Ripples | Water tile with ripples |
+| 5 | Stone Path | Stone path tile |
+| 6 | Pink Wildflowers | Patch of pink wildflowers |
+| 7 | Tall Grass Tufts | Tall grass tufts |
+| 8 | White Seashells | Cluster of white seashells |
+
 ## Totals
 
-- Sheets: 8
-- Items: 102 (12 + 14 + 18 + 14 + 13 + 6 + 5 + 20)
+- Sheets: 10
+- Items: 128 (12 + 14 + 18 + 14 + 13 + 6 + 5 + 20 + 18 + 8)
 - Categories: characters & animals, crops & nature, tools / fishing / items,
   buildings & terrain, player rotations, NPC rotations, animals side view,
-  crops growing
+  crops growing, stuff & UI, ground & nature
 
 See also: `PLAN.md` (demo vs full world) and `SPRITES.md` (the full 361-sprite
 list with rotation rules).

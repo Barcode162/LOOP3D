@@ -75,25 +75,22 @@ core loop — farm, fish, sell, sleep — with nothing that is only half a featu
 
 ## Where we already are
 
-The 8 sheets in `INDEX.md` hold 102 pictures. Mapped against the two targets:
+The 10 sheets in `INDEX.md` hold 128 pictures. Mapped against the two targets:
 
 | | Full (361) | Demo (103) |
 |---|-----------|-----------|
-| Already have | 102 (28.3%) | 77 (74.8%) |
-| Still missing | 259 | 26 |
+| Already have | 128 (35.5%) | 103 (100%) |
+| Still missing | 233 | 0 — demo art is complete |
 
 The 4 extra mature crop stages already drawn (corn, strawberry, potato, berry)
 count toward the full game, not the demo — the demo only grows 4 crops. The
 NPC side/back views and the goat/duck/dog/cat/pig side views are full-game
 rotation shots, not demo art either.
 
-## Next batch — the 26 missing demo pictures, 2 sheets
+## Demo art — complete
 
-Sheets 5 and 6 from this list are done (player rotations, crops growing).
-
-- **Sheet 7 — stuff (18):** materials/forage 8 + UI 7 + atmosphere 3.
-- **Sheet 8 — ground & nature (8):** tilled dry, tilled watered, grass variant, water variant, stone path, flowers, grass, shells.
-
-After that batch the demo art is complete: 103 pictures, 8 sheets, and the game
-is drawable end to end. Everything after it is full-game growth: 259 more pictures
-(~18 sheets) for seasons, extra NPCs, crops, fish, upgrades, cooking and crafting.
+Sheets 7 and 8 from the list below are done (stuff/UI/atmosphere, ground &
+nature). The demo art is complete: 103 pictures, 10 sheets, and the game is
+drawable end to end. Everything after it is full-game growth: 233 more
+pictures (~17 sheets) for seasons, extra NPCs, crops, fish, upgrades, cooking
+and crafting.
