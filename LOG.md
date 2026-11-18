@@ -12,6 +12,7 @@
 - 2026-11-18: Surface: walnut: walnut surface made; 2 gaps: noise/pores ignore stretch; library check can't load surface entries (deployed)
 - 2026-11-18: Surface: oak: oak surface: muted warm brown, arched grain, pores, rays coat, wear, dirt (deployed)
 # Log
+- 2026-11-18 "merge the last jobs": shipped the bar's Job 2 from claude/peaceful-ptolemy-igl57r: J2A (the importer carries blockers through each thing's place and turn, names every model, writes the rig's music and fire states), J2N (the word `note`, one note played now), J2T and J2U (a tap reaches the script; the player sits; the bar answers taps on seats, lamps, the switch, the fire, tables). One overlap mended (the player's exported list keeps both `_loop_tap` and the Shape bench). 293 tests, editor source green, web player builds. Board cleared.
 
 One line per request, newest first: the date, what the user asked, what was done.
 

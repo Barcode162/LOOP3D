@@ -44,7 +44,7 @@ phase is done when its "done when" is true on the phone.
   run for this deploy (the renderer did not change).
 - **Goal 18 done (2026-11-18), T-E2:** open a box and pull a corner (the word `pull` under a box; the Shape bench's dots).
 - **Goal 19a done (2026-11-18), T-E3:** extrude one face (`extrude face: 11, by: 0.3`; the Shape bench's Faces tool).
-- **Waiting to ship:** the bar's Job 2 (J2A, J2N, J2T), done on branch claude/peaceful-ptolemy-igl57r, never merged. Ten Loft furniture drafts sit unchecked on their work/L-* branches.
+- **Shipped 2026-11-18:** the bar's Job 2 (J2A, J2N, J2T). Ten Loft furniture drafts sit unchecked on their work/L-* branches.
 *Next goal when work resumes:* goal 19b on the Shape bench (inset, then bevel, loop cut; one tool a card), or a skin's bones keyed in a clip so the editor can animate it.
 
 ## Now · The Loft (your word, 2026-11-10: the top priority)
