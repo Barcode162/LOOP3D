@@ -18,7 +18,7 @@
   #stam-wrap { background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; border-radius: 10px; padding: 5px 10px; display: flex; align-items: center; gap: 6px; }
   #stam-bar { width: 70px; height: 10px; background: #d8c9a3; border-radius: 5px; overflow: hidden; }
   #hud-stam { height: 100%; width: 100%; background: #4a8c3f; }
-  #btn-quests { pointer-events: auto; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; border-radius: 10px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+  #btn-quests, #btn-sound { pointer-events: auto; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; border-radius: 10px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
   #quests { position: absolute; top: 48px; left: 8px; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.7; z-index: 6; max-width: 240px; }
 
   /* inventory */
@@ -58,7 +58,7 @@
   .pick-btn.sell { background: #ffe9a8; }
 
   /* fishing */
-  .fish-bar { position: relative; height: 30px; background: #2b3a55; border-radius: 8px; margin: 14px 0; overflow: hidden; }
+  .fish-bar { position: relative; height: 30px; background: #2b3a55; border: 2px solid #8a6d3b; border-radius: 8px; margin: 14px 0; overflow: hidden; }
   #fish-zone { position: absolute; top: 0; bottom: 0; background: #4caf50; }
   #fish-marker { position: absolute; top: -2px; bottom: -2px; width: 5px; background: #fff; box-shadow: 0 0 6px #fff; }
 
@@ -84,6 +84,7 @@
     <span class="pill" id="hud-coins">🪙 20</span>
     <span id="stam-wrap">⚡<span id="stam-bar"><span id="hud-stam" style="display:block"></span></span></span>
     <button id="btn-quests">☰ To do</button>
+    <button id="btn-sound" aria-label="Toggle sound">🔊</button>
   </div>
   <div id="quests" class="hidden"></div>
   <div id="inv"></div>
@@ -169,26 +170,46 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-// ---------- audio (tiny WebAudio bleeps) ----------
-let AC = null;
-function audio() {
-  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
-  if (AC && AC.state === 'suspended') AC.resume();
-  return AC;
+// ---------- audio (WebAudio synth — no audio files) ----------
+// Audio only ever starts from a user gesture (initAudio is called from
+// button / key / touch handlers, never from the game loop). sfx() and the
+// music scheduler no-op until a real AudioContext exists, so the headless
+// test (no AudioContext) and a pre-gesture page both stay silent.
+const AUDIO = { ctx: null, started: false, gesture: false, musicStep: 0, nextNote: 0 };
+function initAudio() {
+  AUDIO.gesture = true;
+  DBG.audioGesture = true;
+  if (AUDIO.ctx) { if (AUDIO.ctx.state === 'suspended') AUDIO.ctx.resume(); return AUDIO.ctx; }
+  const Ctor = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+  if (!Ctor) return null;
+  try { AUDIO.ctx = new Ctor(); } catch (e) { AUDIO.ctx = null; }
+  if (AUDIO.ctx) { AUDIO.started = true; AUDIO.nextNote = AUDIO.ctx.currentTime + 0.1; }
+  DBG.audioStarted = AUDIO.started;
+  return AUDIO.ctx;
+}
+function toneAt(freq, dur, type, vol, when) {
+  const ac = AUDIO.ctx; if (!ac || S.muted) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol || 0.05, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(when); o.stop(when + dur + 0.02);
 }
 function tone(freq, dur, type, vol, when) {
-  const ac = audio(); if (!ac) return;
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.type = type || 'square'; o.frequency.value = freq;
-  g.gain.setValueAtTime(vol || 0.08, ac.currentTime + (when || 0));
-  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + (when || 0) + dur);
-  o.connect(g); g.connect(ac.destination);
-  o.start(ac.currentTime + (when || 0)); o.stop(ac.currentTime + (when || 0) + dur + 0.02);
+  const ac = AUDIO.ctx; if (!ac || S.muted) return;
+  toneAt(freq, dur, type, vol, ac.currentTime + (when || 0));
 }
 function sfx(name) {
   if (name === 'hoe') { tone(140, 0.12, 'square', 0.10); tone(70, 0.15, 'triangle', 0.12); }
   else if (name === 'water') { tone(600, 0.08, 'sine', 0.05); tone(800, 0.1, 'sine', 0.05, 0.07); }
   else if (name === 'plant') { tone(300, 0.1, 'sine', 0.07); tone(450, 0.12, 'sine', 0.06, 0.08); }
+  else if (name === 'pickup') { tone(660, 0.07, 'sine', 0.07); tone(990, 0.12, 'sine', 0.06, 0.06); }
+  else if (name === 'harvest') { tone(520, 0.1, 'triangle', 0.09); tone(340, 0.14, 'triangle', 0.08, 0.05); }
+  else if (name === 'step') { tone(90, 0.06, 'sine', 0.03); }
+  else if (name === 'click') { tone(700, 0.05, 'square', 0.04); }
+  else if (name === 'chime') { tone(784, 0.12, 'sine', 0.06); tone(1046, 0.2, 'sine', 0.05, 0.1); }
+  else if (name === 'bite') { tone(1175, 0.08, 'sine', 0.07); tone(1568, 0.12, 'sine', 0.06, 0.07); }
   else if (name === 'coin') { tone(880, 0.08, 'square', 0.06); tone(1320, 0.15, 'square', 0.06, 0.08); }
   else if (name === 'catch') { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.12, 'square', 0.06, i * 0.07)); }
   else if (name === 'splash') { tone(300, 0.2, 'sine', 0.08); tone(180, 0.25, 'sine', 0.08, 0.08); }
@@ -197,6 +218,83 @@ function sfx(name) {
   else if (name === 'sleep') { [392, 330, 262].forEach((f, i) => tone(f, 0.25, 'sine', 0.06, i * 0.18)); }
   else if (name === 'error') { tone(160, 0.15, 'sawtooth', 0.06); }
 }
+// ---------- music ----------
+// One gentle looping tune, 16 steps: day is C major, after dark the same
+// shape turns A minor. Low volume, never fights the effects.
+const MELODY_DAY = [523, 0, 659, 784, 0, 659, 587, 523, 0, 587, 659, 0, 587, 523, 0, 0];
+const MELODY_NIGHT = [440, 0, 523, 659, 0, 523, 494, 440, 0, 494, 523, 0, 494, 440, 0, 0];
+const BASS_DAY = [131, 0, 0, 0, 175, 0, 0, 0, 196, 0, 0, 0, 175, 0, 0, 0];
+const BASS_NIGHT = [110, 0, 0, 0, 131, 0, 0, 0, 165, 0, 0, 0, 131, 0, 0, 0];
+const MUSIC_STEP = 0.30; // seconds per step
+function musicIsMinor(minutes) {
+  const h = (minutes === undefined ? S.minutes : minutes) / 60;
+  return h >= 19 || h < 6;
+}
+function musicTick() {
+  DBG.musicMode = musicIsMinor() ? 'minor' : 'major';
+  const ac = AUDIO.ctx;
+  if (!ac || S.muted || !AUDIO.started) return;
+  if (ac.currentTime < AUDIO.nextNote - 0.15) return; // schedule 0.15s ahead
+  const minor = DBG.musicMode === 'minor';
+  const mel = minor ? MELODY_NIGHT : MELODY_DAY;
+  const bas = minor ? BASS_NIGHT : BASS_DAY;
+  const step = AUDIO.musicStep % 16;
+  const t = Math.max(ac.currentTime, AUDIO.nextNote);
+  if (mel[step]) toneAt(mel[step], MUSIC_STEP * 0.95, 'triangle', 0.022, t);
+  if (bas[step]) toneAt(bas[step], MUSIC_STEP * 0.95, 'sine', 0.03, t);
+  DBG.musicNotes = (DBG.musicNotes || 0) + (mel[step] ? 1 : 0) + (bas[step] ? 1 : 0);
+  AUDIO.musicStep++;
+  AUDIO.nextNote = t + MUSIC_STEP;
+}
+// ---------- juice: particles, bounce, shake ----------
+// One capped pool, reused: no per-frame allocation storm.
+const PARTICLE_MAX = 120;
+const PARTICLES = [];
+function spawnParticles(x, y, kind, n) {
+  const defs = {
+    leaf:    { colors: ['#74c24e', '#4e9034', '#a9824f'], n: 10, speed: 60, life: 0.7, grav: 120, size: 4 },
+    splash:  { colors: ['#4a90c2', '#7ec8e8', '#ffffff'], n: 12, speed: 90, life: 0.6, grav: 200, size: 3 },
+    sparkle: { colors: ['#ffd98a', '#fff3c0', '#e8a13c'], n: 8,  speed: 40, life: 0.9, grav: -20, size: 3 },
+    puff:    { colors: ['#a9824f', '#8a6a3e', '#6b4f2a'], n: 8,  speed: 30, life: 0.5, grav: 60,  size: 4 },
+  };
+  const d = defs[kind] || defs.sparkle;
+  const count = n || d.n;
+  for (let i = 0; i < count; i++) {
+    if (PARTICLES.length >= PARTICLE_MAX) PARTICLES.shift();
+    const a = Math.random() * Math.PI * 2, sp = d.speed * (0.4 + Math.random() * 0.8);
+    PARTICLES.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30,
+      life: d.life * (0.7 + Math.random() * 0.6), maxLife: d.life,
+      size: d.size * (0.7 + Math.random() * 0.6), color: pick(d.colors),
+      grav: d.grav, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 6,
+    });
+  }
+  DBG.particles = PARTICLES.length;
+}
+function updateParticles(dt) {
+  for (let i = PARTICLES.length - 1; i >= 0; i--) {
+    const p = PARTICLES[i];
+    p.life -= dt;
+    if (p.life <= 0) { PARTICLES.splice(i, 1); continue; }
+    p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+  }
+  DBG.particles = PARTICLES.length;
+}
+function drawParticles() {
+  for (const p of PARTICLES) {
+    ctx.save();
+    ctx.globalAlpha = clamp(p.life / p.maxLife, 0, 1);
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+    ctx.restore();
+  }
+}
+// screen shake: a tiny jolt, used by the bell
+let shakeT = 0, shakeMag = 0;
+function triggerShake(mag, dur) { shakeMag = mag; shakeT = dur; }
+// pickup bounce: the player hops a little on a good catch
+function triggerBounce() { S.player.bounceT = 0.25; }
 
 // ---------- sprites ----------
 const IMGS = {};
@@ -421,7 +519,7 @@ const SCATTER = ['grass', 'grass_tuft_2', 'grass_tuft_3', 'flowers', 'daisy', 't
 // one scale system: characters 48px tall, animals 36 (small 30), objects
 // footprint rows x 48 tall, crops max 40, ground scatter 20-40.
 // DBG records what the render path actually drew, for tests.
-const DBG = { playerH: 0, portrait: '', shadowCount: 0, glowCount: 0, tint: null, sky: '', pathStrokes: PATH_LINES };
+const DBG = { playerH: 0, portrait: '', shadowCount: 0, glowCount: 0, tint: null, sky: '', pathStrokes: PATH_LINES, particles: 0, shakeT: 0, shakeX: 0, shakeY: 0, bounce: 0, audioStarted: false, audioGesture: false, musicMode: 'major', musicNotes: 0, birdChirps: 0 };
 let T = 0; // global animation clock (seconds)
 function charBob(phase) { return Math.sin(T * 2 + phase) * 2; }
 // blink: squash to 55% height for 120ms, every ~4.2s
@@ -596,7 +694,8 @@ const S = {
   fishCaught: {}, fishToday: 0, crabStole: false,
   berries: 3, eggs: 0,
   quests: QUESTS.map(q => ({ ...q })),
-  player: { x: 4.5 * TILE, y: 19.5 * TILE, dir: 'down', frame: 0, moving: false, animT: 0, pose: null, poseT: 0 },
+  player: { x: 4.5 * TILE, y: 19.5 * TILE, dir: 'down', frame: 0, moving: false, animT: 0, pose: null, poseT: 0, bounceT: 0 },
+  muted: false,
   dlg: null, dlgIdx: 0,
   fishGame: null,
   harvested: 0, caught: 0,
@@ -613,7 +712,7 @@ function saveGame() {
       produce: S.produce, fishCaught: S.fishCaught, berries: S.berries,
       eggs: S.eggs, quests: S.quests, harvested: S.harvested,
       caught: S.caught, plots: PLOTS.map(p => ({ tilled: p.tilled, crop: p.crop, stage: p.stage, watered: p.watered })),
-      introDone: S.introDone, pages: PAGES.map(p => p.found),
+      introDone: S.introDone, pages: PAGES.map(p => p.found), muted: S.muted,
     }));
   } catch (e) {}
 }
@@ -625,6 +724,7 @@ function loadGame() {
     S.produce = d.produce; S.fishCaught = d.fishCaught || {}; S.berries = d.berries;
     S.eggs = d.eggs; S.harvested = d.harvested;
     S.caught = d.caught; S.introDone = d.introDone;
+    S.muted = !!d.muted; updateMuteBtn();
     // merge quests by id: an old save has 8, the new list has 12 — the 4
     // story quests default to not-done, saved ones keep their state
     if (d.quests) S.quests = QUESTS.map(q => {
@@ -693,6 +793,7 @@ function rr(x, y, w, h, r) {
 const keys = {};
 window.addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+  initAudio();
   keys[e.key.toLowerCase()] = true;
   if (e.key === ' ' || e.key === 'Enter') doAction();
   if (e.key === 'Escape') closeOverlays();
@@ -726,12 +827,25 @@ function joyEnd(e) {
     knob.style.transform = 'translate(0px, 0px)';
   }
 }
-joy.addEventListener('touchstart', e => { e.preventDefault(); audio(); joyStart(e); }, { passive: false });
+joy.addEventListener('touchstart', e => { e.preventDefault(); initAudio(); joyStart(e); }, { passive: false });
 joy.addEventListener('touchmove', e => { e.preventDefault(); joyMove(e); }, { passive: false });
 joy.addEventListener('touchend', joyEnd);
 joy.addEventListener('touchcancel', joyEnd);
-$('btn-act').addEventListener('touchstart', e => { e.preventDefault(); audio(); doAction(); }, { passive: false });
-$('btn-act').addEventListener('mousedown', e => { audio(); doAction(); });
+$('btn-act').addEventListener('touchstart', e => { e.preventDefault(); initAudio(); doAction(); }, { passive: false });
+$('btn-act').addEventListener('mousedown', e => { initAudio(); doAction(); });
+
+// mute toggle: parchment, top-right in the HUD; persists in the save
+function updateMuteBtn() {
+  const b = $('btn-sound');
+  if (b) b.textContent = S.muted ? '🔇' : '🔊';
+}
+$('btn-sound').onclick = () => {
+  initAudio();
+  S.muted = !S.muted;
+  updateMuteBtn();
+  if (!S.muted) sfx('click');
+  saveGame();
+};
 
 // ---------- movement & collision ----------
 function isDock(tx, ty) { return DOCK.some(d => d.tx === tx && d.ty === ty); }
@@ -775,7 +889,7 @@ function movePlayer(dt) {
   if (!hitsSolid(p.x, ny, r)) p.y = ny;
   p.x = clamp(p.x, 16, W - 16); p.y = clamp(p.y, 24, H - 12);
   p.animT += dt;
-  if (p.animT > 0.22) { p.animT = 0; p.frame = (p.frame + 1) % 4; }
+  if (p.animT > 0.22) { p.animT = 0; p.frame = (p.frame + 1) % 4; sfx('step'); }
 }
 function hitsSolid(x, y, r) {
   for (const [cx, cy] of [[x - r, y - r], [x + r, y - r], [x - r, y + r], [x + r, y + r]]) {
@@ -854,6 +968,7 @@ function doAction() {
   if (c.kind === 'till') {
     if (!spendStamina(5)) return;
     c.plot.tilled = true; p.pose = 'hoe_pose'; p.poseT = 0.45; sfx('hoe');
+    spawnParticles((c.plot.tx + 0.5) * TILE, (c.plot.ty + 0.5) * TILE, 'puff');
     showMsg('Tilled! Now plant some seeds.');
     if (PLOTS.filter(x => x.tilled).length >= 4) questDone('till');
   } else if (c.kind === 'plant') {
@@ -867,14 +982,21 @@ function doAction() {
     const crop = CROPS[c.plot.crop];
     S.produce[c.plot.crop]++; S.harvested++;
     c.plot.crop = null; c.plot.stage = 0; c.plot.watered = false; c.plot.tilled = true;
-    sfx('plant'); showMsg('Harvested a ' + crop.name + '! Sell it at the stall.');
+    sfx('harvest');
+    spawnParticles((c.plot.tx + 0.5) * TILE, (c.plot.ty + 0.5) * TILE, 'leaf');
+    spawnParticles(p.x, p.y - 20, 'sparkle', 5);
+    triggerBounce();
+    showMsg('Harvested a ' + crop.name + '! Sell it at the stall.');
     questDone('harvest');
   } else if (c.kind === 'feed') {
-    CHICKEN.fed = true; sfx('plant');
+    CHICKEN.fed = true; sfx('pickup');
+    spawnParticles(CHICKEN.x, CHICKEN.y - 10, 'sparkle', 6);
     showMsg('The chicken pecks happily. There will be an egg in the morning.');
     questDone('feed');
   } else if (c.kind === 'page') {
-    c.page.found = true; sfx('plant');
+    c.page.found = true; sfx('pickup');
+    spawnParticles((c.page.tx + 0.5) * TILE, (c.page.ty + 0.5) * TILE, 'sparkle');
+    triggerBounce();
     if (PAGES.every(pg => pg.found)) questDone('pages');
     showMsg('Torn page: ' + c.page.frag);
   } else if (c.kind === 'fish') {
@@ -970,11 +1092,12 @@ function openPicker(plot) {
   });
   $('picker').classList.remove('hidden');
 }
-$('picker-close').onclick = closeOverlays;
+$('picker-close').onclick = () => { sfx('click'); closeOverlays(); };
 
 // ---------- shop ----------
 function openShop() {
   S.mode = 'shop';
+  sfx('chime');
   renderShop();
   $('shop').classList.remove('hidden');
 }
@@ -1005,7 +1128,8 @@ function renderShop() {
     S.coins += total; S.earned += total;
     Object.keys(S.produce).forEach(k => S.produce[k] = 0);
     S.fishCaught = {}; S.eggs = 0;
-    sfx('coin'); showMsg('Sold everything for ' + total + ' coins!');
+    sfx('coin'); spawnParticles(S.player.x, S.player.y - 20, 'sparkle', 8);
+    showMsg('Sold everything for ' + total + ' coins!');
     questDone('sell');
     if (S.earned >= 100) questDone('coins');
     renderShop(); renderHUD();
@@ -1013,7 +1137,7 @@ function renderShop() {
   box.appendChild(sell);
   $('shop-coins').textContent = S.coins + ' coins';
 }
-$('shop-close').onclick = closeOverlays;
+$('shop-close').onclick = () => { sfx('click'); closeOverlays(); };
 
 // ---------- fishing ----------
 function startFishing() {
@@ -1039,7 +1163,9 @@ function fishStop() {
   for (const f of FISH) { r -= f.w; if (r <= 0) { fish = f; break; } }
   S.fishCaught[fish.name] = (S.fishCaught[fish.name] || 0) + 1;
   S.caught++; S.fishToday++;
-  sfx('catch');
+  sfx('bite'); sfx('catch');
+  spawnParticles(S.player.x, S.player.y - 10, 'splash');
+  triggerBounce();
   if (S.fishToday === 1 && !S.crabStole) {
     S.crabStole = true;
     S.fishCaught[fish.name]--;
@@ -1059,7 +1185,7 @@ function showFishCatch(fish, stolen) {
   $('catch').classList.remove('hidden');
   S.mode = 'catch';
 }
-$('catch-close').onclick = () => { $('catch').classList.add('hidden'); S.mode = 'play'; renderHUD(); };
+$('catch-close').onclick = () => { sfx('click'); $('catch').classList.add('hidden'); S.mode = 'play'; renderHUD(); };
 
 // ---------- sleep & days ----------
 function sleepNight() {
@@ -1087,6 +1213,7 @@ function sleepNight() {
   renderHUD();
 }
 $('sum-close').onclick = () => {
+  sfx('click');
   $('summary').classList.add('hidden');
   S.mode = 'play';
   if (S.day > 7 && !S.bellDone) startBell();
@@ -1099,6 +1226,7 @@ function startBell() {
   questDone('bell');
   S.mode = 'bell';
   sfx('bell');
+  triggerShake(4, 0.6);
   const storyDone = questIsDone('pages') && questIsDone('mia_pages') && questIsDone('bram_fog');
   $('bell-line').textContent = storyDone
     ? '"You read the pages. You know what the island is owed. Good. That changes what the bell means."'
@@ -1107,6 +1235,7 @@ function startBell() {
   document.body.classList.add('night');
 }
 $('bell-close').onclick = () => {
+  sfx('click');
   $('bell').classList.add('hidden');
   S.mode = 'end';
   $('end-coins').textContent = S.coins;
@@ -1116,6 +1245,7 @@ $('bell-close').onclick = () => {
   $('end').classList.remove('hidden');
 };
 $('end-replay').onclick = () => {
+  sfx('click');
   try { localStorage.removeItem('tidehollow-demo-save'); } catch (e) {}
   location.reload();
 };
@@ -1157,7 +1287,8 @@ function renderHUD() {
     chip.onclick = () => {
       if (S.berries <= 0) return;
       S.berries--; S.stamina = Math.min(100, S.stamina + 25);
-      sfx('plant'); showMsg('Yum. +25 stamina.'); renderHUD();
+      sfx('pickup'); spawnParticles(S.player.x, S.player.y - 20, 'sparkle', 6);
+      showMsg('Yum. +25 stamina.'); renderHUD();
     };
     inv.appendChild(chip);
   }
@@ -1304,6 +1435,12 @@ function render(dt) {
   ctx.clearRect(0, 0, VW, VH);
   ctx.save();
   ctx.translate(-CAM.x, -CAM.y);
+  // screen shake: a tiny random jolt while shakeT runs (the bell)
+  if (shakeT > 0) {
+    DBG.shakeX = (Math.random() - 0.5) * shakeMag * 2;
+    DBG.shakeY = (Math.random() - 0.5) * shakeMag * 2;
+    ctx.translate(DBG.shakeX, DBG.shakeY);
+  } else { DBG.shakeX = 0; DBG.shakeY = 0; }
   // ground: one field, no square tiles — the tile grid stays for logic only
   const tx0 = Math.max(0, Math.floor(CAM.x / TILE)), tx1 = Math.min(COLS - 1, Math.ceil((CAM.x + VW) / TILE));
   const ty0 = Math.max(0, Math.floor(CAM.y / TILE)), ty1 = Math.min(ROWS - 1, Math.ceil((CAM.y + VH) / TILE));
@@ -1428,12 +1565,16 @@ function render(dt) {
     else if (!p.moving) spr = 'idle';
     else spr = 'walk_' + p.dir + '_' + (p.frame + 1);
     const bob = p.moving ? Math.sin(p.animT * 25) * 2 : charBob(0);
+    // pickup bounce: a quick hop that settles
+    const bounce = p.bounceT > 0 ? -Math.sin((1 - p.bounceT / 0.25) * Math.PI) * 8 : 0;
+    DBG.bounce = bounce;
     DBG.playerH = 48;
     drawShadow(p.x, p.y + 14, 30);
-    drawH(spr, p.x, p.y + 14 + bob, 48);
+    drawH(spr, p.x, p.y + 14 + bob + bounce, 48);
   }});
   draws.sort((a, b) => a.y - b.y);
   draws.forEach(d => d.fn());
+  drawParticles();
   // seagull flies above everything
   drawH('seagull', SEAGULL.x, SEAGULL.y + charBob(4.2), 30);
   // night glow is world-space: lamps, lit windows, lighthouse, player light
@@ -1472,6 +1613,27 @@ function loop(ts) {
   const dt = Math.min(0.05, (ts - last) / 1000 || 0.016);
   last = ts;
   T += dt; // animation clock
+  // juice + music run every frame once audio exists (the tune keeps playing
+  // through dialogue and overlays); particles update in any mode
+  if (shakeT > 0) shakeT -= dt;
+  if (S.player.bounceT > 0) S.player.bounceT -= dt;
+  updateParticles(dt);
+  if (AUDIO.started && !S.muted) {
+    musicTick();
+    if (S.mode === 'play') {
+      // birdsong: soft chirps in daylight, every ~20s on average
+      if (!musicIsMinor() && Math.random() < dt * 0.05) {
+        tone(2400, 0.06, 'sine', 0.015); tone(2900, 0.05, 'sine', 0.012, 0.08);
+        DBG.birdChirps++;
+      }
+      // the well whispers: a soft low swell when standing near it (19,12)
+      const wx = (19 + 0.5) * TILE, wy = (12 + 0.5) * TILE;
+      if (Math.hypot(S.player.x - wx, S.player.y - wy) < 2.5 * TILE && Math.random() < dt * 0.03) {
+        tone(220, 0.9, 'sine', 0.012); tone(233, 0.9, 'sine', 0.008, 0.1);
+      }
+    }
+  }
+  DBG.shakeT = shakeT;
   if (S.mode === 'play') {
     movePlayer(dt);
     // clock: 1 game minute per 0.45s
@@ -1575,14 +1737,14 @@ function startGame(fresh) {
   }
   requestAnimationFrame(loop);
 }
-$('btn-start').onclick = () => { audio(); startGame(true); };
-$('btn-continue').onclick = () => { audio(); startGame(false); };
-$('btn-quests').onclick = () => { $('quests').classList.toggle('hidden'); };
+$('btn-start').onclick = () => { initAudio(); startGame(true); };
+$('btn-continue').onclick = () => { initAudio(); startGame(false); };
+$('btn-quests').onclick = () => { initAudio(); sfx('click'); $('quests').classList.toggle('hidden'); };
 $('dialogue').addEventListener('click', () => { if (S.mode === 'dialogue') advanceDialogue(); });
 
 loadSprites().then(() => { showTitle(); render(); });
 // debug hook (harmless in production): lets tests and future debugging read state
-window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths };
+window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx };
 })();
 
 </script>
