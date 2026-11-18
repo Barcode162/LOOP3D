@@ -1,0 +1,25 @@
+# potted_fern · a fern arching out of a round matt clay pot
+# potted_fern(at, size, pot, seed) stands the pot on `at` (the floor or a shelf under its middle). The pot is
+# `size` x 0.36 m across and `size` x 0.32 m high, wider at the lip, with a dark soil top; the fern's fronds
+# arch out from the soil to about twice the pot's height. `pot` is any surface.
+#
+# kind: model
+# place: potted_fern(AT, size: 1)
+# credit: J Production, made in Loop3D (the fern is the engine's `fern`)
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, fern, pot, green, living, loft
+# size: chair
+# seeds: any whole number
+
+let fern_pot = material(color: rgb(0.48, 0.3, 0.22), roughness: 0.9)
+let fern_soil = material(color: rgb(0.06, 0.045, 0.035), roughness: 1)
+
+to potted_fern(at: vec(0, 0, 0), size: 1, pot: fern_pot, seed: 1)
+  let r = 0.18 * size
+  let h = 0.32 * size
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(r * 0.72, 0), vec(r * 0.8, h * 0.08), vec(r * 0.96, h * 0.86), vec(r, h), vec(r * 0.93, h), vec(r * 0.9, h * 0.94), vec(0, h * 0.94)], segments: 40, material: pot)
+    cylinder(radius: r * 0.9, height: 0.01, at: vec(0, h * 0.9, 0), material: fern_soil, collide: no)
+    fern(at: vec(0, h * 0.9, 0), size: 0.9 * size, seed: seed)
+  return g

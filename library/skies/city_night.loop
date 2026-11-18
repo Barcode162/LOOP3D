@@ -1,5 +1,5 @@
 # city_night · the city at night in three depths, seen from forty metres up
-# city_night(toward, eye_height, seed, lit, at, lamp) puts a dark blue-black sky with a few stars, a haze that fades
+# city_night(toward, eye_height, seed, lit, at, lamp, visibility) puts a dark blue-black sky with a few stars, a haze that fades
 # far towers to blue, and 180 lit-window towers in a fan 60 degrees each side of `toward` (towards -z by
 # default): 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from 800 to 1,500 m, none nearer than 100 m,
 # their feet `eye_height` below `at` (the eye, the middle of the glass). Under them a dark street and, far out
@@ -27,12 +27,12 @@ to city_hash(n)
   let x = sin(n * 12.9898 + 4.1414) * 43758.5453
   return x - floor(x)
 
-to city_night(toward: vec(0, 0, -1), eye_height: 40, seed: 1, lit: 0.35, at: vec(0, 0, 0), lamp: yes)
+to city_night(toward: vec(0, 0, -1), eye_height: 40, seed: 1, lit: 0.35, at: vec(0, 0, 0), lamp: yes, visibility: 2500)
   let n = seed * 1000
   let degree = 1 deg
   let a0 = atan(toward.x / max(0.001, 0 - toward.z))
   sky "color", color: rgb(0.1, 0.2, 0.5), nits: 0.05, stars: 0.2
-  haze 2500, 1200
+  haze visibility, 1200
   # one tall group off-centre, one stretch of sky left clear on the other side
   let side = 1
   if city_hash(n) < 0.5

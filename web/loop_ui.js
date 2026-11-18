@@ -169,6 +169,7 @@ window.LoopUI = (() => {
     const names = new Set();
     for (const m of text.matchAll(/\bmodel\s*\(?\s*(?:file:\s*)?"([^"]+\.glb)"/g)) names.add(m[1]);
     try { M.FS.mkdirTree('/scene/models'); } catch (e) {}
+    await loadSurfaces(M, text);
     if (names.size) names.add('materials.json');  // the models' real values, if the site has them
     // the recording page (claude.ai serves no model files) has each model as
     // text beside where it would be: <name>.glb.json = {"glb": "<base64>"}
@@ -192,6 +193,32 @@ window.LoopUI = (() => {
     // at a time keeps the bar's 167 from all being in memory at once
     let next = 0;
     await Promise.all([0, 1, 2, 3].map(async () => { while (next < list.length) await one(list[next++]); }));
+  }
+
+  // The library's surfaces a script names (`material: "oak"`, `like: "linen"`): on a computer the engine
+  // finds them in the library folder above the scene; the site keeps every entry flat in scenes/, so each one
+  // named is fetched into /scene/library/surfaces, where the engine looks from its scene folder /scene.
+  // (Without this the phone never drew a library surface: oak and plaster fell back to the built-in ones, and
+  // a surface with no built-in, like slate, stopped the scene.)
+  let surfaceNames = null;
+  async function loadSurfaces(M, text) {
+    if (!surfaceNames) {
+      try {
+        const r = await fetch('scenes/library.json');
+        surfaceNames = r.ok ? (await r.json()).filter((e) => e.kind === 'surface').map((e) => e.name) : [];
+      } catch (e) { surfaceNames = []; }
+    }
+    const wanted = surfaceNames.filter((n) => text.includes('"' + n + '"') || text.includes('"' + n.replace(/_/g, ' ') + '"'));
+    if (!wanted.length) return;
+    try { M.FS.mkdirTree('/scene/library/surfaces'); } catch (e) {}
+    await Promise.all(wanted.map(async (n) => {
+      const path = '/scene/library/surfaces/' + n + '.loop';
+      try { M.FS.stat(path); return; } catch (e) {}
+      try {
+        const r = await fetch('scenes/' + encodeURIComponent(n) + '.loop');
+        if (r.ok) M.FS.writeFile(path, await r.text());
+      } catch (e) {}
+    }));
   }
 
   // a model as text, {"glb": "<base64>"}, to its bytes (straight to bytes where the browser can)

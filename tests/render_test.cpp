@@ -95,6 +95,69 @@ TEST(furnace_dispersive_glass_sphere_stays_white) {
   CHECK_NEAR(c.z / 1000, 1.0, 0.08);
 }
 
+// The Loft's night city looked purple through its glass wall in film: past the glass a ray carries one
+// wavelength, and the firefly clamp (by brightness) cut the green ones hardest, since green counts most in
+// brightness. Seeing straight through glass is not a bounce to clamp; a white glow behind dispersive glass
+// in a dark scene (where the auto clamp is low) must stay white.
+TEST(white_glow_behind_dispersive_glass_stays_white_under_the_clamp) {
+  Scene s;
+  s.sky.kind = Sky::Kind::kNone;
+  Material glass;
+  glass.baseColor = Vec3(1), glass.transmission = 1, glass.roughness = 0, glass.ior = 1.52f, glass.dispersion = 0.3f;
+  Material glow;
+  glow.baseColor = Vec3(0), glow.emission = Vec3(50);
+  const int g = s.addMaterial(glass), e = s.addMaterial(glow);
+  s.add(s.addMesh(shapes::box({4, 4, 0.02f})), g);  // a pane in front of the camera
+  s.add(s.addMesh(shapes::box({0.3f, 0.3f, 0.01f})), e, Mat4::translation({0, 0, -5}));  // a small glow far behind it
+  s.camera.position = {0, 0, 1};
+  s.camera.target = {0, 0, -5};
+  s.camera.fStop = 64;
+  RenderSettings rs;
+  rs.width = 48, rs.height = 48, rs.samples = 256, rs.denoise = false, rs.lightPaths = false;
+  PathTracer pt;
+  pt.setScene(s);
+  RenderOutput out = pt.render(rs);
+  Vec4 c{0, 0, 0, 0};
+  for (int y = 22; y <= 26; ++y)
+    for (int x = 22; x <= 26; ++x) c = c + out.color.at(x, y) * (1.0f / 25);
+  std::printf("    a white glow through dispersive glass: %.1f %.1f %.1f\n", c.x, c.y, c.z);
+  CHECK(c.y > 1);
+  CHECK_NEAR(c.x / c.y, 1.0, 0.1);
+  CHECK_NEAR(c.z / c.y, 1.0, 0.1);
+}
+
+// A glowing strip half a metre over a floor, and far off a huge glowing wall (a night city's windows) facing
+// away: the floor under the strip must come out as bright as with the strip alone. Glows picked by power alone
+// sent nearly every pick to the far wall, and the Loft's shelf strips lit almost nothing in film.
+TEST(a_near_glow_is_not_starved_by_a_huge_far_one) {
+  auto floorUnderStrip = [](bool city) {
+    Scene s;
+    s.sky.kind = Sky::Kind::kNone;
+    Material floor;
+    floor.baseColor = Vec3(0.6f), floor.roughness = 1, floor.specular = 0;
+    Material glow;
+    glow.baseColor = Vec3(0), glow.emission = Vec3(2000);
+    Material far;
+    far.baseColor = Vec3(0), far.emission = Vec3(50);
+    const int f = s.addMaterial(floor), g = s.addMaterial(glow), w = s.addMaterial(far);
+    s.add(s.addMesh(shapes::plane({4, 4})), f);
+    // the strip: a thin glowing plane facing down, 0.4 m up
+    s.add(s.addMesh(shapes::plane({2, 0.02f})), g, Mat4::translation({0, 0.4f, 0}) * Mat4::rotation(Quat::axisAngle({1, 0, 0}, kPi)));
+    // the city: 400 m by 200 m of glow, 800 m away, facing away from the floor
+    if (city) s.add(s.addMesh(shapes::plane({400, 200})), w, Mat4::translation({0, 100, -800}) * Mat4::rotation(Quat::axisAngle({1, 0, 0}, kPi / 2)));
+    s.camera.position = {0, 1.2f, -1.5f};
+    s.camera.target = {0, 0, 0};
+    s.camera.fStop = 64;
+    PathTracer pt;
+    pt.setScene(s);
+    return luminance(centre(pt, 400));
+  };
+  const float alone = floorUnderStrip(false), withCity = floorUnderStrip(true);
+  std::printf("    the floor under a strip: %.1f alone, %.1f with a far city\n", alone, withCity);
+  CHECK(alone > 1);
+  CHECK_NEAR(withCity / alone, 1.0, 0.15);
+}
+
 TEST(point_light_inverse_square) {
   // A grey floor under a bare 1000 lm bulb 2 m up: E = I / d², L = E·ρ/π.
   Scene s;

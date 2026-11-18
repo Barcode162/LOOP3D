@@ -1,0 +1,35 @@
+# book_row · a row of hardback books standing on a shelf, each its own height, thickness and cloth colour
+# book_row(at, count, lean, seed, turn) stands `count` books side by side along x, starting at `at` (the
+# shelf's top, at the left end of the row, the spines' line at at.z, facing -z) and gives back the row's
+# length. Heights 0.19 to 0.28 m, thicknesses 18 to 45 mm, depth 0.15 to 0.2 m, in muted cloths; a pale
+# band near the top of some spines. With `lean: yes` the last book leans on the others.
+#
+# kind: model
+# place: book_row(AT, count: 9)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: books, shelf, row, small, living, loft
+# size: hand
+# seeds: any whole number
+
+let book_cloths = [rgb(0.32, 0.08, 0.06), rgb(0.08, 0.14, 0.22), rgb(0.12, 0.18, 0.1), rgb(0.55, 0.47, 0.34), rgb(0.08, 0.08, 0.08), rgb(0.42, 0.26, 0.1), rgb(0.6, 0.58, 0.52), rgb(0.2, 0.1, 0.18)]
+let book_band = material(color: rgb(0.7, 0.6, 0.38), roughness: 0.5, metal: 0.4)
+
+to book_row(at: vec(0, 0, 0), count: 9, lean: no, seed: 1, turn: 0)
+  let x = 0
+  let g = group(at: at, turn: turn)
+    for each i in range(0, count, 1)
+      let h = 0.19 + noise(seed * 1.7, i * 0.9, 0.2) * 0.5 * 0.09 + 0.045
+      let t = 0.018 + (noise(seed * 2.3, i * 1.1, 0.7) + 1) * 0.5 * 0.027
+      let d = 0.15 + (noise(seed * 3.1, i * 0.7, 0.4) + 1) * 0.5 * 0.05
+      let k = floor((noise(seed * 5.3, i * 2.9, 0.1) + 1) * 0.5 * 7.99)
+      let cloth = material(color: book_cloths[max(0, min(7, k))], roughness: 0.75, sheen: 0.3)
+      if lean and i == count - 1
+        box size: vec(t, h, d), at: vec(x + h * 0.25 + t / 2, h * 0.48, d / 2), rotation: vec(0, 0, -22 deg), material: cloth, round: 0.002, collide: no
+      else
+        box size: vec(t, h, d), at: vec(x + t / 2, h / 2, d / 2), material: cloth, round: 0.002, collide: no
+        if noise(seed * 7.1, i * 3.3, 0.9) > 0.2
+          box size: vec(t + 0.001, 0.012, 0.004), at: vec(x + t / 2, h - 0.03, -0.0005), material: book_band, collide: no
+      x += t + 0.001
+  return x

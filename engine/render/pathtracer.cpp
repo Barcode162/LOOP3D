@@ -55,6 +55,7 @@ struct Emitter {
   Vec3 radiance;
   Vec3 v0, e1, e2, ng;
   int mat;  // its material
+  float weight = 0;  // its chance to be picked, before dividing by the sum (emitterPower)
 };
 
 struct LightData {
@@ -196,9 +197,17 @@ void PathTracer::Impl::build(const Scene& s) {
       emitters.push_back({std::max(area, 1e-12f), rad, t.v0, t.e1, t.e2, t.ng, mat});
     }
   }
+  // Each glowing triangle is picked by its power over its squared distance from the camera (at least 1 m):
+  // by power alone, a night city's thousands of lit windows a kilometre off took nearly every pick, and the
+  // strips half a metre from a shelf were starved (the Loft's shelves stayed dark, its room full of grain).
+  // Any choice with every chance above zero gives the same picture on average; this one gives less grain
+  // where the camera is. The same weight is used where a ray meets a glow (lightPdf below).
   emitterPower = 0;
-  for (const Emitter& e : emitters) {
-    emitterPower += e.area * luminance(e.radiance);
+  const Vec3 eye = s.camera.position;
+  for (Emitter& e : emitters) {
+    const Vec3 c = e.v0 + (e.e1 + e.e2) * (1.0f / 3.0f);
+    e.weight = e.area * luminance(e.radiance) / std::max(lengthSq(c - eye), 1.0f);
+    emitterPower += e.weight;
     emitterCdf.push_back(emitterPower);
   }
   // lamps
@@ -521,7 +530,7 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
       // front); its back gave light too, so a closed glowing shape lit twice
       float cl = -dot(wi, e.ng);
       if (cl > 1e-6f) {
-        float pSel = e.area * luminance(e.radiance) / emitterPower;
+        float pSel = e.weight / emitterPower;
         float lightPdf = pSel * dist * dist / (cl * e.area);
         float bp;
         Vec3 f = scatter(wi, bp);
@@ -595,7 +604,10 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
   int bounces = 0;
   auto addLight = [&](Vec3 c) {
     if (!(c.x >= 0 && c.y >= 0 && c.z >= 0) || !isFinite(c)) return;
-    if (bounces > 0) {
+    // only light that came by way of a rough bounce is clamped: seen straight through glass or in a mirror is
+    // still seen directly, and past dispersive glass the clamp (by brightness) cut green paths hardest, so a
+    // warm city behind the Loft's glass turned purple
+    if (sawDiffuse) {
       float y = luminance(c);
       if (y > clampLum) c *= clampLum / y;
     }
@@ -690,7 +702,7 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
       } else {
         const Emitter& e = emitters[emissiveIndex];
         float cl = std::fabs(dot(ray.d, td.ng));
-        float lightPdf = (e.area * luminance(e.radiance) / emitterPower) * h.t * h.t / std::max(cl * e.area, 1e-9f);
+        float lightPdf = (e.weight / emitterPower) * h.t * h.t / std::max(cl * e.area, 1e-9f);
         addLight(beta * M.emission * sf.glow * powerHeuristic(lastPdf, lightPdf));
       }
     }

@@ -59,7 +59,7 @@ fine and fits the phone budget. The library holds 51 entries, among them every p
 draft below the rubric) and the ten furniture drafts brought in from their work/L-* branches (armchair, bar stool,
 coffee table, dining chair and table, arc floor lamp, kitchen island and run, built-in shelves, modular sofa):
 they pass `loop library check` but nobody has looked at their pictures yet (working, not finished).
-*Done 2026-11-18:* LOFT4, the stair lights itself. *Next in order:* LOFT5, the bones (beams, columns, joists, brick, skirting, duct; all in the library). Still to build before the last two goals: M60
+*Done 2026-11-18:* LOFT4 to LOFT7 and the first furnishing (your reins: "build the whole thing"): the Loft has its bones, its pools of light, the city, and a lived-in room from 62 library entries (LOG.md, top). *Left for milestone 3:* LOFT8, the room in the glass (needs M60), and LOFT9, marked and timed on your phone (needs N4, N6). *Found on the way:* the live renderer's lamp grid adds about twice the lamps each pixel needs (23 against 10): the next engine job for the phone's light. Still to build before the last two goals: M60
 (the glass as a mirror, for LOFT8), N4 and N6 (for LOFT9). Not published: the public player shows the Loft before
 goal 2.
 *Its two milestones* (`docs/ROADMAP.md`, the table): 3 **The Loft, empty and lit** (about 60 orders), then

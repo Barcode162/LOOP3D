@@ -109,6 +109,19 @@ function fakeDb(answers) {
 const visitOf = (n, id) => ({ kind: 'loop3d-bench', bench: 'live', start: 's0', segments: Array.from({ length: n }, (_, i) => ({ scene: 's' + i, frames: 60, seconds: 1, low1Fps: 60, p99Ms: 17, maxMs: 17, hitches: 0, scaleAvg: 1, loadMs: -1 })) });
 
 (async () => {
+  // the library's surfaces a scene names reach the engine's folder (the phone never drew one: slate stopped the Loft)
+  {
+    const files = { 'scenes/library.json': JSON.stringify([{ name: 'slate', kind: 'surface' }, { name: 'old_wood', kind: 'surface' }, { name: 'sofa_modular', kind: 'model' }]),
+                    'scenes/slate.loop': 'to slate()', 'scenes/old_wood.loop': 'to old_wood()', 'scenes/sofa_modular.loop': 'to sofa_modular()' };
+    const saved = global.fetch;
+    global.fetch = async (u) => ({ ok: u in files, text: async () => files[u], json: async () => JSON.parse(files[u]) });
+    const written = {};
+    const M = { FS: { mkdirTree() {}, stat(p) { if (!(p in written)) throw new Error('no'); }, writeFile(p, t) { written[p] = t; } } };
+    await L.loadModels(M, 'box size: 1, material: "slate"\nlet m = material(like: "old wood")\nsofa_modular(cover: "fabric")');
+    eq(Object.keys(written).sort(), ['/scene/library/surfaces/old_wood.loop', '/scene/library/surfaces/slate.loop'], 'surfaces named in a scene are fetched into /scene/library/surfaces, and nothing else');
+    eq(written['/scene/library/surfaces/slate.loop'], 'to slate()', 'a surface arrives as its text');
+    global.fetch = saved;
+  }
   {
     const w = fakeWin(null), store = L.recordingStore(w);
     store.save(visitOf(1), 'v1');
