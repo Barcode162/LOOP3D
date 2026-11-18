@@ -3,11 +3,11 @@ title:    The editable mesh
 hand:     lead
 size:     M
 wave:     t1
-branch:   claude/3d-editor-animations-rigging-sqjd71
+branch:   work/T-E1
 status:   working
-touch:    engine/geometry/edit_mesh.h, engine/geometry/edit_mesh.cpp, tests/edit_mesh_test.cpp
+touch:    engine/geometry/edit_mesh.h, engine/geometry/edit_mesh.cpp, tests/edit_mesh_test.cpp, CMakeLists.txt, docs/STUDIO.md
 pictures: no
 expected: 7
-started:  2026-11-11T19:41Z
-updated:  2026-11-11T19:41Z
-note:     claimed
+started:  2026-11-18T09:00Z
+updated:  2026-11-18T09:00Z
+note:     re-claimed 2026-11-18; card in docs/STUDIO.md (T-E1)
