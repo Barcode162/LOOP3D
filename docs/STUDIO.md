@@ -285,6 +285,32 @@ Done:   2026-11-18. A cube smoothed once is 26 points and 24 four-sided faces at
         needed no change: it already takes every file in engine/ and tests/.
 ```
 
+```
+T-E2 · Open a box and pull a corner (goal 18)                       hand: builder   size: M
+Read:   engine/geometry/edit_mesh.h, engine/script/words_shapes.cpp, web/editor/studio.js (the benches),
+        web/editor/engine.js and web/player.cpp (how loop_clip_set reaches the engine and writes text back),
+        docs/STUDIO.md section 3
+Touch:  engine/geometry/shape_edit.h, engine/geometry/shape_edit.cpp (new), engine/script/words_shapes.cpp,
+        web/player.cpp, web/editor/studio.js, web/editor/engine.js, web/editor/view.js, web/editor/source.js,
+        docs/LANGUAGE.md, docs/STUDIO.md, tests/shape_edit_test.cpp (new), tests/editor_source_test.js,
+        tools/editor_check.js, projects/samples/pull.loop (new), projects/samples/samples.looped
+Do:     1. The format (text is the source): a thing keeps its recipe (box(...)), and its hand edits are steps
+           written under it, the first kind being a point pulled: e.g. `pull point: 3, by: vec(0.1, 0.2, 0)`.
+           Points are named by T-E1's EditMesh made from the recipe's Mesh, welded where corners share a place,
+           so a box has 8 points and the same recipe always gives the same names. Steps apply in order (the
+           start of goal 20's stack); film and the live player draw the edited shape.
+        2. The engine's hands: open a thing's shape (its points, where they are), pull one point (the shape
+           redrawn at once, no rebuild of the scene), and the step's line for the editor to write into the text.
+        3. The Shape bench in the Studio: the thing's points shown as dots big enough for a thumb (44 pt), drag
+           one and the shape follows live; let go and the step goes into the text (one undo step); reload and it
+           is still pulled.
+        4. The scene "Pull a corner" (projects/samples/pull.loop): a box with one corner pulled out.
+Proof:  QUICK; tests: a box opens with 8 points; a pull moves only that point and the faces round it; text
+        -> shape -> text is the same; a recipe changed under a step that names a missing point is refused by
+        name, not a crash. tools/editor_check.js: open the box, drag a dot, reload, the corner is still out.
+Not:    picking edges or faces, more than one point at once, extrude or any other tool (goal 19).
+```
+
 After wave 1 the helpers have what they need. The next cards are cut then (one tool, one brush, one rule or
 one reader a card), because their exact shape depends on what wave 1 proves.
 
