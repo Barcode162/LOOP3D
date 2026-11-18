@@ -279,6 +279,10 @@ Proof:  QUICK; tests: a cube smoothed once has 26 points and 24 four-sided faces
         hand from the rule; a creased edge stays sharp; ten thousand random moves leave a whole mesh; a round
         trip through text is the same mesh.
 Not:    any tool in the editor (stage E's orders, for helpers, each one tool on these four moves).
+Done:   2026-11-18. A cube smoothed once is 26 points and 24 four-sided faces at (5/9,5/9,5/9), (0.75,0.75,0) and
+        (1,0,0) and their mirrors; 10,000 random moves (4,145 edge splits, 1,097 face splits, 2,135 joins, 822
+        removals done, the rest refused) left a whole mesh every time (tests/edit_mesh_test.cpp). CMakeLists.txt
+        needed no change: it already takes every file in engine/ and tests/.
 ```
 
 After wave 1 the helpers have what they need. The next cards are cut then (one tool, one brush, one rule or
@@ -286,7 +290,31 @@ one reader a card), because their exact shape depends on what wave 1 proves.
 
 ## 6. The formats, as built
 
-*Empty until T-K1, T-B1 and T-E1 write them down here.*
+*Empty until T-K1 and T-B1 write them down here. T-E1's is below.*
+
+**The editable mesh (`engine/geometry/edit_mesh.h`).**
+- A **point** has a place, a name, up to 8 bone pulls and a mask; a **corner** (a face's view of a point) has an
+  unwrap and a colour; a **face** has a name and its corners in order (3 or more, wound as a Mesh's triangles
+  are). Names are whole numbers that are never reused and never change; new points and faces take the next one.
+- A removed point or face stays in its place until `compact()`, so numbers stay good while a tool works.
+  `halfEdges()` builds the neighbour view (twin, next, previous; twin is -1 at a boundary) when asked.
+- **Whole** (`check()` returns ""): 3 or more corners, no point twice in a face, each edge run once each way at
+  most (so two faces at most), every live point used, names unique, every crease on an edge.
+- **The four moves** (`splitEdge`, `splitFace`, `joinPoints`, `removeFace`) leave a mesh whole or refuse and change
+  nothing (`joinPoints` tries it on a copy). The old face keeps its name when it is split; a join keeps the name of
+  the first point.
+- **Creases** are `sharpness` per edge (key: the two point numbers, low first). 1 or more holds the edge sharp for
+  that many levels of smoothing (each level takes 1 off); between 0 and 1 only softens the edge's new point;
+  boundary edges are always sharp. A point with two sharp edges slides along them; with three or more it stays.
+- **`smoothed(n)`** is Catmull-Clark: every old point keeps its name, each face gives its first child its name,
+  unwrap and colour are averaged along the face, bone pulls are mixed and cut back to the strongest 8.
+- **`fromMesh`** joins points that agree to 0.00001 and joins a pair of triangles back into a quad when they share
+  the diagonal in the way `addQuad` cuts one (and lie within about 45 degrees of each other). **`toMesh`** cuts each
+  face into triangles (a quad along its shorter diagonal), one vertex for each point and unwrap, smooth normals.
+- **The text form** (`toText`, `fromText`): the first line `loop-editmesh 1`, then `points`, `faces`, `creases`
+  and `next-name` counts, three comment lines saying what each line holds, then one line per point (`p`), face
+  (`f`) and crease (`c`). Counts are decimal, floats are the 8 hex digits of their bits (so they read back the
+  same), always written compact. Reading refuses a mesh that is not whole, with the reason.
 
 ## 7. Who does what
 
