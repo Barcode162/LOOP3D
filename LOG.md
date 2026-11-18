@@ -1,3 +1,4 @@
+- 2026-11-18: Surface: oak: oak surface: muted warm brown, arched grain, pores, rays coat, wear, dirt (deployed)
 # Log
 
 One line per request, newest first: the date, what the user asked, what was done.
