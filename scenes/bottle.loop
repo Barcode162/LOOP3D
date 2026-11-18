@@ -1,0 +1,22 @@
+# bottle · a bottle: dark green wine with a label, or clear olive oil with a cork
+# bottle(at, kind) stands it on `at`: `kind` "wine" (0.3 m tall) or "oil" (0.25 m, gold through the glass).
+#
+# kind: model
+# place: bottle(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bottle, wine, oil, kitchen, dining, bar, loft
+# size: hand
+# seeds: none, the same every time
+to bottle(at: vec(0, 0, 0), kind: "wine")
+  let g = group(at: at)
+    if kind == "wine"
+      lathe(profile: [vec(0, 0), vec(0.037, 0), vec(0.038, 0.2), vec(0.016, 0.245), vec(0.014, 0.3), vec(0, 0.3)], segments: 28, material: material(like: "green glass", color: rgb(0.04, 0.12, 0.05)), collide: no)
+      cylinder(radius: 0.0385, height: 0.08, at: vec(0, 0.1, 0), material: material(like: "paper", color: rgb(0.86, 0.82, 0.72)), sides: 28, collide: no)
+      cylinder(radius: 0.0155, height: 0.04, at: vec(0, 0.285, 0), material: material(color: rgb(0.35, 0.03, 0.05), roughness: 0.4), sides: 16, collide: no)
+    else
+      lathe(profile: [vec(0, 0), vec(0.032, 0), vec(0.033, 0.17), vec(0.012, 0.215), vec(0.011, 0.24), vec(0, 0.24)], segments: 28, material: "glass", collide: no)
+      cylinder(radius: 0.03, height: 0.15, at: vec(0, 0.08, 0), material: material(like: "glass", color: rgb(0.55, 0.42, 0.05)), sides: 24, collide: no)
+      cylinder(radius: 0.012, height: 0.025, at: vec(0, 0.245, 0), material: "pine", sides: 14, collide: no)
+  return g

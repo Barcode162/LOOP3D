@@ -1,0 +1,18 @@
+# bin · a steel pedal bin with a soft-close lid
+# bin(at, turn, height) stands it on `at`, its pedal towards -z: 0.3 m across, `height` tall (0.62 m).
+#
+# kind: model
+# place: bin(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bin, rubbish, trash, kitchen, loft
+# size: chair
+# seeds: none, the same every time
+to bin(at: vec(0, 0, 0), turn: 0, height: 0.62)
+  let g = group(at: at, turn: turn)
+    cylinder(radius: 0.15, height: height - 0.03, at: vec(0, (height - 0.03) / 2, 0), material: material(like: "steel", roughness: 0.35), sides: 36)
+    lathe(profile: [vec(0, height + 0.012), vec(0.12, height + 0.008), vec(0.152, height - 0.02), vec(0.15, height - 0.035), vec(0, height - 0.035)], segments: 36, material: "chrome", collide: no)
+    cylinder(radius: 0.152, height: 0.02, at: vec(0, 0.01, 0), material: "black", sides: 36, collide: no)
+    box size: vec(0.11, 0.015, 0.06), at: vec(0, 0.03, -0.17), material: "black", round: 0.006, collide: no
+  return g

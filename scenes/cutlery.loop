@@ -1,0 +1,22 @@
+# cutlery · a fork, a knife and a spoon in steel, laid side by side
+# cutlery(at, turn) lays them flat on `at`, pointing along -z, the fork on the left: about 0.2 m long.
+#
+# kind: model
+# place: cutlery(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: cutlery, fork, knife, spoon, kitchen, dining, table, loft
+# size: hand
+# seeds: none, the same every time
+let cutlery_steel = material(like: "steel", color: rgb(0.75, 0.75, 0.76), roughness: 0.18)
+
+to cutlery(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.012, 0.004, 0.12), at: vec(-0.04, 0.002, 0.04), material: cutlery_steel, round: 0.002, collide: no
+    box size: vec(0.024, 0.003, 0.06), at: vec(-0.04, 0.002, -0.05), material: cutlery_steel, round: 0.001, collide: no
+    box size: vec(0.012, 0.004, 0.11), at: vec(0.0, 0.002, 0.045), material: cutlery_steel, round: 0.002, collide: no
+    box size: vec(0.02, 0.0025, 0.1), at: vec(0.0, 0.0015, -0.055), material: cutlery_steel, round: 0.001, collide: no
+    box size: vec(0.012, 0.004, 0.12), at: vec(0.04, 0.002, 0.04), material: cutlery_steel, round: 0.002, collide: no
+    sphere(radius: 0.022, at: vec(0.04, 0.005, -0.05), scale: vec(0.8, 0.22, 1.25), material: cutlery_steel, sides: 16, collide: no)
+  return g

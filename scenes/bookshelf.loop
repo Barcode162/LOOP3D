@@ -1,0 +1,46 @@
+# bookshelf · a tall wooden bookshelf with fixed shelves and books standing on them
+# bookshelf(at, height, width, wood) stands it on the floor at `at` (its middle, on the floor,
+# against the wall behind it toward +z). It runs `width` along x, `height` high and 0.3 m deep.
+# Two sides, a back, a top and a bottom, three shelves inside, and books standing on four
+# levels in three colours. The `top` socket is the top shelf, at (at.x, height - 0.35, at.z).
+#
+# kind: piece
+# place: bookshelf(AT, height: 2.2, width: 1.2)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: asset pack, Fluff (2026-11-17)
+# tags: shelf, books, wood, indoor, loft, bar
+# size: room
+# view: front
+# sockets: top
+# seeds: none, it is made the same every time
+
+let shelf_books = [material(color: rgb(0.55, 0.15, 0.12), roughness: 0.7),
+  material(color: rgb(0.15, 0.25, 0.45), roughness: 0.7),
+  material(color: rgb(0.20, 0.40, 0.22), roughness: 0.7)]
+
+to bookshelf(at: vec(0, 0, 0), height: 2.2, width: 1.2, wood: "oak")
+  let depth = 0.3
+  let thick = 0.03
+  let shelves = 4
+  let mid = at + vec(0, 0, -depth / 2)
+  # the sides, back and top
+  box size: vec(thick, height, depth), at: mid + vec(-width / 2 + thick / 2, height / 2, 0), material: wood, round: 0.003
+  box size: vec(thick, height, depth), at: mid + vec(width / 2 - thick / 2, height / 2, 0), material: wood, round: 0.003
+  box size: vec(width, height, thick), at: mid + vec(0, height / 2, depth / 2 - thick / 2), material: wood
+  box size: vec(width, thick, depth), at: mid + vec(0, height - thick / 2, 0), material: wood, round: 0.003
+  box size: vec(width - 2 * thick, thick, depth), at: mid + vec(0, thick / 2, 0), material: wood, round: 0.003
+  # the shelves and their books
+  let inner = width - 2 * thick
+  let gap = (height - 2 * thick) / shelves
+  for each s in range(0, shelves, 1)
+    let shelf_y = thick + s * gap
+    if s > 0
+      box size: vec(inner, thick, depth - thick), at: mid + vec(0, shelf_y - thick / 2, -thick / 2), material: wood, round: 0.002
+    let count = 8
+    let wide = inner / count
+    for each i in range(0, count, 1)
+      let bx = -inner / 2 + (i + 0.5) * wide
+      let bh = 0.22 + (i % 3) * 0.03
+      let bm = shelf_books[i % 3]
+      box size: vec(wide - 0.008, bh, 0.18), at: mid + vec(bx, shelf_y + bh / 2, -0.04), material: bm, round: 0.002

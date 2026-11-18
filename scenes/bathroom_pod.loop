@@ -1,0 +1,26 @@
+# bathroom_pod · the walls of a small bathroom standing in a room: plaster partitions with a door opening, up to the ceiling over it
+# bathroom_pod(at, width, depth, height, door, sides) stands it with `at` the middle of its front wall on the floor;
+# it runs back `depth` (2.2 m) towards +z. The front wall (`width`, 2.4 m) has a 0.8 m opening `door` metres right of
+# its middle; `sides` "both", "left" or "right" says which side walls it has (the others are the room's).
+#
+# kind: piece
+# place: bathroom_pod(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bathroom, pod, partition, wall, shower room, loft
+# size: room
+# seeds: none, the same every time
+to bathroom_pod(at: vec(0, 0, 0), width: 2.4, depth: 2.2, height: 2.85, door: 0.6, sides: "right", wall: "plaster")
+  let t = 0.1
+  let left = at.x - width / 2
+  let gap_a = at.x + door - 0.4
+  let gap_b = at.x + door + 0.4
+  box size: vec(gap_a - left, height, t), at: vec((left + gap_a) / 2, height / 2, at.z + t / 2), material: wall
+  box size: vec(at.x + width / 2 - gap_b, height, t), at: vec((gap_b + at.x + width / 2) / 2, height / 2, at.z + t / 2), material: wall
+  box size: vec(0.8, height - 2.1, t), at: vec(at.x + door, 2.1 + (height - 2.1) / 2, at.z + t / 2), material: wall
+  if sides == "right" or sides == "both"
+    box size: vec(t, height, depth), at: vec(at.x + width / 2 - t / 2, height / 2, at.z + depth / 2), material: wall
+  if sides == "left" or sides == "both"
+    box size: vec(t, height, depth), at: vec(left + t / 2, height / 2, at.z + depth / 2), material: wall
+  return at

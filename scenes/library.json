@@ -1,6 +1,6 @@
 [
  {
-  "about": "cove(from_at, to_at, lumens, kelvin, ledge, out, wall) runs one level ledge along a wall, from `from_at` to `to_at` (points on the wall's face at the ledge's top; the line runs along x or along z). The ledge is 0.1 m deep and 0.04 m thick, its softened front edge carries an upstand 0.06 m high and 0.02 m thick. Behind the upstand, on the ledge, lies a strip of light facing up: it washes the wall and the ceiling above and is never seen from below. `out` says which way the ledge leaves the wall: -1 is towards -z for a line along x and towards -x for a line along z; 1 is the other way. With `wall` above 0 a plaster wall that high stands behind it (0.3 m of it below the ledge), for a bare picture; in a room leave it 0. Gives back the strip's glowing rectangle.",
+  "about": "cove(from_at, to_at, lumens, kelvin, ledge, out, wall) runs one level ledge along a wall, from `from_at` to `to_at` (points on the wall's face at the ledge's top; the line runs along x or along z). The ledge is 0.1 m deep and 0.04 m thick, its softened front edge carries an upstand 0.06 m high and 0.02 m thick. Behind the upstand, on the ledge, lies a strip of light facing up: it washes the wall and the ceiling above and is never seen from below. `out` says which way the ledge leaves the wall: -1 is towards -z for a line along x and towards -x for a line along z; 1 is the other way. With `wall` above 0 a plaster wall that high stands behind it (0.3 m of it below the ledge), for a bare picture; in a room leave it 0. On the phone the strip stands as lamps at most `piece` long (0.25 m; a long cove takes 0.5 to 1 m to keep the phone's lamp work down). Gives back the strip's glowing rectangle.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-11)",
   "kind": "light",
@@ -8,6 +8,46 @@
   "name": "cove",
   "place": "cove(AT + vec(-1.5, 0.4, 0), AT + vec(1.5, 0.4, 0), lumens: 600, kelvin: 2700, out: 1, wall: 1.4)",
   "what": "a plaster ledge on a wall with a strip of light hidden on top"
+ },
+ {
+  "about": "desk_lamp(at, turn, lumens, kelvin) stands it on `at`, reaching out towards -z: about 0.5 m tall. One spot of `lumens` (250).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "desk_lamp",
+  "place": "desk_lamp(AT)",
+  "what": "an architect's desk lamp: a weighted base, two arms with springs, a small cone shade aimed at the desk"
+ },
+ {
+  "about": "floor_lamp_arc(at, turn, lumens, kelvin, on, steel) stands the base on `at`. The stem climbs straight up 0.5 m, then bends through a quarter circle 1.4 m wide to reach 1.9 m high, and drops a short neck to a dome 0.32 m across, pointing down (dark outside, pale inside, a dim bulb high in it). It arcs towards -z (turn turns it). One spotlight at the bulb, its cone the dome's opening, does all the lighting; the bulb only glows. `on: no` leaves it dark. Gives back the light.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "floor_lamp_arc",
+  "place": "floor_lamp_arc(at: vec(1.8, 0, 0.5), turn: 90 deg)   # beside a sofa, the dome over its arm",
+  "what": "a tall arc lamp: a heavy round base, a slim steel stem that rises and leans out over the room, a dome shade"
+ },
+ {
+  "about": "globe_pendants(at, drops, across, lumens, kelvin) hangs them from `at` (on the ceiling), each its `drops` below ([1.2, 1.5, 1.8] m), 0.22 m globes. The three share one light at their middle (`lumens` in all).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "globe_pendants",
+  "place": "globe_pendants(AT + vec(0, 3, 0))",
+  "what": "a cluster of three opal glass globes hung at different heights from one ceiling plate"
+ },
+ {
+  "about": "neon_sign(at, turn, words, height, color, lumens) hangs it with `at` its middle on the wall, facing -z: letters `height` (0.18 m) tall, drawn as a glowing bar for each word with a gap between; one light gives its `lumens` (300).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "neon_sign",
+  "place": "neon_sign(AT)",
+  "what": "a neon sign of our own words in warm pink glass tube on a clear back plate: \"stay a while\" by default"
  },
  {
   "about": "pendant_dome(at, drop, across, lumens, kelvin, shade) hangs one from the ceiling point `at`: a thin cord `drop` long, a small ceiling rose, a dome `across` wide (dark outside, pale inside), a dim bulb high inside it, and one spotlight at the bulb aimed straight down. The light's angle is the dome's opening, so the dome owns the pool below and nothing leaves upward. Gives back the light.",
@@ -20,7 +60,17 @@
   "what": "a plain metal dome on a cord, its light falling in a cone"
  },
  {
-  "about": "step_strips(at, rises, rise, going, width, lumens, kelvin) takes the same numbers as stair_straight and puts one strip under each tread's front edge: 0.03 m in from each side, 0.02 m back from the nosing, facing down and tipped a little towards the stair's foot, so each one washes the tread below while the tread above hides it from anyone walking up or standing in the room. One tread fewer than rises, like the stair. Gives back nothing.",
+  "about": "picture_light(at, turn, width, lumens, kelvin) fixes it with `at` on the wall above a picture's top edge, facing -z: `width` (0.45 m) long, reaching out 0.12 m and aimed down at the picture.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "picture_light",
+  "place": "picture_light(AT)",
+  "what": "a slim brass picture light on a short arm, washing a painting below it"
+ },
+ {
+  "about": "step_strips(at, rises, rise, going, width, lumens, kelvin, piece) takes the same numbers as stair_straight and puts one strip under each tread's front edge: 0.03 m in from each side, 0.02 m back from the nosing, facing down and tipped a little towards the stair's foot, so each one washes the tread below while the tread above hides it from anyone walking up or standing in the room. One tread fewer than rises, like the stair. On the phone each strip stands as lamps at most `piece` long: 0.5 m gives two to a tread, which light it as well as four and halve the phone's lamp work. Gives back nothing.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-11)",
   "kind": "light",
@@ -28,6 +78,26 @@
   "name": "step_strips",
   "place": "step_strips(at: AT)",
   "what": "a strip of warm light under the front edge of every tread of a stair, 250 lm per metre"
+ },
+ {
+  "about": "string_lights(from_at, to_at, bulbs, sag, lumens, kelvin) hangs `bulbs` (24) from `from_at` to `to_at` with `sag` (0.25 m) at each swag's lowest. The bulbs glow; two lights along the string give all their `lumens` (200); `lamp: no` leaves only the glow.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "string_lights",
+  "place": "string_lights(AT + vec(-1, 2, 0), AT + vec(1, 2, 0))",
+  "what": "a string of small warm bulbs hung in soft swags between two points"
+ },
+ {
+  "about": "table_lamp(at, style, lumens, kelvin, lamp) stands it on `at`: the drum 0.55 m tall, the globe 0.32 m. `lamp: no` draws the glowing shade without its light.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "table_lamp",
+  "place": "table_lamp(AT)",
+  "what": "a table lamp, lit: \"drum\" (a linen drum shade on a turned brass stem) or \"globe\" (an opal glass ball on a stone base)"
  },
  {
   "about": "track_spots(from_at, to_at, count, aims, lumens, kelvin, steel, beam) hangs a level track under the ceiling from `from_at` to `to_at` (along x or z; its top is at the height of from_at) with `count` heads spaced evenly. Head i aims at aims[i] (a point); with no point it looks straight down.",
@@ -40,6 +110,476 @@
   "what": "a ceiling track with small spotlights, each making its own pool on the floor"
  },
  {
+  "about": "wall_light(at, turn, lumens, kelvin, lamp, on) fixes it (`on: no`: switched off) with `at` the point on the wall, the arm reaching out to -z 0.25 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "light",
+  "licence": "our own work, free for every J Production project",
+  "name": "wall_light",
+  "place": "wall_light(AT)",
+  "what": "a bedside wall light: a small brass arm holding a cone shade that throws its light down"
+ },
+ {
+  "about": "alarm_clock(at, turn, hour, minute) stands it on `at`, its face towards -z: 0.1 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "alarm_clock",
+  "place": "alarm_clock(AT)",
+  "what": "a small round alarm clock with two bells on top"
+ },
+ {
+  "about": "rolls round into fat arms, and four short dark wooden feet, all a little slumped armchair_leather(at, turn, leather, wood, seed) stands it on `at` (the floor under its middle), facing -z, turned `turn`. It is 0.85 m wide, 0.9 m deep and 0.8 m high; the seat is at 0.42 m. Each seed slumps it a little differently (cushion sag, a leaning back, arms a hair uneven). Gives back the group (.position, .turn, .visible) with `.seat` (where a person sits) and `.arms` (the two arm tops) as points.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "armchair_leather",
+  "place": "armchair_leather(AT, turn: 0, seed: 1)",
+  "what": "a worn leather club armchair: a deep seat cushion, a rounded back that"
+ },
+ {
+  "about": "bar_stool(at, turn, wood, steel) stands one on `at` (the floor under its middle), 0.66 m to the seat, for a kitchen island: a dished oak seat 0.34 m across, four legs splaying outward to a 0.44 m footprint, and a round foot ring at 0.25 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bar_stool",
+  "place": "bar_stool(AT)",
+  "what": "a round oak seat, slightly dished, on four slim blackened steel legs"
+ },
+ {
+  "about": "basin(at, turn) fixes it with `at` the middle of the shelf's back on the wall, the shelf top 0.82 m up, facing -z: the shelf 0.7 x 0.45 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "basin",
+  "place": "basin(AT)",
+  "what": "a round white basin on a floating oak shelf, a tall brass tap"
+ },
+ {
+  "about": "basket(at, across, height) stands it on `at`: `across` (0.35 m) wide, `height` (0.3 m) tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "basket",
+  "place": "basket(AT)",
+  "what": "a woven seagrass basket, round, with two rope handles"
+ },
+ {
+  "about": "bath_mat(at, turn, color) lays it on `at`: 0.8 x 0.5 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bath_mat",
+  "place": "bath_mat(AT)",
+  "what": "a thick cotton bath mat with a ribbed weave"
+ },
+ {
+  "about": "bedside_table(at, turn, wood) stands it on `at`, its front towards -z: 0.45 m wide, 0.38 m deep, 0.5 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bedside_table",
+  "place": "bedside_table(AT)",
+  "what": "a bedside table: one drawer over an open shelf, in oak on short tapered legs"
+ },
+ {
+  "about": "bin(at, turn, height) stands it on `at`, its pedal towards -z: 0.3 m across, `height` tall (0.62 m).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bin",
+  "place": "bin(AT)",
+  "what": "a steel pedal bin with a soft-close lid"
+ },
+ {
+  "about": "book_glasses(at, turn) lays it on `at`: the book 0.24 x 0.16 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "book_glasses",
+  "place": "book_glasses(AT)",
+  "what": "an open book face down on a bedside table, reading glasses folded on it"
+ },
+ {
+  "about": "book_row(at, count, lean, seed, turn) stands `count` books side by side along x, starting at `at` (the shelf's top, at the left end of the row, the spines' line at at.z, facing -z) and gives back the row's length. Heights 0.19 to 0.28 m, thicknesses 18 to 45 mm, depth 0.15 to 0.2 m, in muted cloths; a pale band near the top of some spines. With `lean: yes` the last book leans on the others.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "book_row",
+  "place": "book_row(AT, count: 9)",
+  "what": "a row of hardback books standing on a shelf, each its own height, thickness and cloth colour"
+ },
+ {
+  "about": "book_stack(at, turn, count, seed) stacks `count` (3) books on `at`: art books 0.25 to 0.32 m across.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "book_stack",
+  "place": "book_stack(AT)",
+  "what": "books lying flat in a stack, the biggest at the bottom, as on a coffee table or a shelf"
+ },
+ {
+  "about": "bottle(at, kind) stands it on `at`: `kind` \"wine\" (0.3 m tall) or \"oil\" (0.25 m, gold through the glass).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bottle",
+  "place": "bottle(AT)",
+  "what": "a bottle: dark green wine with a label, or clear olive oil with a cork"
+ },
+ {
+  "about": "bowl(at, across, glaze) stands it on `at`: `across` wide (0.16 m), about 0.4 of that tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bowl",
+  "place": "bowl(AT)",
+  "what": "a stoneware bowl, glazed inside, raw clay outside at the foot"
+ },
+ {
+  "about": "bread(at, turn) lays it on `at`: the board 0.38 m long, the loaf 0.26 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "bread",
+  "place": "bread(AT)",
+  "what": "a crusty loaf of bread on a board, the first slices cut"
+ },
+ {
+  "about": "candle_tray(at, lit, lamp) puts it on `at`: 0.3 m across, the candles 8 to 15 cm. `lit: yes` gives flames; `lamp: yes` also gives one small warm light (40 lumens) among them.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "candle_tray",
+  "place": "candle_tray(AT)",
+  "what": "a round brass tray of three pillar candles, lit, with a box of matches"
+ },
+ {
+  "about": "candles(at, lit, lamp) stands them on `at`: 0.15, 0.22 and 0.3 m tall. `lamp: yes` gives one small warm light (30 lumens).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "candles",
+  "place": "candles(AT)",
+  "what": "three tall church candles of different heights on small brass dishes, lit or not"
+ },
+ {
+  "about": "cat(at, turn, pose, coat) puts it on `at`, its face towards -z: `pose` \"sitting\" (0.3 m tall) or \"lying\" (curled, 0.45 m long). `coat` is its colour. (Walking waits for its skeleton and clips.)",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "cat",
+  "place": "cat(AT)",
+  "what": "a cat, still: sitting up with its tail round its feet, or curled up asleep"
+ },
+ {
+  "about": "chest_of_drawers(at, turn, width, wood) stands it on `at`, its front towards -z: `width` (1.0 m) wide, 0.48 m deep, 0.85 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "chest_of_drawers",
+  "place": "chest_of_drawers(AT)",
+  "what": "a chest of four wide drawers in walnut, brass pulls, on a recessed plinth"
+ },
+ {
+  "about": "chopping_board(at, turn, length) lays it flat with `at` the middle of its underside: `length` long (0.42 m), 0.28 m wide, 3 cm thick.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "chopping_board",
+  "place": "chopping_board(AT)",
+  "what": "a thick end-grain oak chopping board with a rounded edge and a hand hole"
+ },
+ {
+  "about": "coat_stand(at, seed) stands it on `at`: 1.8 m tall; two coats, a scarf and a hat hang on it.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "coat_stand",
+  "place": "coat_stand(AT)",
+  "what": "a wooden coat stand with coats, a scarf and a hat on its hooks"
+ },
+ {
+  "about": "coffee_machine(at, turn) stands it on `at`, its front towards -z: 0.3 m wide, 0.38 m tall, 0.35 m deep. A cup sits on the drip tray; a gauge and two dials on the front.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "coffee_machine",
+  "place": "coffee_machine(AT)",
+  "what": "an espresso machine in steel, with a chrome group head, a portafilter and a cup waiting under it"
+ },
+ {
+  "about": "coffee_table_slab(at, turn, length, wood, steel) stands on the floor at `at`, front to -z, and gives the group back. The slab is 6 cm thick, edges rounded 12 mm, its top 0.36 m up; its two long edges wander a few millimetres in and out, a little differently for each seed, like a live edge. Under it stand two flat steel loops (40 by 8 mm bar) joined by a low rail. Books, cups or a tray go at at + vec(0, 0.36, 0).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "coffee_table_slab",
+  "place": "coffee_table_slab(AT, turn: 0, length: 1.3, wood: \"oak\", seed: 1)",
+  "what": "a low coffee table: one thick oak slab on a blackened steel frame"
+ },
+ {
+  "about": "cushion(at, turn, tilt, side, cover) puts one with `at` its middle; it faces -z (its broad faces look along z), `side` square (0.45 m), 0.15 m thick at the middle. `tilt` leans it back, as against a sofa's back cushion. Made of three soft layers, each rounder and smaller, so it swells to the middle.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "cushion",
+  "place": "cushion(AT + vec(0, 0.3, 0))",
+  "what": "a soft square scatter cushion, plump in the middle and thin at the seams"
+ },
+ {
+  "about": "cutlery(at, turn) lays them flat on `at`, pointing along -z, the fork on the left: about 0.2 m long.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "cutlery",
+  "place": "cutlery(AT)",
+  "what": "a fork, a knife and a spoon in steel, laid side by side"
+ },
+ {
+  "about": "back legs rising into a back with a curved top rail and three spindles dining_chair_wood(at, turn, wood) stands one on the floor at `at`, front to -z (turn spins it about its own middle), and gives the group back. Light on triangles: made to be placed six at a time.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "dining_chair_wood",
+  "place": "dining_chair_wood(AT, turn: 0 deg, wood: \"oak\")",
+  "what": "a plain wooden dining chair: a dished seat, four slim legs that splay a little,"
+ },
+ {
+  "about": "dining_table_oak(at, turn, length, wood, steel) stands it on the floor at `at` (long way along x, a head at each end; turn it in degrees) and gives back its group. The top is 4 cm thick with softened edges, 0.75 m up. Two inverted-T steel ends, set in from the heads so a chair fits at each, are joined by a low stretcher. table_top_at(at, turn, length) gives the middle of the top's face (plates go there); table_seats(at, turn, length) gives the six places chairs stand, three a side, 0.6 m apart, as a list of {at, facing}.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "dining_table_oak",
+  "place": "dining_table_oak(AT)",
+  "what": "a dining table for six: an oak top on a blackened steel trestle base"
+ },
+ {
+  "about": "dish_rack(at, turn) stands it on `at`: 0.42 m long, 0.3 m wide.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "dish_rack",
+  "place": "dish_rack(AT)",
+  "what": "a steel dish rack on a drip tray, plates standing in it and a glass upturned"
+ },
+ {
+  "about": "duvet(at, width, length, cover, seed) lays it with `at` the middle of the mattress top where it starts: it covers `length` (1.6 m) towards -z and `width` (2.0 m) across, hanging 0.25 m down each side.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "duvet",
+  "place": "duvet(AT)",
+  "what": "a duvet on a bed, thick and rumpled, turned back at the head, its edges hanging over the sides"
+ },
+ {
+  "about": "entry_bench(at, turn, length) stands it on `at`, its front towards -z: `length` (1.0 m), 0.35 m deep, 0.45 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "entry_bench",
+  "place": "entry_bench(AT)",
+  "what": "a slatted oak bench by a door, for sitting to put shoes on"
+ },
+ {
+  "about": "extractor_hood(at, turn, width, lumens) hangs it with `at` the middle of its back at its top, facing -z: `width` (0.6 m), 0.3 m deep, 6 cm tall; a soft light under it (`lumens` 200; 0 for none).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "extractor_hood",
+  "place": "extractor_hood(AT)",
+  "what": "a slim steel extractor hood under a wall cupboard, its small lamps lighting the hob"
+ },
+ {
+  "about": "fiddle_leaf_fig(at, height, pot, seed) stands it on `at`: `height` (1.8 m) tall, its leaves 25 to 35 cm long.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "fiddle_leaf_fig",
+  "place": "fiddle_leaf_fig(AT)",
+  "what": "a fiddle-leaf fig in a tall pot: a bare trunk branching into big glossy leaves"
+ },
+ {
+  "about": "floor_cushion(at, turn, cover) lays it on `at`: 0.7 m square, 0.16 m thick.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "floor_cushion",
+  "place": "floor_cushion(AT)",
+  "what": "a big square floor cushion with a piped edge, to sit on by a fire"
+ },
+ {
+  "about": "footstool(at, turn, leather, wood) stands it on `at`: 0.6 m across, 0.42 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "footstool",
+  "place": "footstool(AT)",
+  "what": "a low leather footstool on a four-star base, to go with a lounge chair"
+ },
+ {
+  "about": "fridge(at, turn, height, finish) stands it on `at` (the middle of its footprint), its doors facing -z: 0.6 m wide, 0.66 m deep, `height` tall (1.85 m), the freezer door below a thin gap, the fridge door above.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "fridge",
+  "place": "fridge(AT)",
+  "what": "a tall fridge-freezer in brushed steel, two doors with long bar handles"
+ },
+ {
+  "about": "fruit_bowl(at, across, seed) stands it on `at`: `across` wide (0.32 m). The fruit sits differently with each seed.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "fruit_bowl",
+  "place": "fruit_bowl(AT)",
+  "what": "a wide wooden bowl heaped with fruit: apples, oranges, a lemon and a bunch of bananas"
+ },
+ {
+  "about": "guitar_stand(at, turn) stands it on `at`, its face towards -z, leaning back: about 1 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "guitar_stand",
+  "place": "guitar_stand(AT)",
+  "what": "an acoustic guitar resting on a low stand"
+ },
+ {
+  "about": "hanging_basket(at, drop, seed) hangs it with `at` the point on the ceiling: the pot `drop` (1.2 m) below it.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "hanging_basket",
+  "place": "hanging_basket(AT)",
+  "what": "a hanging planter on three cords from the ceiling, a fern spilling over its rim"
+ },
+ {
+  "about": "headphones(at, turn) lays them on `at`: 0.18 m across.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "headphones",
+  "place": "headphones(AT)",
+  "what": "over-ear headphones lying on a desk, the band arched up"
+ },
+ {
+  "about": "herb_pots(at, turn, seed) stands them on `at`, in a row along x: 0.42 m long, the herbs about 0.25 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "herb_pots",
+  "place": "herb_pots(AT)",
+  "what": "three terracotta pots of herbs in a row, as on a sunny sill"
+ },
+ {
+  "about": "hob(at, turn) lays it with `at` the middle of its underside on the worktop: 0.59 x 0.52 m, 6 mm proud, four rings of fine grey marking (two big, two small) and a row of touch marks at the front (-z).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "hob",
+  "place": "hob(AT)",
+  "what": "a black glass induction hob with four zones marked on it, laid into a worktop"
+ },
+ {
+  "about": "jar(at, height, fill, filled) stands it on `at`: 0.09 m across, `height` tall (0.16 m); `fill` is the colour of what is inside and `filled` (0 to 1) how full.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "jar",
+  "place": "jar(AT)",
+  "what": "a glass storage jar with a wooden lid, filled with something (pasta, rice, beans, coffee)"
+ },
+ {
+  "about": "kettle(at, turn, body) stands it on `at`, its spout towards -z: 0.2 m tall, 0.16 m across.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "kettle",
+  "place": "kettle(AT)",
+  "what": "an electric kettle, a round matte body on its base, with a handle and a short spout"
+ },
+ {
+  "about": "key_dish(at) puts it on `at`: 0.14 m across.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "key_dish",
+  "place": "key_dish(AT)",
+  "what": "a small ceramic dish with a bunch of keys in it"
+ },
+ {
+  "about": "keyboard(at, turn) lays them on `at`, the keys facing a sitter at -z: the mat 0.6 x 0.3 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "keyboard",
+  "place": "keyboard(AT)",
+  "what": "a low keyboard and a mouse beside it, on a felt mat"
+ },
+ {
+  "about": "knife_block(at, turn) stands it on `at`, leaning back towards +z: 0.12 m wide, 0.24 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "knife_block",
+  "place": "knife_block(AT)",
+  "what": "a slanted oak knife block with five black knife handles standing in it"
+ },
+ {
+  "about": "ladder_shelf(at, turn, height, width, wood) stands its feet on `at` with its back leaning on a wall at +z: `height` (1.8 m), `width` (0.6 m), five shelves.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "ladder_shelf",
+  "place": "ladder_shelf(AT)",
+  "what": "a leaning ladder bookshelf: two rails against the wall and shelves that grow deeper towards the floor"
+ },
+ {
   "about": "lantern(name, at) places one, dark (a faint ember inside); light_lantern(l) lights it: its flame, a warm light that breathes like fire, a crackle, a bell (quiet: yes leaves the bell out). Every lantern placed is in `lanterns`; lit_count() says how many are lit.",
   "credit": "J Production, made in Loop3D",
   "from": "The Lantern Isle (2026-11-06)",
@@ -48,6 +588,266 @@
   "name": "lantern",
   "place": "lantern(\"a lantern\", AT)",
   "what": "a stone post with an iron cage of frosted glass, and a flame you light"
+ },
+ {
+  "about": "laptop_open(at, turn, lid, glow, shell) sets it on a table at `at` (the middle under its base), the screen at the back (+z) facing -z, opened `lid` degrees past upright (about 15). The base is 0.31 by 0.215 m and 1.5 cm thick, with a dark key well; the lid's screen glows `glow` nits of cool white, so it lights the table and the face of whoever sits at it: a sign someone was just here.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "laptop_open",
+  "place": "laptop_open(AT + vec(0, 0.36, 0))",
+  "what": "an open laptop left on, its screen lit"
+ },
+ {
+  "about": "laundry_basket(at) stands it on `at`: 0.4 m across, 0.6 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "laundry_basket",
+  "place": "laundry_basket(AT)",
+  "what": "a tall woven laundry basket with a lid, a shirt sleeve caught under it"
+ },
+ {
+  "about": "lounge_chair(at, turn, leather, wood) stands it on `at`, facing -z: 0.84 m wide, 0.85 m tall at the back.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "lounge_chair",
+  "place": "lounge_chair(AT)",
+  "what": "a mid-century lounge chair: a walnut shell holding leather cushions, tilted back on a five-star base"
+ },
+ {
+  "about": "magazines(at, turn, count, seed) piles `count` (5) on `at`: 0.21 x 0.28 m each.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "magazines",
+  "place": "magazines(AT)",
+  "what": "a small pile of magazines, glossy, a little askew"
+ },
+ {
+  "about": "mirror_cabinet(at, turn, width, lumens) hangs it with `at` the middle of its bottom on the wall, facing -z: `width` (0.6 m), 0.7 m tall, 0.13 m deep; a soft strip under it washes the basin (`lumens` 200; 0 for none).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "mirror_cabinet",
+  "place": "mirror_cabinet(AT)",
+  "what": "a bathroom cabinet with a mirror door and a light strip under it"
+ },
+ {
+  "about": "monitor(at, turn, size, on) stands it on `at`, its screen towards -z: `size` the diagonal in inches (27).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "monitor",
+  "place": "monitor(AT)",
+  "what": "a computer monitor on a slim stand, its screen on with a soft working glow"
+ },
+ {
+  "about": "monstera(at, size, pot, seed) stands it on `at`: about `size` (1.1 m) tall and wide.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "monstera",
+  "place": "monstera(AT)",
+  "what": "a monstera in a pot: big split heart-shaped leaves on long stems, leaning out"
+ },
+ {
+  "about": "mug(at, turn, glaze) stands it on `at`, its handle towards +x: 0.095 m tall, 0.085 m across.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "mug",
+  "place": "mug(AT)",
+  "what": "a stoneware mug with a loop handle"
+ },
+ {
+  "about": "office_chair(at, turn) stands it on `at`, facing -z: 0.6 m wide, 1 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "office_chair",
+  "place": "office_chair(AT)",
+  "what": "a desk chair: a mesh back and a padded seat on a gas lift and five castors"
+ },
+ {
+  "about": "olive_tree(at, height, seed) stands it on `at`: `height` (1.6 m) tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "olive_tree",
+  "place": "olive_tree(AT)",
+  "what": "a young olive tree in a terracotta pot: a twisted trunk, a loose crown of small silver-green leaves"
+ },
+ {
+  "about": "oven(at, turn) puts it with `at` the middle of its bottom edge on the cupboard's face, facing -z: 0.6 m wide, 0.6 m high, 3 cm proud. A steel bar handle across the top of the door, five dials on the strip above it.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "oven",
+  "place": "oven(AT)",
+  "what": "a built-in oven front, black glass in a steel frame under a strip of dials, to set into a base unit"
+ },
+ {
+  "about": "pan(at, turn, across) lays it on `at`, its handle towards +x: `across` wide (0.28 m), the handle 0.2 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "pan",
+  "place": "pan(AT)",
+  "what": "a frying pan with a dark non-stick inside and a long steel handle"
+ },
+ {
+  "about": "pen_pot(at) stands it on `at`: 0.1 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "pen_pot",
+  "place": "pen_pot(AT)",
+  "what": "a pot of pens and pencils, a ruler among them"
+ },
+ {
+  "about": "picture_frame(at, turn, size, frame, seed) stands it on `at` leaning back a little, facing -z: `size` \"small\" (13 x 18 cm), \"medium\" (20 x 25), \"large\" (30 x 40) or \"wide\" (40 x 30). The picture is a soft blur of colour by the seed.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "picture_frame",
+  "place": "picture_frame(AT)",
+  "what": "a framed photograph standing on a shelf or hung, with a pale mount"
+ },
+ {
+  "about": "pillow(at, turn, tilt, cover) puts one with `at` its middle: 0.7 x 0.48 m, 0.16 m thick, its broad faces along y (lying flat); `tilt` stands it up towards the headboard at +z.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "pillow",
+  "place": "pillow(AT)",
+  "what": "a bed pillow, plump, lying flat or propped against a headboard"
+ },
+ {
+  "about": "plant_pot(at, kind, pot, seed) stands it on `at`: the pot 8 to 11 cm. `kind` \"succulent\", \"cactus\" or \"leafy\".",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "plant_pot",
+  "place": "plant_pot(AT)",
+  "what": "a small potted plant for a shelf or a sill: a succulent rosette, a round cactus or a little leafy plant"
+ },
+ {
+  "about": "plates(at, count, across) stacks `count` (6) plates on `at`, each `across` wide (0.27 m) and 2 cm tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "plates",
+  "place": "plates(AT)",
+  "what": "a stack of white stoneware plates, or one plate laid for a meal"
+ },
+ {
+  "about": "pot(at, across, height) stands it on `at`: `across` wide (0.22 m), `height` tall (0.14 m) under its lid.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "pot",
+  "place": "pot(AT)",
+  "what": "a steel cooking pot with a glass lid and two loop handles"
+ },
+ {
+  "about": "pothos(at, trail, seed) stands its pot on `at` near a shelf's edge (the edge at -z): vines hang `trail` (0.8 m) down.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "pothos",
+  "place": "pothos(AT)",
+  "what": "a trailing pothos in a small pot: heart-shaped leaves on vines spilling down over the edge of a shelf"
+ },
+ {
+  "about": "potted_fern(at, size, pot, seed) stands the pot on `at` (the floor or a shelf under its middle). The pot is `size` x 0.36 m across and `size` x 0.32 m high, wider at the lip, with a dark soil top; the fern's fronds arch out from the soil to about twice the pot's height. `pot` is any surface.",
+  "credit": "J Production, made in Loop3D (the fern is the engine's `fern`)",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "potted_fern",
+  "place": "potted_fern(AT, size: 1)",
+  "what": "a fern arching out of a round matt clay pot"
+ },
+ {
+  "about": "pouffe(at, cover) stands it on `at`: 0.5 m across, 0.36 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "pouffe",
+  "place": "pouffe(AT)",
+  "what": "a round knitted pouffe, soft and a little squashed"
+ },
+ {
+  "about": "record_player(at, turn) stands it on `at`, its front towards -z: 0.43 m wide, 0.35 m deep.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "record_player",
+  "place": "record_player(AT)",
+  "what": "a turntable with its lid up, a record on the platter"
+ },
+ {
+  "about": "records(at, turn, count, seed) stands it on `at`, the records' faces towards \u00b1x: 0.34 m wide, 0.34 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "records",
+  "place": "records(AT)",
+  "what": "a crate of records standing on end, their sleeves in many colours, one leaning out in front"
+ },
+ {
+  "about": "round_mirror(at, turn, across) hangs it with `at` its middle on the wall, facing -z: `across` wide (0.8 m).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "round_mirror",
+  "place": "round_mirror(AT)",
+  "what": "a round mirror in a thin brass frame, hung on a wall"
+ },
+ {
+  "about": "rug_flat(at, turn, length, width, ground, band) lays it on `at`: `length` (3 m) by `width` (2.2 m), 8 mm thick.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "rug_flat",
+  "place": "rug_flat(AT)",
+  "what": "a flat-woven rug with a border and bands, laid under a dining table or a bed"
+ },
+ {
+  "about": "rug_wool(at, turn, length, width, wool, border) lays it flat on the floor with `at` its middle; `length` runs along x. The pile is 2.2 cm thick with soft rounded edges; a border band 9 cm wide, 3 mm lower, runs round it 6 cm in from the edge, like a bound rug. Furniture stands on it at at + vec(0, 0.022, 0).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "rug_wool",
+  "place": "rug_wool(AT, length: 2.8, width: 2.0)",
+  "what": "a thick wool rug with a deep soft pile and a darker woven border band"
  },
  {
   "about": "sailing_boat(at, turn) places one and gives it back; move_boat(boat, at, turn) moves the whole boat (its hull, deck, mast, sail and lamp together), rocking gently on the water.",
@@ -60,6 +860,126 @@
   "what": "a small wooden boat with a mast, a sail and a lamp at its bow"
  },
  {
+  "about": "sculpture(at, kind, turn) stands it on `at`: about 0.2 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "sculpture",
+  "place": "sculpture(AT)",
+  "what": "a small sculpture for a shelf, one of three: \"loop\" (a brass ring on a stone block), \"stack\" (balanced stones) or \"figure\" (a smooth bent form)"
+ },
+ {
+  "about": "sheepskin(at, turn, seed) lays it on `at`: about 1 m by 0.65 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "sheepskin",
+  "place": "sheepskin(AT)",
+  "what": "a sheepskin rug, its long pale wool in soft lumps, its outline uneven"
+ },
+ {
+  "about": "shoe_rack(at, turn, length) stands it on `at`, its front towards -z: `length` (0.8 m), 0.3 m deep, 0.45 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "shoe_rack",
+  "place": "shoe_rack(AT)",
+  "what": "a two-tier oak shoe rack with shoes and boots on it"
+ },
+ {
+  "about": "shower_head(at, turn, height) fixes it with `at` on the floor at the wall's foot, facing -z: the head `height` (2.1 m) up and 0.35 m out.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "shower_head",
+  "place": "shower_head(AT)",
+  "what": "a rain shower head on an arm from the wall, a mixer below it"
+ },
+ {
+  "about": "side_table(at, height, top) stands it on `at`: 0.45 m across, `height` tall (0.55 m). `top` is a material (\"marble\", \"oak\").",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "side_table",
+  "place": "side_table(AT)",
+  "what": "a small round side table: a top on a single stem and a heavy disc foot"
+ },
+ {
+  "about": "sink_tap(at, turn, width) sets it with `at` the middle of the sink's rim on the worktop, the tap at the back (+z): `width` wide (0.5 m), 0.42 m front to back, the bowl 0.18 m deep below the top. The tap rises 0.34 m and arcs over the bowl.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "sink_tap",
+  "place": "sink_tap(AT)",
+  "what": "a brushed steel sink set into a worktop, with a tall arched mixer tap"
+ },
+ {
+  "about": "slippers(at, turn) puts them on `at`, toes towards -z: about 0.27 m long.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "slippers",
+  "place": "slippers(AT)",
+  "what": "a pair of felt slippers left side by side"
+ },
+ {
+  "about": "snake_plant(at, height, pot, seed) stands it on `at`: `height` (0.9 m) tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "snake_plant",
+  "place": "snake_plant(AT)",
+  "what": "a snake plant: stiff upright sword leaves, dark green with pale edges, in a squat pot"
+ },
+ {
+  "about": "sofa_modular(at, seats, chaise, cover) stands it on `at` (the middle of its footprint, on the floor), facing -z. Each seat is 0.85 m wide, plus an arm of 0.22 m at each end; the seat is 0.42 m high and the sofa 1.05 m deep. `chaise: \"left\"` or `\"right\"` (your left or right as you sit) stretches that end seat forward to 1.6 m, with no back cushion on the stretch. `cover` is any surface. Gives back {seats: [...], arms: [...]}: the seat spots and the arm tops. Each cushion sags and turns a little, by the scene's seed.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "sofa_modular",
+  "place": "sofa_modular(AT, seats: 3, chaise: \"left\")",
+  "what": "a deep, low modular sofa: soft seat cushions, fat leaning back cushions, wide low arms"
+ },
+ {
+  "about": "speaker(at, turn, stand) stands it on `at`, facing -z: 0.2 m wide, 0.32 m tall; `stand: yes` raises it on a 0.6 m stand.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "speaker",
+  "place": "speaker(AT)",
+  "what": "a bookshelf speaker in walnut with a black grille, on a slim stand or on its own"
+ },
+ {
+  "about": "storage_box(at, turn, width, height, cover) stands it on `at`: `width` (0.3 m) wide, 0.25 m deep, `height` (0.2 m) tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "storage_box",
+  "place": "storage_box(AT)",
+  "what": "a lidded box for a shelf, in card, linen or wood"
+ },
+ {
+  "about": "tea_towel(at, turn, stripe) hangs it with `at` the middle of the rail it hangs on, facing -z: 0.24 m wide, hanging 0.3 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "tea_towel",
+  "place": "tea_towel(AT)",
+  "what": "a striped cotton tea towel hung over a rail or an oven handle"
+ },
+ {
   "about": "test_ball(surface, at) puts them all in the one surface (a material value, or a name the library knows) with the plinth's middle on the floor at `at`. The ball is 0.5 m across; the plinth is round, 0.6 m across and 0.12 m high, one lathe, its top outer edge rounded at 5 mm and a round groove 1 cm wide and deep in its top round the ball (at a radius of 0.2 m, lips rounded at 2 mm); behind it (toward -z) a slab 2 by 2 m and 4 cm thick lies flat, to show the tile repeating and the shine at a low angle; beside it a 10 cm cube with 2 mm rounded edges shows the size. (A test rig, not a piece for a scene: sofa-sized in triangles, so the plinth is round, not 16-sided.) `loop library picture <surface>` uses it.",
   "credit": "J Production, made in Loop3D",
   "from": "order M8 (2026-11-11)",
@@ -68,6 +988,196 @@
   "name": "test_ball",
   "place": "test_ball(\"oak\", AT)",
   "what": "a ball on a grooved plinth, a flat slab and a small cube: what a surface looks like"
+ },
+ {
+  "about": "throw_blanket(at, turn, draped, wool) puts it with `at` the middle of its underside. Folded (0.5 x 0.4 m, 8 cm thick); `draped: yes` hangs it over an edge running along x at `at`, 0.45 m down each side.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "throw_blanket",
+  "place": "throw_blanket(AT)",
+  "what": "a knitted throw: folded in a thick square, or draped over the arm or back of a seat"
+ },
+ {
+  "about": "toaster(at, turn, body) stands it on `at`, its long side towards -z: 0.27 m long, 0.17 m wide, 0.19 m tall.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "toaster",
+  "place": "toaster(AT)",
+  "what": "a two-slot toaster with rounded corners, a lever at the side"
+ },
+ {
+  "about": "toilet(at, turn) hangs it with `at` the middle of its back on the floor against the wall, facing -z: 0.36 m wide, 0.54 m out.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "toilet",
+  "place": "toilet(AT)",
+  "what": "a wall-hung toilet in white porcelain with its flush plate on the wall above"
+ },
+ {
+  "about": "toiletries(at, turn) stands them in a row on `at`: about 0.3 m long.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "toiletries",
+  "place": "toiletries(AT)",
+  "what": "the bathroom's small things: a toothbrush cup with two brushes, a soap dispenser and two bottles"
+ },
+ {
+  "about": "towel_rail(at, turn, width, color, folded) fixes it with `at` the middle of the rail's fixing on the wall, facing -z: `width` (0.6 m); one towel hung over it; `folded` (0..3) folded towels stacked on the floor under it.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "towel_rail",
+  "place": "towel_rail(AT)",
+  "what": "a brass towel rail on the wall with towels hung over it, and a pile of folded ones"
+ },
+ {
+  "about": "tumbler(at, water) stands it on `at`: 0.1 m tall, 0.08 m across; `water` (0 to 1) fills it that far.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "tumbler",
+  "place": "tumbler(AT)",
+  "what": "a heavy-bottomed glass tumbler"
+ },
+ {
+  "about": "tv(at, turn, size, on) stands it on `at`, its screen towards -z: `size` the diagonal in inches (55).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "tv",
+  "place": "tv(AT)",
+  "what": "a thin flat television on a small foot, off (a black glass face) or on (a dim glow)"
+ },
+ {
+  "about": "tv_unit(at, turn, length, wood) stands it on `at`, its front towards -z: `length` long (1.8 m), 0.45 m deep, 0.5 m tall. Its top is 0.5 m up, for a TV, a record player or speakers.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "tv_unit",
+  "place": "tv_unit(AT)",
+  "what": "a long low media unit in oak: two sliding doors and an open middle shelf, on slim black legs"
+ },
+ {
+  "about": "umbrella_stand(at) stands it on `at`: 0.5 m tall, the umbrellas to 0.9 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "umbrella_stand",
+  "place": "umbrella_stand(AT)",
+  "what": "a tall steel umbrella stand with two umbrellas in it"
+ },
+ {
+  "about": "utensil_pot(at, glaze) stands it on `at`: the pot 0.15 m tall, the tools up to 0.36 m.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "utensil_pot",
+  "place": "utensil_pot(AT)",
+  "what": "a glazed pot of kitchen tools: a wooden spoon, a spatula, a whisk and a ladle"
+ },
+ {
+  "about": "vase(at, shape, height, glaze) stands it on `at`: `height` tall (0.25 m); the shape sets its outline.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "vase",
+  "place": "vase(AT)",
+  "what": "a ceramic vase, one of six shapes: \"bottle\", \"round\", \"tall\", \"bowl\", \"flask\" or \"pot\""
+ },
+ {
+  "about": "vase_flowers(at, kind, seed) stands it on `at`: the vase 0.25 m, the flowers to about 0.5 m. `kind` names the bloom's colour: \"poppy\" (red), \"daisy\" (white), \"bluebell\" (blue), \"violet\", \"tulip\" (pink) or \"sun\" (yellow).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "vase_flowers",
+  "place": "vase_flowers(AT)",
+  "what": "a tall glass vase of cut flowers on long stems, the blooms at different heights"
+ },
+ {
+  "about": "wall_art(at, turn, width, height, seed, palette) hangs it with `at` its middle on the wall, facing -z: `width` (0.8 m) by `height` (1.0 m), 4 cm deep. `palette` \"warm\" (ochre, rust, cream), \"cool\" (slate, sea, sand) or \"night\" (ink, gold).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "wall_art",
+  "place": "wall_art(AT)",
+  "what": "a stretched canvas of our own abstract painting: soft fields of colour, a few marks, a different picture for every seed"
+ },
+ {
+  "about": "wall_clock(at, turn, across, hour, minute) hangs it with `at` its middle on the wall, facing -z: `across` (0.35 m); the hands show `hour`:`minute`.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "wall_clock",
+  "place": "wall_clock(AT)",
+  "what": "a round wall clock with a pale face and thin black hands"
+ },
+ {
+  "about": "wardrobe(at, turn, width, height, wood) stands it on `at`, its doors towards -z: `width` (1.8 m, a door each 0.6 m), `height` (2.3 m), 0.62 m deep.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "wardrobe",
+  "place": "wardrobe(AT)",
+  "what": "a wardrobe in pale oak: flat doors with long brass pulls, or, wide, a whole wall of them"
+ },
+ {
+  "about": "water_tower(at, size, seed) stands it on `at` (a roof): `size` (1, about 7 m tall and 3.6 m across). Dark against the sky.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "water_tower",
+  "place": "water_tower(AT)",
+  "what": "a rooftop water tower: a barrel of weathered timber staves bound with steel hoops under a cone roof, on four steel legs"
+ },
+ {
+  "about": "wine_glass(at, wine) stands it on `at`: 0.21 m tall. With `wine` above 0 (0 to 1) the bowl holds that share of a pour.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "wine_glass",
+  "place": "wine_glass(AT)",
+  "what": "a thin wine glass on a long stem, empty or with red wine in it"
+ },
+ {
+  "about": "wine_rack(at, turn, rows, columns) hangs it with `at` the middle of its back at the bottom, the bottles' necks towards -z: 0.11 m a bottle across, `rows` (3) by `columns` (4), a few places empty.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "model",
+  "licence": "our own work, free for every J Production project",
+  "name": "wine_rack",
+  "place": "wine_rack(AT)",
+  "what": "a wall rack of black steel holding wine bottles on their sides"
+ },
+ {
+  "about": "bathroom_pod(at, width, depth, height, door, sides) stands it with `at` the middle of its front wall on the floor; it runs back `depth` (2.2 m) towards +z. The front wall (`width`, 2.4 m) has a 0.8 m opening `door` metres right of its middle; `sides` \"both\", \"left\" or \"right\" says which side walls it has (the others are the room's).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "bathroom_pod",
+  "place": "bathroom_pod(AT)",
+  "what": "the walls of a small bathroom standing in a room: plaster partitions with a door opening, up to the ceiling over it"
  },
  {
   "about": "bed_platform(at, width, length, wood, mattress) stands it with `at` the middle of the floor under it; the head is towards +z, the foot (front) towards -z. The oak top is 0.25 m high and overhangs the dark base by 8 cm all round, so the recess under the edge is clear for a light strip. The headboard stands 0.9 m high at the head. Sockets: top is the mattress top, at + vec(0, 0.47, 0); light is the recess under the edge, 0.05 to 0.17 m up and 8 cm deep all round, kept clear for a light strip; lie is each side, 0.45 m out, for a bedside table. The mattress is 0.22 m thick, softly rounded, set in 10 cm from the platform's edge. No lamps of its own.",
@@ -80,6 +1190,16 @@
   "what": "a low oak bed platform that floats over a recessed dark base, with a plain headboard and a mattress"
  },
  {
+  "about": "bookshelf(at, height, width, wood) stands it on the floor at `at` (its middle, on the floor, against the wall behind it toward +z). It runs `width` along x, `height` high and 0.3 m deep. Two sides, a back, a top and a bottom, three shelves inside, and books standing on four levels in three colours. The `top` socket is the top shelf, at (at.x, height - 0.35, at.z).",
+  "credit": "J Production, made in Loop3D",
+  "from": "asset pack, Fluff (2026-11-17)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "bookshelf",
+  "place": "bookshelf(AT, height: 2.2, width: 1.2)",
+  "what": "a tall wooden bookshelf with fixed shelves and books standing on them"
+ },
+ {
   "about": "brick_wall_bay(at, width, height, brick, faces) stands it against a wall; `at` is the middle of its foot at the wall's face. faces: \"z\" looks towards -z (a wall at the back), \"x\" looks towards -x (a wall at x = +4.5). Join bays side by side, width apart, and the piers meet as one.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-10)",
@@ -90,6 +1210,26 @@
   "what": "a bay of brick wall: a thin panel between two piers, with a stone sill band"
  },
  {
+  "about": "built_in_shelves(at, width, height, depth, bays, shelves, wood, steel) stands it with `at` the middle of its back, on the floor, the back against the wall and the front towards -z. `bays` equal bays lie between `bays + 1` steel uprights; `shelves` oak boards, 3 cm thick, rise at even heights, the top one flush with the top of the uprights; a thin back panel closes the wall behind; a low plinth carries the foot. The top of shelf j (0 is the lowest) is at at.y + 0.1 + (j + 1) * (height - 0.1) / shelves; in bay i its middle is at x = at.x - width / 2 + 0.02 + (i + 0.5) * (width - 0.04) / bays, z = at.z - depth / 2: set things there.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "built_in_shelves",
+  "place": "built_in_shelves(AT, width: 3.0, height: 2.6, depth: 0.32, bays: 4, shelves: 6)",
+  "what": "a wall of open shelves: blackened steel uprights, oak shelves, a closed back and a low plinth"
+ },
+ {
+  "about": "chimney_breast(at, width, bottom, to_height, depth, brick) stands it with `at` the middle of its foot against the wall (the wall at +z), its face towards -z: `width` (1.8 m), from `bottom` (1.45 m) up to `to_height` (6 m), `depth` (0.3 m) proud.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "chimney_breast",
+  "place": "chimney_breast(AT)",
+  "what": "a brick chimney breast standing proud of a wall from a fireplace's mantel up to the ceiling"
+ },
+ {
   "about": "column(at, height, side, material) stands it on the floor at `at` (its middle) and gives it back. `height` is floor to ceiling, plates included. The flanges face front and back (z), the web runs along z.",
   "credit": "J Production, made in Loop3D",
   "from": "the Loft (2026-11-10)",
@@ -98,6 +1238,26 @@
   "name": "column",
   "place": "column(AT, height: 3, side: 0.2)",
   "what": "a steel H-column from the floor to the ceiling, on a bolted base plate, with a cap plate on top"
+ },
+ {
+  "about": "curtain_track(at, width, drop, open, cover) hangs it with `at` the middle of the track on the ceiling: the track runs `width` (4 m) along x, the curtains hang `drop` (2.6 m); `open` (0.8) is how much of the width is drawn back, half each side.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "curtain_track",
+  "place": "curtain_track(AT)",
+  "what": "curtains on a ceiling track, gathered open to each side of a window in soft folds"
+ },
+ {
+  "about": "desk(at, turn, length, wood) stands it on `at`, the sitter's side towards -z: `length` (1.4 m), 0.7 m deep, its top 0.74 m up.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "desk",
+  "place": "desk(AT)",
+  "what": "a plain work desk: an oak top on black steel legs, a shallow drawer under one side"
  },
  {
   "about": "door_and_frame(at, width, height, open, leaf, steel) stands it on `at` (the middle of the threshold), facing -z. `width` and `height` are the clear opening; the frame is 0.05 by 0.12 m round it. The leaf is 0.04 m thick with a lever handle on both faces and three hinges down the left side (seen from the front); `open` turns the leaf about those hinges, in degrees (positive swings it towards -z). `leaf` and `steel` are materials, by name or made.",
@@ -120,6 +1280,16 @@
   "what": "a round air duct hung from the ceiling"
  },
  {
+  "about": "fireplace(at, width, height) stands it on the floor at `at` (its middle, on the floor, against the wall behind it toward +z). It runs `width` along x and `height` high. Two brick pillars carry a brick header and an oak mantel; a dark firebox sits between them with a glowing fire inside. The `light` socket is the firebox, at (at.x, 0.35, at.z - 0.1).",
+  "credit": "J Production, made in Loop3D",
+  "from": "asset pack, Fluff (2026-11-17)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "fireplace",
+  "place": "fireplace(AT, width: 1.6, height: 1.4)",
+  "what": "a brick fireplace with a stone hearth, a wooden mantel and a fire glowing inside"
+ },
+ {
   "about": "glass_balustrade(from_at, to_at, height, panel, steel) stands it level on the floor from `from_at` to `to_at`, along x or along z (whichever differs more). The glass is 12 mm thick, cut in equal panels at most `panel` wide with 2 cm gaps; a steel shoe 5 by 10 cm runs along the foot and a cap rail 4 cm by 12 mm along the top. `height` is to the top of the rail.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-10)",
@@ -138,6 +1308,26 @@
   "name": "glazing_wall",
   "place": "glazing_wall(at: AT, width: 9, height: 6)",
   "what": "a wall of glass divided by thin dark bars"
+ },
+ {
+  "about": "kitchen_island(at, length, fronts, top, steel) stands it on `at` (the middle of its footprint), working side to -z. The block is `length` x 0.9 m deep x 0.9 m high with the worktop on it: 5 cm thick, 2 cm proud on the working side and the ends, 30 cm proud on the seating side (+z) for stools. The working side has a row of drawers over doors with thin dark shadow gaps and no handles; the seating side is one plain panel; the plinth is dark and set back.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "kitchen_island",
+  "place": "kitchen_island(AT, length: 2.2)",
+  "what": "a free-standing kitchen island: handleless cupboards under a thick worktop that overhangs for stools"
+ },
+ {
+  "about": "kitchen_run(at, length, tall, fronts, top, steel) stands it with `at` the middle of its back on the floor, the back against the wall (the origin line), the fronts towards -z. It runs `length` along x. Base units are 0.9 m high and 0.6 m deep under a 4 cm worktop that overhangs 2 cm at the front and the free end; wall units 0.7 m high and 0.35 m deep hang with their bottoms 1.45 m up; with `tall: yes` a 2.15 m unit takes the right-hand end and the base and wall units fill the rest. Doors are flat and handleless, about 0.6 m each, with thin shadow gaps, over a recessed dark plinth. `fronts` and `top` take a surface name or a material; `steel` is the dark carcass and plinth. No lamps.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-11)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "kitchen_run",
+  "place": "kitchen_run(AT + vec(0, 0, 0.02), length: 3.6)",
+  "what": "a run of kitchen cupboards along a wall: base units under a worktop, wall units above, one tall unit at the end"
  },
  {
   "about": "lintel(a, b, height, depth, material) lays it between a and b (along x, level, at their middle height) and gives it back.",
@@ -160,6 +1350,16 @@
   "what": "an upper floor: a slab of boards on timber joists, carried by a steel beam and two posts"
  },
  {
+  "about": "parapet, a cornice and a black iron fire escape zig-zagging down its face neighbor_building(at, turn, width, height, depth, lit, seed) stands it with `at` the middle of its front at the street, its face towards +z (it faces you across the street): `width` (22 m), `height` (44 m), `depth` (14 m). `lit` (0..1) is the share of windows lit; each seed lights different ones. No lamps: the windows glow.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "neighbor_building",
+  "place": "neighbor_building(AT)",
+  "what": "the building next door: an old brick block across the street, rows of windows (some lit, warm, most dark), a"
+ },
+ {
   "about": "plinth(at, height, material) stands it on the floor at `at` and gives it back; what it shows goes at at + vec(0, height, 0).",
   "credit": "J Production, made in Loop3D",
   "from": "the Showcase (2026-11-06)",
@@ -180,6 +1380,26 @@
   "what": "a column radiator of upright steel tubes, to stand under a window"
  },
  {
+  "about": "roof_light(at, width, length, sky) puts it with `at` the middle of the ceiling's face: `width` (1.2 m) by `length` (1.8 m), its frame 0.2 m deep. `sky` is the colour of the night beyond the glass (a faint blue glow).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "roof_light",
+  "place": "roof_light(AT)",
+  "what": "a roof light set in a ceiling: a deep frame round a pane of glass with the night sky beyond it"
+ },
+ {
+  "about": "shower_screen(at, turn, length, height) stands it with `at` the middle of its foot on the floor, running along x: `length` (0.9 m), `height` (2.0 m).",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "shower_screen",
+  "place": "shower_screen(AT)",
+  "what": "a frameless glass shower screen on a slim brass foot rail"
+ },
+ {
   "about": "skirting(from_at, to_at, height, timber, side) lays one board level on the floor, from `from_at` to `to_at` (floor points at the wall's face, the line runs along x or along z). The board is 0.018 m thick and stands `height` tall, lifted a 2 mm shadow gap off the floor, its edges softened 6 mm. `side` says which way the thickness goes, away from the wall: 1 is towards +z for a line along x and towards +x for a line along z; -1 is the other way.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-10)",
@@ -188,6 +1408,26 @@
   "name": "skirting",
   "place": "skirting(AT + vec(-2, 0, 0), AT + vec(2, 0, 0), height: 0.12, timber: \"oak\")",
   "what": "a skirting board along the foot of a wall"
+ },
+ {
+  "about": "sliding_door(at, turn, width, height, open, leaf) hangs it with `at` the middle of the opening on the floor, on its -z side: the leaf `width` (0.9 m) by `height` (2.1 m), slid `open` (0 shut to 1 open) towards +x.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "sliding_door",
+  "place": "sliding_door(AT)",
+  "what": "a sliding door: a tall oak leaf hung from a black steel track, slid part way open"
+ },
+ {
+  "about": "splashback(at, length, height, tile) lays it on the wall with `at` the middle of its foot (on the worktop), facing -z: `length` (3 m) by `height` (0.55 m), 1 cm proud. `tile` is a material (\"tiles\").",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "piece",
+  "licence": "our own work, free for every J Production project",
+  "name": "splashback",
+  "place": "splashback(AT)",
+  "what": "a tiled splashback between a worktop and the wall cupboards"
  },
  {
   "about": "stair_straight(at, rises, rise, going, width, tread, steel) stands it with `at` at the middle of the first rise's foot and climbs towards +z. One tread fewer than rises: the last rise meets the upper floor, which is rises x rise high and starts at the top tread's back edge. No risers, no rail.",
@@ -270,7 +1510,7 @@
   "what": "the standard human skeleton, ring 1: the 67 bones you move"
  },
  {
-  "about": "city_night(toward, eye_height, seed, lit, at, lamp) puts a dark blue-black sky with a few stars, a haze that fades far towers to blue, and 180 lit-window towers in a fan 60 degrees each side of `toward` (towards -z by default): 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from 800 to 1,500 m, none nearer than 100 m, their feet `eye_height` below `at` (the eye, the middle of the glass). Under them a dark street and, far out at 300 m, a low panel of dull orange (the streets' glow). One tall group stands off-centre and one stretch of sky is left clear; each seed puts them elsewhere. `toward` leans to -z (its z is negative). It adds ONE lamp outside, a cool panel the size of a 9 by 6 m window, 1 m outside the glass facing in (the city's own light reaching the room: 7,500 K, 300 lumens, no shadows). It is the only lamp outside; `lamp: no` leaves it out (the panel shines at the eye from the glass side). Gives back that light.",
+  "about": "city_night(toward, eye_height, seed, lit, at, lamp, visibility) puts a dark blue-black sky with a few stars, a haze that fades far towers to blue, and 180 lit-window towers in a fan 60 degrees each side of `toward` (towards -z by default): 40 from 120 to 250 m away, 60 from 300 to 600 m, 80 from 800 to 1,500 m, none nearer than 100 m, their feet `eye_height` below `at` (the eye, the middle of the glass). Under them a dark street and, far out at 300 m, a low panel of dull orange (the streets' glow). One tall group stands off-centre and one stretch of sky is left clear; each seed puts them elsewhere. `toward` leans to -z (its z is negative). It adds ONE lamp outside, a cool panel the size of a 9 by 6 m window, 1 m outside the glass facing in (the city's own light reaching the room: 7,500 K, 300 lumens, no shadows). It is the only lamp outside; `lamp: no` leaves it out (the panel shines at the eye from the glass side). Gives back that light.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-11)",
   "kind": "sky",
@@ -278,6 +1518,16 @@
   "name": "city_night",
   "place": "city_night(at: AT + vec(0, 40, 0))",
   "what": "the city at night in three depths, seen from forty metres up"
+ },
+ {
+  "about": "moon(toward, size, at, glow) hangs it 800 m from `at` (the eye) in the direction `toward` (up and out): `size` degrees across (1.2; the real moon is 0.5). No lamp: it glows, and is far too dim to light a room by itself.",
+  "credit": "J Production, made in Loop3D",
+  "from": "The Loft (2026-11-18)",
+  "kind": "skie",
+  "licence": "our own work, free for every J Production project",
+  "name": "moon",
+  "place": "moon(AT)",
+  "what": "the moon: a pale disc low in the night sky with a soft halo, a little larger than life (a film's moon)"
  },
  {
   "about": "For handles, hinges, taps and lamp fittings. Wears polished bright on edges; tarnishes dark brown-green in hollows.",
@@ -310,6 +1560,16 @@
   "what": "grey concrete cast against smooth forms: soft mottle, a few air holes, faint pour lifts"
  },
  {
+  "about": "For taps, handles, lamps, pots and trims. Wears polished bright on edges; tarnishes dark brown-green in hollows.",
+  "credit": "J Production, made in Loop3D",
+  "from": "asset pack, Fluff (2026-11-17)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "copper",
+  "place": "test_ball(\"copper\", AT)",
+  "what": "polished copper, as on a bar tap or a lamp fitting: warm rose-orange, a soft sheen, fine brushing"
+ },
+ {
   "about": "For sofas, cushions, curtains and chairs. Wears paler and fuzzier on edges; gathers grey-brown dirt in creases.",
   "credit": "J Production, made in Loop3D",
   "from": "order M35 (2026-11-11)",
@@ -340,6 +1600,16 @@
   "what": "brown full-grain leather, a little worn: a fine pebble grain, soft sheen, slightly uneven hide"
  },
  {
+  "about": "For curtains, tablecloths, cushions and lampshades. Creases wear paler; dust sits pale in the weave.",
+  "credit": "J Production, made in Loop3D",
+  "from": "asset pack, Fluff (2026-11-17)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "linen",
+  "place": "test_ball(\"linen\", AT)",
+  "what": "natural flax linen, undyed: a plain weave with slubs where the yarn is thick, soft and matte"
+ },
+ {
   "about": "For floors, counters, plinths and statues. Keeps its polish; edges wear honed (duller); gathers a little dull grey dust in grooves.",
   "credit": "J Production, made in Loop3D",
   "from": "order M16 (2026-11-11)",
@@ -360,6 +1630,16 @@
   "what": "European oak, sawn along the trunk, sanded and oiled: arched grain, open pores, a soft sheen"
  },
  {
+  "about": "For furniture, floors, shelves and beams where oak is too dark. Wears paler and smoother on edges; gathers dark in joints.",
+  "credit": "J Production, made in Loop3D",
+  "from": "asset pack, Fluff (2026-11-17)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "pine",
+  "place": "test_ball(\"pine\", AT)",
+  "what": "pale pine, sawn along the trunk, sanded and waxed: straight pale grain, small dark knots, a soft sheen"
+ },
+ {
   "about": "For walls and ceilings of any room. Wears greyer and a touch shinier on knocked corners; grime is sparing.",
   "credit": "J Production, made in Loop3D",
   "from": "order M21 (2026-11-11)",
@@ -368,6 +1648,16 @@
   "name": "plaster",
   "place": "test_ball(\"plaster\", AT)",
   "what": "smooth wall plaster painted matt off-white, with faint trowel marks"
+ },
+ {
+  "about": "For floors, hearths, roofs and worktops. Each tile takes its own tone; edges wear paler; grime gathers in the joints.",
+  "credit": "J Production, made in Loop3D",
+  "from": "asset pack, Fluff (2026-11-17)",
+  "kind": "surface",
+  "licence": "our own work, free for every J Production project",
+  "name": "slate",
+  "place": "test_ball(\"slate\", AT)",
+  "what": "dark blue-grey slate in large flat tiles, 300 mm square, a 5 mm joint set back"
  },
  {
   "about": "For worktops, sinks, handles, appliances and trims. Wears smoother on edges; grime gathers dark in joints.",

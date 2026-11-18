@@ -1,0 +1,32 @@
+# laptop_open · an open laptop left on, its screen lit
+# laptop_open(at, turn, lid, glow, shell) sets it on a table at `at` (the middle under its base), the screen
+# at the back (+z) facing -z, opened `lid` degrees past upright (about 15). The base is 0.31 by 0.215 m and
+# 1.5 cm thick, with a dark key well; the lid's screen glows `glow` nits of cool white, so it lights the
+# table and the face of whoever sits at it: a sign someone was just here.
+#
+# kind: model
+# place: laptop_open(AT + vec(0, 0.36, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: laptop, screen, glow, desk, table, life, loft
+# size: hand
+# seeds: none, the same every time
+
+let laptop_shell = material(color: rgb(0.55, 0.56, 0.58), metal: 1, roughness: 0.35)
+let laptop_keys = material(color: rgb(0.03, 0.03, 0.035), roughness: 0.6)
+
+to laptop_open(at: vec(0, 0, 0), turn: 0, lid: 15, glow: 120, shell: laptop_shell)
+  let w = 0.31
+  let d = 0.215
+  let screen = material(color: rgb(0.02, 0.02, 0.02), glow: kelvin(6500) * glow, roughness: 0.1)
+  let g = group(at: at, turn: turn)
+    box size: vec(w, 0.015, d), at: vec(0, 0.0075, 0), material: shell, round: 0.004
+    box size: vec(w - 0.03, 0.002, d * 0.45), at: vec(0, 0.0152, 0.02), material: laptop_keys, collide: no
+    # the lid hinges at the back edge and leans back `lid` degrees
+    let a = lid * 1 deg
+    let lh = d - 0.01
+    let c = vec(0, 0.015 + cos(a) * lh / 2, d / 2 + sin(a) * lh / 2)
+    box size: vec(w, lh, 0.006), at: c, tilt: 0 - a, material: shell, round: 0.003
+    box size: vec(w - 0.02, lh - 0.025, 0.001), at: c + vec(0, 0.003, 0 - cos(a) * 0.0035), tilt: 0 - a, material: screen, collide: no
+  return g

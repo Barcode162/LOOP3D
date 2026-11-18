@@ -1,0 +1,17 @@
+# pan · a frying pan with a dark non-stick inside and a long steel handle
+# pan(at, turn, across) lays it on `at`, its handle towards +x: `across` wide (0.28 m), the handle 0.2 m.
+#
+# kind: model
+# place: pan(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: pan, frying pan, skillet, kitchen, cookware, loft
+# size: hand
+# seeds: none, the same every time
+to pan(at: vec(0, 0, 0), turn: 0, across: 0.28)
+  let r = across / 2
+  let g = group(at: at, turn: turn)
+    lathe(profile: [vec(0, 0), vec(r * 0.82, 0), vec(r, 0.045), vec(r * 0.97, 0.047), vec(r * 0.8, 0.006), vec(0, 0.006)], segments: 32, material: material(like: "aluminium", color: rgb(0.08, 0.08, 0.085), roughness: 0.35), collide: no)
+    box size: vec(0.2, 0.012, 0.03), at: vec(r + 0.09, 0.05, 0), rotation: vec(0, 0, 10 deg), material: material(like: "steel", roughness: 0.3), round: 0.006, collide: no
+  return g

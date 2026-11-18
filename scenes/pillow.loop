@@ -1,0 +1,18 @@
+# pillow · a bed pillow, plump, lying flat or propped against a headboard
+# pillow(at, turn, tilt, cover) puts one with `at` its middle: 0.7 x 0.48 m, 0.16 m thick, its broad faces along y
+# (lying flat); `tilt` stands it up towards the headboard at +z.
+#
+# kind: model
+# place: pillow(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: pillow, bedding, bed, bedroom, loft
+# size: hand
+# seeds: none, the same every time
+to pillow(at: vec(0, 0, 0), turn: 0, tilt: 0, cover: material(like: "linen", color: rgb(0.92, 0.91, 0.88)))
+  let g = group(at: at, turn: turn)
+    box size: vec(0.7, 0.05, 0.48), tilt: tilt, material: cover, round: 0.024, steps: 2, collide: no
+    box size: vec(0.62, 0.12, 0.42), tilt: tilt, material: cover, round: 0.055, steps: 3, collide: no
+    box size: vec(0.5, 0.16, 0.34), tilt: tilt, material: cover, round: 0.075, steps: 3, collide: no
+  return g

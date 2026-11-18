@@ -1,0 +1,18 @@
+# mug · a stoneware mug with a loop handle
+# mug(at, turn, glaze) stands it on `at`, its handle towards +x: 0.095 m tall, 0.085 m across.
+#
+# kind: model
+# place: mug(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: mug, cup, coffee, tea, kitchen, table, loft
+# size: hand
+# seeds: none, the same every time
+let mug_glaze = material(like: "porcelain", color: rgb(0.16, 0.2, 0.24), roughness: 0.35)
+
+to mug(at: vec(0, 0, 0), turn: 0, glaze: mug_glaze)
+  let g = group(at: at, turn: turn)
+    lathe(profile: [vec(0, 0), vec(0.04, 0), vec(0.0425, 0.095), vec(0.0385, 0.095), vec(0.037, 0.008), vec(0, 0.008)], segments: 24, material: glaze, collide: no)
+    ring(radius: 0.026, thickness: 0.006, at: vec(0.046, 0.05, 0), rotation: vec(0, 90 deg, 0), scale: vec(0.8, 1, 1), material: glaze, sides: 20)
+  return g

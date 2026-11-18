@@ -1,0 +1,22 @@
+# book_glasses · an open book face down on a bedside table, reading glasses folded on it
+# book_glasses(at, turn) lays it on `at`: the book 0.24 x 0.16 m.
+#
+# kind: model
+# place: book_glasses(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: book, glasses, reading, bedside, bedroom, loft
+# size: hand
+# seeds: none, the same every time
+to book_glasses(at: vec(0, 0, 0), turn: 0)
+  let cover = material(like: "paper", color: rgb(0.2, 0.28, 0.4), roughness: 0.6)
+  let g = group(at: at, turn: turn)
+    for each s in [-1, 1]
+      box size: vec(0.13, 0.012, 0.18), at: vec(s * 0.062, 0.008, 0), rotation: vec(0, 0, s * -7 deg), material: cover, round: 0.002, collide: no
+    box size: vec(0.24, 0.006, 0.17), at: vec(0, 0.005, 0), material: material(like: "paper", color: rgb(0.9, 0.87, 0.78)), collide: no
+    for each s in [-1, 1]
+      ring(radius: 0.022, thickness: 0.002, at: vec(s * 0.028, 0.03, 0.01), scale: vec(1, 1, 0.8), material: "black", sides: 16)
+    box size: vec(0.012, 0.003, 0.003), at: vec(0, 0.03, 0.01), material: "black", collide: no
+    box size: vec(0.11, 0.003, 0.003), at: vec(0, 0.028, 0.04), material: "black", collide: no
+  return g

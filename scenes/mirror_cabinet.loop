@@ -1,0 +1,20 @@
+# mirror_cabinet · a bathroom cabinet with a mirror door and a light strip under it
+# mirror_cabinet(at, turn, width, lumens) hangs it with `at` the middle of its bottom on the wall, facing -z: `width`
+# (0.6 m), 0.7 m tall, 0.13 m deep; a soft strip under it washes the basin (`lumens` 200; 0 for none).
+#
+# kind: model
+# place: mirror_cabinet(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: mirror, cabinet, bathroom, loft
+# size: chair
+# seeds: none, the same every time
+to mirror_cabinet(at: vec(0, 0, 0), turn: 0, width: 0.6, lumens: 200)
+  let g = group(at: at, turn: turn)
+    box size: vec(width, 0.7, 0.13), at: vec(0, 0.35, -0.065), material: "white", round: 0.004, collide: no
+    box size: vec(width - 0.01, 0.69, 0.006), at: vec(0, 0.35, -0.133), material: material(color: rgb(0.9, 0.9, 0.9), metal: 1, roughness: 0.02), collide: no
+    box size: vec(width - 0.04, 0.006, 0.02), at: vec(0, -0.004, -0.1), material: material(color: rgb(1, 0.9, 0.8), glow: rgb(1.0, 0.78, 0.5) * 30), collide: no
+  if lumens > 0
+    light(at + vec(0 - sin(turn) * 0.1, -0.02, 0 - cos(turn) * 0.1), lumens: lumens, kelvin: 3000, radius: 0.05, aim: vec(0, -1, 0), angle: 120 deg)
+  return g

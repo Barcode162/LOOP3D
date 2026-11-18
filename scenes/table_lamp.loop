@@ -1,0 +1,27 @@
+# table_lamp · a table lamp, lit: "drum" (a linen drum shade on a turned brass stem) or "globe" (an opal glass ball on a stone base)
+# table_lamp(at, style, lumens, kelvin, lamp) stands it on `at`: the drum 0.55 m tall, the globe 0.32 m. `lamp: no`
+# draws the glowing shade without its light.
+#
+# kind: light
+# place: table_lamp(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: lamp, table lamp, light, living, bedroom, loft
+# size: chair
+# seeds: none, the same every time
+to table_lamp(at: vec(0, 0, 0), style: "drum", lumens: 350, kelvin: 2700, lamp: yes)
+  let warm = rgb(1.0, 0.72, 0.38)
+  let glow_shade = material(like: "lamp shade", color: rgb(0.9, 0.84, 0.72), glow: warm * (lumens * 0.12))
+  let opal = material(color: rgb(0.95, 0.93, 0.88), roughness: 0.3, glow: warm * (lumens * 0.25))
+  let g = group(at: at)
+    if style == "drum"
+      cylinder(radius: 0.08, height: 0.02, at: vec(0, 0.01, 0), material: "brass", sides: 28)
+      lathe(profile: [vec(0.03, 0.02), vec(0.045, 0.08), vec(0.02, 0.16), vec(0.012, 0.36), vec(0, 0.36)], segments: 20, material: "brass", collide: no)
+      lathe(profile: [vec(0.15, 0.3), vec(0.17, 0.55), vec(0.166, 0.55), vec(0.146, 0.3)], segments: 40, material: glow_shade, collide: no)
+    else
+      box size: vec(0.14, 0.1, 0.14), at: vec(0, 0.05, 0), material: "marble", round: 0.01
+      sphere(radius: 0.11, at: vec(0, 0.21, 0), material: opal, sides: 32, collide: no)
+  if lamp
+    light(at + vec(0, (0.42 if style == "drum" else 0.21), 0), lumens: lumens, kelvin: kelvin, radius: 0.06)
+  return g

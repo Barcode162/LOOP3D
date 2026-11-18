@@ -1,0 +1,17 @@
+# tumbler · a heavy-bottomed glass tumbler
+# tumbler(at, water) stands it on `at`: 0.1 m tall, 0.08 m across; `water` (0 to 1) fills it that far.
+#
+# kind: model
+# place: tumbler(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: glass, tumbler, water glass, kitchen, dining, table, loft
+# size: hand
+# seeds: none, the same every time
+to tumbler(at: vec(0, 0, 0), water: 0)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.036, 0), vec(0.04, 0.1), vec(0.037, 0.1), vec(0.033, 0.018), vec(0, 0.018)], segments: 28, material: "glass", collide: no)
+    if water > 0
+      cylinder(radius: 0.033, height: water * 0.075, at: vec(0, 0.018 + water * 0.0375, 0), material: "water", sides: 28, collide: no)
+  return g

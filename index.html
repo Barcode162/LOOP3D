@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="976edb4 2026-11-18">
+<meta name="loop-build" content="48c6166 2026-11-18">
 <style>
   :root { --ink: #f2f2f2; --dim: #9a9a9a; --glass: rgba(0, 0, 0, 0.6); --line: rgba(255, 255, 255, 0.18); --amber: #ffffff; --glow: 0 0 16px rgba(255, 255, 255, 0.32); }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -466,6 +466,21 @@
   let dragging = false, lx = 0, ly = 0;
   view.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { dragging = true; lx = e.clientX; ly = e.clientY; } });
   addEventListener('pointerup', () => dragging = false);
+  // a tap: press and release on the view itself (not a button, a stick, the menu
+  // or a question, which are other elements), within 300 ms and under 10 px of
+  // movement. The script hears "tap"; a drag turns the view and says nothing.
+  let tapDown = null;
+  view.addEventListener('pointerdown', (e) => { tapDown = e.isPrimary && e.target === view ? { t: performance.now(), x: e.clientX, y: e.clientY, id: e.pointerId } : null; });
+  addEventListener('pointermove', (e) => { if (tapDown && e.pointerId === tapDown.id && Math.hypot(e.clientX - tapDown.x, e.clientY - tapDown.y) >= 10) tapDown = null; });
+  addEventListener('pointercancel', () => tapDown = null);
+  addEventListener('pointerup', (e) => {
+    const d = tapDown; tapDown = null;
+    if (!d || e.pointerId !== d.id || !M || movie || e.target !== view) return;
+    if (performance.now() - d.t > 300 || Math.hypot(e.clientX - d.x, e.clientY - d.y) >= 10) return;
+    const r = view.getBoundingClientRect();
+    const locked = document.pointerLockElement === view;
+    M._loop_tap(locked ? 0.5 : (e.clientX - r.left) / r.width, locked ? 0.5 : (e.clientY - r.top) / r.height);
+  });
   addEventListener('pointermove', (e) => {
     if (!dragging || !M || movie) return;
     M._loop_look(e.clientX - lx, e.clientY - ly);

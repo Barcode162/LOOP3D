@@ -1,0 +1,18 @@
+# key_dish · a small ceramic dish with a bunch of keys in it
+# key_dish(at) puts it on `at`: 0.14 m across.
+#
+# kind: model
+# place: key_dish(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: keys, dish, tray, entry, hall, loft
+# size: hand
+# seeds: none, the same every time
+to key_dish(at: vec(0, 0, 0))
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.05, 0), vec(0.07, 0.025), vec(0.066, 0.026), vec(0.046, 0.006), vec(0, 0.006)], segments: 28, material: material(like: "porcelain", color: rgb(0.6, 0.45, 0.3)), collide: no)
+    ring(radius: 0.015, thickness: 0.002, at: vec(0, 0.01, 0), material: "steel", sides: 16)
+    for each i in range(0, 3, 1)
+      box size: vec(0.012, 0.003, 0.05), at: vec(cos(i * 70 deg) * 0.03, 0.011, sin(i * 70 deg) * 0.03), turn: i * 70 deg, material: ("brass" if i == 1 else "steel"), collide: no
+  return g

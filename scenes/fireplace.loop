@@ -1,0 +1,40 @@
+# fireplace · a brick fireplace with a stone hearth, a wooden mantel and a fire glowing inside
+# fireplace(at, width, height) stands it on the floor at `at` (its middle, on the floor, against
+# the wall behind it toward +z). It runs `width` along x and `height` high. Two brick pillars carry
+# a brick header and an oak mantel; a dark firebox sits between them with a glowing fire inside.
+# The `light` socket is the firebox, at (at.x, 0.35, at.z - 0.1).
+#
+# kind: piece
+# place: fireplace(AT, width: 1.6, height: 1.4)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: asset pack, Fluff (2026-11-17)
+# tags: fireplace, fire, brick, hearth, mantel, loft, bar
+# size: room
+# view: front
+# sockets: light
+# seeds: none, it is made the same every time
+
+let fire_glow = material(color: rgb(1, 0.6, 0.25), glow: rgb(1.0, 0.62, 0.28) * 9000)
+let fire_dark = material(color: rgb(0.05, 0.04, 0.03), roughness: 0.95)
+
+to fireplace(at: vec(0, 0, 0), width: 1.6, height: 1.4, surround: "brick", hearth: "slate", mantel: "oak")
+  let depth = 0.45
+  let pillar = 0.3
+  let fire_w = width - 2 * pillar
+  let fire_h = 0.8
+  let mid = at + vec(0, 0, -depth / 2)
+  # the hearth slab on the floor, sticking out into the room
+  box size: vec(width + 0.2, 0.05, depth + 0.3), at: mid + vec(0, 0.025, -0.1), material: hearth, round: 0.005
+  # the dark firebox
+  box size: vec(fire_w, fire_h, depth - 0.1), at: mid + vec(0, 0.05 + fire_h / 2, 0.05), material: fire_dark
+  # the glowing fire inside it
+  let fire = sphere(0.14, at: mid + vec(0, 0.22, -0.05), material: fire_glow, collide: no)
+  fire.scale = vec(1.4, 0.8, 0.6)
+  # the brick pillars and header
+  box size: vec(pillar, height, depth), at: mid + vec(-width / 2 + pillar / 2, height / 2, 0), material: surround
+  box size: vec(pillar, height, depth), at: mid + vec(width / 2 - pillar / 2, height / 2, 0), material: surround
+  box size: vec(width, height - fire_h - 0.05, depth), at: mid + vec(0, fire_h + 0.05 + (height - fire_h - 0.05) / 2, 0), material: surround
+  # the oak mantel shelf
+  box size: vec(width + 0.1, 0.06, depth + 0.06), at: mid + vec(0, height + 0.03, -0.02), material: mantel, round: 0.006
+  return fire

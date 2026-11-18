@@ -1,0 +1,18 @@
+# headphones · over-ear headphones lying on a desk, the band arched up
+# headphones(at, turn) lays them on `at`: 0.18 m across.
+#
+# kind: model
+# place: headphones(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: headphones, music, desk, work, loft
+# size: hand
+# seeds: none, the same every time
+to headphones(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    for each s in [-1, 1]
+      cylinder(radius: 0.045, height: 0.035, at: vec(s * 0.075, 0.03, 0), rotation: vec(0, 0, 90 deg), material: "black", sides: 20, collide: no)
+      cylinder(radius: 0.038, height: 0.012, at: vec(s * 0.052, 0.03, 0), rotation: vec(0, 0, 90 deg), material: material(like: "leather", color: rgb(0.06, 0.06, 0.06)), sides: 20, collide: no)
+    ring(radius: 0.085, thickness: 0.008, at: vec(0, 0.045, 0.0), rotation: vec(0, 30 deg, 0), scale: vec(1, 0.6, 1), material: "aluminium", sides: 24)
+  return g

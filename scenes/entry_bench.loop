@@ -1,0 +1,18 @@
+# entry_bench · a slatted oak bench by a door, for sitting to put shoes on
+# entry_bench(at, turn, length) stands it on `at`, its front towards -z: `length` (1.0 m), 0.35 m deep, 0.45 m tall.
+#
+# kind: model
+# place: entry_bench(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bench, seat, entry, hall, loft
+# size: sofa
+# seeds: none, the same every time
+to entry_bench(at: vec(0, 0, 0), turn: 0, length: 1.0)
+  let g = group(at: at, turn: turn)
+    for each i in range(0, 5, 1)
+      box size: vec(length, 0.03, 0.06), at: vec(0, 0.435, -0.14 + i * 0.07), material: "oak", round: 0.006
+    for each s in [-1, 1]
+      box size: vec(0.04, 0.42, 0.32), at: vec(s * (length / 2 - 0.06), 0.21, 0), material: material(color: rgb(0.03, 0.03, 0.03), metal: 1, roughness: 0.5)
+  return g

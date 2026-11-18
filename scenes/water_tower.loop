@@ -1,0 +1,26 @@
+# water_tower · a rooftop water tower: a barrel of weathered timber staves bound with steel hoops under a cone roof, on four steel legs
+# water_tower(at, size, seed) stands it on `at` (a roof): `size` (1, about 7 m tall and 3.6 m across). Dark against the sky.
+#
+# kind: model
+# place: water_tower(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: water tower, rooftop, city, new york, outside, night, loft
+# size: room
+# seeds: any whole number
+to water_tower(at: vec(0, 0, 0), size: 1, seed: 1)
+  let s = size
+  let wood = material(color: rgb(0.12, 0.09, 0.07), roughness: 0.95)
+  let steel = material(color: rgb(0.04, 0.04, 0.045), metal: 1, roughness: 0.6)
+  let g = group(at: at, turn: seed * 0.7)
+    for each i in range(0, 4, 1)
+      let a = i * 90 deg + 45 deg
+      box size: vec(0.18 * s, 3.0 * s, 0.18 * s), at: vec(cos(a) * 1.4 * s, 1.5 * s, sin(a) * 1.4 * s), material: steel
+    box size: vec(3.2 * s, 0.2 * s, 3.2 * s), at: vec(0, 3.0 * s, 0), material: steel
+    lathe(profile: [vec(0, 3.1 * s), vec(1.75 * s, 3.1 * s), vec(1.8 * s, 3.8 * s), vec(1.72 * s, 6.0 * s), vec(0, 6.0 * s)], segments: 24, material: wood)
+    for each h in [3.5, 4.2, 4.9, 5.6]
+      ring(radius: 1.8 * s - (h - 3.5) * 0.035 * s, thickness: 0.035 * s, at: vec(0, h * s, 0), material: steel, sides: 24)
+    cone(radius: 1.95 * s, height: 1.3 * s, at: vec(0, 6.65 * s, 0), material: steel, sides: 24)
+    box size: vec(0.06 * s, 3.0 * s, 0.06 * s), at: vec(1.85 * s, 4.5 * s, 0), material: steel, collide: no
+  return g

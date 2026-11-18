@@ -1,0 +1,21 @@
+# snake_plant · a snake plant: stiff upright sword leaves, dark green with pale edges, in a squat pot
+# snake_plant(at, height, pot, seed) stands it on `at`: `height` (0.9 m) tall.
+#
+# kind: model
+# place: snake_plant(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, snake plant, sansevieria, indoor, living, bedroom, loft
+# size: chair
+# seeds: any whole number
+to snake_plant(at: vec(0, 0, 0), height: 0.9, pot: material(like: "porcelain", color: rgb(0.12, 0.12, 0.12)), seed: 1)
+  let leaf = material(color: rgb(0.1, 0.22, 0.12), roughness: 0.4, clearcoat: 0.3)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.13, 0), vec(0.15, 0.26), vec(0.13, 0.26), vec(0, 0.24)], segments: 28, material: pot)
+    for each i in range(0, 11, 1)
+      let a = i * 137.5 deg + seed
+      let rr = 0.02 + (i % 4) * 0.025
+      let h = height * (0.55 + noise(seed, i, 0.4) * 0.25 + (i % 3) * 0.1)
+      box size: vec(0.06, h, 0.012), at: vec(cos(a) * rr, 0.24 + h / 2, sin(a) * rr), rotation: vec(a, 0.06 * (i % 3 - 1), 0.06 * ((i + 1) % 3 - 1)), material: leaf, round: 0.005, collide: no
+  return g

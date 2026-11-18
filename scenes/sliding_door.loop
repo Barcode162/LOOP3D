@@ -1,0 +1,21 @@
+# sliding_door · a sliding door: a tall oak leaf hung from a black steel track, slid part way open
+# sliding_door(at, turn, width, height, open, leaf) hangs it with `at` the middle of the opening on the floor, on its
+# -z side: the leaf `width` (0.9 m) by `height` (2.1 m), slid `open` (0 shut to 1 open) towards +x.
+#
+# kind: piece
+# place: sliding_door(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: door, sliding door, barn door, interior, loft
+# size: sofa
+# seeds: none, the same every time
+to sliding_door(at: vec(0, 0, 0), turn: 0, width: 0.9, height: 2.1, open: 0.3, leaf: "oak")
+  let x = open * width
+  let g = group(at: at, turn: turn)
+    box size: vec(width * 2.1, 0.04, 0.03), at: vec(width * 0.5, height + 0.08, -0.03), material: "iron", collide: no
+    box size: vec(width, height, 0.04), at: vec(x, height / 2 + 0.01, -0.07), material: leaf, round: 0.004
+    for each s in [-1, 1]
+      cylinder(radius: 0.035, height: 0.02, at: vec(x + s * width * 0.35, height + 0.08, -0.07), rotation: vec(0, 90 deg, 0), material: "iron", sides: 16, collide: no)
+    box size: vec(0.02, 0.4, 0.03), at: vec(x - width / 2 + 0.08, 1.05, -0.105), material: "iron", collide: no
+  return g

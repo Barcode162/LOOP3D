@@ -1,0 +1,23 @@
+# alarm_clock · a small round alarm clock with two bells on top
+# alarm_clock(at, turn, hour, minute) stands it on `at`, its face towards -z: 0.1 m tall.
+#
+# kind: model
+# place: alarm_clock(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: clock, alarm clock, bedside, bedroom, loft
+# size: hand
+# seeds: none, the same every time
+to alarm_clock(at: vec(0, 0, 0), turn: 0, hour: 7, minute: 0)
+  let g = group(at: at, turn: turn)
+    cylinder(radius: 0.045, height: 0.035, at: vec(0, 0.055, 0), rotation: vec(0, 90 deg, 0), material: material(color: rgb(0.1, 0.2, 0.22), metal: 0.6, roughness: 0.35), sides: 28)
+    cylinder(radius: 0.039, height: 0.002, at: vec(0, 0.055, -0.018), rotation: vec(0, 90 deg, 0), material: "white", sides: 28, collide: no)
+    let ha = (hour % 12 + minute / 60) * 30 deg
+    let ma = minute * 6 deg
+    box size: vec(0.003, 0.018, 0.001), at: vec(sin(ha) * 0.008, 0.055 + cos(ha) * 0.008, -0.0195), rotation: vec(0, 0, 0 - ha), material: "black", collide: no
+    box size: vec(0.002, 0.028, 0.001), at: vec(sin(ma) * 0.013, 0.055 + cos(ma) * 0.013, -0.02), rotation: vec(0, 0, 0 - ma), material: "black", collide: no
+    for each s in [-1, 1]
+      sphere(radius: 0.017, at: vec(s * 0.026, 0.1, 0), scale: vec(1, 0.6, 1), material: "brass", sides: 12, collide: no)
+      box size: vec(0.006, 0.03, 0.006), at: vec(s * 0.028, 0.012, 0), rotation: vec(0, 0, s * 20 deg), material: "brass", collide: no
+  return g

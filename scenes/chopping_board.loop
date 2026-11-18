@@ -1,0 +1,16 @@
+# chopping_board · a thick end-grain oak chopping board with a rounded edge and a hand hole
+# chopping_board(at, turn, length) lays it flat with `at` the middle of its underside: `length` long (0.42 m), 0.28 m wide, 3 cm thick.
+#
+# kind: model
+# place: chopping_board(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: chopping board, cutting board, kitchen, counter, wood, loft
+# size: hand
+# seeds: none, the same every time
+to chopping_board(at: vec(0, 0, 0), turn: 0, length: 0.42, wood: "oak")
+  let g = group(at: at, turn: turn)
+    box size: vec(length, 0.03, 0.28), at: vec(0, 0.015, 0), material: wood, round: 0.012, steps: 2, collide: no
+    cylinder(radius: 0.016, height: 0.0305, at: vec(length / 2 - 0.05, 0.015, 0), material: "black", sides: 16, collide: no)
+  return g

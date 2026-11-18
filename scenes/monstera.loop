@@ -1,0 +1,26 @@
+# monstera · a monstera in a pot: big split heart-shaped leaves on long stems, leaning out
+# monstera(at, size, pot, seed) stands it on `at`: about `size` (1.1 m) tall and wide.
+#
+# kind: model
+# place: monstera(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, monstera, cheese plant, indoor, living, loft
+# size: chair
+# seeds: any whole number
+to monstera(at: vec(0, 0, 0), size: 1.1, pot: material(like: "porcelain", color: rgb(0.85, 0.83, 0.78)), seed: 1)
+  let leaf = material(color: rgb(0.06, 0.2, 0.06), roughness: 0.35, clearcoat: 0.4, subsurface: 0.25)
+  let s = size
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.15 * s, 0), vec(0.19 * s, 0.3 * s), vec(0.17 * s, 0.3 * s), vec(0, 0.28 * s)], segments: 32, material: pot)
+    for each i in range(0, 9, 1)
+      let a = i * 137.5 deg + seed
+      let lean = 0.35 + (i % 3) * 0.22
+      let len = (0.35 + (i % 4) * 0.08) * s
+      let tip = vec(sin(lean) * len * cos(a), 0.28 * s + cos(lean) * len, sin(lean) * len * sin(a))
+      cylinder(radius: 0.007, height: len, at: vec(tip.x / 2, 0.28 * s + (tip.y - 0.28 * s) / 2, tip.z / 2), rotation: vec(90 deg - a, lean, 0), material: "stem", sides: 6, collide: no)
+      # the leaf: two halves split down the middle, with slots cut by darker gaps
+      for each side in [-1, 1]
+        sphere(radius: 0.17 * s, at: tip + vec(cos(a) * 0.1 * s - sin(a) * side * 0.06 * s, 0.03 * s, sin(a) * 0.1 * s + cos(a) * side * 0.06 * s), scale: vec(0.55, 0.05, 1), rotation: vec(90 deg - a + side * 0.5, 0.9, 0), material: leaf, sides: 12, collide: no)
+  return g

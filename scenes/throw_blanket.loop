@@ -1,0 +1,23 @@
+# throw_blanket · a knitted throw: folded in a thick square, or draped over the arm or back of a seat
+# throw_blanket(at, turn, draped, wool) puts it with `at` the middle of its underside. Folded (0.5 x 0.4 m, 8 cm
+# thick); `draped: yes` hangs it over an edge running along x at `at`, 0.45 m down each side.
+#
+# kind: model
+# place: throw_blanket(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: throw, blanket, knitted, sofa, bed, living, loft
+# size: chair
+# seeds: none, the same every time
+to throw_blanket(at: vec(0, 0, 0), turn: 0, draped: no, wool: material(like: "wool", color: rgb(0.66, 0.6, 0.52), roughness: 1, sheen: 0.6))
+  let g = group(at: at, turn: turn)
+    if draped
+      box size: vec(0.5, 0.03, 0.16), at: vec(0, 0.015, 0), material: wool, round: 0.014, collide: no
+      box size: vec(0.5, 0.45, 0.025), at: vec(0, -0.2, -0.09), tilt: 8 deg, material: wool, round: 0.012, collide: no
+      box size: vec(0.5, 0.35, 0.025), at: vec(0, -0.15, 0.09), tilt: -6 deg, material: wool, round: 0.012, collide: no
+    else
+      for each i in range(0, 4, 1)
+        box size: vec(0.5 - i * 0.004, 0.02, 0.4 - i * 0.003), at: vec(i * 0.004, 0.01 + i * 0.02, 0), turn: i * 1.5 deg, material: wool, round: 0.009, collide: no
+      ring(radius: 0.21, thickness: 0.012, at: vec(0.0, 0.04, -0.2), rotation: vec(0, 90 deg, 0), scale: vec(1.2, 1, 1), material: wool, sides: 16)
+  return g

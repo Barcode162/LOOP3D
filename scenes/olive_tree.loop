@@ -1,0 +1,23 @@
+# olive_tree · a young olive tree in a terracotta pot: a twisted trunk, a loose crown of small silver-green leaves
+# olive_tree(at, height, seed) stands it on `at`: `height` (1.6 m) tall.
+#
+# kind: model
+# place: olive_tree(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, olive, tree, indoor, terrace, living, loft
+# size: chair
+# seeds: any whole number
+to olive_tree(at: vec(0, 0, 0), height: 1.6, seed: 1)
+  let leaf = material(color: rgb(0.36, 0.42, 0.3), roughness: 0.55, subsurface: 0.2)
+  let bark = material(color: rgb(0.4, 0.37, 0.32), roughness: 0.95)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.16, 0), vec(0.22, 0.36), vec(0.24, 0.4), vec(0.2, 0.4), vec(0, 0.37)], segments: 32, material: "clay")
+    capsule(radius: 0.028, height: height * 0.45, at: vec(0.02, 0.4 + height * 0.2, 0), rotation: vec(0, 0.1, 0.12), material: bark, sides: 8, collide: no)
+    for each i in range(0, 14, 1)
+      let a = i * 137.5 deg + seed
+      let y = 0.4 + height * (0.42 + noise(seed, i, 0.2) * 0.12 + (i % 5) * 0.06)
+      let rr = 0.12 + noise(seed, i, 0.6) * 0.1 + (i % 3) * 0.06
+      sphere(radius: 0.14, at: vec(cos(a) * rr, y, sin(a) * rr), scale: vec(1, 0.7, 1), material: leaf, sides: 10, collide: no)
+  return g

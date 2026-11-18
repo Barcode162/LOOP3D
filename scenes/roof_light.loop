@@ -1,0 +1,21 @@
+# roof_light · a roof light set in a ceiling: a deep frame round a pane of glass with the night sky beyond it
+# roof_light(at, width, length, sky) puts it with `at` the middle of the ceiling's face: `width` (1.2 m) by `length` (1.8 m),
+# its frame 0.2 m deep. `sky` is the colour of the night beyond the glass (a faint blue glow).
+#
+# kind: piece
+# place: roof_light(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: roof light, skylight, ceiling, window, glass, loft
+# size: sofa
+# seeds: none, the same every time
+to roof_light(at: vec(0, 0, 0), width: 1.2, length: 1.8, sky: rgb(0.02, 0.03, 0.06))
+  let g = group(at: at)
+    for each s in [-1, 1]
+      box size: vec(0.05, 0.2, length), at: vec(s * width / 2, -0.1, 0), material: "plaster", collide: no
+      box size: vec(width, 0.2, 0.05), at: vec(0, -0.1, s * length / 2), material: "plaster", collide: no
+    box size: vec(width - 0.05, 0.01, length - 0.05), at: vec(0, 0.005, 0), material: material(color: sky, glow: sky * 8, roughness: 0.05), collide: no
+    box size: vec(width - 0.05, 0.006, length - 0.05), at: vec(0, -0.02, 0), material: "glass", collide: no
+    box size: vec(width + 0.06, 0.02, 0.04), at: vec(0, -0.2, 0), material: "black", collide: no
+  return g

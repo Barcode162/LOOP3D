@@ -1,0 +1,18 @@
+# slippers · a pair of felt slippers left side by side
+# slippers(at, turn) puts them on `at`, toes towards -z: about 0.27 m long.
+#
+# kind: model
+# place: slippers(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: slippers, shoes, bedroom, entry, loft
+# size: hand
+# seeds: none, the same every time
+to slippers(at: vec(0, 0, 0), turn: 0, felt: material(like: "wool", color: rgb(0.45, 0.42, 0.4), roughness: 1, sheen: 0.6))
+  let g = group(at: at, turn: turn)
+    for each s in [-1, 1]
+      let p = vec(s * 0.065, 0, s * 0.02)
+      box size: vec(0.095, 0.02, 0.27), at: p + vec(0, 0.01, 0), turn: s * -6 deg, material: material(color: rgb(0.12, 0.1, 0.08), roughness: 0.9), round: 0.008, collide: no
+      sphere(radius: 0.05, at: p + vec(0, 0.022, -0.06), turn: s * -6 deg, scale: vec(0.95, 0.6, 1.6), material: felt, sides: 14, collide: no)
+  return g

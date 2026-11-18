@@ -1,0 +1,29 @@
+# wine_rack · a wall rack of black steel holding wine bottles on their sides
+# wine_rack(at, turn, rows, columns) hangs it with `at` the middle of its back at the bottom, the bottles' necks towards
+# -z: 0.11 m a bottle across, `rows` (3) by `columns` (4), a few places empty.
+#
+# kind: model
+# place: wine_rack(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: wine, rack, bottles, kitchen, dining, bar, loft
+# size: hand
+# seeds: none, the same every time
+to wine_rack(at: vec(0, 0, 0), turn: 0, rows: 3, columns: 4)
+  let w = columns * 0.11
+  let h = rows * 0.11
+  let glass = material(like: "green glass", color: rgb(0.04, 0.1, 0.05))
+  let g = group(at: at, turn: turn)
+    for each i in range(0, rows + 1, 1)
+      box size: vec(w, 0.008, 0.008), at: vec(0, i * 0.11, -0.05), material: "iron", collide: no
+      box size: vec(w, 0.008, 0.008), at: vec(0, i * 0.11, -0.22), material: "iron", collide: no
+    for each j in range(0, columns + 1, 1)
+      box size: vec(0.008, h, 0.008), at: vec(-w / 2 + j * 0.11, h / 2, -0.05), material: "iron", collide: no
+      box size: vec(0.008, h, 0.008), at: vec(-w / 2 + j * 0.11, h / 2, -0.22), material: "iron", collide: no
+    for each i in range(0, rows, 1)
+      for each j in range(0, columns, 1)
+        if (i * 7 + j * 3) % 5 != 1
+          cylinder(radius: 0.037, height: 0.22, at: vec(-w / 2 + 0.055 + j * 0.11, 0.045 + i * 0.11, -0.12), rotation: vec(0, 90 deg, 0), material: glass, sides: 20, collide: no)
+          cylinder(radius: 0.015, height: 0.09, at: vec(-w / 2 + 0.055 + j * 0.11, 0.045 + i * 0.11, -0.275), rotation: vec(0, 90 deg, 0), material: glass, sides: 12, collide: no)
+  return g

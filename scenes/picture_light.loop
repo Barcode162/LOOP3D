@@ -1,0 +1,19 @@
+# picture_light · a slim brass picture light on a short arm, washing a painting below it
+# picture_light(at, turn, width, lumens, kelvin) fixes it with `at` on the wall above a picture's top edge, facing -z:
+# `width` (0.45 m) long, reaching out 0.12 m and aimed down at the picture.
+#
+# kind: light
+# place: picture_light(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: lamp, picture light, art light, gallery, wall, living, loft
+# size: hand
+# seeds: none, the same every time
+to picture_light(at: vec(0, 0, 0), turn: 0, width: 0.45, lumens: 150, kelvin: 2700)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.05, 0.03, 0.01), at: vec(0, 0, -0.005), material: "brass", collide: no
+    box size: vec(0.012, 0.012, 0.12), at: vec(0, 0.02, -0.06), tilt: -20 deg, material: "brass", collide: no
+    cylinder(radius: 0.018, height: width, at: vec(0, 0.04, -0.13), rotation: vec(0, 0, 90 deg), material: "brass", sides: 16, collide: no)
+  light(at + vec(0 - sin(turn) * 0.13, 0.02, 0 - cos(turn) * 0.13), lumens: lumens, kelvin: kelvin, radius: 0.02, aim: vec(0 - sin(turn) * 0.3, -1, 0 - cos(turn) * 0.3) * -1 + vec(0, -2, 0), angle: 80 deg)
+  return g

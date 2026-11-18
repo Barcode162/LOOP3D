@@ -1,0 +1,21 @@
+# picture_frame · a framed photograph standing on a shelf or hung, with a pale mount
+# picture_frame(at, turn, size, frame, seed) stands it on `at` leaning back a little, facing -z: `size` "small" (13 x 18 cm),
+# "medium" (20 x 25), "large" (30 x 40) or "wide" (40 x 30). The picture is a soft blur of colour by the seed.
+#
+# kind: model
+# place: picture_frame(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: frame, photo, picture, shelf, living, bedroom, loft
+# size: hand
+# seeds: any whole number
+to picture_frame(at: vec(0, 0, 0), turn: 0, size: "medium", frame: "black", seed: 1)
+  let dims = {small: vec(0.13, 0.18, 0), medium: vec(0.2, 0.25, 0), large: vec(0.3, 0.4, 0), wide: vec(0.4, 0.3, 0)}
+  let d = dims[size]
+  let photo = material(color: rgb(0.35 + noise(seed, 0.1, 0) * 0.3, 0.3 + noise(seed, 0.7, 0) * 0.25, 0.28 + noise(seed, 1.3, 0) * 0.3), roughness: 0.3)
+  let g = group(at: at, turn: turn)
+    box size: vec(d.x, d.y, 0.018), at: vec(0, d.y / 2 * 0.985, 0.03), tilt: -10 deg, material: frame, round: 0.002, collide: no
+    box size: vec(d.x - 0.03, d.y - 0.03, 0.002), at: vec(0, d.y / 2 * 0.985 + 0.0016, 0.0205), tilt: -10 deg, material: "white", collide: no
+    box size: vec(d.x * 0.6, d.y * 0.6, 0.002), at: vec(0, d.y / 2 * 0.985 + 0.0018, 0.0195), tilt: -10 deg, material: photo, collide: no
+  return g

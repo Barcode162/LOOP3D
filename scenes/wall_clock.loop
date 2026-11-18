@@ -1,0 +1,23 @@
+# wall_clock · a round wall clock with a pale face and thin black hands
+# wall_clock(at, turn, across, hour, minute) hangs it with `at` its middle on the wall, facing -z: `across` (0.35 m); the hands show `hour`:`minute`.
+#
+# kind: model
+# place: wall_clock(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: clock, wall clock, time, kitchen, living, loft
+# size: hand
+# seeds: none, the same every time
+to wall_clock(at: vec(0, 0, 0), turn: 0, across: 0.35, hour: 10, minute: 10)
+  let r = across / 2
+  let g = group(at: at, turn: turn)
+    cylinder(radius: r, height: 0.035, at: vec(0, 0, -0.0175), rotation: vec(0, 90 deg, 0), material: "oak", sides: 48, collide: no)
+    cylinder(radius: r - 0.012, height: 0.002, at: vec(0, 0, -0.036), rotation: vec(0, 90 deg, 0), material: material(color: rgb(0.9, 0.88, 0.82), roughness: 0.6), sides: 48, collide: no)
+    for each i in range(0, 12, 1)
+      box size: vec(0.004, (0.022 if i % 3 == 0 else 0.012), 0.002), at: vec(sin(i * 30 deg) * (r - 0.03), cos(i * 30 deg) * (r - 0.03), -0.038), rotation: vec(0, 0, 0 - i * 30 deg), material: "black", collide: no
+    let ha = (hour % 12 + minute / 60) * 30 deg
+    let ma = minute * 6 deg
+    box size: vec(0.006, r * 0.5, 0.002), at: vec(sin(ha) * r * 0.22, cos(ha) * r * 0.22, -0.04), rotation: vec(0, 0, 0 - ha), material: "black", collide: no
+    box size: vec(0.004, r * 0.78, 0.002), at: vec(sin(ma) * r * 0.36, cos(ma) * r * 0.36, -0.042), rotation: vec(0, 0, 0 - ma), material: "black", collide: no
+  return g

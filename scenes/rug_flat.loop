@@ -1,0 +1,23 @@
+# rug_flat · a flat-woven rug with a border and bands, laid under a dining table or a bed
+# rug_flat(at, turn, length, width, ground, band) lays it on `at`: `length` (3 m) by `width` (2.2 m), 8 mm thick.
+#
+# kind: model
+# place: rug_flat(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: rug, kilim, flatweave, carpet, dining, bedroom, loft
+# size: room
+# seeds: none, the same every time
+to rug_flat(at: vec(0, 0, 0), turn: 0, length: 3, width: 2.2, ground: rgb(0.62, 0.55, 0.45), band: rgb(0.18, 0.2, 0.26))
+  let weave = material(like: "wool", color: ground, roughness: 0.95, sheen: 0.5)
+  let edge = material(like: "wool", color: band, roughness: 0.95, sheen: 0.5)
+  let g = group(at: at, turn: turn)
+    box size: vec(length, 0.006, width), at: vec(0, 0.003, 0), material: weave, collide: no
+    for each s in [-1, 1]
+      box size: vec(length - 0.1, 0.007, 0.06), at: vec(0, 0.0035, s * (width / 2 - 0.1)), material: edge, collide: no
+      box size: vec(0.06, 0.007, width - 0.1), at: vec(s * (length / 2 - 0.1), 0.0035, 0), material: edge, collide: no
+      box size: vec(0.03, 0.007, width - 0.34), at: vec(s * length * 0.2, 0.0036, 0), material: edge, collide: no
+    for each i in range(0, 5, 1)
+      box size: vec(0.12, 0.0071, 0.12), at: vec(-length * 0.3 + i * length * 0.15, 0.0037, 0), turn: 45 deg, material: edge, collide: no
+  return g

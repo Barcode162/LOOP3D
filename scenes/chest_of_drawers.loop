@@ -1,0 +1,20 @@
+# chest_of_drawers · a chest of four wide drawers in walnut, brass pulls, on a recessed plinth
+# chest_of_drawers(at, turn, width, wood) stands it on `at`, its front towards -z: `width` (1.0 m) wide, 0.48 m deep, 0.85 m tall.
+#
+# kind: model
+# place: chest_of_drawers(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: chest of drawers, dresser, drawers, bedroom, loft
+# size: sofa
+# seeds: none, the same every time
+to chest_of_drawers(at: vec(0, 0, 0), turn: 0, width: 1.0, wood: "walnut")
+  let g = group(at: at, turn: turn)
+    box size: vec(width - 0.04, 0.06, 0.44), at: vec(0, 0.03, 0.01), material: "black"
+    box size: vec(width, 0.79, 0.48), at: vec(0, 0.455, 0), material: wood, round: 0.008, steps: 2
+    for each i in range(0, 4, 1)
+      let y = 0.1 + i * 0.19 + 0.09
+      box size: vec(width - 0.03, 0.18, 0.012), at: vec(0, y, -0.246), material: wood, round: 0.003, collide: no
+      box size: vec(0.16, 0.014, 0.018), at: vec(0, y + 0.03, -0.258), material: "brass", round: 0.006, collide: no
+  return g

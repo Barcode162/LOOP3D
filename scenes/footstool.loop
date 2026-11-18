@@ -1,0 +1,19 @@
+# footstool · a low leather footstool on a four-star base, to go with a lounge chair
+# footstool(at, turn, leather, wood) stands it on `at`: 0.6 m across, 0.42 m tall.
+#
+# kind: model
+# place: footstool(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: footstool, ottoman, living, loft
+# size: chair
+# seeds: none, the same every time
+to footstool(at: vec(0, 0, 0), turn: 0, leather: material(like: "leather", color: rgb(0.06, 0.045, 0.035)), wood: "walnut")
+  let g = group(at: at, turn: turn)
+    for each i in range(0, 4, 1)
+      box size: vec(0.035, 0.025, 0.32), at: vec(sin(i * 90 deg + 45 deg) * 0.14, 0.04, cos(i * 90 deg + 45 deg) * 0.14), turn: i * 90 deg + 45 deg, material: "aluminium", round: 0.01, collide: no
+    cylinder(radius: 0.028, height: 0.2, at: vec(0, 0.14, 0), material: "black", sides: 16, collide: no)
+    box size: vec(0.58, 0.04, 0.46), at: vec(0, 0.27, 0), tilt: 6 deg, material: wood, round: 0.02, steps: 2
+    box size: vec(0.52, 0.12, 0.42), at: vec(0, 0.34, 0), tilt: 6 deg, material: leather, round: 0.05, steps: 3
+  return g

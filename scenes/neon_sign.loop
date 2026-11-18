@@ -1,0 +1,28 @@
+# neon_sign · a neon sign of our own words in warm pink glass tube on a clear back plate: "stay a while" by default
+# neon_sign(at, turn, words, height, color, lumens) hangs it with `at` its middle on the wall, facing -z: letters
+# `height` (0.18 m) tall, drawn as a glowing bar for each word with a gap between; one light gives its `lumens` (300).
+#
+# kind: light
+# place: neon_sign(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: neon, sign, light, glow, words, wall, bar, loft
+# size: chair
+# seeds: none, the same every time
+to neon_sign(at: vec(0, 0, 0), turn: 0, words: "stay a while", height: 0.18, color: rgb(1, 0.35, 0.55), lumens: 300)
+  let tube = material(color: color, glow: color * 60)
+  let n = words.length
+  let w = n * height * 0.55
+  let g = group(at: at, turn: turn)
+    box size: vec(w + 0.1, height + 0.12, 0.008), at: vec(0, 0, -0.03), material: "glass", collide: no
+    for each i in range(0, n, 1)
+      let x = -w / 2 + (i + 0.5) * height * 0.55
+      if words[i] != " "
+        let k = (i * 7) % 3
+        box size: vec(0.012, height, 0.012), at: vec(x - height * 0.18, 0, -0.045), material: tube, round: 0.006, collide: no
+        if k != 0
+          box size: vec(height * 0.36, 0.012, 0.012), at: vec(x, height * (0.5 if k == 1 else 0) - height * 0.25, -0.045), material: tube, round: 0.006, collide: no
+        box size: vec(0.012, height * (1 if k == 2 else 0.5), 0.012), at: vec(x + height * 0.18, (0 if k == 2 else -height * 0.25), -0.045), material: tube, round: 0.006, collide: no
+  light(at + vec(0 - sin(turn) * 0.15, 0, 0 - cos(turn) * 0.15), lumens: lumens, color: color, radius: 0.03, shadows: no)
+  return g

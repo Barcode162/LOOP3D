@@ -1,0 +1,25 @@
+# hob · a black glass induction hob with four zones marked on it, laid into a worktop
+# hob(at, turn) lays it with `at` the middle of its underside on the worktop: 0.59 x 0.52 m, 6 mm proud, four rings
+# of fine grey marking (two big, two small) and a row of touch marks at the front (-z).
+#
+# kind: model
+# place: hob(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: hob, cooktop, induction, kitchen, appliance, loft
+# size: chair
+# seeds: none, the same every time
+let hob_glass = material(color: rgb(0.012, 0.012, 0.014), roughness: 0.04)
+let hob_mark = material(color: rgb(0.32, 0.32, 0.33), roughness: 0.4)
+
+to hob(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.59, 0.006, 0.52), at: vec(0, 0.003, 0), material: hob_glass, round: 0.003, collide: no
+    ring(radius: 0.1, thickness: 0.0025, at: vec(-0.15, 0.0065, 0.08), material: hob_mark, sides: 48)
+    ring(radius: 0.075, thickness: 0.0025, at: vec(0.16, 0.0065, 0.1), material: hob_mark, sides: 40)
+    ring(radius: 0.075, thickness: 0.0025, at: vec(-0.16, 0.0065, -0.12), material: hob_mark, sides: 40)
+    ring(radius: 0.1, thickness: 0.0025, at: vec(0.15, 0.0065, -0.08), material: hob_mark, sides: 48)
+    for each i in range(0, 6, 1)
+      box size: vec(0.014, 0.001, 0.014), at: vec(-0.1 + i * 0.04, 0.0065, -0.235), material: hob_mark, collide: no
+  return g

@@ -1,0 +1,18 @@
+# herb_pots · three terracotta pots of herbs in a row, as on a sunny sill
+# herb_pots(at, turn, seed) stands them on `at`, in a row along x: 0.42 m long, the herbs about 0.25 m tall.
+#
+# kind: model
+# place: herb_pots(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: herbs, basil, plants, pots, kitchen, sill, loft
+# size: chair
+# seeds: any whole number
+to herb_pots(at: vec(0, 0, 0), turn: 0, seed: 1)
+  let g = group(at: at, turn: turn)
+    for each i in range(0, 3, 1)
+      let x = -0.14 + i * 0.14
+      lathe(profile: [vec(0, 0), vec(0.045, 0), vec(0.06, 0.11), vec(0.065, 0.11), vec(0.065, 0.125), vec(0.055, 0.125), vec(0, 0.12)], segments: 24, at: vec(x, 0, 0), material: "clay", collide: no)
+      fern(at: vec(x, 0.12, 0), size: 0.22 + i * 0.03, seed: seed + i, material: "fresh leaves")
+  return g

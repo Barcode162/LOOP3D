@@ -1,0 +1,26 @@
+# plant_pot · a small potted plant for a shelf or a sill: a succulent rosette, a round cactus or a little leafy plant
+# plant_pot(at, kind, pot, seed) stands it on `at`: the pot 8 to 11 cm. `kind` "succulent", "cactus" or "leafy".
+#
+# kind: model
+# place: plant_pot(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plant, succulent, cactus, pot, shelf, sill, loft
+# size: hand
+# seeds: any whole number
+to plant_pot(at: vec(0, 0, 0), kind: "succulent", pot: "clay", seed: 1)
+  let green = material(color: rgb(0.32, 0.48, 0.36), roughness: 0.55, subsurface: 0.3)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.04, 0), vec(0.05, 0.08), vec(0.055, 0.085), vec(0.05, 0.085), vec(0, 0.08)], segments: 20, material: pot, collide: no)
+    if kind == "succulent"
+      for each i in range(0, 9, 1)
+        let a = i * 137.5 deg + seed
+        let rr = 0.012 + i * 0.0035
+        sphere(radius: 0.02, at: vec(cos(a) * rr, 0.09 + 0.012 - i * 0.001, sin(a) * rr), scale: vec(0.6, 0.35, 1.2), rotation: vec(90 deg - a, 0.5, 0), material: green, sides: 8, collide: no)
+    else if kind == "cactus"
+      sphere(radius: 0.04, at: vec(0, 0.115, 0), scale: vec(1, 1.15, 1), material: material(color: rgb(0.2, 0.38, 0.22), roughness: 0.6), sides: 16, collide: no)
+      sphere(radius: 0.01, at: vec(0, 0.163, 0), material: material(color: rgb(0.9, 0.35, 0.45)), sides: 8, collide: no)
+    else
+      fern(at: vec(0, 0.08, 0), size: 0.18, seed: seed, material: "fresh leaves")
+  return g

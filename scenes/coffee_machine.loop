@@ -1,0 +1,27 @@
+# coffee_machine · an espresso machine in steel, with a chrome group head, a portafilter and a cup waiting under it
+# coffee_machine(at, turn) stands it on `at`, its front towards -z: 0.3 m wide, 0.38 m tall, 0.35 m deep. A cup
+# sits on the drip tray; a gauge and two dials on the front.
+#
+# kind: model
+# place: coffee_machine(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: coffee, espresso, machine, kitchen, appliance, counter, loft
+# size: hand
+# seeds: none, the same every time
+let espresso_steel = material(like: "steel", color: rgb(0.7, 0.71, 0.72), roughness: 0.22)
+
+to coffee_machine(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.3, 0.32, 0.3), at: vec(0, 0.22, 0.02), material: espresso_steel, round: 0.015, steps: 2
+    box size: vec(0.3, 0.06, 0.36), at: vec(0, 0.03, 0), material: espresso_steel, round: 0.01
+    box size: vec(0.26, 0.006, 0.12), at: vec(0, 0.063, -0.11), material: "black", collide: no
+    cylinder(radius: 0.035, height: 0.04, at: vec(0, 0.32, -0.15), material: "chrome", sides: 24, collide: no)
+    cylinder(radius: 0.03, height: 0.025, at: vec(0, 0.29, -0.15), material: "black", sides: 24, collide: no)
+    box size: vec(0.018, 0.018, 0.14), at: vec(0, 0.29, -0.24), material: "black", round: 0.008, collide: no
+    lathe(profile: [vec(0, 0.066), vec(0.025, 0.066), vec(0.03, 0.12), vec(0.027, 0.12), vec(0.022, 0.07), vec(0, 0.07)], segments: 20, at: vec(0, 0, -0.15), material: "porcelain", collide: no)
+    cylinder(radius: 0.025, height: 0.006, at: vec(0, 0.44, -0.1), rotation: vec(0, 90 deg, 0), material: "white", sides: 20, collide: no)
+    for each x in [-0.1, 0.1]
+      cylinder(radius: 0.015, height: 0.02, at: vec(x, 0.3, -0.13), rotation: vec(0, 90 deg, 0), material: "black", sides: 16, collide: no)
+  return g

@@ -1,0 +1,19 @@
+# shower_head · a rain shower head on an arm from the wall, a mixer below it
+# shower_head(at, turn, height) fixes it with `at` on the floor at the wall's foot, facing -z: the head `height` (2.1 m) up and 0.35 m out.
+#
+# kind: model
+# place: shower_head(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: shower, shower head, bathroom, loft
+# size: hand
+# seeds: none, the same every time
+to shower_head(at: vec(0, 0, 0), turn: 0, height: 2.1)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.02, 0.02, 0.36), at: vec(0, height + 0.08, -0.18), material: "brass", collide: no
+    cylinder(radius: 0.12, height: 0.012, at: vec(0, height + 0.06, -0.35), material: "brass", sides: 40, collide: no)
+    cylinder(radius: 0.012, height: height - 1.05, at: vec(0, 1.05 + (height - 1.05) / 2, -0.02), material: "brass", sides: 12, collide: no)
+    cylinder(radius: 0.035, height: 0.02, at: vec(0, 1.05, -0.01), rotation: vec(0, 90 deg, 0), material: "brass", sides: 20, collide: no)
+    box size: vec(0.06, 0.012, 0.012), at: vec(0.03, 1.05, -0.03), material: "brass", collide: no
+  return g

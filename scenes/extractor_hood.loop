@@ -1,0 +1,21 @@
+# extractor_hood · a slim steel extractor hood under a wall cupboard, its small lamps lighting the hob
+# extractor_hood(at, turn, width, lumens) hangs it with `at` the middle of its back at its top, facing -z: `width` (0.6 m),
+# 0.3 m deep, 6 cm tall; a soft light under it (`lumens` 200; 0 for none).
+#
+# kind: model
+# place: extractor_hood(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: extractor, hood, cooker hood, kitchen, appliance, loft
+# size: hand
+# seeds: none, the same every time
+to extractor_hood(at: vec(0, 0, 0), turn: 0, width: 0.6, lumens: 200)
+  let g = group(at: at, turn: turn)
+    box size: vec(width, 0.06, 0.3), at: vec(0, -0.03, -0.15), material: material(like: "steel", roughness: 0.3), round: 0.004, collide: no
+    box size: vec(width - 0.06, 0.004, 0.22), at: vec(0, -0.061, -0.15), material: material(color: rgb(0.2, 0.2, 0.2), metal: 1, roughness: 0.5), collide: no
+    for each x in [-0.2, 0.2]
+      cylinder(radius: 0.02, height: 0.003, at: vec(x, -0.063, -0.24), material: material(color: rgb(1, 0.95, 0.85), glow: rgb(1.0, 0.8, 0.55) * 40), sides: 12, collide: no)
+  if lumens > 0
+    light(at + vec(0 - sin(turn) * 0.24, -0.08, 0 - cos(turn) * 0.24), lumens: lumens, kelvin: 3000, radius: 0.04, aim: vec(0, -1, 0), angle: 110 deg)
+  return g

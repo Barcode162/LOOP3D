@@ -1,0 +1,29 @@
+# fruit_bowl · a wide wooden bowl heaped with fruit: apples, oranges, a lemon and a bunch of bananas
+# fruit_bowl(at, across, seed) stands it on `at`: `across` wide (0.32 m). The fruit sits differently with each seed.
+#
+# kind: model
+# place: fruit_bowl(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: fruit, bowl, apples, oranges, kitchen, table, loft
+# size: chair
+# seeds: any whole number
+to fruit_bowl(at: vec(0, 0, 0), across: 0.32, seed: 1)
+  let r = across / 2
+  let apple = material(color: rgb(0.55, 0.05, 0.04), roughness: 0.35, clearcoat: 0.5)
+  let green = material(color: rgb(0.45, 0.6, 0.12), roughness: 0.4, clearcoat: 0.4)
+  let orange = material(color: rgb(0.9, 0.38, 0.03), roughness: 0.55)
+  let lemon = material(color: rgb(0.92, 0.78, 0.1), roughness: 0.5)
+  let fruits = [apple, orange, green, orange, apple, lemon]
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(r * 0.45, 0), vec(r * 0.8, r * 0.25), vec(r, r * 0.45), vec(r * 0.96, r * 0.46), vec(r * 0.75, r * 0.3), vec(0, r * 0.08)], segments: 36, material: "walnut", collide: no)
+    for each i in range(0, 6, 1)
+      let a = i * 60 deg + noise(seed, i, 0.3) * 0.5
+      let d = r * 0.48
+      let s = 0.037 + noise(seed * 2.1, i, 0.5) * 0.006
+      sphere(radius: s, at: vec(cos(a) * d, r * 0.15 + s, sin(a) * d), scale: vec(1, 0.92, 1), material: fruits[i], sides: 16, collide: no)
+    sphere(radius: 0.04, at: vec(0, r * 0.15 + 0.1, 0.005), material: apple, sides: 16, collide: no)
+    for each b in range(0, 4, 1)
+      capsule(radius: 0.017, height: 0.17, at: vec(-0.02 + b * 0.022, r * 0.15 + 0.135, -0.03), rotation: vec(20 deg + b * 6 deg, 0, 82 deg), material: material(color: rgb(0.88, 0.75, 0.2), roughness: 0.6), sides: 8, collide: no)
+  return g

@@ -1,0 +1,26 @@
+# oven · a built-in oven front, black glass in a steel frame under a strip of dials, to set into a base unit
+# oven(at, turn) puts it with `at` the middle of its bottom edge on the cupboard's face, facing -z: 0.6 m wide,
+# 0.6 m high, 3 cm proud. A steel bar handle across the top of the door, five dials on the strip above it.
+#
+# kind: model
+# place: oven(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: oven, cooker, kitchen, appliance, loft
+# size: chair
+# seeds: none, the same every time
+let oven_steel = material(like: "steel", color: rgb(0.6, 0.61, 0.62), roughness: 0.3)
+let oven_glass = material(color: rgb(0.015, 0.015, 0.018), roughness: 0.05, metal: 0.2)
+
+to oven(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.596, 0.6, 0.02), at: vec(0, 0.3, -0.01), material: oven_steel, round: 0.004, collide: no
+    box size: vec(0.54, 0.43, 0.006), at: vec(0, 0.24, -0.022), material: oven_glass, round: 0.01, collide: no
+    box size: vec(0.56, 0.085, 0.006), at: vec(0, 0.535, -0.022), material: oven_glass, collide: no
+    box size: vec(0.46, 0.016, 0.016), at: vec(0, 0.44, -0.05), material: "chrome", round: 0.008, collide: no
+    for each x in [-0.2, 0.2]
+      box size: vec(0.012, 0.012, 0.03), at: vec(x, 0.44, -0.035), material: "chrome", collide: no
+    for each i in range(0, 5, 1)
+      cylinder(radius: 0.017, height: 0.018, at: vec(-0.2 + i * 0.1, 0.535, -0.032), rotation: vec(0, 90 deg, 0), material: oven_steel, sides: 20, collide: no)
+  return g

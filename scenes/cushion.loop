@@ -1,0 +1,22 @@
+# cushion · a soft square scatter cushion, plump in the middle and thin at the seams
+# cushion(at, turn, tilt, side, cover) puts one with `at` its middle; it faces -z (its broad faces look
+# along z), `side` square (0.45 m), 0.15 m thick at the middle. `tilt` leans it back, as against a sofa's
+# back cushion. Made of three soft layers, each rounder and smaller, so it swells to the middle.
+#
+# kind: model
+# place: cushion(AT + vec(0, 0.3, 0))
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: cushion, pillow, soft, sofa, bed, living, loft
+# size: hand
+# seeds: none, the same every time
+
+let cushion_cover = material(like: "velvet", color: rgb(0.45, 0.22, 0.12))
+
+to cushion(at: vec(0, 0, 0), turn: 0, tilt: 0, side: 0.45, cover: cushion_cover)
+  let g = group(at: at, turn: turn)
+    box size: vec(side, side, 0.05), tilt: tilt, material: cover, round: 0.024, steps: 2, collide: no
+    box size: vec(side * 0.9, side * 0.9, 0.1), tilt: tilt, material: cover, round: 0.045, steps: 3, collide: no
+    box size: vec(side * 0.72, side * 0.72, 0.15), tilt: tilt, material: cover, round: 0.07, steps: 3, collide: no
+  return g

@@ -1,0 +1,17 @@
+# side_table · a small round side table: a top on a single stem and a heavy disc foot
+# side_table(at, height, top) stands it on `at`: 0.45 m across, `height` tall (0.55 m). `top` is a material ("marble", "oak").
+#
+# kind: model
+# place: side_table(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: side table, end table, lamp table, living, bedroom, loft
+# size: chair
+# seeds: none, the same every time
+to side_table(at: vec(0, 0, 0), height: 0.55, top: "marble")
+  let g = group(at: at)
+    cylinder(radius: 0.17, height: 0.025, at: vec(0, 0.0125, 0), material: "black", sides: 40)
+    cylinder(radius: 0.022, height: height - 0.05, at: vec(0, height / 2, 0), material: "black", sides: 16)
+    cylinder(radius: 0.225, height: 0.025, at: vec(0, height - 0.0125, 0), material: top, sides: 48)
+  return g

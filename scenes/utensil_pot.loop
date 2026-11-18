@@ -1,0 +1,23 @@
+# utensil_pot · a glazed pot of kitchen tools: a wooden spoon, a spatula, a whisk and a ladle
+# utensil_pot(at, glaze) stands it on `at`: the pot 0.15 m tall, the tools up to 0.36 m.
+#
+# kind: model
+# place: utensil_pot(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: utensils, spoons, ladle, whisk, kitchen, counter, loft
+# size: hand
+# seeds: none, the same every time
+let utensil_glaze = material(like: "porcelain", color: rgb(0.2, 0.27, 0.3), roughness: 0.25)
+
+to utensil_pot(at: vec(0, 0, 0), glaze: utensil_glaze)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.055, 0), vec(0.06, 0.15), vec(0.054, 0.15), vec(0.05, 0.01), vec(0, 0.01)], segments: 24, material: glaze, collide: no)
+    box size: vec(0.012, 0.3, 0.008), at: vec(-0.02, 0.2, 0.01), rotation: vec(0, 8 deg, 12 deg), material: "oak", round: 0.003, collide: no
+    sphere(radius: 0.025, at: vec(-0.052, 0.355, 0.03), scale: vec(1, 1.4, 0.4), rotation: vec(0, 8 deg, 12 deg), material: "oak", sides: 16, collide: no)
+    box size: vec(0.06, 0.07, 0.004), at: vec(0.03, 0.33, -0.015), rotation: vec(0, -6 deg, -10 deg), material: "black", round: 0.003, collide: no
+    box size: vec(0.01, 0.24, 0.01), at: vec(0.02, 0.18, -0.01), rotation: vec(0, -6 deg, -10 deg), material: "black", round: 0.004, collide: no
+    sphere(radius: 0.03, at: vec(0.0, 0.32, 0.03), scale: vec(0.7, 1.5, 0.7), material: material(like: "steel", roughness: 0.3), sides: 16, collide: no)
+    box size: vec(0.008, 0.26, 0.008), at: vec(0.005, 0.18, 0.02), rotation: vec(0, 4 deg, -4 deg), material: "chrome", collide: no
+  return g

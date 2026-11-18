@@ -1,0 +1,31 @@
+# rug_wool · a thick wool rug with a deep soft pile and a darker woven border band
+# rug_wool(at, turn, length, width, wool, border) lays it flat on the floor with `at` its middle; `length`
+# runs along x. The pile is 2.2 cm thick with soft rounded edges; a border band 9 cm wide, 3 mm lower,
+# runs round it 6 cm in from the edge, like a bound rug. Furniture stands on it at at + vec(0, 0.022, 0).
+#
+# kind: model
+# place: rug_wool(AT, length: 2.8, width: 2.0)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: rug, wool, soft, floor, living, loft
+# size: sofa
+# sockets: top
+# seeds: none, the same every time
+
+let rug_pile = material(like: "fabric", color: rgb(0.58, 0.52, 0.44), roughness: 1)
+let rug_band = material(like: "fabric", color: rgb(0.22, 0.19, 0.16), roughness: 1)
+
+to rug_wool(at: vec(0, 0, 0), turn: 0, length: 2.8, width: 2.0, wool: rug_pile, border: rug_band)
+  let pile = 0.022
+  let inset = 0.06
+  let band = 0.09
+  let g = group(at: at, turn: turn)
+    box size: vec(length, pile, width), at: vec(0, pile / 2, 0), material: wool, round: 0.009, collide: no
+    # the border: four strips sunk 3 mm into the pile, inset from the edge
+    let bl = length - 2 * inset
+    let bw = width - 2 * inset
+    for each s in [-1, 1]
+      box size: vec(bl, 0.004, band), at: vec(0, pile - 0.0015, s * (bw / 2 - band / 2)), material: border, collide: no
+      box size: vec(band, 0.004, bw - 2 * band), at: vec(s * (bl / 2 - band / 2), pile - 0.0015, 0), material: border, collide: no
+  return g

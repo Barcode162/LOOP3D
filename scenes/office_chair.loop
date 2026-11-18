@@ -1,0 +1,25 @@
+# office_chair · a desk chair: a mesh back and a padded seat on a gas lift and five castors
+# office_chair(at, turn) stands it on `at`, facing -z: 0.6 m wide, 1 m tall.
+#
+# kind: model
+# place: office_chair(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: office chair, desk chair, work, study, loft
+# size: chair
+# seeds: none, the same every time
+to office_chair(at: vec(0, 0, 0), turn: 0)
+  let mesh = material(like: "fabric", color: rgb(0.05, 0.05, 0.055), roughness: 0.8)
+  let g = group(at: at, turn: turn)
+    for each i in range(0, 5, 1)
+      let a = i * 72 deg
+      box size: vec(0.035, 0.03, 0.3), at: vec(sin(a) * 0.15, 0.07, cos(a) * 0.15), turn: a, material: "black", round: 0.01, collide: no
+      sphere(radius: 0.025, at: vec(sin(a) * 0.29, 0.025, cos(a) * 0.29), material: "black", sides: 10, collide: no)
+    cylinder(radius: 0.025, height: 0.36, at: vec(0, 0.26, 0), material: "chrome", sides: 14, collide: no)
+    box size: vec(0.5, 0.08, 0.48), at: vec(0, 0.47, 0), material: mesh, round: 0.035, steps: 2
+    box size: vec(0.46, 0.5, 0.04), at: vec(0, 0.82, 0.25), tilt: -10 deg, material: mesh, round: 0.03, steps: 2
+    for each s in [-1, 1]
+      box size: vec(0.04, 0.025, 0.26), at: vec(s * 0.27, 0.66, 0.02), material: "black", round: 0.01, collide: no
+      box size: vec(0.025, 0.16, 0.025), at: vec(s * 0.27, 0.57, 0.08), material: "black", collide: no
+  return g

@@ -1,0 +1,24 @@
+# wardrobe · a wardrobe in pale oak: flat doors with long brass pulls, or, wide, a whole wall of them
+# wardrobe(at, turn, width, height, wood) stands it on `at`, its doors towards -z: `width` (1.8 m, a door each 0.6 m),
+# `height` (2.3 m), 0.62 m deep.
+#
+# kind: model
+# place: wardrobe(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: wardrobe, closet, armoire, wardrobe wall, bedroom, loft
+# size: sofa
+# seeds: none, the same every time
+to wardrobe(at: vec(0, 0, 0), turn: 0, width: 1.8, height: 2.3, wood: material(like: "oak", color: rgb(0.78, 0.66, 0.5)))
+  let n = max(1, round(width / 0.6))
+  let w = width / n
+  let g = group(at: at, turn: turn)
+    box size: vec(width, height - 0.08, 0.6), at: vec(0, 0.08 + (height - 0.08) / 2, 0.01), material: wood
+    box size: vec(width - 0.04, 0.08, 0.55), at: vec(0, 0.04, 0.02), material: "black"
+    for each i in range(0, n, 1)
+      let x = -width / 2 + (i + 0.5) * w
+      box size: vec(w - 0.006, height - 0.09, 0.02), at: vec(x, 0.08 + (height - 0.08) / 2, -0.3), material: wood, round: 0.003, collide: no
+      let px = (x + w / 2 - 0.05 if i % 2 == 0 else x - w / 2 + 0.05)
+      box size: vec(0.012, 0.6, 0.018), at: vec(px, 1.05, -0.318), material: "brass", round: 0.005, collide: no
+  return g

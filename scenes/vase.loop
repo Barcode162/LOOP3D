@@ -1,0 +1,22 @@
+# vase · a ceramic vase, one of six shapes: "bottle", "round", "tall", "bowl", "flask" or "pot"
+# vase(at, shape, height, glaze) stands it on `at`: `height` tall (0.25 m); the shape sets its outline.
+#
+# kind: model
+# place: vase(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: vase, ceramic, pottery, shelf, living, table, loft
+# size: hand
+# seeds: none, the same every time
+let vase_glaze = material(like: "porcelain", color: rgb(0.82, 0.78, 0.7), roughness: 0.4)
+
+to vase(at: vec(0, 0, 0), shape: "bottle", height: 0.25, glaze: vase_glaze)
+  let h = height
+  let outlines = {bottle: [vec(0, 0), vec(0.3, 0), vec(0.42, 0.25), vec(0.4, 0.55), vec(0.12, 0.8), vec(0.1, 1), vec(0.08, 1), vec(0.08, 0.85), vec(0, 0.85)], round: [vec(0, 0), vec(0.25, 0), vec(0.5, 0.3), vec(0.48, 0.65), vec(0.25, 0.92), vec(0.22, 1), vec(0.18, 1), vec(0.18, 0.92), vec(0, 0.9)], tall: [vec(0, 0), vec(0.18, 0), vec(0.2, 0.6), vec(0.17, 0.95), vec(0.2, 1), vec(0.16, 1), vec(0.14, 0.95), vec(0, 0.9)], bowl: [vec(0, 0), vec(0.3, 0), vec(0.6, 0.35), vec(0.75, 0.6), vec(0.7, 0.6), vec(0.55, 0.38), vec(0, 0.15)], flask: [vec(0, 0), vec(0.35, 0), vec(0.38, 0.45), vec(0.15, 0.6), vec(0.1, 1), vec(0.07, 1), vec(0.07, 0.62), vec(0, 0.6)], pot: [vec(0, 0), vec(0.38, 0), vec(0.42, 0.75), vec(0.45, 0.8), vec(0.38, 0.8), vec(0.36, 0.1), vec(0, 0.1)]}
+  let prof = []
+  for each p in outlines[shape]
+    prof.push(vec(p.x * h, p.y * h))
+  let g = group(at: at)
+    lathe(profile: prof, segments: 28, material: glaze, collide: no)
+  return g
