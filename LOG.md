@@ -1,3 +1,4 @@
+- 2026-11-18: Surface: concrete: library/surfaces/concrete.loop: grey cast concrete, soft mottle, pores coat, pour lifts; check passes, 4 pictures (deployed)
 - 2026-11-18: Surface: brick: brick surface: running bond, 215x65 mm, joint grime coat (deployed)
 - 2026-11-18: Surface: floorboards: floorboards surface made, 4 pictures in /tmp/M13; library check's triangle count can't load the surface's test_ball place (deployed)
 - 2026-11-18: Surface: walnut: walnut surface made; 2 gaps: noise/pores ignore stretch; library check can't load surface entries (deployed)
