@@ -75,12 +75,12 @@ core loop — farm, fish, sell, sleep — with nothing that is only half a featu
 
 ## Where we already are
 
-The 10 sheets in `INDEX.md` hold 128 pictures. Mapped against the two targets:
+The 32 sheets in `INDEX.md` hold 385 sprites. Mapped against the two targets:
 
 | | Full (361) | Demo (103) |
 |---|-----------|-----------|
-| Already have | 128 (35.5%) | 103 (100%) |
-| Still missing | 233 | 0 — demo art is complete |
+| Already have | 385 (all 361 planned pictures, + 24 extra rotation / duplicate shots) | 103 (100%) |
+| Still missing | 0 — full-game art is complete | 0 — demo art is complete |
 
 The 4 extra mature crop stages already drawn (corn, strawberry, potato, berry)
 count toward the full game, not the demo — the demo only grows 4 crops. The
@@ -94,3 +94,15 @@ nature). The demo art is complete: 103 pictures, 10 sheets, and the game is
 drawable end to end. Everything after it is full-game growth: 233 more
 pictures (~17 sheets) for seasons, extra NPCs, crops, fish, upgrades, cooking
 and crafting.
+
+## Full-game art — complete (2026-11-18)
+
+The remaining 233 pictures were generated as 21 more sheets (12–32 in
+`INDEX.md`): player-extra, npc-new, crops-2/3/4, trees-seasons 1–2, nature-2,
+fish-2, tools-2/3, food-1/2, buildings-2, terrain-2/3, decor-2,
+decor-atmosphere, ui-2/3, fixes. All 385 sprites are sliced to individual
+PNGs (`~/workspace/tidehollow-demo/sprites/`, one folder per sheet) and
+verified by count and by montage — two fixes along the way: the sleeping pose
+was missing from player-extra (added on fixes), and ui-3's boxed labels were
+being sliced as sprites (slicer now drops wide flat groups). `USAGE.md` maps
+every asset to the system and place that uses it.

@@ -109,7 +109,9 @@ tiled where it fits.
 
 ## Status
 
-- Drawn so far: 128 (the 10 sheets in `INDEX.md`). Demo art is complete: 103 of 103.
+- Drawn so far: 385 sprites (the 32 sheets in `INDEX.md`). Demo art is
+  complete: 103 of 103. Full game: all 361 planned pictures are drawn, plus
+  24 extra rotation / duplicate shots.
 - Demo needs 103; full game needs 361.
-- See `PLAN.md` for the demo-vs-full contrast and `INDEX.md` for the list of
-  what is actually drawn so far.
+- See `PLAN.md` for the demo-vs-full contrast, `INDEX.md` for the list of
+  what is actually drawn so far, and `USAGE.md` for where each asset is used.
