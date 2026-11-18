@@ -35,6 +35,7 @@ struct Config {
     float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
     bool ssr = true;     // screen reflections on High
     bool mirrorPane = true;  // the largest flat glass in view mirrors the room (order M60)
+    float mirrorSmallest = 6;  // the mirror leaves out what it shows smaller than this many pixels (its radius)
     bool allLampShadows = true;  // High: every lamp casts shadows (one picked a pixel, traced, kept over frames)
     float ao = 1;        // ambient occlusion's strength (0 off): creases and corners darken
     float aoReach = 0.6f;  // how far (m) it looks for what's near

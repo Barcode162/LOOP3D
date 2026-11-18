@@ -321,6 +321,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       const Vec3 far(pn.x >= 0 ? box.hi.x : box.lo.x, pn.y >= 0 ? box.hi.y : box.lo.y, pn.z >= 0 ? box.hi.z : box.lo.z);
       if (dot(pn, far) + pane.w < 0) continue;  // wholly beyond the pane
       if (view.cullOffscreen && !mf.visible(box)) continue;
+      if (mirrorSkips(box, pane, view.camera.position, pixelsPerRadian, view.mirrorSmallest)) continue;
       const int drawn = scene.lodMesh(in.mesh, lodLevel(radiusPixels(box, view.camera.position, pixelsPerRadian), view.lodBias));
       ++c.mirrorThings, c.mirrorTriangles += scene.meshes[drawn].triangleCount();
       batches.insert(drawn);

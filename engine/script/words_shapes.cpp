@@ -63,8 +63,10 @@ void registerShapes(Vm& vm) {
   }, "extrude(face: 2, by: 0.3): under a box, pushes one of its faces out that far along the way it faces, with walls joining it to where it was (below 0 it goes in)");
   vm.native("sphere", [](Args& a) {
     float r = f32(a.num(0, "radius", a.num(-1, "size", 1) * 0.5));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r}), [&] { return shapes::sphere(r, 96, 48); }), 's', Vec3(r));
-  }, "sphere(radius, at, material)");
+    // `sides` round the middle (96 by default); small things (fruit, knobs) need far fewer
+    int sides = std::clamp(static_cast<int>(a.num(-1, "sides", 96)), 6, 256);
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r, static_cast<float>(sides)}), [&] { return shapes::sphere(r, sides, std::max(3, sides / 2)); }), 's', Vec3(r));
+  }, "sphere(radius, at, material, sides: 96)");
   vm.native("cylinder", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), h = f32(a.num(1, "height", 1));
     // Thin tubes (under 3 cm across) need fewer sides: 16 by default, 64 otherwise.
@@ -73,12 +75,14 @@ void registerShapes(Vm& vm) {
   }, "cylinder(radius, height, at, material, sides)");
   vm.native("cone", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), h = f32(a.num(1, "height", 1));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("cone", {r, h}), [&] { return shapes::cone(r, h, 64); }));
-  }, "cone(radius, height, at, material)");
+    int sides = std::clamp(static_cast<int>(a.num(-1, "sides", 64)), 3, 256);
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("cone", {r, h, static_cast<float>(sides)}), [&] { return shapes::cone(r, h, sides); }));
+  }, "cone(radius, height, at, material, sides: 64)");
   vm.native("capsule", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.3)), h = f32(a.num(1, "height", 1.8));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("capsule", {r, h}), [&] { return shapes::capsule(r, h); }), 'c', Vec3(r, h, r));
-  }, "capsule(radius, height, at, material)");
+    int sides = std::clamp(static_cast<int>(a.num(-1, "sides", 24)), 4, 256);
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("capsule", {r, h, static_cast<float>(sides)}), [&] { return shapes::capsule(r, h, sides, std::max(2, sides / 3)); }), 'c', Vec3(r, h, r));
+  }, "capsule(radius, height, at, material, sides: 24)");
   vm.native("lathe", [](Args& a) {
     // a list of vec(radius, height) points, spun round the up axis
     const Value* pv = a.get(0, "profile");
@@ -131,8 +135,10 @@ void registerShapes(Vm& vm) {
   }, "blocker(size: vec(w, h, d), at, turn): an invisible box you can't walk through (walls of a room made of one model)");
   vm.native("ring", [](Args& a) {
     float r = f32(a.num(0, "radius", 0.5)), t = f32(a.num(1, "thickness", 0.1));
-    return place(a, cachedMesh(stageOf(a.vm), keyOf("torus", {r, t}), [&] { return shapes::torus(r, t, 96, 48); }));
-  }, "ring(radius, thickness, at, material): a torus");
+    // `sides` round the big circle (96); the tube gets half as many
+    int sides = std::clamp(static_cast<int>(a.num(-1, "sides", 96)), 6, 256);
+    return place(a, cachedMesh(stageOf(a.vm), keyOf("torus", {r, t, static_cast<float>(sides)}), [&] { return shapes::torus(r, t, sides, std::max(3, sides / 2)); }));
+  }, "ring(radius, thickness, at, material, sides: 96): a torus");
   vm.native("ground", [](Args& a) {
     float sz = f32(a.num(0, "size", 100));
     Stage& st = stageOf(a.vm);

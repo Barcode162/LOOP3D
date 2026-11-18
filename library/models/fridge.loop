@@ -1,0 +1,26 @@
+# fridge · a tall fridge-freezer in brushed steel, two doors with long bar handles
+# fridge(at, turn, height, finish) stands it on `at` (the middle of its footprint), its doors facing -z: 0.6 m wide,
+# 0.66 m deep, `height` tall (1.85 m), the freezer door below a thin gap, the fridge door above.
+#
+# kind: model
+# place: fridge(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: fridge, freezer, kitchen, appliance, loft
+# size: sofa
+# seeds: none, the same every time
+let fridge_steel = material(like: "steel", color: rgb(0.62, 0.63, 0.64), roughness: 0.32)
+let fridge_bar = material(like: "chrome", roughness: 0.15)
+
+to fridge(at: vec(0, 0, 0), turn: 0, height: 1.85, finish: fridge_steel)
+  let split = height * 0.38
+  let g = group(at: at, turn: turn)
+    box size: vec(0.6, height - 0.02, 0.6), at: vec(0, height / 2 + 0.01, 0.03), material: "black", round: 0.01
+    box size: vec(0.598, split - 0.025, 0.05), at: vec(0, 0.01 + split / 2, -0.29), material: finish, round: 0.012, steps: 2
+    box size: vec(0.598, height - split - 0.025, 0.05), at: vec(0, split + (height - split) / 2, -0.29), material: finish, round: 0.012, steps: 2
+    for each y in [split * 0.55, split + (height - split) * 0.4]
+      box size: vec(0.018, 0.5, 0.018), at: vec(0.24, y + 0.1, -0.345), material: fridge_bar, round: 0.008, collide: no
+      box size: vec(0.014, 0.014, 0.035), at: vec(0.24, y + 0.34, -0.327), material: fridge_bar, collide: no
+      box size: vec(0.014, 0.014, 0.035), at: vec(0.24, y - 0.14, -0.327), material: fridge_bar, collide: no
+  return g

@@ -1,0 +1,17 @@
+# plates · a stack of white stoneware plates, or one plate laid for a meal
+# plates(at, count, across) stacks `count` (6) plates on `at`, each `across` wide (0.27 m) and 2 cm tall.
+#
+# kind: model
+# place: plates(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: plates, dishes, crockery, kitchen, dining, table, loft
+# size: hand
+# seeds: none, the same every time
+to plates(at: vec(0, 0, 0), count: 6, across: 0.27)
+  let r = across / 2
+  let g = group(at: at)
+    for each i in range(0, count, 1)
+      lathe(profile: [vec(0, 0), vec(r * 0.6, 0), vec(r * 0.64, 0.006), vec(r, 0.02), vec(r * 0.98, 0.023), vec(r * 0.62, 0.01), vec(0, 0.01)], segments: 24, at: vec(0, i * 0.013, 0), material: "porcelain", collide: no)
+  return g

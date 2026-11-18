@@ -1,0 +1,18 @@
+# jar · a glass storage jar with a wooden lid, filled with something (pasta, rice, beans, coffee)
+# jar(at, height, fill, filled) stands it on `at`: 0.09 m across, `height` tall (0.16 m); `fill` is the colour of what
+# is inside and `filled` (0 to 1) how full.
+#
+# kind: model
+# place: jar(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: jar, storage, pantry, kitchen, shelf, loft
+# size: hand
+# seeds: none, the same every time
+to jar(at: vec(0, 0, 0), height: 0.16, fill: rgb(0.85, 0.7, 0.4), filled: 0.7)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.045, 0), vec(0.046, height - 0.02), vec(0.042, height - 0.02), vec(0.041, 0.005), vec(0, 0.005)], segments: 28, material: "glass", collide: no)
+    cylinder(radius: 0.04, height: (height - 0.03) * filled, at: vec(0, 0.005 + (height - 0.03) * filled / 2, 0), material: material(color: fill, roughness: 0.85), sides: 24, collide: no)
+    cylinder(radius: 0.047, height: 0.025, at: vec(0, height - 0.0075, 0), material: "oak", sides: 28, collide: no)
+  return g

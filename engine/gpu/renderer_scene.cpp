@@ -426,6 +426,7 @@ void GpuRenderer::buildDrawLists(const Frustum& eye, const Frustum& sun, bool su
                                  Vec4 plane) {
   const bool cull = config().render.cull;
   const float bias = config().world.lodBias;
+  const float smallest = config().render.mirrorSmallest;
   visible_.clear(), sceneDraws_.clear(), shadowDraws_.clear(), mirrorDraws_.clear();
   const Vec3 pn(plane.x, plane.y, plane.z);
   auto list = [&](std::vector<Batch>& out, const Frustum& view, bool shadow, bool mirrored = false) {
@@ -441,6 +442,7 @@ void GpuRenderer::buildDrawLists(const Frustum& eye, const Frustum& sun, bool su
       };
       auto sees = [&](uint32_t i) {
         if (mirrored && (i >= instBox_.size() || instHidden_[i] || beyond(i))) return false;
+        if (mirrored && mirrorSkips(instBox_[i], plane, eyePos, pixelsPerRadian, smallest)) return false;
         return !cull || (i < instHidden_.size() && !instHidden_[i] && view.visible(instBox_[i]));
       };
       if (b.mesh >= static_cast<int>(meshLods_.size()) || meshLods_[b.mesh][0] < 0) {

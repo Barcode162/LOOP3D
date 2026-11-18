@@ -1,0 +1,29 @@
+# vase_flowers · a tall glass vase of cut flowers on long stems, the blooms at different heights
+# vase_flowers(at, kind, seed) stands it on `at`: the vase 0.25 m, the flowers to about 0.5 m. `kind` names the bloom's
+# colour: "poppy" (red), "daisy" (white), "bluebell" (blue), "violet", "tulip" (pink) or "sun" (yellow).
+#
+# kind: model
+# place: vase_flowers(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: vase, flowers, bouquet, table, kitchen, dining, shelf, loft
+# size: hand
+# seeds: any whole number
+let bloom_colors = {poppy: rgb(0.6, 0.02, 0.015), daisy: rgb(0.9, 0.9, 0.86), bluebell: rgb(0.18, 0.22, 0.6), violet: rgb(0.35, 0.12, 0.45), tulip: rgb(0.85, 0.35, 0.45), sun: rgb(0.95, 0.7, 0.08)}
+
+to vase_flowers(at: vec(0, 0, 0), kind: "poppy", seed: 1)
+  let petals = material(color: bloom_colors[kind], roughness: 0.55, subsurface: 0.2)
+  let heart = material(color: rgb(0.1, 0.07, 0.03), roughness: 0.8)
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.05, 0), vec(0.055, 0.03), vec(0.04, 0.2), vec(0.045, 0.25), vec(0.042, 0.25), vec(0.037, 0.2), vec(0.05, 0.03), vec(0, 0.008)], segments: 28, material: "glass", collide: no)
+    cylinder(radius: 0.044, height: 0.09, at: vec(0, 0.05, 0), material: "water", sides: 24, collide: no)
+    for each i in range(0, 7, 1)
+      let a = i * 51 deg + seed
+      let lean = 0.12 + (i % 3) * 0.06
+      let len = 0.3 + (i % 4) * 0.03
+      let top = vec(sin(lean) * len * cos(a), 0.12 + cos(lean) * len, sin(lean) * len * sin(a))
+      cylinder(radius: 0.0022, height: len, at: vec(top.x / 2, 0.12 + (top.y - 0.12) / 2, top.z / 2), rotation: vec(90 deg - a, lean, 0), material: "stem", sides: 5, collide: no)
+      sphere(radius: 0.032, at: top, scale: vec(1, 0.5, 1), rotation: vec(90 deg - a, lean, 0), material: petals, sides: 12, collide: no)
+      sphere(radius: 0.009, at: top + vec(0, 0.01, 0), material: heart, sides: 8, collide: no)
+  return g

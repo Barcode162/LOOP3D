@@ -78,6 +78,7 @@ Settings::Settings() {
   B("render.allLampShadows", r.allLampShadows, "High: one lamp is traced on its own and the rest share one shadow ray a pixel, given each frame to one picked by its light, each pixel keeping its answer over frames (ReSTIR's reuse): every lamp casts shadows, for the same rays");
 
   B("render.mirrorPane", r.mirrorPane, "the largest flat glass in view mirrors the room: the room drawn once more from the eye mirrored in the pane, at a quarter of the pixels (at night a window is a dim mirror)");
+  F("render.mirrorSmallest", r.mirrorSmallest, 0, 64, "the mirror leaves out what it would show smaller than this many pixels (its radius, in the screen's pixels): small things are dots in it, and each is one more draw call (0: everything)");
   B("render.ssr", r.ssr, "High: glossy surfaces reflect what's on screen (the room itself), else the light cache's and the sky's reflection");
   F("render.ao", r.ao, 0, 3, "ambient occlusion, drawing in clusters: how much the soft light darkens in creases, corners and under things (0 off)");
   F("render.aoReach", r.aoReach, 0.05, 3, "how far (m) ambient occlusion looks for what's near a surface");

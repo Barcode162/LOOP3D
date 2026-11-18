@@ -1,0 +1,22 @@
+# toaster · a two-slot toaster with rounded corners, a lever at the side
+# toaster(at, turn, body) stands it on `at`, its long side towards -z: 0.27 m long, 0.17 m wide, 0.19 m tall.
+#
+# kind: model
+# place: toaster(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: toaster, kitchen, appliance, counter, loft
+# size: hand
+# seeds: none, the same every time
+let toaster_body = material(like: "steel", color: rgb(0.72, 0.72, 0.72), roughness: 0.2)
+
+to toaster(at: vec(0, 0, 0), turn: 0, body: toaster_body)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.27, 0.18, 0.17), at: vec(0, 0.095, 0), material: body, round: 0.035, steps: 3
+    for each z in [-0.035, 0.035]
+      box size: vec(0.2, 0.004, 0.028), at: vec(0, 0.184, z), material: "black", collide: no
+    box size: vec(0.02, 0.018, 0.035), at: vec(0.145, 0.15, 0), material: "black", round: 0.006, collide: no
+    for each x in [-0.1, 0.1]
+      cylinder(radius: 0.012, height: 0.008, at: vec(x, 0.004, 0), material: "black", sides: 12, collide: no)
+  return g

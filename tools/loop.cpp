@@ -534,6 +534,7 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   v.clusters = C.render.clusters, v.clusterError = C.render.clusterError;
   v.textureSize = C.render.textureSize;
   v.lightGrid = C.render.lightGrid, v.lampGrouping = C.render.lampGrouping;
+  v.mirrorSmallest = C.render.mirrorSmallest;
   v.mirrorPane = C.render.mirrorPane && m.budget.quality != "ultra";
   {
     int lamps = 0;

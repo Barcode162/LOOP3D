@@ -1,0 +1,23 @@
+# kettle · an electric kettle, a round matte body on its base, with a handle and a short spout
+# kettle(at, turn, body) stands it on `at`, its spout towards -z: 0.2 m tall, 0.16 m across.
+#
+# kind: model
+# place: kettle(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: kettle, kitchen, appliance, counter, loft
+# size: hand
+# seeds: none, the same every time
+let kettle_body = material(like: "plastic", color: rgb(0.86, 0.85, 0.82), roughness: 0.45)
+
+to kettle(at: vec(0, 0, 0), turn: 0, body: kettle_body)
+  let g = group(at: at, turn: turn)
+    cylinder(radius: 0.085, height: 0.02, at: vec(0, 0.01, 0), material: "black", sides: 28, collide: no)
+    lathe(profile: [vec(0, 0.02), vec(0.08, 0.02), vec(0.085, 0.05), vec(0.078, 0.16), vec(0.06, 0.2), vec(0, 0.205)], segments: 28, material: body, collide: no)
+    cylinder(radius: 0.03, height: 0.012, at: vec(0, 0.205, 0), material: "black", sides: 20, collide: no)
+    box size: vec(0.025, 0.15, 0.025), at: vec(0, 0.12, 0.11), material: body, round: 0.011, collide: no
+    box size: vec(0.025, 0.022, 0.05), at: vec(0, 0.19, 0.085), material: body, round: 0.01, collide: no
+    box size: vec(0.025, 0.022, 0.04), at: vec(0, 0.055, 0.09), material: body, round: 0.01, collide: no
+    cone(radius: 0.022, height: 0.06, at: vec(0, 0.165, -0.09), rotation: vec(0, -65 deg, 0), material: body, collide: no)
+  return g

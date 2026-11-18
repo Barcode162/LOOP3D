@@ -1,0 +1,25 @@
+# sink_tap · a brushed steel sink set into a worktop, with a tall arched mixer tap
+# sink_tap(at, turn, width) sets it with `at` the middle of the sink's rim on the worktop, the tap at the back (+z):
+# `width` wide (0.5 m), 0.42 m front to back, the bowl 0.18 m deep below the top. The tap rises 0.34 m and arcs over the bowl.
+#
+# kind: model
+# place: sink_tap(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: sink, tap, faucet, kitchen, basin, loft
+# size: chair
+# seeds: none, the same every time
+let sink_steel = material(like: "steel", color: rgb(0.66, 0.67, 0.68), roughness: 0.25)
+
+to sink_tap(at: vec(0, 0, 0), turn: 0, width: 0.5)
+  let g = group(at: at, turn: turn)
+    box size: vec(width + 0.04, 0.004, 0.46), at: vec(0, 0.002, 0), material: sink_steel, round: 0.002, collide: no
+    box size: vec(width, 0.003, 0.4), at: vec(0, 0.0045, -0.005), material: material(color: rgb(0.08, 0.08, 0.085), roughness: 0.3), collide: no
+    cylinder(radius: 0.02, height: 0.004, at: vec(0, 0.006, -0.02), material: "chrome", sides: 20, collide: no)
+    cylinder(radius: 0.022, height: 0.05, at: vec(0, 0.025, 0.215), material: "chrome", sides: 24, collide: no)
+    cylinder(radius: 0.013, height: 0.26, at: vec(0, 0.18, 0.215), material: "chrome", sides: 20, collide: no)
+    ring(radius: 0.08, thickness: 0.013, at: vec(0, 0.31, 0.135), rotation: vec(90 deg, 90 deg, 0), material: "chrome", sides: 32)
+    cylinder(radius: 0.013, height: 0.06, at: vec(0, 0.28, 0.055), material: "chrome", sides: 20, collide: no)
+    box size: vec(0.012, 0.012, 0.07), at: vec(0.035, 0.08, 0.215), rotation: vec(0, -20 deg, 0), material: "chrome", round: 0.005, collide: no
+  return g

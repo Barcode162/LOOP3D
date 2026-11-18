@@ -208,6 +208,12 @@ TEST(frame_cost_a_pane_of_glass_mirrors_the_room) {
   const Vec3 m = mirrorIn(plane).point({0, 1.6f, 5});
   CHECK_NEAR(m.z, -9, 1e-4);
   CHECK_NEAR(m.y, 1.6f, 1e-5);
+  // small things are left out of the mirror, judged from the mirrored eye (9 m beyond the glass here): a mug
+  // 1 m from the eye and 3 m from the glass is 13 m from the mirrored eye, a dot; a sofa there is not
+  const AABB mugBox({-0.04f, 0.8f, 3.96f}, {0.04f, 0.9f, 4.04f}), sofaBox({-1, 0, 3.5f}, {1, 0.8f, 4.5f});
+  CHECK(mirrorSkips(mugBox, plane, {0, 1.6f, 5}, 400, 6));
+  CHECK(!mirrorSkips(sofaBox, plane, {0, 1.6f, 5}, 400, 6));
+  CHECK(!mirrorSkips(mugBox, plane, {0, 1.6f, 5}, 400, 0));  // 0: everything is drawn
   // the frame's cost: the mirror draws both boxes (one behind the eye, on its side of the glass), not the glass
   Scene s = twoBoxes();
   Material glass;

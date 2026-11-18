@@ -1,0 +1,19 @@
+# bowl · a stoneware bowl, glazed inside, raw clay outside at the foot
+# bowl(at, across, glaze) stands it on `at`: `across` wide (0.16 m), about 0.4 of that tall.
+#
+# kind: model
+# place: bowl(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bowl, crockery, kitchen, dining, shelf, loft
+# size: hand
+# seeds: none, the same every time
+let bowl_glaze = material(like: "porcelain", color: rgb(0.88, 0.86, 0.8), roughness: 0.3)
+
+to bowl(at: vec(0, 0, 0), across: 0.16, glaze: bowl_glaze)
+  let r = across / 2
+  let h = across * 0.4
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(r * 0.4, 0), vec(r * 0.45, h * 0.1), vec(r * 0.85, h * 0.6), vec(r, h), vec(r * 0.95, h), vec(r * 0.78, h * 0.55), vec(r * 0.35, h * 0.15), vec(0, h * 0.15)], segments: 32, material: glaze, collide: no)
+  return g

@@ -1,0 +1,21 @@
+# bread · a crusty loaf of bread on a board, the first slices cut
+# bread(at, turn) lays it on `at`: the board 0.38 m long, the loaf 0.26 m.
+#
+# kind: model
+# place: bread(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bread, loaf, food, kitchen, counter, loft
+# size: chair
+# seeds: none, the same every time
+to bread(at: vec(0, 0, 0), turn: 0)
+  let crust = material(color: rgb(0.36, 0.17, 0.06), roughness: 0.8)
+  let crumb = material(color: rgb(0.92, 0.84, 0.66), roughness: 0.95)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.38, 0.02, 0.22), at: vec(0, 0.01, 0), material: "oak", round: 0.008, collide: no
+    sphere(radius: 0.06, at: vec(-0.02, 0.065, 0), scale: vec(2.1, 0.85, 1.1), material: crust, sides: 16, sides: 20, collide: no)
+    box size: vec(0.004, 0.08, 0.11), at: vec(0.109, 0.06, 0), material: crumb, round: 0.02, collide: no
+    for each i in range(0, 2, 1)
+      box size: vec(0.012, 0.075, 0.105), at: vec(0.135 + i * 0.016, 0.06 - i * 0.004, 0.01), rotation: vec(0, 0, -6 deg - i * 8 deg), material: crumb, round: 0.02, collide: no
+  return g

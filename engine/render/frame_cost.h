@@ -89,6 +89,16 @@ inline bool onPlane(const Pane& p, Vec4 plane) {
   const float c = dot(Vec3(p.plane.x, p.plane.y, p.plane.z), Vec3(plane.x, plane.y, plane.z));
   return std::fabs(c) > 0.999f && std::fabs(p.plane.w - (c > 0 ? plane.w : -plane.w)) < 0.02f;
 }
+// The mirror leaves out what it would show smaller than `smallest` pixels across
+// its radius (render.mirrorSmallest, counted in the screen's pixels), seen from
+// the eye mirrored in the pane: a mug reflected in a window is a dot at a
+// quarter of the pixels, but every different shape is one more draw call.
+inline bool mirrorSkips(const AABB& box, Vec4 plane, Vec3 eye, float pixelsPerRadian, float smallest) {
+  if (smallest <= 0) return false;
+  const Vec3 n(plane.x, plane.y, plane.z);
+  const Vec3 mirrored = eye - n * (2 * (dot(n, eye) + plane.w));
+  return radiusPixels(box, mirrored, pixelsPerRadian) < smallest;
+}
 // Where a box lands on screen: its corners' low and high x, y in -1..1 (the
 // whole screen when a corner is behind the eye). The mirror draws only there.
 inline Vec4 screenRect(const AABB& box, const Mat4& viewProj) {
@@ -131,6 +141,7 @@ struct FrameView {
   // error looks under render.clusterError pixels; one draw a pass; each pixel
   // lit once). Glass is still drawn the old way.
   bool clusters = false;
+  float mirrorSmallest = 0;        // render.mirrorSmallest: the mirror leaves out what it shows smaller than this (pixels)
   bool mirrorPane = false;         // render.mirrorPane: the largest pane in view mirrors the room (a second drawing, a quarter of the pixels)
   float clusterError = 1;
   int textureSize = 256;           // render.textureSize: the side of every picture layer on the graphics chip
