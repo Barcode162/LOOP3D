@@ -35,6 +35,9 @@ phase is done when its "done when" is true on the phone.
   frame blending leans on the fresh picture where a skin bends (no smear). Open: rays (Ultra, lamp ray shadows)
   see a skin as it stood when they were built; per-point motion for frame blending; bones stepped with the
   script's clock, not drawn between its steps.
+  Published to the public player 2026-11-18 (gh-pages af8a392). The recording page was not updated: its check
+  (`tools/recorder_check.js`) fails 2 of 25 ("the parts follow the play", "the new scene's part starts at its first
+  frame"); not yet known whether that came with this change.
 - **Not started:** T-E1 (the editable mesh: no shape can be edited by its points yet). Its claim in `work/claims/`
   still says "working" from the first chat; nothing was built, and the next chat that takes it re-claims it.
 - **Not done either:** the Loop3D Workshop dashboard does not exist as a page yet; the 12 picture tests were not
