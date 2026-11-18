@@ -38,11 +38,11 @@ phase is done when its "done when" is true on the phone.
   Published to the public player 2026-11-18 (gh-pages af8a392). The recording page was not updated: its check
   (`tools/recorder_check.js`) fails 2 of 25 ("the parts follow the play", "the new scene's part starts at its first
   frame"); not yet known whether that came with this change.
-- **Not started:** T-E1 (the editable mesh: no shape can be edited by its points yet). Its claim in `work/claims/`
-  still says "working" from the first chat; nothing was built, and the next chat that takes it re-claims it.
+- **T-E1 done (2026-11-18):** the editable mesh (`engine/geometry/edit_mesh.*`): faces of any sides, four moves
+  that keep a shape whole, smoothing with creases, a text form. Nothing in the editor uses it yet.
 - **Not done either:** the Loop3D Workshop dashboard does not exist as a page yet; the 12 picture tests were not
   run for this deploy (the renderer did not change).
-*Next goal when work resumes:* T-E1, the editable mesh (the first step toward Shape on the Studio's bench), or a skin's bones keyed in a clip so the editor can animate it.
+*Next goal when work resumes:* the first Shape tool on the Studio's bench on top of T-E1 (its cards are cut now, docs/STUDIO.md section 5), or a skin's bones keyed in a clip so the editor can animate it.
 
 ## Now · The Loft (your word, 2026-11-10: the top priority)
 *Your words:* the Loft, that entire project and everything in it, is the top priority.

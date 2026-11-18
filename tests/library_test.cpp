@@ -53,11 +53,9 @@ TEST(library_entries_place_their_example) {
   readLibrary(lib, entries, problems);
   for (const LibraryEntry& e : entries) {
     Settings::get().resetAll();
-    std::string place = e.place;
-    for (size_t at; (at = place.find("AT")) != std::string::npos;) place.replace(at, 2, "vec(0, 0, 0)");
     // a scene that uses the entry by name, from a project's folder
     std::vector<std::string> seen;
-    std::string src = expandUses("use \"" + e.name + "\"\n" + place + "\n", "projects/showcase/", seen);
+    std::string src = expandUses(libraryPlaceSource(e), "projects/showcase/", seen);
     Vm vm;
     Stage st;
     installStandardLibrary(vm);

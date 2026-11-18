@@ -285,8 +285,8 @@ TEST(words_surface_is_found_by_name_in_this_scene_and_the_library) {
   // a surface made here wins over a built-in name
   auto h = runScene("surface(\"oak\", base: {color: rgb(0.5, 0.4, 0.3)})\nbox size: 1, material: \"oak\"\n");
   CHECK(h->stage.scene.materials[h->stage.scene.instances[0].material].surface == 0);
-  // and with no library entry the built-in list still answers
-  auto b = runScene("box size: 1, material: \"oak\"\n");
+  // and with no library entry the built-in list still answers (pine: built in, not in library/surfaces)
+  auto b = runScene("box size: 1, material: \"pine\"\n");
   CHECK(b->problems().empty() && b->stage.scene.materials[b->stage.scene.instances[0].material].surface == -1);
 }
 

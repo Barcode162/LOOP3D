@@ -52,6 +52,10 @@ bool readLibrary(const std::string& library, std::vector<LibraryEntry>& out, std
 // The most triangles an entry of that size may have (hand, chair, sofa, room);
 // 0 for a size with no budget (land: the plan states none) or no size.
 size_t libraryBudget(const std::string& size);
+// The scene that places an entry by its card's place line at the origin (a surface on the test ball),
+// before `use` is expanded: the one way the checks, the triangle count and the tests place an entry.
+std::string libraryPlaceSource(const LibraryEntry& e);
+
 // Places the entry's example and counts the triangles it makes (every copy
 // counted). False, with why, if it won't load.
 bool countLibraryTriangles(const std::string& library, const LibraryEntry& e, size_t& triangles, std::string& why);

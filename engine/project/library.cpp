@@ -146,16 +146,20 @@ size_t libraryBudget(const std::string& size) {
   return 0;
 }
 
+std::string libraryPlaceSource(const LibraryEntry& e) {
+  std::string place = e.place;
+  for (size_t at; (at = place.find("AT")) != std::string::npos;) place.replace(at, 2, "vec(0, 0, 0)");
+  // a surface is placed on the test ball (library/models/test_ball.loop), as its picture is
+  const std::string ball = e.kind == "surface" ? "use \"test_ball\"\n" : "";
+  return ball + "use \"" + e.name + "\"\n" + place + "\n";
+}
+
 bool countLibraryTriangles(const std::string& library, const LibraryEntry& e, size_t& triangles, std::string& why) {
   using namespace script;
   Settings::get().resetAll();
-  std::string place = e.place;
-  for (size_t at; (at = place.find("AT")) != std::string::npos;) place.replace(at, 2, "vec(0, 0, 0)");
   // placed as a scene would, so `use` finds the entry in the library
   std::vector<std::string> seen;
-  // a surface is placed on the test ball (library/models/test_ball.loop), as its picture is
-  const std::string ball = e.kind == "surface" ? "use \"test_ball\"\n" : "";
-  std::string src = expandUses(ball + "use \"" + e.name + "\"\n" + place + "\n", library, seen);
+  std::string src = expandUses(libraryPlaceSource(e), library, seen);
   Vm vm;
   Stage st;
   installStandardLibrary(vm);
