@@ -19,7 +19,7 @@
   #stam-bar { width: 70px; height: 10px; background: #d8c9a3; border-radius: 5px; overflow: hidden; }
   #hud-stam { height: 100%; width: 100%; background: #4a8c3f; }
   #btn-quests, #btn-sound, #btn-friends { pointer-events: auto; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; border-radius: 10px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
-  #quests { position: absolute; top: 48px; left: 8px; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.7; z-index: 6; max-width: 240px; }
+  #quests { position: absolute; top: 48px; left: 8px; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.7; z-index: 6; max-width: 240px; max-height: 60vh; overflow-y: auto; }
 
   /* inventory */
   #inv { position: absolute; left: 8px; bottom: 140px; display: flex; gap: 5px; flex-wrap: wrap; max-width: 55vw; z-index: 5; }
@@ -134,6 +134,12 @@
     </div>
     <div id="fh-items"></div>
     <button class="close-btn" id="farmhouse-close">Done</button>
+  </div></div>
+
+  <div id="festival" class="overlay hidden"><div class="card">
+    <h2 id="fest-title">🎪 Festival</h2><p id="fest-text"></p>
+    <div id="fest-items"></div>
+    <button class="close-btn" id="festival-close">Done</button>
   </div></div>
 
   <div id="friends" class="overlay hidden"><div class="card">
@@ -432,6 +438,123 @@ function actFor(season, day) {
   if (season === 'summer') return 2;
   if (season === 'autumn') return day >= 22 ? 4 : 3;
   return 5; // winter
+}
+// ---------- festivals (Phase 3c) ----------
+// One per season (GAMEPLAY.md): the spring planting fair (the first in
+// sixty years), summer night fishing, the Pale Tide in autumn, the longest
+// night in winter. Each has a set day; on that day the villagers gather at
+// the plaza, the fair stall opens, and one activity can be played.
+const FESTIVALS = {
+  spring: { day: 14, name: 'Spring Planting Fair', short: 'Planting Fair', blurb: 'The first fair in sixty years — everyone is at the plaza, and June has baked forty small pies, one for each of the vanished.' },
+  summer: { day: 21, name: 'Summer Night Fishing', short: 'Night Fishing', blurb: 'The longest evening of the year. Finn has strung lanterns over the dock and the fish are biting like they know something.' },
+  autumn: { day: 22, name: 'The Pale Tide', short: 'Pale Tide', blurb: 'Late autumn — the tide comes in white and still. Rose bakes with tidewater, and the fish float belly-up, whispering names.' },
+  winter: { day: 28, name: 'The Longest Night', short: 'Longest Night', blurb: 'The last night of the year. The village lights a lantern for everyone the tide has taken, and nobody goes home early.' },
+};
+function festivalFor(season, day) {
+  const f = FESTIVALS[season];
+  return f && f.day === day ? f : null;
+}
+function festivalToday() { return festivalFor(S.season, S.day); }
+// the next festival after today (wraps into next year)
+function nextFestival() {
+  for (const s of SEASONS) {
+    const f = FESTIVALS[s];
+    if (s === S.season && f.day > S.day) return { ...f, season: s, year: S.year };
+    if (SEASONS.indexOf(s) > SEASONS.indexOf(S.season)) return { ...f, season: s, year: S.year };
+  }
+  return { ...FESTIVALS.spring, season: 'spring', year: S.year + 1 };
+}
+function festivalKey(season, year) { return (year || S.year) + '-' + season; }
+function festivalDone() { return !!S.festivals[festivalKey(S.season, S.year)]; }
+function markFestivalDone() { S.festivals[festivalKey(S.season, S.year)] = true; saveGame(); }
+// the plaza gathering spots: free tiles around the well (MAP.md) — one per
+// villager, all walkable ground, none of them on the village path
+const FESTIVAL_SPOTS = {
+  june: [17, 13], pip: [18, 13], finn: [21, 13], mia: [17, 14],
+  bram: [21, 14], ash: [16, 14], rose: [23, 14], sol: [24, 14],
+};
+// the fair stall: a market stall on the village path at (18,14). Placed on
+// festival mornings and removed the next morning. The sprite is the
+// market stall reused — the prompt label says it is the fair.
+function placeFestivalTable() {
+  if (OBJECTS.some(o => o.festival)) return;
+  OBJECTS.push({ tx: 18, ty: 14, w: 1, h: 1, sprite: 'market_stall', festival: true });
+}
+function removeFestivalTable() {
+  for (let i = OBJECTS.length - 1; i >= 0; i--) if (OBJECTS[i].festival) OBJECTS.splice(i, 1);
+}
+// move the villagers to the plaza for the festival, and back home after.
+// Home is remembered at load (n.home), so a wandering Pip still comes home.
+function gatherFestival() {
+  NPCS.forEach(n => {
+    const spot = FESTIVAL_SPOTS[n.id];
+    if (spot) { n.tx = spot[0]; n.ty = spot[1]; n.tx2 = spot[0]; n.ty2 = spot[1]; n.wt = 999; }
+  });
+  placeFestivalTable();
+}
+function ungatherFestival() {
+  NPCS.forEach(n => {
+    if (n.home) { n.tx = n.home.tx; n.ty = n.home.ty; n.tx2 = n.home.tx; n.ty2 = n.home.ty; n.wt = 0; }
+  });
+  removeFestivalTable();
+}
+// run on waking (and after loading): a festival day gets its gathering and
+// stall; any other day sends everyone home.
+function setupFestivalDay() {
+  if (festivalToday()) gatherFestival();
+  else ungatherFestival();
+}
+// the pumpkin's weight, in stones: deterministic per festival, so the
+// player can learn it from the fair and the test can read it
+function festivalGuessAnswer() { return [10, 20, 30][(S.year + S.day) % 3]; }
+// festival lines: on a festival day every villager leads with one of these
+function festivalLine(npc) {
+  const f = festivalToday();
+  if (!f) return [];
+  const lines = {
+    spring: {
+      june: 'Sixty years, and the fair is back. I baked forty small pies — one for each of them. Eat one, and remember.',
+      pip: 'The fair! The fair! June says I can have three pies. Three!',
+      finn: 'Fair day. The fish can wait — today we eat pie and tell lies about the ones that got away.',
+      mia: 'I brought the good ledger today. The fair ledger. Everything is free, and everything is owed.',
+      bram: 'A fair, after sixty years. The sea never gave us one back. Maybe today it will.',
+      ash: 'I forged forty small bells for the fair. One for each place. They ring true.',
+      rose: 'I baked with tidewater today, and the bread came out sweet. The sea is in a good mood.',
+      sol: 'A fair! Finally, customers! I have a left shoe, a broken compass, and a wedding ring. All genuine. All for sale.',
+    },
+    summer: {
+      june: 'Night fishing, under the lanterns. The island is kind tonight. Enjoy it while it lasts.',
+      pip: 'Finn says the big fish come out when the lanterns go on. I am staying up until I catch one!',
+      finn: 'Lanterns over the dock, and the fish biting like they know something. Cast a line — the fair is watching.',
+      mia: 'I am keeping the stall open late. A fair night is worth more than a fair day, in coins and in stories.',
+      bram: 'The fog stays away on fair nights. It knows better than to spoil a party.',
+      ash: 'I hung a bell over the dock. It rings when a fish bites. It has not stopped ringing.',
+      rose: 'I made fish stew for the fair, and I did not use tidewater. Tonight the sea can keep its dreams.',
+      sol: 'Night fishing! I am selling lanterns, lucky hooks, and a map of the reef. The map is wrong, but the lanterns are lovely.',
+    },
+    autumn: {
+      june: 'The tide is white tonight. Do not be afraid — it is only the sea remembering. That is all it ever does.',
+      pip: 'The water turned white! The fish are floating and whispering names. I am not scared. Well, a little.',
+      finn: 'The Pale Tide. The white fish are the ones that remember too much. Fish with me, and do not eat what you catch.',
+      mia: 'I balanced the books for the last time this year. The column headed "owed to the sea" is almost empty. Almost.',
+      bram: 'White water, still water. The fog that wrecked me was white too. It is listening tonight.',
+      ash: 'The Counter-Bell hums when the tide turns white. It knows. It is almost ready.',
+      rose: 'Tidewater bread, baked for the fair. Eat it, and dream of calm water. That is all I can promise.',
+      sol: 'White tide! I am selling white shells. They are just shells. They are not haunted. Probably.',
+    },
+    winter: {
+      june: 'The longest night. We light a lantern for everyone the tide has taken, and nobody goes home early. That is the whole of it.',
+      pip: 'I lit a lantern for the scarecrow. He does not need one, but he liked it anyway.',
+      finn: 'Longest night. Ebb used to light the first lantern. Tonight I will light it for him.',
+      mia: 'I closed the ledger tonight. Every debt is written down, and every one of them is almost paid.',
+      bram: 'The sea is quiet on the longest night. It is listening, the way it always is. Light a lantern. It helps.',
+      ash: 'The forge is banked, the bell is waiting. Tonight we light lanterns. Tomorrow, we see what the year brought us.',
+      rose: 'I set a place for Tomas tonight, like always. The light is gold. That means he is near.',
+      sol: 'Longest night, and I am still here. A year on this island, and I have not sold a single way out. Maybe I do not want to.',
+    },
+  };
+  const t = lines[S.season] && lines[S.season][npc.id];
+  return t ? [{ text: t, mood: 'happy' }] : [];
 }
 const FISH = [
   // 15 fish (GAMEPLAY.md / SPRITES.md §D). Each has a season, a place and
@@ -875,6 +998,23 @@ const QUESTS = [
   { id: 'mia_pages', text: 'Give Mia the pages', done: false },
   { id: 'bram_fog', text: 'Ask Bram about the fog', done: false },
   { id: 'bell',   text: 'Hear the Drowned Bell on day 7', done: false },
+  // Phase 3c — villager quests (12 more, one or two per villager). A quest
+  // is either a delivery (hand the item to the giver in dialogue) or an
+  // automatic one (the game notices when it happens). Rewards are coins
+  // and hearts with the giver. The 8 tutorial/story quests above stay as
+  // they were; together the list is 24 villager quests + the main quest.
+  { id: 'june_wheat', giver: 'june', text: 'Bring June 3 wheat', done: false, reward: 30, hearts: 2, deliver: { kind: 'produce', key: 'wheat', n: 3 } },
+  { id: 'june_flowers', giver: 'june', text: 'Pick 3 flowers for June', done: false, reward: 20, hearts: 2, deliver: { kind: 'flower', n: 3 } },
+  { id: 'pip_catch', giver: 'pip', text: 'Catch 3 fish', done: false, reward: 25, hearts: 2, auto: 'catch3' },
+  { id: 'pip_pets', giver: 'pip', text: 'Pet the dog and the cat', done: false, reward: 15, hearts: 2, auto: 'pets' },
+  { id: 'finn_fish', giver: 'finn', text: 'Catch 5 fish', done: false, reward: 40, hearts: 2, auto: 'catch5' },
+  { id: 'finn_shell', giver: 'finn', text: 'Bring Finn a shell', done: false, reward: 15, hearts: 2, deliver: { kind: 'shell', n: 1 } },
+  { id: 'mia_coins', giver: 'mia', text: 'Earn 200 coins in total', done: false, reward: 30, hearts: 2, auto: 'coins200' },
+  { id: 'mia_bread', giver: 'mia', text: 'Bring Mia a loaf of bread', done: false, reward: 25, hearts: 2, deliver: { kind: 'dish', key: 'bread', n: 1 } },
+  { id: 'bram_wood', giver: 'bram', text: 'Bring Bram 4 wood for the hull', done: false, reward: 35, hearts: 2, deliver: { kind: 'material', key: 'wood', n: 4 } },
+  { id: 'ash_stone', giver: 'ash', text: 'Bring Ash 4 stone for the forge', done: false, reward: 35, hearts: 2, deliver: { kind: 'material', key: 'stone', n: 4 } },
+  { id: 'rose_eggs', giver: 'rose', text: 'Bring Rose 2 eggs for baking', done: false, reward: 25, hearts: 2, deliver: { kind: 'egg', n: 2 } },
+  { id: 'sol_truffle', giver: 'sol', text: 'Bring Sol a truffle', done: false, reward: 40, hearts: 2, deliver: { kind: 'animal', key: 'truffle', n: 1 } },
 ];
 // the torn ledger pages (story chain): walk up, ACT to take
 const PAGES = [
@@ -883,6 +1023,65 @@ const PAGES = [
   { tx: 34, ty: 14, found: false, frag: '…Amos signed first. The Ninth will be asked to sign last…' },
 ];
 function questIsDone(id) { const q = S.quests.find(q => q.id === id); return !!(q && q.done); }
+// a delivery quest: the player hands the item to the giver in dialogue.
+// The items are taken when the thank-you dialogue closes (onDone), so
+// walking away mid-conversation never eats them.
+function deliverHave(d) {
+  if (d.kind === 'produce') return S.produce[d.key] || 0;
+  if (d.kind === 'dish') return S.dishes[d.key] || 0;
+  if (d.kind === 'flower') return S.forage.flower || 0;
+  if (d.kind === 'shell') return S.forage.shell || 0;
+  if (d.kind === 'egg') return S.eggs;
+  if (d.kind === 'material') return S.materials[d.key] || 0;
+  if (d.kind === 'animal') return S.animalProduce[d.key] || 0;
+  return 0;
+}
+function deliverTake(d) {
+  if (d.kind === 'produce') S.produce[d.key] = Math.max(0, (S.produce[d.key] || 0) - d.n);
+  else if (d.kind === 'dish') S.dishes[d.key] = Math.max(0, (S.dishes[d.key] || 0) - d.n);
+  else if (d.kind === 'flower') S.forage.flower = Math.max(0, (S.forage.flower || 0) - d.n);
+  else if (d.kind === 'shell') S.forage.shell = Math.max(0, (S.forage.shell || 0) - d.n);
+  else if (d.kind === 'egg') S.eggs = Math.max(0, S.eggs - d.n);
+  else if (d.kind === 'material') S.materials[d.key] = Math.max(0, (S.materials[d.key] || 0) - d.n);
+  else if (d.kind === 'animal') S.animalProduce[d.key] = Math.max(0, (S.animalProduce[d.key] || 0) - d.n);
+}
+function deliverName(d) {
+  const n = d.n > 1 ? d.n + ' ' : '';
+  if (d.kind === 'produce') return n + CROPS[d.key].name;
+  if (d.kind === 'dish') return n + DISHES[d.key].name;
+  if (d.kind === 'flower') return n + 'flower' + (d.n > 1 ? 's' : '');
+  if (d.kind === 'shell') return n + 'shell' + (d.n > 1 ? 's' : '');
+  if (d.kind === 'egg') return n + 'egg' + (d.n > 1 ? 's' : '');
+  if (d.kind === 'material') return n + d.key;
+  if (d.kind === 'animal') return n + ANIMAL_ITEM[d.key].name;
+  return d.key;
+}
+// the first delivery quest this villager can be handed right now
+function deliveryQuestFor(npcId) {
+  return S.quests.find(q => q.giver === npcId && !q.done && q.deliver && deliverHave(q.deliver) >= q.deliver.n);
+}
+function deliveryThanks(npc, q) {
+  const item = deliverName(q.deliver);
+  const lines = {
+    june: 'Oh — ' + item + ', for me? You are a dear. The island chose well when it chose you.',
+    pip: 'Yes! ' + item + '! You are the best farmer ever. I am telling the scarecrow.',
+    finn: item + '? Good. The sea provides, and so do you. Thank you.',
+    mia: item + ' — right on time. I will write it in the ledger. Under "paid in full", for once.',
+    bram: item + '. The hull will hold another season. You have my thanks, farmer.',
+    ash: 'Hm. ' + item + '. The forge will remember this. So will I.',
+    rose: 'Oh, ' + item + '! These will make the finest loaf. Tomas always said kindness rises like dough.',
+    sol: item + '? On the mainland, nobody delivers. You might be the first honest farmer I have ever met.',
+  };
+  return lines[npc.id] || ('Thank you for the ' + item + '!');
+}
+// automatic quests: the game notices when the state is true. Called from
+// the actions that change the state (a catch, a sale, a pet).
+function checkAutoQuests() {
+  if (!questIsDone('pip_catch') && S.caught >= 3) questDone('pip_catch');
+  if (!questIsDone('finn_fish') && S.caught >= 5) questDone('finn_fish');
+  if (!questIsDone('mia_coins') && S.earned >= 200) questDone('mia_coins');
+  if (!questIsDone('pip_pets') && S.animals.dog && S.animals.dog.petted && S.animals.cat && S.animals.cat.petted) questDone('pip_pets');
+}
 
 // ---------- map ----------
 // g grass, p dirt path, w water, s sand, q stone path, f wood floor,
@@ -1173,6 +1372,9 @@ const NPCS = [
 function npcWalkSprite(n) {
   return n.sprite;
 }
+// home positions, remembered at load: a festival moves everyone to the
+// plaza, and the next morning they come back here
+NPCS.forEach(n => { n.home = { tx: n.tx, ty: n.ty }; });
 const CHICKEN = { tx: 3, ty: 26, fed: false, wt: 0, x: 0, y: 0, bounds: { x0: 2, x1: 4, y0: 25, y1: 27 } };
 const DOG = { tx: 4, ty: 19, x: 0, y: 0 };
 const CRAB = { tx: 34, ty: 24, x: 0, y: 0, wt: 0, bounds: { x0: 30, x1: 38, y0: 24, y1: 25 } };
@@ -1195,6 +1397,8 @@ const S = {
   mode: 'title', // title | play | dialogue | picker | shop | fishing | summary | bell | yearend
   day: 1, season: 'spring', minutes: 6 * 60, // 6:00, day of the season (1..28)
   year: 1, act: 1, freePlay: false, // the year runs 112 days; after year 1 the player is in free play
+  festivals: {}, // festival results by "year-season" key, e.g. "1-spring"
+  festivalFishing: false, festivalLit: false, // transient fair flags, reset each morning
   coins: 20, stamina: 100, earned: 0,
   seeds: { wheat: 4, tomato: 0, pumpkin: 0, carrot: 0, corn: 0, strawberry: 0, potato: 0, berry: 0, cabbage: 0, onion: 0, melon: 0, chilli: 0 },
   produce: { wheat: 0, tomato: 0, pumpkin: 0, carrot: 0, corn: 0, strawberry: 0, potato: 0, berry: 0, cabbage: 0, onion: 0, melon: 0, chilli: 0 },
@@ -1230,6 +1434,7 @@ function saveGame() {
   try {
     localStorage.setItem('tidehollow-demo-save', JSON.stringify({
       day: S.day, season: S.season, year: S.year, act: S.act, freePlay: S.freePlay,
+      festivals: S.festivals,
       bellDone: S.bellDone, coins: S.coins, earned: S.earned, seeds: S.seeds,
       produce: S.produce, fishCaught: S.fishCaught, berries: S.berries,
       eggs: S.eggs, quests: S.quests, harvested: S.harvested,
@@ -1250,6 +1455,8 @@ function loadGame() {
     if (!d) return false;
     S.day = d.day; S.season = d.season || 'spring'; S.coins = d.coins; S.earned = d.earned;
     S.year = d.year || 1; S.freePlay = !!d.freePlay; S.bellDone = !!d.bellDone;
+    // Phase 3c: festivals — old saves have none, so nothing is done yet
+    S.festivals = d.festivals || {};
     // old saves have no act — derive it from where they are in the year
     S.act = d.act || actFor(S.season, S.day);
     // old saves have 4-key seeds/produce and no season — merge by key, the
@@ -1298,6 +1505,9 @@ function loadGame() {
     else S.quests = QUESTS.map(q => ({ ...q }));
     if (d.pages) d.pages.forEach((f, i) => { if (PAGES[i]) PAGES[i].found = !!f; });
     d.plots.forEach((p, i) => Object.assign(PLOTS[i], p));
+    // a festival day gets its gathering and stall; any other day sends
+    // everyone home (a loaded festival day still gathers)
+    setupFestivalDay();
     return true;
   } catch (e) { return false; }
 }
@@ -1309,6 +1519,9 @@ function questDone(id) {
     // with the villager it belongs to (the pages are June's family story)
     const hb = { pages: ['june', 2], mia_pages: ['mia', 2], bram_fog: ['bram', 2] }[id];
     if (hb) addHearts(hb[0], hb[1]);
+    // villager quests (Phase 3c) pay coins and hearts with their giver
+    if (q.reward) { S.coins += q.reward; S.earned += q.reward; }
+    if (q.hearts && q.giver) addHearts(q.giver, q.hearts);
   }
 }
 function showMsg(t) { S.msg = t; S.msgT = 3; }
@@ -1571,6 +1784,7 @@ function interactAnimal(a) {
   showMsg(prod
     ? 'You feed the ' + a.id + '. ' + (prod.item === 'egg' ? 'There will be an egg in the morning.' : 'There will be ' + prod.name.toLowerCase() + ' in the morning.')
     : 'You pet the ' + a.id + '. It hops with joy.');
+  checkAutoQuests(); // petting both companions completes Pip's quest
   renderHUD(); saveGame();
   return true;
 }
@@ -1611,6 +1825,11 @@ function currentContext() {
   // fishing: dock, beach, or the reef at low tide
   const place = fishingPlace();
   if (place) return { kind: 'fish', place, label: 'Cast a line' };
+  // the fair stall, on festival days: join the fair
+  const fest = OBJECTS.find(o => o.festival);
+  const fToday = festivalToday();
+  if (fest && fToday && Math.abs(fest.tx - px) + Math.abs(fest.ty - py) <= 1)
+    return { kind: 'festival', label: 'Join the ' + fToday.short };
   // market stall
   const stall = OBJECTS.find(o => o.sprite === 'market_stall');
   if (Math.abs(stall.tx - px) + Math.abs(stall.ty - py) <= 2)
@@ -1700,6 +1919,8 @@ function doAction() {
     startFishing();
   } else if (c.kind === 'talk') {
     startDialogue(c.npc);
+  } else if (c.kind === 'festival') {
+    openFestival();
   } else if (c.kind === 'shop') {
     openShop();
   } else if (c.kind === 'forage') {
@@ -1723,7 +1944,7 @@ function doAction() {
   renderHUD();
 }
 function closeOverlays() {
-  if (S.mode === 'picker' || S.mode === 'shop' || S.mode === 'dialogue' || S.mode === 'journal' || S.mode === 'farmhouse' || S.mode === 'gift' || S.mode === 'friends') {
+  if (S.mode === 'picker' || S.mode === 'shop' || S.mode === 'dialogue' || S.mode === 'journal' || S.mode === 'farmhouse' || S.mode === 'gift' || S.mode === 'friends' || S.mode === 'festival') {
     S.mode = 'play'; hideAll();
   }
 }
@@ -1752,10 +1973,21 @@ function startDialogue(npc) {
     ], idx: 0, onDone: () => questDone('bram_fog') };
     sfx('talk'); showDialogue(); return;
   }
+  // a delivery quest for this villager, and the player has the goods:
+  // hand them over when the thank-you dialogue closes (so walking away
+  // mid-conversation never eats the items)
+  const dq = deliveryQuestFor(npc.id);
+  if (dq) {
+    S.mode = 'dialogue';
+    S.dlg = { npc, lines: [
+      { text: deliveryThanks(npc, dq), mood: 'happy' },
+    ], idx: 0, onDone: () => { deliverTake(dq.deliver); questDone(dq.id); } };
+    sfx('talk'); showDialogue(); return;
+  }
   S.mode = 'dialogue';
   // villagers remember: a memory line leads when they have one, then the
-  // usual lines
-  S.dlg = { npc, lines: [...memoryLines(npc), ...NPC_LINES[npc.id]], idx: 0 };
+  // usual lines. On a festival day, the fair line leads everything.
+  S.dlg = { npc, lines: [...festivalLine(npc), ...memoryLines(npc), ...NPC_LINES[npc.id]], idx: 0 };
   sfx('talk');
   showDialogue();
 }
@@ -1934,6 +2166,7 @@ function renderShop() {
     showMsg('Sold everything for ' + total + ' coins!');
     questDone('sell');
     if (S.earned >= 100) questDone('coins');
+    checkAutoQuests(); // earning 200 coins in total completes Mia's quest
     renderShop(); renderHUD();
   };
   box.appendChild(sell);
@@ -2043,14 +2276,105 @@ function openFriends() {
 $('btn-friends').onclick = () => { initAudio(); openFriends(); };
 $('friends-close').onclick = () => { sfx('click'); closeOverlays(); };
 
+// ---------- festivals: the fair stall ----------
+// A festival reward: coins (which count toward the earned total) and 2
+// hearts with a villager, plus the fair is marked done for this season.
+function festivalReward(npcId, coins) {
+  S.coins += coins; S.earned += coins;
+  if (npcId) addHearts(npcId, 2);
+  markFestivalDone();
+  sfx('chime');
+  spawnParticles(S.player.x, S.player.y - 20, 'sparkle', 10);
+  renderHUD();
+}
+function openFestival() {
+  const f = festivalToday();
+  if (!f) return;
+  S.mode = 'festival';
+  sfx('click');
+  $('fest-title').textContent = '🎪 ' + f.name;
+  const done = festivalDone();
+  $('fest-text').textContent = done
+    ? 'You have already played the fair today — the villagers are still celebrating, and the plaza is yours to enjoy.'
+    : f.blurb + ' Talk to everyone, then come back here for the fair\'s game.';
+  const box = $('fest-items');
+  box.innerHTML = '';
+  if (!done) {
+    if (S.season === 'spring') {
+      // the planting fair's game: guess the pumpkin's weight
+      [10, 20, 30].forEach(w => {
+        const b = document.createElement('button');
+        b.className = 'pick-btn';
+        b.innerHTML = `<span class="craft-ico">🎃</span><span>Guess: the pumpkin weighs ${w} stones</span><span>guess</span>`;
+        b.onclick = () => {
+          const right = festivalGuessAnswer();
+          if (w === right) {
+            festivalReward('rose', 40);
+            S.dishes.berry_pie = (S.dishes.berry_pie || 0) + 1;
+            $('fest-text').textContent = 'Right! ' + w + ' stones, exactly. June claps, Rose presses a berry pie into your hands, and the fair cheers. +40 coins, +2 hearts with Rose, and a berry pie!';
+          } else {
+            festivalReward('june', 10);
+            S.forage.flower = (S.forage.flower || 0) + 1;
+            $('fest-text').textContent = 'Not quite — the pumpkin weighs ' + right + ' stones. June gives you a flower anyway, for trying. +10 coins, +2 hearts with June, and a flower.';
+          }
+          box.innerHTML = '';
+          renderHUD(); saveGame();
+        };
+        box.appendChild(b);
+      });
+    } else if (S.season === 'summer') {
+      // night fishing: the fair's game is the fishing minigame itself,
+      // played from the fair with the dock's catch table
+      const b = document.createElement('button');
+      b.className = 'pick-btn';
+      b.innerHTML = `<span class="craft-ico">🎣</span><span>Cast a line under the lanterns</span><span>fish</span>`;
+      b.onclick = () => {
+        $('festival').classList.add('hidden');
+        S.festivalFishing = true;
+        startFishing('dock');
+      };
+      box.appendChild(b);
+    } else if (S.season === 'autumn') {
+      // the Pale Tide: taste the tidewater, and dream the fair's dream
+      const b = document.createElement('button');
+      b.className = 'pick-btn';
+      b.innerHTML = `<span class="craft-ico">🥛</span><span>Taste the tidewater</span><span>drink</span>`;
+      b.onclick = () => {
+        festivalReward('rose', 50);
+        S.forage.shell = (S.forage.shell || 0) + 1;
+        $('fest-text').textContent = 'You drink. The water is cold and white, and for a moment you dream of a table set for forty, and every face smiling. You wake with a white shell in your hand. +50 coins, +2 hearts with Rose, and a shell.';
+        box.innerHTML = '';
+        renderHUD(); saveGame();
+      };
+      box.appendChild(b);
+    } else {
+      // the longest night: light a lantern for the taken
+      const b = document.createElement('button');
+      b.className = 'pick-btn';
+      b.innerHTML = `<span class="craft-ico">🏮</span><span>Light a lantern for the taken</span><span>light</span>`;
+      b.onclick = () => {
+        festivalReward('june', 50);
+        S.stamina = S.maxStam;
+        S.festivalLit = true;
+        $('fest-text').textContent = 'Your lantern joins the others, and the plaza glows gold against the longest night. June squeezes your hand. "They are not forgotten," she says. +50 coins, +2 hearts with June, and your stamina is full.';
+        box.innerHTML = '';
+        renderHUD(); saveGame();
+      };
+      box.appendChild(b);
+    }
+  }
+  $('festival').classList.remove('hidden');
+}
+$('festival-close').onclick = () => { sfx('click'); closeOverlays(); };
+
 // ---------- fishing ----------
-function startFishing() {
+function startFishing(place) {
   S.mode = 'fishing';
   sfx('splash');
   const rod = TOOLS.rod.tiers[toolTier('rod')];
   const w = rand(18, 26) + (rod.zone || 0);
   const zone = { x: rand(10, Math.max(11, 95 - w)), w };
-  S.fishGame = { pos: 0, dir: 1, speed: rand(55, 80) * (rod.speed || 1), zone, caught: false, place: fishingPlace() };
+  S.fishGame = { pos: 0, dir: 1, speed: rand(55, 80) * (rod.speed || 1), zone, caught: false, place: place || fishingPlace() };
   const zEl = $('fish-zone');
   zEl.style.left = zone.x + '%'; zEl.style.width = zone.w + '%';
   $('fish-marker').style.left = '0%';
@@ -2070,21 +2394,32 @@ function fishStop() {
   sfx('bite'); sfx('catch');
   spawnParticles(S.player.x, S.player.y - 10, 'splash');
   triggerBounce();
+  checkAutoQuests(); // catching 3 or 5 fish completes Pip's and Finn's quests
+  // the festival catch: the first fish of the Summer Night Fishing fair
+  // earns the fair's reward, on top of the catch itself
+  let festNote = '';
+  if (S.festivalFishing) {
+    S.festivalFishing = false;
+    if (!festivalDone()) {
+      festivalReward('finn', 50);
+      festNote = ' The fair cheers — the biggest catch of the night! +50 coins, +2 hearts with Finn.';
+    }
+  }
   if (S.fishToday === 1 && !S.crabStole) {
     S.crabStole = true;
     S.fishCaught[fish.name]--;
-    showFishCatch(fish, true);
+    showFishCatch(fish, true, festNote);
   } else {
-    showFishCatch(fish, false);
+    showFishCatch(fish, false, festNote);
   }
   questDone('fish');
   renderHUD();
 }
-function showFishCatch(fish, stolen) {
+function showFishCatch(fish, stolen, festNote) {
   $('catch-img').src = SPRITES[fish.sprite];
   $('catch-text').textContent = stolen
-    ? `You caught a ${fish.name}! …but the crab snatched it and scuttled off. Pip is laughing. "Crab tax," he says, and hands you 5 coins.`
-    : `You caught a ${fish.name}! Worth ${fish.sell} coins at the stall.`;
+    ? `You caught a ${fish.name}! …but the crab snatched it and scuttled off. Pip is laughing. "Crab tax," he says, and hands you 5 coins.` + (festNote || '')
+    : `You caught a ${fish.name}! Worth ${fish.sell} coins at the stall.` + (festNote || '');
   if (stolen) { S.coins += 5; S.earned += 5; }
   $('catch').classList.remove('hidden');
   S.mode = 'catch';
@@ -2124,6 +2459,14 @@ function sleepNight() {
     }
     if (st) st.petted = false;
   }
+  // the companions (dog, cat, crab, seagull) have no produce, but their
+  // petted flag resets too, so they can be petted again tomorrow — without
+  // this they could only ever be petted once, and Pip's petting quest
+  // could only ever complete on the first day they were petted
+  for (const id of ['dog', 'cat', 'crab', 'seagull']) {
+    const st = S.animals[id];
+    if (st) st.petted = false;
+  }
   // the compost bin feeds the berry bushes: +1 berry every morning
   if (S.crafted.compost) S.berries++;
   // today's buffs wear off, and today's forage spots refill
@@ -2157,6 +2500,10 @@ function sleepNight() {
     const na = actFor(S.season, S.day);
     if (na > S.act) { S.act = na; actChanged = na; }
   }
+  // festivals: a new day may be a festival day (gather at the plaza) or
+  // the day after one (everyone goes home); the fair's flags reset
+  S.festivalFishing = false; S.festivalLit = false;
+  setupFestivalDay();
   DBG.yearEnd = yearEndPending;
   S.minutes = 6 * 60;
   S.fishToday = 0; S.crabStole = false;
@@ -2166,11 +2513,20 @@ function sleepNight() {
     ? 'Act ' + actChanged + ' — ' + ACTS[actChanged].title
     : SEASON_LABEL[S.season] + ' · Day ' + S.day + ' — morning';
   $('sum-img').src = SPRITES.sleep_pose || '';
+  // the festival notice: today, or tomorrow (so the player never misses one)
+  const festToday = festivalToday();
+  const festTomorrow = (() => {
+    let d = S.day + 1, s = S.season;
+    if (d > 28) { d = 1; s = nextSeason(s); }
+    return festivalFor(s, d);
+  })();
   $('sum-text').textContent = (actChanged ? ACTS[actChanged].objective + ' ' : '') + (grew > 0
     ? `You sleep well. ${grew} crop${grew > 1 ? 's' : ''} grew overnight.`
     : 'You sleep well.')
     + (animalGifts.length ? ' ' + animalGifts.join(' ') : '')
     + (withered > 0 ? ` ${withered} crop${withered > 1 ? 's' : ''} withered as the season turned — clear ${withered > 1 ? 'them' : 'it'} to replant.` : '')
+    + (festToday ? ' 🎪 Today is the ' + festToday.name + '! Everyone is gathering at the plaza.' : '')
+    + (!festToday && festTomorrow ? ' 🎪 Tomorrow is the ' + festTomorrow.name + ' — don\'t miss it!' : '')
     + ' The lighthouse beam sweeps the farm. Somewhere, the well whispers your name.';
   S.mode = 'summary';
   $('summary').classList.remove('hidden');
@@ -2350,7 +2706,12 @@ function renderHUD() {
 }
 function renderQuests() {
   const box = $('quests');
-  box.innerHTML = '<b>To do</b><br>' + S.quests.map(q =>
+  // the festival line leads the list: today, or the next one coming
+  const fest = festivalToday();
+  const next = !fest && nextFestival();
+  const festLine = fest ? '🎪 Today: ' + fest.name + ' at the plaza!<br>'
+    : '🎪 Next: ' + next.name + ' — ' + SEASON_LABEL[next.season] + ' day ' + next.day + '<br>';
+  box.innerHTML = '<b>To do</b><br>' + festLine + S.quests.map(q =>
     (q.done ? '✓ ' : '○ ') + q.text).join('<br>');
 }
 
@@ -2419,6 +2780,11 @@ function nightGlow() {
   });
   glow(3 * TILE, 18 * TILE, 110, 0.25); // farmhouse lit windows
   glow(36 * TILE, 4 * TILE, 150, 0.30); // lighthouse
+  if (festivalToday()) { // the fair lanterns, strung over the plaza
+    glow(18 * TILE, 12 * TILE, 100, 0.25);
+    glow(22 * TILE, 14 * TILE, 100, 0.25);
+  }
+  if (S.festivalLit) glow(20 * TILE, 13 * TILE, 140, 0.35); // the lit lanterns burn brighter
   glow(S.player.x, S.player.y - 10, 130, 0.22); // the player's own light
   DBG.glowCount = count;
 }
@@ -2459,6 +2825,36 @@ function drawWater() {
     const fx = rx0 + Math.sin(fy * 0.05 + T * 0.6) * 3 + Math.sin(T * 0.8 + i) * 2;
     ctx.beginPath(); ctx.ellipse(fx, fy, 3, 8 + hash2(i, 53) * 6, 0, 0, Math.PI * 2); ctx.fill();
   }
+}
+// festival bunting: coloured paper triangles on sagging strings across
+// the plaza, drawn with the canvas (no sprite needed). Only on festival
+// days, so the plaza looks ordinary the rest of the year.
+function drawBunting() {
+  const f = festivalToday();
+  if (!f) return;
+  const cols = ['#e85d75', '#e8a13c', '#4a8c3f', '#4a90c2', '#ffd98a'];
+  const strings = [
+    [16.5 * TILE, 11 * TILE, 24.5 * TILE, 11 * TILE],
+    [16.5 * TILE, 15 * TILE, 24.5 * TILE, 15 * TILE],
+  ];
+  ctx.save();
+  for (const [x0, y0, x1, y1] of strings) {
+    ctx.strokeStyle = '#3a2a12'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    ctx.quadraticCurveTo((x0 + x1) / 2, Math.max(y0, y1) + 18, x1, y1);
+    ctx.stroke();
+    const n = 12;
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const x = x0 + (x1 - x0) * t;
+      const y = y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * 18;
+      ctx.fillStyle = cols[i % cols.length];
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 12);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 // Draw traced polylines as one smooth stroke: darker edge underneath,
 // main colour on top, round caps and joins.
@@ -2564,6 +2960,9 @@ function render(dt) {
       ctx.beginPath(); ctx.moveTo(dx + 3, y); ctx.lineTo(dx + dw - 3, y); ctx.stroke();
     }
   }
+  // festival bunting: coloured paper triangles on sagging strings across
+  // the plaza, drawn with the canvas (no sprite needed)
+  drawBunting();
   // torn ledger pages: paper scraps on the ground
   PAGES.forEach(pg => {
     if (pg.found) return;
@@ -2815,7 +3214,7 @@ function wanderNPC(n, dt) {
   }
 }
 function hideAll() {
-  ['dialogue', 'picker', 'shop', 'fishing', 'catch', 'summary', 'journal', 'farmhouse', 'gift', 'friends'].forEach(id => $(id).classList.add('hidden'));
+  ['dialogue', 'picker', 'shop', 'fishing', 'catch', 'summary', 'journal', 'farmhouse', 'gift', 'friends', 'festival'].forEach(id => $(id).classList.add('hidden'));
 }
 
 // ---------- title & boot ----------
@@ -2835,6 +3234,7 @@ function startGame(fresh) {
   CRAB.x = (CRAB.tx + 0.5) * TILE; CRAB.y = (CRAB.ty + 0.5) * TILE;
   ANIMALS.forEach(a => { a.x = (a.tx + 0.5) * TILE; a.y = (a.ty + 0.5) * TILE; });
   SEAGULL.x = SEAGULL.cx; SEAGULL.y = SEAGULL.cy;
+  setupFestivalDay(); // a loaded festival day gathers at the plaza
   updateCamera(); // snap: the camera starts centred on the player
   renderHUD();
   if (!S.introDone) {
@@ -2856,7 +3256,7 @@ $('dialogue').addEventListener('click', () => { if (S.mode === 'dialogue') advan
 
 loadSprites().then(() => { showTitle(); render(); });
 // debug hook (harmless in production): lets tests and future debugging read state
-window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CAT, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, FLOATERS, CROPS, SEASONS, SEASON_GROUND, SPRITES, ACTS, FISH, SEA, TOOLS, REEF_SPOTS, DISHES, CRAFTS, ANIMAL_PRODUCE, ANIMAL_ITEM, GIFT_LIKES, actFor, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, spawnFloater, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx, questDone, seasonGround, nextSeason, cropInSeason, seasonTreeSprite, sleepNight, isLowTide, nextLowTide, tideId, fishingPlace, fishAvailable, fishWeight, pickFish, reefSpotAt, reefSpotReady, plotsInLine, startFishing, fishStop, toolTier, pushOffReef, cookDish, eatDish, craftItem, canCook, canCraft, ingHave, takeIng, giftDish, giveGift, giftValue, giftHave, giftName, hearts, addHearts, memoryLines, animalState, animalNear, animalEnt, interactAnimal, openFarmhouse, renderFarmhouse, openFriends, spendStamina, dayKey, forageAt, placeCraftedObjects };
+window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CAT, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, FLOATERS, CROPS, SEASONS, SEASON_GROUND, SPRITES, ACTS, FISH, SEA, TOOLS, REEF_SPOTS, DISHES, CRAFTS, ANIMAL_PRODUCE, ANIMAL_ITEM, GIFT_LIKES, FESTIVALS, FESTIVAL_SPOTS, QUESTS, actFor, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, spawnFloater, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx, questDone, seasonGround, nextSeason, cropInSeason, seasonTreeSprite, sleepNight, isLowTide, nextLowTide, tideId, fishingPlace, fishAvailable, fishWeight, pickFish, reefSpotAt, reefSpotReady, plotsInLine, startFishing, fishStop, toolTier, pushOffReef, cookDish, eatDish, craftItem, canCook, canCraft, ingHave, takeIng, giftDish, giveGift, giftValue, giftHave, giftName, hearts, addHearts, memoryLines, animalState, animalNear, animalEnt, interactAnimal, openFarmhouse, renderFarmhouse, openFriends, spendStamina, dayKey, forageAt, placeCraftedObjects, festivalFor, festivalToday, nextFestival, festivalKey, festivalDone, festivalGuessAnswer, setupFestivalDay, gatherFestival, ungatherFestival, placeFestivalTable, removeFestivalTable, deliveryQuestFor, checkAutoQuests, deliverHave, deliverTake, deliverName, questIsDone, festivalReward, openFestival, drawBunting };
 })();
 
 </script>
