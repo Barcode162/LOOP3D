@@ -48,6 +48,14 @@ window.LE = window.LE || {};
   E.view = () => { if (!has('loop_view')) return null; try { return JSON.parse(read(E.M._loop_view())); } catch (e) { return null; } };
   E.thing = (i) => { if (!has('loop_thing') || i < 0) return null; try { return JSON.parse(read(E.M._loop_thing(i))); } catch (e) { return null; } };
   E.thingSet = (i, o) => (has('loop_thing_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_thing_set(i, p)) : 0);
+  // a thing's shape, opened and pulled by hand (web/player.cpp: loop_shape_*): its points {name, at} in the world and the
+  // edges between them (by name); a drag moves one point at once; letting go gives the step's line to write into the text
+  const shapeJson = (fn) => { try { return JSON.parse(read(fn())); } catch (e) { return null; } };
+  E.shapeOpen = (i) => (has('loop_shape_open') ? shapeJson(() => E.M._loop_shape_open(i)) : null);
+  E.shapePoints = (i) => (has('loop_shape_points') ? shapeJson(() => E.M._loop_shape_points(i)) : null);
+  E.shapeGrab = (i, point) => (has('loop_shape_grab') ? !!E.M._loop_shape_grab(i, point) : false);
+  E.shapeDrag = (x, y, z) => (has('loop_shape_drag') ? !!E.M._loop_shape_drag(x, y, z) : false);
+  E.shapeDrop = () => (has('loop_shape_drop') ? read(E.M._loop_shape_drop()) : '');
   // keys (web/player.cpp: loop_clips, loop_clip_set, loop_clip_moment, loop_clip_curve)
   E.clips = () => { if (!has('loop_clips')) return []; try { return JSON.parse(read(E.M._loop_clips())); } catch (e) { return []; } };
   E.clipSet = (i, o) => (has('loop_clip_set') ? withStr(JSON.stringify(o), (p) => E.M._loop_clip_set(i, p)) : -1);

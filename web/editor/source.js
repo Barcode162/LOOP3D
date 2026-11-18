@@ -168,10 +168,12 @@
   }
   const lineAt = (text, n) => lines(text)[n - 1] ?? '';
   // Adds lines after line n (0: at the very start; past the end: at the end).
+  // Lines that are not indented under line n go after the lines that are (a box's `pull` lines stay with it).
   function insertAfter(text, n, newLines) {
     const L = lines(text);
-    const at = Math.max(0, Math.min(n, L.length));
     const add = Array.isArray(newLines) ? newLines : [newLines];
+    const deeper = n >= 1 && n <= L.length && indentOf(add[0] || '') > indentOf(L[n - 1]);
+    const at = Math.max(0, Math.min(deeper ? n : blockEnd(text, n), L.length));
     // keep a final empty line last
     if (at === L.length && L[L.length - 1] === '') { L.splice(L.length - 1, 0, ...add); return L.join('\n'); }
     L.splice(at, 0, ...add);
@@ -197,7 +199,7 @@
       if (used.length) return { text, refused: used, name: call.name };
     }
     const L = lines(text);
-    L.splice(n - 1, 1);
+    L.splice(n - 1, blockEnd(text, n) - n + 1);  // its lines indented under it (a box's pulls) go with it
     return { text: L.join('\n') };
   }
   // A copy of a thing's line right after it, moved by `offset`; a `let` gets a
@@ -211,7 +213,8 @@
       line = line.replace(new RegExp('^(\\s*let\\s+)' + call.name + '\\b'), '$1' + fresh);
     }
     line = moveLine(line, at, offsetDelta, many);
-    return { text: insertAfter(text, n, line), line: n + 1 };
+    const end = blockEnd(text, n);  // the copy brings the lines under it (a box's pulls)
+    return { text: insertAfter(text, end, [line, ...lines(text).slice(n, end)]), line: end + 1 };
   }
 
   // The text's shots in order, with their lines: `shot "name", 3 s, …` and `orbit …`.
@@ -293,12 +296,33 @@
       else add = [old.indent + old.held + 'clip(' + name + ')'];
     }
     if (old) L.splice(old.start - 1, old.end - old.start + 1, ...add);
-    else if (add.length) L.splice(Math.max(0, Math.min(thingLine, L.length)), 0, ...add);
+    else if (add.length) L.splice(Math.max(0, Math.min(blockEnd(text, thingLine), L.length)), 0, ...add);
     return L.join('\n');
+  }
+  // The last line of what is indented under line n (a box's `pull` lines); n itself when nothing is.
+  function blockEnd(text, n) {
+    const L = lines(text);
+    if (n < 1 || n > L.length) return n;
+    const base = indentOf(L[n - 1]);
+    let end = n;
+    for (let j = n; j < L.length; j++) {
+      if (L[j].trim() === '') continue;
+      if (indentOf(L[j]) <= base) break;
+      end = j + 1;
+    }
+    return end;
+  }
+  // A hand edit written under a thing's line, after the ones already there: `pull point: 3, by: vec(…)`.
+  // Refused (null) for a line that is not a box.
+  function addStep(text, n, step) {
+    const call = callOf(lineAt(text, n));
+    if (!call || call.word !== 'box') return null;
+    const pad = call.indent + '  ';
+    return insertAfter(text, blockEnd(text, n), pad + step);
   }
 
   const api = { num, vec, deg, scan, callOf, argSpan, getArg, setArg, removeArg, vecLiteral, splitOffset, moveLine, turnLine, scaleLine,
-    replaceLine, lineAt, insertAfter, usesOf, removeLine, duplicateLine, shotLines, soundLines, setStatement, nameThing, clipBlock, setClipBlock };
+    replaceLine, lineAt, insertAfter, usesOf, removeLine, duplicateLine, shotLines, soundLines, setStatement, nameThing, clipBlock, setClipBlock, blockEnd, addStep };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { root.LE = root.LE || {}; root.LE.source = api; }
 })(typeof window !== 'undefined' ? window : globalThis);

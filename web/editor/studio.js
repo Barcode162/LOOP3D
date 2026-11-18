@@ -1,5 +1,6 @@
 // The Studio: one thing opened and worked on (docs/STUDIO.md). Three benches:
-//   Shape  its points, edges and faces; brushes            (not built yet)
+//   Shape  its points: dots a thumb can take; drag one and the shape follows, let go and a
+//          `pull` line goes under the box in the script (the engine draws the pull: loop_shape_*)
 //   Bones  its skeleton and how the skin follows            (not built yet)
 //   Move   keys on a strip of time: a key pins a value to a moment, and the
 //          engine fills in every moment between
@@ -59,13 +60,14 @@ window.LE = window.LE || {};
   // is built again from its text (the clip plays as its line says).
   ST.leave = (quiet) => {
     if (!ST.open) return;
+    V.hook = null;
     const touched = !!ST.clip;
     ST.open = false; ST.playing = false; ST.key = null; ST.clip = null;
     V.intercept = null;
     if (touched) SP.rerun();
     if (!quiet) SP.redraw();
   };
-  ST.reset = () => { ST.open = false; ST.playing = false; ST.key = null; ST.clip = null; V.intercept = null; };
+  ST.reset = () => { ST.open = false; ST.playing = false; ST.key = null; ST.clip = null; V.intercept = null; V.hook = null; };
   // After the world is built again (an undo, a change in Logic): the same line's thing, held again.
   ST.refresh = () => {
     if (!ST.open) return;
@@ -224,10 +226,122 @@ window.LE = window.LE || {};
     const benches = h('div', { class: 'chips benches' });
     for (const [k, label] of [['shape', 'Shape'], ['bones', 'Bones'], ['move', 'Move']]) benches.append(h('button', { class: 'pill' + (ST.bench === k ? ' on' : ''), onclick: () => { if (ST.playing) pause(); ST.bench = k; SP.redraw(); } }, label));
     body.append(benches);
-    if (ST.bench === 'shape') return body.append(h('div', { class: 'card' }, h('h3', {}, 'Shape'), h('div', { class: 'note', style: 'margin:0' }, 'Pull this thing\'s points, cut it, and sculpt it with brushes. Not built yet: it is the next part of the Studio.')));
+    if (ST.bench === 'shape') return drawShape(body);
+    V.hook = null;
     if (ST.bench === 'bones') return body.append(h('div', { class: 'card' }, h('h3', {}, 'Bones'), h('div', { class: 'note', style: 'margin:0' }, 'Give it a skeleton and paint how its skin follows. Not built yet: it comes after Shape.')));
     drawMove(body);
   };
+
+
+  // ---------------------------------------------------------------- the Shape bench
+  // The thing's points are dots over the world, each a thumb wide (44 px to touch, a smaller one drawn). A drag
+  // moves one on a plane facing the camera and the engine draws the shape at once; letting go writes the pull
+  // as a line under the box, one undo step. The engine says the line itself (loop_shape_drop).
+  const DOT_HIT = 22, DOT_R = 11;
+  const canvasEl = () => document.querySelector('#view');
+  let pulling = null;   // {name, plane point, normal, grab offset}
+  ST.shape = null; ST.dots = []; ST.shapeWhy = '';
+  // the points now, from the engine; the Studio's own copy for drawing and for the tests
+  function openShape() {
+    ST.shape = null; ST.dots = []; ST.shapeWhy = '';
+    const call = S.callOf(S.lineAt(H.text, ST.line));
+    if (!call || call.word !== 'box') ST.shapeWhy = 'Only a box can be pulled so far; its line is the recipe the pulls go under.';
+    else {
+      const sh = E.shapeOpen(ST.index);
+      if (!sh || !sh.points.length) ST.shapeWhy = 'This thing\'s shape can\'t be opened.';
+      else if (sh.points.length > 96) ST.shapeWhy = 'Too many points to show at once (' + sh.points.length + '). A rounded box has one on every curve; try a square-cornered one.';
+      else ST.shape = sh;
+    }
+    V.hook = ST.shape ? SHAPE_HOOK : null;
+  }
+  // the steps already under the thing's line: [{n, text}]
+  function stepLines() {
+    const out = [], end = S.blockEnd(H.text, ST.line);
+    for (let n = ST.line + 1; n <= end; n++) { const t = S.lineAt(H.text, n).trim(); if (t) out.push(t); }
+    return out;
+  }
+  const SHAPE_HOOK = {
+    quiet: true,   // the thing's own handles (lift, turn, size) step aside
+    draw(ctx, project) {
+      const sh = ST.shape;
+      ST.dots = [];
+      if (!sh || !ST.open || ST.bench !== 'shape') return;
+      const at = new Map();
+      for (const p of sh.points) { const q = project(p.at); if (q) { at.set(p.name, q); ST.dots.push({ name: p.name, x: q[0], y: q[1] }); } }
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath();
+      for (const [a, b] of sh.edges) { const qa = at.get(a), qb = at.get(b); if (qa && qb) { ctx.moveTo(qa[0], qa[1]); ctx.lineTo(qb[0], qb[1]); } }
+      ctx.stroke();
+      ctx.font = '600 11px -apple-system, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (const d of ST.dots) {
+        const on = pulling && pulling.name === d.name;
+        ctx.beginPath(); ctx.arc(d.x, d.y, DOT_HIT, 0, Math.PI * 2);   // the halo is the part a thumb can take
+        ctx.fillStyle = on ? 'rgba(255,200,80,0.28)' : 'rgba(255,255,255,0.14)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(20,20,20,0.9)'; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = on ? '#ffc850' : '#f2f2f2'; ctx.stroke();
+        ctx.fillStyle = '#f2f2f2'; ctx.fillText(String(d.name), d.x, d.y + 0.5);
+      }
+    },
+    down(e, ray) {
+      if (!ST.shape || !ST.open || ST.bench !== 'shape' || !ray) return false;
+      const r = canvasEl().getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      let best = null, bd = DOT_HIT;
+      for (const d of ST.dots) { const dd = Math.hypot(d.x - x, d.y - y); if (dd < bd) { bd = dd; best = d; } }
+      if (!best) return false;
+      const pt = ST.shape.points.find((p) => p.name === best.name);
+      if (!pt || !E.shapeGrab(ST.index, best.name)) return false;
+      const n = unit(sub3(ray.v.look_at, ray.v.at));
+      const hit = onPlane(ray, pt.at, n);
+      pulling = { name: best.name, p0: pt.at.slice(), n, grab: hit ? sub3(pt.at, hit) : [0, 0, 0] };
+      V.hint('Point ' + best.name + ': drag it, let go to keep it', 0);
+      return true;
+    },
+    move(e, ray) {
+      if (!pulling || !ray) return;
+      const hit = onPlane(ray, pulling.p0, pulling.n);
+      if (!hit) return;
+      const to = [hit[0] + pulling.grab[0], hit[1] + pulling.grab[1], hit[2] + pulling.grab[2]];
+      E.shapeDrag(to[0], to[1], to[2]);
+      ST.shape = E.shapePoints(ST.index) || ST.shape;
+    },
+    up() {
+      if (!pulling) return;
+      const { name } = pulling;
+      pulling = null;
+      V.hint('');
+      const line = E.shapeDrop();
+      ST.shape = E.shapePoints(ST.index) || ST.shape;
+      if (!line) return;
+      const text = S.addStep(H.text, ST.line, line);
+      if (text === null) return LE.toast('This line can\'t take a pull. Write it under the box in Logic.');
+      // the engine already shows the pull; undo builds the world again from the text
+      H.commit(text, 'pulled point ' + name + ' of ' + ST.label, null);
+      if (LE.logic) LE.logic.sync();
+      SP.redraw();
+    },
+  };
+  const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const unit = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  // where a view ray meets the plane through p with normal n
+  function onPlane(ray, p, n) {
+    const den = ray.d[0] * n[0] + ray.d[1] * n[1] + ray.d[2] * n[2];
+    if (Math.abs(den) < 1e-6) return null;
+    const t = ((p[0] - ray.o[0]) * n[0] + (p[1] - ray.o[1]) * n[1] + (p[2] - ray.o[2]) * n[2]) / den;
+    return t > 0 ? [ray.o[0] + ray.d[0] * t, ray.o[1] + ray.d[1] * t, ray.o[2] + ray.d[2] * t] : null;
+  }
+  function drawShape(body) {
+    openShape();
+    const card = h('div', { class: 'card' }, h('h3', {}, 'Shape'));
+    if (!ST.shape) { card.append(h('div', { class: 'note', style: 'margin:0' }, ST.shapeWhy)); return body.append(card); }
+    card.append(h('div', { class: 'note', style: 'margin:0' }, h('b', {}, 'Drag a dot to pull that point.'), ' ' + ST.shape.points.length + ' points. Let go and the pull is written under the box in the script; one undo takes it back.'));
+    body.append(card);
+    const steps = stepLines();
+    const done = h('div', { class: 'card' }, h('h3', {}, 'Hand edits · ' + steps.length));
+    if (!steps.length) done.append(h('div', { class: 'note', style: 'margin:0' }, 'None yet. The box is still just its recipe.'));
+    for (const t of steps) done.append(h('div', { class: 'dim mono', style: 'padding:3px 0;overflow-wrap:anywhere' }, t));
+    body.append(done);
+  }
 
   function drawMove(body) {
     const c = ST.clip = clipOf();

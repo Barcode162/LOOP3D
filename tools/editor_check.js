@@ -138,6 +138,40 @@ async function run(browser, name, viewport, touch) {
   const x0 = await p.evaluate(() => LE.engine.thing(LE.view.sel.index).position[0]);
   const went = await p.waitForFunction((x) => Math.abs(LE.engine.thing(LE.view.sel.index).position[0] - x) > 1e-3, x0, { timeout: 20000 }).then(() => true, () => false);
   check(went, name + ': back in the world the box moves by its keys');
+  // the Shape bench: open the box, drag one of its corners, let go (a pull line goes under the box), undo, redo
+  const boxHi = () => p.evaluate(() => {
+    const at = LE.history.text.split('\n').findIndex((l) => /^let box_1 = box/.test(l)) + 1 + (LE.engine.lineOffset || 0);
+    const i = LE.engine.sceneInfo().things.findIndex((t) => t.line === at);
+    const t = LE.engine.thing(i);
+    return t ? t.hi.concat(t.lo) : null;
+  });
+  const hi0 = await boxHi();
+  await tool('Open'); await p.waitForTimeout(600);
+  await tool('Shape'); await p.waitForTimeout(800);
+  await p.waitForFunction(() => LE.studio.dots && LE.studio.dots.length === 8, null, { timeout: 20000 }).catch(() => {});
+  check(await p.evaluate(() => LE.studio.bench === 'shape' && LE.studio.dots.length === 8), name + ': the Shape bench shows the box\'s 8 points as dots');
+  const dot = await p.evaluate(() => {
+    const r = document.getElementById('view').getBoundingClientRect(), d = LE.studio.dots.slice().sort((a, b) => a.y - b.y)[0];
+    return { x: r.left + d.x, y: r.top + d.y, name: d.name };
+  });
+  await p.mouse.move(dot.x, dot.y); await p.mouse.down();
+  for (let i = 1; i <= 8; i++) { await p.mouse.move(dot.x + i * 8, dot.y - i * 4); await p.waitForTimeout(40); }
+  const live = await boxHi();
+  check(live && hi0 && live.some((v, k) => Math.abs(v - hi0[k]) > 1e-3), name + ': while the dot is held the shape follows it');
+  await p.mouse.up(); await p.waitForTimeout(700);
+  const pull = await lines('^  pull point: ');
+  check(pull.length === 1 && /^  pull point: \d+, by: vec\(/.test(pull[0]) && (await lines('^let box_1 = box\\(')).length === 1, name + ': letting go writes one pull line under the box (' + pull[0] + ')');
+  const hi1 = await boxHi();
+  check(hi1 && hi0 && hi1.some((v, k) => Math.abs(v - hi0[k]) > 1e-3), name + ': the box is pulled out');
+  await p.screenshot({ path: `${OUT}/${name}_shape.png` });
+  await p.click('#undoBtn'); await p.waitForTimeout(2500);
+  const hiU = await boxHi();
+  check((await lines('^  pull point: ')).length === 0 && hiU && hiU.every((v, k) => Math.abs(v - hi0[k]) < 1e-3), name + ': one undo takes the pull back, in the script and in the shape');
+  await p.click('#redoBtn'); await p.waitForTimeout(2500);
+  const hiR = await boxHi();
+  check((await lines('^  pull point: ')).length === 1 && hiR && hiR.every((v, k) => Math.abs(v - hi1[k]) < 1e-3), name + ': redo pulls it again');
+  await tool('Done'); await p.waitForTimeout(2500);
+  check(await p.evaluate(() => !LE.studio.open && LE.logic.problems.length === 0), name + ': Done after a pull leaves no problems in the script');
   // the library: a tap on one of its pieces brings it in (its use line, once) and places it
   await p.evaluate(() => LE.view.select(null)); await p.waitForTimeout(400);
   const things0 = await p.evaluate(() => LE.spaces.refreshInfo().things.length);
@@ -165,12 +199,15 @@ async function run(browser, name, viewport, touch) {
   check(tracks.length === 2 && /"kick", "x\.{15}"/.test(tracks[0]) && /"bass", "C2( \.){15}"/.test(tracks[1]), name + ': the music grid writes tracks (' + tracks.join(' | ') + ')');
   check(await p.evaluate(() => LE.engine.musicStep() > 0), name + ': the music plays in time with the world');
   await p.screenshot({ path: `${OUT}/${name}_sound.png` });
-  check(await p.evaluate(() => LE.logic.problems.length === 0), name + ': the edited script has no problems');
+  const left = await p.evaluate(() => LE.logic.problems.map((x) => (x.text || x.message || JSON.stringify(x)) + ' @' + x.line));
+  check(left.length === 0, name + ': the edited script has no problems' + (left.length ? ' (' + left.join(' | ') + ')\n' + await p.evaluate(() => LE.history.text) : ''));
   await p.reload();
   await ready();
   await p.waitForTimeout(1500);
   check((await lines('^(let box_1 = box|clip box_1|  key|shot|sound|track)')).length === 8, name + ': a reload keeps every change');
   check(await p.evaluate(() => LE.history.undo.length >= 4), name + ': and undo still knows them');
+  const hiAfter = await boxHi();
+  check((await lines('^  pull point: ')).length === 1 && hiAfter && hi1.every((v, k) => Math.abs(v - hiAfter[k]) < 1e-3), name + ': after a reload the corner is still out');
   check(!errs.length, name + ': no page errors' + (errs.length ? '\n' + errs.join('\n') : ''));
   await ctx.close();
 }

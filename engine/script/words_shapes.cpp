@@ -1,7 +1,18 @@
 // The world words: shapes (registered by installSceneApi, scene_api.cpp).
+#include "engine/geometry/shape_edit.h"
 #include "engine/script/words_internal.h"
 
 namespace loop::script::words {
+
+namespace {
+// The shape whose lines are being run (the lines under a box); none outside them.
+shapeedit::Shape* gPulling = nullptr;
+struct PullScope {
+  shapeedit::Shape* before;
+  explicit PullScope(shapeedit::Shape* s) : before(gPulling) { gPulling = s; }
+  ~PullScope() { gPulling = before; }
+};
+}  // namespace
 
 void registerShapes(Vm& vm) {
   // ---- shapes
@@ -10,9 +21,36 @@ void registerShapes(Vm& vm) {
     float r = f32(a.num(-1, "round", 0));
     // Steps across a rounded edge follow its size: 1 under 5 mm, 2 under 20 mm, 4 above.
     int steps = static_cast<int>(a.num(-1, "steps", r < 0.005f ? 1 : r < 0.02f ? 2 : 4));
-    int m = cachedMesh(stageOf(a.vm), keyOf("box", {sz.x, sz.y, sz.z, r, static_cast<float>(steps)}), [&] { return r > 0 ? shapes::roundedBox(sz, r, steps) : shapes::box(sz); });
+    Stage& st = stageOf(a.vm);
+    const std::string key = keyOf("box", {sz.x, sz.y, sz.z, r, static_cast<float>(steps)});
+    auto recipe = [&] { return r > 0 ? shapes::roundedBox(sz, r, steps) : shapes::box(sz); };
+    int m;
+    if (const Value* block = a.get(-1, "of")) {
+      // the lines indented under the box are its hand edits (`pull`), done in order on the recipe's points
+      shapeedit::Shape shape = shapeedit::open(recipe());
+      PullScope scope(&shape);
+      a.vm.call(*block, {});
+      if (shape.steps.empty()) {
+        m = cachedMesh(st, key, recipe);
+      } else {
+        std::string edited = key;
+        for (const auto& step : shape.steps) edited += " | " + shapeedit::stepLine(step);
+        m = cachedMesh(st, edited, [&] { return shapeedit::drawn(shape.now); });
+        shapeedit::remember(&st, m, shape);
+      }
+    } else {
+      m = cachedMesh(st, key, recipe);
+    }
     return place(a, m, 'b', sz);
-  }, "box(size: vec(w, h, d), at, turn, material, round, steps)");
+  }, "box(size: vec(w, h, d), at, turn, material, round, steps) with lines under it: its hand edits, done in order (pull)");
+  vm.native("pull", [](Args& a) {
+    if (!gPulling) a.vm.fail("a pull goes under the shape it pulls: write it indented under the box line");
+    uint32_t point = static_cast<uint32_t>(a.num(0, "point", 0));
+    Vec3 by = shapeedit::tidy(a.vec(1, "by", Vec3(0)));
+    std::string why = shapeedit::apply(*gPulling, {point, by});
+    if (!why.empty()) a.vm.fail("pull: " + why, "a box has 8 points; the Studio's Shape bench shows which is which");
+    return Value();
+  }, "pull(point: 3, by: vec(x, y, z)): under a box, moves one of its points by that much (the Studio writes these lines when you drag a point)");
   vm.native("sphere", [](Args& a) {
     float r = f32(a.num(0, "radius", a.num(-1, "size", 1) * 0.5));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r}), [&] { return shapes::sphere(r, 96, 48); }), 's', Vec3(r));

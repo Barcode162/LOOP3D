@@ -74,6 +74,27 @@ eq(S.clipBlock(held, 'door'), { start: 2, end: 5, indent: '', held: 'let swing =
 eq(S.setClipBlock(held, 'door', 1, 'clip door, play: no\n  key 0 s, turn: 10 deg\n'), 'let door = box(size: vec(1, 2, 0.1))\nlet swing = clip(door, play: no)\n  key 0 s, turn: 10 deg\nwhen "use"\n  swing.play()\n', 'a held clip keeps its let');
 eq(S.setClipBlock(held, 'door', 1, ''), 'let door = box(size: vec(1, 2, 0.1))\nlet swing = clip(door)\nwhen "use"\n  swing.play()\n', 'a held clip with no keys keeps its line, so its name still reads');
 
+// a box's hand edits: the step goes under the box, after the ones already there, and a clip goes after them
+const pulled = S.addStep('title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)\nlight(at: vec(0, 3, 0))\n', 2, 'pull point: 3, by: vec(0.1, 0.2, 0)');
+eq(pulled, 'title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)\n  pull point: 3, by: vec(0.1, 0.2, 0)\nlight(at: vec(0, 3, 0))\n', 'a step is written indented under its box');
+const pulled2 = S.addStep(pulled, 2, 'pull point: 8, by: vec(0, 0.3, 0)');
+eq(pulled2, 'title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)\n  pull point: 3, by: vec(0.1, 0.2, 0)\n  pull point: 8, by: vec(0, 0.3, 0)\nlight(at: vec(0, 3, 0))\n', 'the next step goes after the ones there');
+eq(S.addStep('  box size: vec(1, 1, 1)\n', 1, 'pull point: 1, by: vec(0, 1, 0)'), '  box size: vec(1, 1, 1)\n    pull point: 1, by: vec(0, 1, 0)\n', 'a box in a block keeps its own indent');
+eq(S.addStep('sphere radius: 1\n', 1, 'pull point: 1, by: vec(0, 1, 0)'), null, 'only a box takes steps for now');
+eq(S.blockEnd(pulled2, 2), 4, 'the lines under a box end where the indent does');
+const namedPulled = S.nameThing(pulled2, 2);
+eq(namedPulled.text, 'title "T"\nlet box_1 = box(size: vec(1, 1, 1), at: vec(0, 0.5, 0))\n  pull point: 3, by: vec(0.1, 0.2, 0)\n  pull point: 8, by: vec(0, 0.3, 0)\nlight(at: vec(0, 3, 0))\n', 'naming a box with steps keeps them under it');
+const clipped = S.setClipBlock(namedPulled.text, 'box_1', 2, 'clip box_1\n  key 0 s, at: vec(0, 0, 0)\n');
+eq(clipped, 'title "T"\nlet box_1 = box(size: vec(1, 1, 1), at: vec(0, 0.5, 0))\n  pull point: 3, by: vec(0.1, 0.2, 0)\n  pull point: 8, by: vec(0, 0.3, 0)\nclip box_1\n  key 0 s, at: vec(0, 0, 0)\nlight(at: vec(0, 3, 0))\n', 'a clip goes after the box\'s steps, not between them');
+
+// what the box's steps do to the other edits: a new line goes after them, a copy brings them, a removal takes them
+eq(S.insertAfter(pulled2, 2, 'sphere radius: 1'), 'title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)\n  pull point: 3, by: vec(0.1, 0.2, 0)\n  pull point: 8, by: vec(0, 0.3, 0)\nsphere radius: 1\nlight(at: vec(0, 3, 0))\n', 'a new line goes after the box\'s steps, not between them');
+eq(S.insertAfter('box size: vec(1, 1, 1)\n', 1, '  pull point: 1, by: vec(0, 1, 0)'), 'box size: vec(1, 1, 1)\n  pull point: 1, by: vec(0, 1, 0)\n', 'a line indented under a line still goes right under it');
+const copied = S.duplicateLine(pulled2, 2, [1, 0.5, 0], [1, 0, 0], false);
+eq(copied.text, 'title "T"\nbox size: vec(1, 1, 1), at: vec(0, 0.5, 0)\n  pull point: 3, by: vec(0.1, 0.2, 0)\n  pull point: 8, by: vec(0, 0.3, 0)\nbox size: vec(1, 1, 1), at: vec(1, 0.5, 0)\n  pull point: 3, by: vec(0.1, 0.2, 0)\n  pull point: 8, by: vec(0, 0.3, 0)\nlight(at: vec(0, 3, 0))\n', 'a copy of a pulled box is pulled the same');
+eq(copied.line, 5, 'and the copy\'s line is where it starts');
+eq(S.removeLine(pulled2, 2).text, 'title "T"\nlight(at: vec(0, 3, 0))\n', 'removing a box takes its steps with it');
+
 // the engine reads what the editor writes
 const loop = path.join(__dirname, '..', 'build', 'loop');
 if (fs.existsSync(loop)) {
@@ -82,7 +103,7 @@ if (fs.existsSync(loop)) {
     'let corner = vec(1, 0, 1)', S.moveLine('box at: corner, size: vec(1, 1, 1)', [0, 0, 0], [0, 1, 0], false),
     S.lineAt(dup.text, 3), S.turnLine('box rotation: vec(0, 0, 90 deg)', Math.PI / 2, Math.PI / 2, false),
     S.setClipBlock(S.nameThing('box size: vec(1, 1, 1)  # a crate', 1).text, 'box_1', 1, 'clip box_1\n  key 0 s, at: vec(0, 0, 0)\n  key 1 s, at: vec(1, 0, 0)\n'),
-    S.setClipBlock(held, 'door', 1, 'clip door, play: no\n  key 0 s, turn: 10 deg\n'), S.setClipBlock(held, 'door', 1, ''), ''].join('\n');
+    S.setClipBlock(held, 'door', 1, 'clip door, play: no\n  key 0 s, turn: 10 deg\n'), S.setClipBlock(held, 'door', 1, ''), clipped, ''].join('\n');
   const f = path.join(os.tmpdir(), 'editor_source_test.loop');
   fs.writeFileSync(f, script);
   checks++;

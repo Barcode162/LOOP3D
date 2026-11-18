@@ -309,6 +309,19 @@ Proof:  QUICK; tests: a box opens with 8 points; a pull moves only that point an
         -> shape -> text is the same; a recipe changed under a step that names a missing point is refused by
         name, not a crash. tools/editor_check.js: open the box, drag a dot, reload, the corner is still out.
 Not:    picking edges or faces, more than one point at once, extrude or any other tool (goal 19).
+Done:   2026-11-18. A box opens with 8 points (1 to 8); `pull point: 3, by: vec(...)` under a `box` line moves only
+        that point (tests/shape_edit_test.cpp: 5 tests: 8 points and the same names every time, a pull moves
+        one point and the faces round it follow, text -> shape -> text is the same lines, a missing point is
+        refused by name, a plain box stays the shared box). tools/editor_check.js, phone and computer: the Shape
+        bench shows 8 dots (44 px to touch), the shape follows a held dot, letting go writes one `pull` line
+        under the box, one undo takes it back and redo brings it back, and after a reload the corner is still
+        out. Picture: work/T-E2.png. Reached beyond the card's Touch line, each one line or a few: the parser
+        (`box` takes indented lines as `group` does), CMakeLists.txt (the five `loop_shape_*` exports),
+        projects/samples/project.json (the card names a `samples.looped` that does not exist; the scene is
+        listed there), web/editor/spaces.js (a new thing goes after a box's pull lines). The editor's add,
+        copy and remove now keep a box's lines with it (source.js; tests/editor_source_test.js). While a drag
+        runs the engine adds a mesh per step (the live renderer only takes new meshes) and empties the one
+        before; a rebuild from the text clears them. A box's collision shape stays the plain box.
 ```
 
 After wave 1 the helpers have what they need. The next cards are cut then (one tool, one brush, one rule or

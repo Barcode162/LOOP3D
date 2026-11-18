@@ -22,6 +22,7 @@
 #include "engine/core/jobs.h"
 #include "engine/core/meter.h"
 #include "engine/core/settings.h"
+#include "engine/geometry/shape_edit.h"
 #include "engine/gpu/renderer.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
@@ -1071,6 +1072,137 @@ EMSCRIPTEN_KEEPALIVE int loop_thing_set(int index, const char* json) {
   g.stage->updateTransform(index);
   g.stage->collidersDirty = true;
   return 1;
+}
+
+// ---- a thing's shape, opened and pulled by hand (engine/geometry/shape_edit.h; the Studio's Shape bench)
+
+extern "C++" {
+namespace {
+// The point being dragged and where it started (in the shape's own space), and the mesh the live drawing is on.
+struct ShapeGrab {
+  int placed = -1;
+  uint32_t point = 0;
+  Vec3 start{0};
+  int liveMesh = -1;
+};
+ShapeGrab gGrab;
+
+const Mat4& worldOf(int placed) { return g.stage->scene.instances[g.stage->placed[placed].instance].transform; }
+
+// The record of the shape a placed thing is drawn with, or none.
+shapeedit::Shape* shapeOf(int placed) {
+  Stage& st = *g.stage;
+  return shapeedit::recall(&st, st.scene.instances[st.placed[placed].instance].mesh);
+}
+
+// The points as the editor draws them: each one's name and place in the world, and the edges between them.
+const char* shapeJson(int placed, const shapeedit::Shape& sh) {
+  static std::string out;
+  const Mat4& w = worldOf(placed);
+  Json o = Json::object(), pts = Json::array(), edges = Json::array();
+  for (const EditMesh::Point& p : sh.now.points) {
+    if (!p.alive) continue;
+    Json e = Json::object();
+    e.set("name", Json(static_cast<int>(p.name))), e.set("at", vec3Json(w.point(p.pos)));
+    pts.push(e);
+  }
+  EditMesh::HalfEdges he = sh.now.halfEdges();
+  for (const EditMesh::HalfEdge& h : he.he)
+    if (h.twin < 0 || h.from < h.to) {
+      Json e = Json::array();
+      e.push(Json(static_cast<int>(sh.now.points[h.from].name))), e.push(Json(static_cast<int>(sh.now.points[h.to].name)));
+      edges.push(e);
+    }
+  o.set("points", pts), o.set("edges", edges), o.set("steps", Json(static_cast<int>(sh.steps.size())));
+  out = o.dump();
+  return out.c_str();
+}
+// Draws the shape as it now is: a new mesh of its own on the thing (the graphics chip takes meshes as they are
+// added), and the one before it, if the drag made it, is emptied.
+void redrawShape(int placed, const shapeedit::Shape& sh) {
+  Stage& st = *g.stage;
+  MeshInstance& inst = st.scene.instances[st.placed[placed].instance];
+  const int old = inst.mesh;
+  st.scene.meshes.push_back(shapeedit::drawn(sh.now));
+  inst.mesh = static_cast<int>(st.scene.meshes.size() - 1);
+  if (gGrab.liveMesh >= 0 && old == gGrab.liveMesh) st.scene.meshes[old] = Mesh();
+  gGrab.liveMesh = inst.mesh;
+  shapeedit::remember(&st, inst.mesh, sh);
+  ++st.version;
+}
+}  // namespace
+}  // extern "C++"
+
+// Opens a thing's shape: {"points": [{"name", "at"}], "edges": [[a, b]]} with the places in the world, or
+// null when it is not a shape made of a recipe. A shape with hand edits is opened as its steps leave it.
+EMSCRIPTEN_KEEPALIVE const char* loop_shape_open(int index) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->placed.size())) return "null";
+  Stage& st = *g.stage;
+  const Stage::Placed& p = st.placed[index];
+  if (p.instance < 0 || p.instance >= static_cast<int>(st.scene.instances.size()) || !p.moreInstances.empty()) return "null";
+  const int m = st.scene.instances[p.instance].mesh;
+  if (m < 0 || m >= static_cast<int>(st.scene.meshes.size())) return "null";
+  gGrab = ShapeGrab();
+  shapeedit::Shape* rec = shapeedit::recall(&st, m);
+  if (rec && shapeedit::drawn(rec->now).positions != st.scene.meshes[m].positions) rec = nullptr;  // not what it drew any more
+  if (!rec) {
+    shapeedit::Shape s = shapeedit::open(st.scene.meshes[m]);  // no steps yet: the mesh is the recipe
+    if (s.base.pointCount() == 0 || !s.base.check().empty()) return "null";
+    shapeedit::remember(&st, m, s);
+    rec = shapeedit::recall(&st, m);
+  }
+  return shapeJson(index, *rec);
+}
+
+// The same points again, as they are now (while one is dragged).
+EMSCRIPTEN_KEEPALIVE const char* loop_shape_points(int index) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->placed.size())) return "null";
+  shapeedit::Shape* rec = shapeOf(index);
+  return rec ? shapeJson(index, *rec) : "null";
+}
+
+// A finger takes a point: its place now is where the pull is measured from.
+EMSCRIPTEN_KEEPALIVE int loop_shape_grab(int index, int point) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->placed.size())) return 0;
+  shapeedit::Shape* rec = shapeOf(index);
+  const int i = rec ? rec->now.pointByName(static_cast<uint32_t>(point)) : -1;
+  if (i < 0) return 0;
+  gGrab.placed = index, gGrab.point = static_cast<uint32_t>(point), gGrab.start = rec->now.points[i].pos;
+  return 1;
+}
+
+// The finger is at this place in the world: the grabbed point goes there (kept to a tenth of a millimetre,
+// as its step will say it) and the shape is drawn again at once.
+EMSCRIPTEN_KEEPALIVE int loop_shape_drag(float x, float y, float z) {
+  if (!g.stage || gGrab.placed < 0) return 0;
+  shapeedit::Shape* rec = shapeOf(gGrab.placed);
+  const int i = rec ? rec->now.pointByName(gGrab.point) : -1;
+  if (i < 0) return 0;
+  const Vec3 local = worldOf(gGrab.placed).inverse().point(Vec3(x, y, z));
+  const Vec3 pos = gGrab.start + shapeedit::tidy(local - gGrab.start);
+  if (length(pos - rec->now.points[i].pos) < 1e-6f) return 1;
+  rec->now.points[i].pos = pos;
+  redrawShape(gGrab.placed, *rec);
+  return 1;
+}
+
+// The finger lets go: the step that makes this shape from its text, `pull point: 3, by: vec(...)`, or "" when
+// the point did not move. The shape keeps the step, so the next drag starts from here.
+EMSCRIPTEN_KEEPALIVE const char* loop_shape_drop() {
+  static std::string out;
+  out.clear();
+  if (!g.stage || gGrab.placed < 0) return out.c_str();
+  shapeedit::Shape* rec = shapeOf(gGrab.placed);
+  const int i = rec ? rec->now.pointByName(gGrab.point) : -1;
+  if (i >= 0) {
+    const Vec3 by = shapeedit::tidy(rec->now.points[i].pos - gGrab.start);
+    if (length(by) > 0) {
+      rec->steps.push_back({gGrab.point, by});
+      out = shapeedit::stepLine(rec->steps.back());
+    }
+  }
+  gGrab.placed = -1;
+  return out.c_str();
 }
 
 // ---- keys (engine/anim/clip.h; the words clip and key)
