@@ -17,7 +17,8 @@
     "keys",
     "skeleton",
     "arm",
-    "pull"
+    "pull",
+    "extrude"
   ],
   "stills": "stills"
 }

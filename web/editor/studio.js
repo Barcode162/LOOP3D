@@ -1,6 +1,7 @@
 // The Studio: one thing opened and worked on (docs/STUDIO.md). Three benches:
 //   Shape  its points: dots a thumb can take; drag one and the shape follows, let go and a
-//          `pull` line goes under the box in the script (the engine draws the pull: loop_shape_*)
+//          `pull` line goes under the box in the script (the engine draws the pull: loop_shape_*); or, with the
+//          Faces tool, an arrow on each face you can see: drag it out (or in) and an `extrude` line goes under it
 //   Bones  its skeleton and how the skin follows            (not built yet)
 //   Move   keys on a strip of time: a key pins a value to a moment, and the
 //          engine fills in every moment between
@@ -239,8 +240,9 @@ window.LE = window.LE || {};
   // as a line under the box, one undo step. The engine says the line itself (loop_shape_drop).
   const DOT_HIT = 22, DOT_R = 11;
   const canvasEl = () => document.querySelector('#view');
-  let pulling = null;   // {name, plane point, normal, grab offset}
-  ST.shape = null; ST.dots = []; ST.shapeWhy = '';
+  const ARROW_PX = 46;   // a face's arrow, on the screen: long enough to aim, its knob a thumb wide
+  let pulling = null;   // {name, plane point, normal, grab offset}, or {face, its middle, the way it faces, s0}
+  ST.shape = null; ST.dots = []; ST.knobs = []; ST.shapeWhy = ''; ST.tool = ST.tool || 'points';
   // the points now, from the engine; the Studio's own copy for drawing and for the tests
   function openShape() {
     ST.shape = null; ST.dots = []; ST.shapeWhy = '';
@@ -264,8 +266,9 @@ window.LE = window.LE || {};
     quiet: true,   // the thing's own handles (lift, turn, size) step aside
     draw(ctx, project) {
       const sh = ST.shape;
-      ST.dots = [];
+      ST.dots = []; ST.knobs = [];
       if (!sh || !ST.open || ST.bench !== 'shape') return;
+      if (ST.tool === 'faces') return drawFaces(ctx, project, sh);
       const at = new Map();
       for (const p of sh.points) { const q = project(p.at); if (q) { at.set(p.name, q); ST.dots.push({ name: p.name, x: q[0], y: q[1] }); } }
       ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.55)';
@@ -286,6 +289,15 @@ window.LE = window.LE || {};
     down(e, ray) {
       if (!ST.shape || !ST.open || ST.bench !== 'shape' || !ray) return false;
       const r = canvasEl().getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      if (ST.tool === 'faces') {
+        let k = null, kd = DOT_HIT;
+        for (const d of ST.knobs) { const dd = Math.hypot(d.x - x, d.y - y); if (dd < kd) { kd = dd; k = d; } }
+        const f = k && ST.shape.faces.find((q) => q.name === k.name);
+        if (!f || !E.shapeGrabFace(ST.index, f.name)) return false;
+        pulling = { face: f.name, c: f.at.slice(), n: f.out.slice(), s0: alongLine(ray, f.at, f.out) };
+        V.hint('Drag the arrow out to grow the face, in to dig; let go to keep it', 0);
+        return true;
+      }
       let best = null, bd = DOT_HIT;
       for (const d of ST.dots) { const dd = Math.hypot(d.x - x, d.y - y); if (dd < bd) { bd = dd; best = d; } }
       if (!best) return false;
@@ -299,6 +311,14 @@ window.LE = window.LE || {};
     },
     move(e, ray) {
       if (!pulling || !ray) return;
+      if (pulling.face) {
+        const t = alongLine(ray, pulling.c, pulling.n);
+        if (t === null || pulling.s0 === null) return;
+        const d = t - pulling.s0, c = pulling.c, n = pulling.n;
+        E.shapeDrag(c[0] + n[0] * d, c[1] + n[1] * d, c[2] + n[2] * d);
+        ST.shape = E.shapePoints(ST.index) || ST.shape;
+        return;
+      }
       const hit = onPlane(ray, pulling.p0, pulling.n);
       if (!hit) return;
       const to = [hit[0] + pulling.grab[0], hit[1] + pulling.grab[1], hit[2] + pulling.grab[2]];
@@ -307,16 +327,16 @@ window.LE = window.LE || {};
     },
     up() {
       if (!pulling) return;
-      const { name } = pulling;
+      const { name, face } = pulling;
       pulling = null;
       V.hint('');
       const line = E.shapeDrop();
       ST.shape = E.shapePoints(ST.index) || ST.shape;
       if (!line) return;
       const text = S.addStep(H.text, ST.line, line);
-      if (text === null) return LE.toast('This line can\'t take a pull. Write it under the box in Logic.');
-      // the engine already shows the pull; undo builds the world again from the text
-      H.commit(text, 'pulled point ' + name + ' of ' + ST.label, null);
+      if (text === null) return LE.toast('This line can\'t take a hand edit. Write it under the box in Logic.');
+      // the engine already shows the change; undo builds the world again from the text
+      H.commit(text, face ? 'extruded face ' + face + ' of ' + ST.label : 'pulled point ' + name + ' of ' + ST.label, null);
       if (LE.logic) LE.logic.sync();
       SP.redraw();
     },
@@ -330,11 +350,55 @@ window.LE = window.LE || {};
     const t = ((p[0] - ray.o[0]) * n[0] + (p[1] - ray.o[1]) * n[1] + (p[2] - ray.o[2]) * n[2]) / den;
     return t > 0 ? [ray.o[0] + ray.d[0] * t, ray.o[1] + ray.d[1] * t, ray.o[2] + ray.d[2] * t] : null;
   }
+  // how far along the line through p (way n, unit) the view ray comes closest to it, or null when they run together
+  function alongLine(ray, p, n) {
+    const w = sub3(p, ray.o), b = n[0] * ray.d[0] + n[1] * ray.d[1] + n[2] * ray.d[2];
+    const c = ray.d[0] * ray.d[0] + ray.d[1] * ray.d[1] + ray.d[2] * ray.d[2];
+    const dn = n[0] * w[0] + n[1] * w[1] + n[2] * w[2], e = ray.d[0] * w[0] + ray.d[1] * w[1] + ray.d[2] * w[2];
+    const den = c - b * b;
+    return Math.abs(den) < 1e-6 ? null : (b * e - c * dn) / den;
+  }
+  // the Faces tool: the shape's edges, and on each face that looks towards you an arrow the way it faces
+  function drawFaces(ctx, project, sh) {
+    const at = new Map();
+    for (const p of sh.points) { const q = project(p.at); if (q) at.set(p.name, q); }
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    for (const [a, b] of sh.edges) { const qa = at.get(a), qb = at.get(b); if (qa && qb) { ctx.moveTo(qa[0], qa[1]); ctx.lineTo(qb[0], qb[1]); } }
+    ctx.stroke();
+    const v = E.view(), eye = v && v.at;
+    for (const f of sh.faces || []) {
+      const on = pulling && pulling.face === f.name;
+      if (eye && !on) { const toEye = sub3(eye, f.at); if (toEye[0] * f.out[0] + toEye[1] * f.out[1] + toEye[2] * f.out[2] <= 0) continue; }
+      const q0 = project(f.at), q1 = project([f.at[0] + f.out[0] * 0.1, f.at[1] + f.out[1] * 0.1, f.at[2] + f.out[2] * 0.1]);
+      if (!q0 || !q1) continue;
+      let dx = q1[0] - q0[0], dy = q1[1] - q0[1];
+      const l = Math.hypot(dx, dy);
+      if (l < 0.5) { dx = 0; dy = -1; } else { dx /= l; dy /= l; }   // a face seen straight on: its arrow points up
+      const tip = [q0[0] + dx * ARROW_PX, q0[1] + dy * ARROW_PX];
+      ST.knobs.push({ name: f.name, x: tip[0], y: tip[1], from: q0 });
+      const col = on ? '#ffc850' : '#f2f2f2';
+      ctx.lineWidth = 3; ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
+      ctx.beginPath(); ctx.arc(q0[0], q0[1], 4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+      ctx.beginPath(); ctx.arc(tip[0], tip[1], DOT_HIT, 0, Math.PI * 2);
+      ctx.fillStyle = on ? 'rgba(255,200,80,0.28)' : 'rgba(255,255,255,0.14)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(tip[0], tip[1], DOT_R, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(20,20,20,0.9)'; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tip[0] + dx * 5, tip[1] + dy * 5); ctx.lineTo(tip[0] - dy * 4 - dx * 3, tip[1] + dx * 4 - dy * 3); ctx.lineTo(tip[0] + dy * 4 - dx * 3, tip[1] - dx * 4 - dy * 3); ctx.closePath();
+      ctx.fillStyle = col; ctx.fill();
+    }
+  }
   function drawShape(body) {
     openShape();
     const card = h('div', { class: 'card' }, h('h3', {}, 'Shape'));
     if (!ST.shape) { card.append(h('div', { class: 'note', style: 'margin:0' }, ST.shapeWhy)); return body.append(card); }
-    card.append(h('div', { class: 'note', style: 'margin:0' }, h('b', {}, 'Drag a dot to pull that point.'), ' ' + ST.shape.points.length + ' points. Let go and the pull is written under the box in the script; one undo takes it back.'));
+    const tools = h('div', { class: 'row', style: 'gap:6px;margin:0 0 8px' });
+    for (const [k, label] of [['points', 'Points'], ['faces', 'Faces']]) tools.append(h('button', { class: 'pill' + (ST.tool === k ? ' on' : ''), onclick: () => { ST.tool = k; SP.redraw(); } }, label));
+    card.append(tools);
+    if (ST.tool === 'faces') card.append(h('div', { class: 'note', style: 'margin:0' }, h('b', {}, 'Drag an arrow to extrude that face.'), ' Out grows a new block from it, in digs into the box. Let go and an extrude line is written under the box; one undo takes it back.'));
+    else card.append(h('div', { class: 'note', style: 'margin:0' }, h('b', {}, 'Drag a dot to pull that point.'), ' ' + ST.shape.points.length + ' points. Let go and the pull is written under the box in the script; one undo takes it back.'));
     body.append(card);
     const steps = stepLines();
     const done = h('div', { class: 'card' }, h('h3', {}, 'Hand edits · ' + steps.length));

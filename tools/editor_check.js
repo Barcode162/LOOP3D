@@ -170,8 +170,29 @@ async function run(browser, name, viewport, touch) {
   await p.click('#redoBtn'); await p.waitForTimeout(2500);
   const hiR = await boxHi();
   check((await lines('^  pull point: ')).length === 1 && hiR && hiR.every((v, k) => Math.abs(v - hi1[k]) < 1e-3), name + ': redo pulls it again');
+  // the Faces tool (goal 19a): an arrow on each face you can see; drag one out and an extrude line goes under the box
+  await tool('Faces'); await p.waitForTimeout(800);
+  check(await p.evaluate(() => LE.studio.tool === 'faces' && LE.studio.knobs.length >= 1 && LE.studio.knobs.length <= 3), name + ': the Faces tool shows an arrow on each face that looks towards you (' + (await p.evaluate(() => LE.studio.knobs.length)) + ')');
+  const knob = await p.evaluate(() => {
+    const r = document.getElementById('view').getBoundingClientRect(), k = LE.studio.knobs[0];
+    const dx = k.x - k.from[0], dy = k.y - k.from[1], l = Math.hypot(dx, dy) || 1;
+    return { x: r.left + k.x, y: r.top + k.y, dx: dx / l, dy: dy / l };
+  });
+  await p.mouse.move(knob.x, knob.y); await p.mouse.down();
+  for (let i = 1; i <= 8; i++) { await p.mouse.move(knob.x + knob.dx * i * 8, knob.y + knob.dy * i * 8); await p.waitForTimeout(40); }
+  const grown = await p.evaluate(() => LE.studio.shape && LE.studio.shape.points.length);
+  check(grown === 12, name + ': while the arrow is held the face grows a block (12 points: ' + grown + ')');
+  await p.mouse.up(); await p.waitForTimeout(700);
+  const ext = await lines('^  extrude face: ');
+  check(ext.length === 1 && /^  extrude face: \d+, by: \d/.test(ext[0]), name + ': letting go writes one extrude line under the box, outwards (' + ext[0] + ')');
+  await p.screenshot({ path: `${OUT}/${name}_extrude.png` });
+  await p.click('#undoBtn'); await p.waitForTimeout(2500);
+  check((await lines('^  extrude face: ')).length === 0, name + ': one undo takes the extrude back');
+  await p.click('#redoBtn'); await p.waitForTimeout(2500);
+  check((await lines('^  extrude face: ')).length === 1, name + ': redo extrudes it again');
+  const hiE = await boxHi();
   await tool('Done'); await p.waitForTimeout(2500);
-  check(await p.evaluate(() => !LE.studio.open && LE.logic.problems.length === 0), name + ': Done after a pull leaves no problems in the script');
+  check(await p.evaluate(() => !LE.studio.open && LE.logic.problems.length === 0), name + ': Done after a pull and an extrude leaves no problems in the script');
   // the library: a tap on one of its pieces brings it in (its use line, once) and places it
   await p.evaluate(() => LE.view.select(null)); await p.waitForTimeout(400);
   const things0 = await p.evaluate(() => LE.spaces.refreshInfo().things.length);
@@ -207,7 +228,8 @@ async function run(browser, name, viewport, touch) {
   check((await lines('^(let box_1 = box|clip box_1|  key|shot|sound|track)')).length === 8, name + ': a reload keeps every change');
   check(await p.evaluate(() => LE.history.undo.length >= 4), name + ': and undo still knows them');
   const hiAfter = await boxHi();
-  check((await lines('^  pull point: ')).length === 1 && hiAfter && hi1.every((v, k) => Math.abs(v - hiAfter[k]) < 1e-3), name + ': after a reload the corner is still out');
+  check((await lines('^  pull point: ')).length === 1 && hiAfter && hiE && hiE.every((v, k) => Math.abs(v - hiAfter[k]) < 1e-3), name + ': after a reload the corner is still out, and the face');
+  check((await lines('^  extrude face: ')).length === 1, name + ': and the extrude is still there');
   check(!errs.length, name + ': no page errors' + (errs.length ? '\n' + errs.join('\n') : ''));
   await ctx.close();
 }

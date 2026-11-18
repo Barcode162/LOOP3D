@@ -112,3 +112,76 @@ TEST(shape_edit_a_box_without_lines_is_still_the_shared_box) {
   CHECK(w.st.scene.meshes.size() == 2);  // the plain box, and the pulled one
   CHECK(w.st.scene.instances[0].mesh != w.st.scene.instances[1].mesh);
 }
+
+// ---- goal 19a (T-E3): extrude one face
+
+namespace {
+// The name of the box face that faces this way.
+uint32_t faceFacing(const EditMesh& m, Vec3 way) {
+  for (auto& f : m.faces) {
+    Vec3 mid, n;
+    if (f.alive && shapeedit::faceFrame(m, f.name, mid, n) && dot(n, way) > 0.99f) return f.name;
+  }
+  return 0;
+}
+}  // namespace
+
+TEST(shape_edit_extrude_grows_a_block_from_one_face) {
+  shapeedit::Shape s = shapeedit::open(shapes::box(Vec3(1)));
+  CHECK(s.base.faceCount() == 6);
+  const uint32_t top = faceFacing(s.base, Vec3(0, 1, 0));
+  CHECK(top != 0);
+  shapeedit::Step step;
+  step.kind = shapeedit::Step::Extrude, step.face = top, step.out = 0.5f;
+  CHECK(shapeedit::apply(s, step) == "");
+  CHECK(s.now.pointCount() == 12);  // the 8 corners, and 4 where the face went
+  CHECK(s.now.faceCount() == 10);   // the 6 sides, and a wall on each of the face's 4 edges
+  CHECK(s.now.check() == "");       // whole: no gap, no edge with three faces
+  float top_y = -1, low_y = 1;
+  for (auto& p : s.now.points) top_y = std::max(top_y, p.pos.y), low_y = std::min(low_y, p.pos.y);
+  CHECK(std::fabs(top_y - 1.0f) < 1e-5f && std::fabs(low_y + 0.5f) < 1e-5f);
+  // the face kept its name and moved out; the old corners stay (the block grows from them)
+  Vec3 mid, n;
+  CHECK(shapeedit::faceFrame(s.now, top, mid, n) && std::fabs(mid.y - 1.0f) < 1e-5f && n.y > 0.99f);
+  for (auto& q : s.base.points) CHECK(s.now.points[s.now.pointByName(q.name)].pos == q.pos);
+  // it smooths whole too (the walls are proper four-sided faces)
+  CHECK(s.now.smoothed(1).check() == "");
+  // in: a negative distance digs into the box
+  shapeedit::Shape d = shapeedit::open(shapes::box(Vec3(1)));
+  step.out = -0.25f;
+  CHECK(shapeedit::apply(d, step) == "" && d.now.check() == "");
+}
+
+TEST(shape_edit_extrude_text_shape_text_is_the_same) {
+  // find the top face's name the way the script will see it
+  shapeedit::Shape probe = shapeedit::open(shapes::box(Vec3(2)));
+  const uint32_t top = faceFacing(probe.base, Vec3(0, 1, 0));
+  shapeedit::Step e;
+  e.kind = shapeedit::Step::Extrude, e.face = top, e.out = 0.3f;
+  CHECK(shapeedit::apply(probe, e) == "");
+  const uint32_t fresh = probe.now.points.back().name;  // a point the extrude made: a later step can pull it
+  const std::string lines = "  extrude face: " + std::to_string(top) + ", by: 0.3\n  pull point: " + std::to_string(fresh) + ", by: vec(0, 0.1, 0)\n";
+  World w("box size: vec(2, 2, 2)\n" + lines);
+  for (auto& p : w.vm.problems()) std::printf("    %s\n", p.text().c_str());
+  CHECK(w.ok);
+  if (!w.ok) return;
+  const int mesh = w.st.scene.instances[w.st.placed[0].instance].mesh;
+  shapeedit::Shape* s = shapeedit::recall(&w.st, mesh);
+  CHECK(s != nullptr);
+  if (!s) return;
+  CHECK(s->steps.size() == 2);
+  CHECK(shapeedit::stepLine(s->steps[0]) == "extrude face: " + std::to_string(top) + ", by: 0.3");
+  CHECK(w.st.scene.meshes[mesh].positions == shapeedit::drawn(s->now).positions);
+  std::string again = "box size: vec(2, 2, 2)\n";
+  for (auto& step : s->steps) again += "  " + shapeedit::stepLine(step) + "\n";
+  World w2(again);
+  CHECK(w2.ok);
+  CHECK(w2.st.scene.meshes[w2.st.scene.instances[w2.st.placed[0].instance].mesh].positions == w.st.scene.meshes[mesh].positions);
+}
+
+TEST(shape_edit_a_missing_face_is_refused_by_name) {
+  World w("box size: vec(1, 1, 1)\n  extrude face: 42, by: 0.5\n");
+  CHECK(!w.ok);
+  CHECK(w.problem().find("no face 42") != std::string::npos);
+  CHECK(w.problem().find("its faces are") != std::string::npos);
+}

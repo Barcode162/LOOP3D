@@ -54,6 +54,7 @@ window.LE = window.LE || {};
   E.shapeOpen = (i) => (has('loop_shape_open') ? shapeJson(() => E.M._loop_shape_open(i)) : null);
   E.shapePoints = (i) => (has('loop_shape_points') ? shapeJson(() => E.M._loop_shape_points(i)) : null);
   E.shapeGrab = (i, point) => (has('loop_shape_grab') ? !!E.M._loop_shape_grab(i, point) : false);
+  E.shapeGrabFace = (i, face) => (has('loop_shape_grab_face') ? !!E.M._loop_shape_grab_face(i, face) : false);
   E.shapeDrag = (x, y, z) => (has('loop_shape_drag') ? !!E.M._loop_shape_drag(x, y, z) : false);
   E.shapeDrop = () => (has('loop_shape_drop') ? read(E.M._loop_shape_drop()) : '');
   // keys (web/player.cpp: loop_clips, loop_clip_set, loop_clip_moment, loop_clip_curve)
