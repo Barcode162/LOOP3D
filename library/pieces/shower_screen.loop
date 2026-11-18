@@ -1,0 +1,18 @@
+# shower_screen · a frameless glass shower screen on a slim brass foot rail
+# shower_screen(at, turn, length, height) stands it with `at` the middle of its foot on the floor, running along x:
+# `length` (0.9 m), `height` (2.0 m).
+#
+# kind: piece
+# place: shower_screen(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: shower, screen, glass, bathroom, loft
+# size: sofa
+# seeds: none, the same every time
+to shower_screen(at: vec(0, 0, 0), turn: 0, length: 0.9, height: 2.0)
+  let g = group(at: at, turn: turn)
+    box size: vec(length, height, 0.008), at: vec(0, height / 2 + 0.02, 0), material: "glass"
+    box size: vec(length, 0.02, 0.03), at: vec(0, 0.01, 0), material: "brass", collide: no
+    box size: vec(0.012, 0.012, 0.8), at: vec(length / 2 - 0.01, height - 0.1, 0.4), material: "brass", collide: no
+  return g

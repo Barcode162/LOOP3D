@@ -1,0 +1,16 @@
+# splashback · a tiled splashback between a worktop and the wall cupboards
+# splashback(at, length, height, tile) lays it on the wall with `at` the middle of its foot (on the worktop), facing -z:
+# `length` (3 m) by `height` (0.55 m), 1 cm proud. `tile` is a material ("tiles").
+#
+# kind: piece
+# place: splashback(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: splashback, tiles, kitchen, wall, loft
+# size: sofa
+# seeds: none, the same every time
+to splashback(at: vec(0, 0, 0), turn: 0, length: 3, height: 0.55, tile: material(like: "tiles", color: rgb(0.86, 0.85, 0.8)))
+  let g = group(at: at, turn: turn)
+    box size: vec(length, height, 0.01), at: vec(0, height / 2, -0.005), material: tile, collide: no
+  return g

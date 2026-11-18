@@ -1,0 +1,25 @@
+# coat_stand · a wooden coat stand with coats, a scarf and a hat on its hooks
+# coat_stand(at, seed) stands it on `at`: 1.8 m tall; two coats, a scarf and a hat hang on it.
+#
+# kind: model
+# place: coat_stand(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: coat stand, hat stand, coats, entry, hall, loft
+# size: chair
+# seeds: any whole number
+to coat_stand(at: vec(0, 0, 0), seed: 1)
+  let g = group(at: at)
+    for each i in range(0, 3, 1)
+      box size: vec(0.025, 0.5, 0.025), at: vec(sin(i * 120 deg) * 0.14, 0.22, cos(i * 120 deg) * 0.14), rotation: vec(i * 120 deg, 0.55, 0), material: "oak", collide: no
+    cylinder(radius: 0.02, height: 1.75, at: vec(0, 0.875, 0), material: "oak", sides: 12)
+    for each i in range(0, 4, 1)
+      box size: vec(0.016, 0.016, 0.14), at: vec(sin(i * 90 deg) * 0.06, 1.68, cos(i * 90 deg) * 0.06), rotation: vec(i * 90 deg, -0.6, 0), material: "oak", collide: no
+    # a long dark wool coat, a shorter camel one, a scarf, a hat on top
+    box size: vec(0.42, 1.0, 0.16), at: vec(0, 1.2, -0.12), tilt: 4 deg, material: material(like: "wool", color: rgb(0.08, 0.09, 0.11), roughness: 1), round: 0.06, steps: 2, collide: no
+    box size: vec(0.4, 0.75, 0.15), at: vec(0.1, 1.33, 0.11), tilt: -4 deg, turn: 150 deg, material: material(like: "wool", color: rgb(0.55, 0.4, 0.25), roughness: 1), round: 0.06, steps: 2, collide: no
+    box size: vec(0.12, 0.7, 0.02), at: vec(-0.12, 1.32, 0.02), turn: 70 deg, material: material(like: "wool", color: rgb(0.55, 0.12, 0.1), roughness: 1), round: 0.01, collide: no
+    cylinder(radius: 0.09, height: 0.09, at: vec(0, 1.8, 0), material: material(like: "wool", color: rgb(0.2, 0.17, 0.14)), sides: 20, collide: no)
+    cylinder(radius: 0.15, height: 0.008, at: vec(0, 1.76, 0), material: material(like: "wool", color: rgb(0.2, 0.17, 0.14)), sides: 24, collide: no)
+  return g

@@ -1,0 +1,22 @@
+# desk_lamp · an architect's desk lamp: a weighted base, two arms with springs, a small cone shade aimed at the desk
+# desk_lamp(at, turn, lumens, kelvin) stands it on `at`, reaching out towards -z: about 0.5 m tall. One spot of `lumens` (250).
+#
+# kind: light
+# place: desk_lamp(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: desk lamp, task light, anglepoise, lamp, desk, work, loft
+# size: hand
+# seeds: none, the same every time
+to desk_lamp(at: vec(0, 0, 0), turn: 0, lumens: 250, kelvin: 3000)
+  let body = material(color: rgb(0.08, 0.09, 0.1), metal: 0.5, roughness: 0.4)
+  let warm = rgb(1.0, 0.8, 0.55)
+  let g = group(at: at, turn: turn)
+    cylinder(radius: 0.075, height: 0.025, at: vec(0, 0.0125, 0), material: body, sides: 28)
+    box size: vec(0.015, 0.3, 0.015), at: vec(0, 0.16, 0.04), tilt: -15 deg, material: body, collide: no
+    box size: vec(0.015, 0.3, 0.015), at: vec(0, 0.36, -0.07), tilt: 55 deg, material: body, collide: no
+    lathe(profile: [vec(0.02, 0.06), vec(0.065, -0.04), vec(0.06, -0.04), vec(0.016, 0.056)], segments: 24, at: vec(0, 0.42, -0.2), material: body, collide: no)
+    cylinder(radius: 0.056, height: 0.002, at: vec(0, 0.384, -0.2), material: material(color: rgb(1, 0.9, 0.7), glow: warm * (lumens * 0.3)), sides: 20, collide: no)
+  light(at + vec(0 - sin(turn) * 0.2, 0.37, 0 - cos(turn) * 0.2), lumens: lumens, kelvin: kelvin, radius: 0.025, aim: vec(0, -1, 0), angle: 90 deg)
+  return g

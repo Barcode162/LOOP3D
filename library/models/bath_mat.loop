@@ -1,0 +1,18 @@
+# bath_mat · a thick cotton bath mat with a ribbed weave
+# bath_mat(at, turn, color) lays it on `at`: 0.8 x 0.5 m.
+#
+# kind: model
+# place: bath_mat(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bath mat, mat, bathroom, loft
+# size: hand
+# seeds: none, the same every time
+to bath_mat(at: vec(0, 0, 0), turn: 0, color: rgb(0.82, 0.8, 0.74))
+  let cotton = material(like: "wool", color: color, roughness: 1, sheen: 0.4)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.8, 0.012, 0.5), at: vec(0, 0.006, 0), material: cotton, round: 0.005, collide: no
+    for each i in range(0, 7, 1)
+      box size: vec(0.76, 0.006, 0.03), at: vec(0, 0.014, -0.21 + i * 0.07), material: cotton, round: 0.003, collide: no
+  return g

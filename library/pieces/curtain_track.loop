@@ -1,0 +1,23 @@
+# curtain_track · curtains on a ceiling track, gathered open to each side of a window in soft folds
+# curtain_track(at, width, drop, open, cover) hangs it with `at` the middle of the track on the ceiling: the track runs
+# `width` (4 m) along x, the curtains hang `drop` (2.6 m); `open` (0.8) is how much of the width is drawn back, half each side.
+#
+# kind: piece
+# place: curtain_track(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: curtains, drapes, track, window, linen, loft
+# size: room
+# seeds: none, the same every time
+to curtain_track(at: vec(0, 0, 0), width: 4, drop: 2.6, open: 0.8, cover: material(like: "linen", color: rgb(0.78, 0.74, 0.66)))
+  let shut = width * (1 - open) / 2
+  let panel = max(0.3, shut + 0.15)
+  let g = group(at: at)
+    box size: vec(width, 0.03, 0.05), at: vec(0, -0.015, 0), material: "black", collide: no
+    for each s in [-1, 1]
+      let folds = max(3, round(panel / 0.1))
+      for each i in range(0, folds, 1)
+        let x = s * (width / 2 - (i + 0.5) * panel / folds)
+        box size: vec(panel / folds * 0.8, drop, 0.03), at: vec(x, -0.03 - drop / 2, 0.025 * ((i % 2) * 2 - 1)), turn: ((i % 2) * 2 - 1) * 30 deg, material: cover, round: 0.012, collide: no
+  return g

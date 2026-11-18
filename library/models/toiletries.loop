@@ -1,0 +1,21 @@
+# toiletries · the bathroom's small things: a toothbrush cup with two brushes, a soap dispenser and two bottles
+# toiletries(at, turn) stands them in a row on `at`: about 0.3 m long.
+#
+# kind: model
+# place: toiletries(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: toiletries, toothbrush, soap, bottles, shampoo, bathroom, loft
+# size: hand
+# seeds: none, the same every time
+to toiletries(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    lathe(profile: [vec(0, 0), vec(0.035, 0), vec(0.038, 0.1), vec(0.034, 0.1), vec(0, 0.01)], segments: 20, at: vec(-0.1, 0, 0), material: "glass", collide: no)
+    cylinder(radius: 0.005, height: 0.18, at: vec(-0.105, 0.1, 0.005), rotation: vec(0, 0.15, 0.1), material: material(like: "plastic", color: rgb(0.2, 0.5, 0.6)), sides: 6, collide: no)
+    cylinder(radius: 0.005, height: 0.18, at: vec(-0.095, 0.1, -0.005), rotation: vec(0, -0.12, -0.12), material: material(like: "plastic", color: rgb(0.9, 0.9, 0.9)), sides: 6, collide: no)
+    lathe(profile: [vec(0, 0), vec(0.035, 0), vec(0.036, 0.14), vec(0.012, 0.16), vec(0, 0.16)], segments: 20, at: vec(0, 0, 0), material: material(like: "porcelain", color: rgb(0.2, 0.2, 0.2)), collide: no)
+    box size: vec(0.01, 0.03, 0.05), at: vec(0, 0.17, -0.02), material: "brass", collide: no
+    lathe(profile: [vec(0, 0), vec(0.028, 0), vec(0.03, 0.18), vec(0.012, 0.2), vec(0, 0.2)], segments: 20, at: vec(0.08, 0, 0), material: material(like: "glass", color: rgb(0.55, 0.38, 0.2)), collide: no)
+    lathe(profile: [vec(0, 0), vec(0.03, 0), vec(0.03, 0.12), vec(0.01, 0.135), vec(0, 0.135)], segments: 20, at: vec(0.15, 0, 0.01), material: material(like: "plastic", color: rgb(0.9, 0.88, 0.84)), collide: no)
+  return g

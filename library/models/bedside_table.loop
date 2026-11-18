@@ -1,0 +1,21 @@
+# bedside_table · a bedside table: one drawer over an open shelf, in oak on short tapered legs
+# bedside_table(at, turn, wood) stands it on `at`, its front towards -z: 0.45 m wide, 0.38 m deep, 0.5 m tall.
+#
+# kind: model
+# place: bedside_table(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: bedside table, nightstand, bedroom, loft
+# size: chair
+# seeds: none, the same every time
+to bedside_table(at: vec(0, 0, 0), turn: 0, wood: "oak")
+  let g = group(at: at, turn: turn)
+    box size: vec(0.45, 0.36, 0.38), at: vec(0, 0.32, 0), material: wood, round: 0.008, steps: 2
+    box size: vec(0.41, 0.15, 0.36), at: vec(0, 0.23, -0.02), material: "black", collide: no
+    box size: vec(0.43, 0.15, 0.015), at: vec(0, 0.42, -0.193), material: wood, round: 0.004, collide: no
+    box size: vec(0.1, 0.012, 0.012), at: vec(0, 0.42, -0.205), material: "brass", collide: no
+    for each x in [-0.19, 0.19]
+      for each z in [-0.15, 0.15]
+        cylinder(radius: 0.014, height: 0.14, at: vec(x, 0.07, z), material: wood, sides: 10, collide: no)
+  return g

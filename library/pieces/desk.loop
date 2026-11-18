@@ -1,0 +1,20 @@
+# desk · a plain work desk: an oak top on black steel legs, a shallow drawer under one side
+# desk(at, turn, length, wood) stands it on `at`, the sitter's side towards -z: `length` (1.4 m), 0.7 m deep, its top 0.74 m up.
+#
+# kind: piece
+# place: desk(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: desk, table, work, study, office, loft
+# size: sofa
+# seeds: none, the same every time
+to desk(at: vec(0, 0, 0), turn: 0, length: 1.4, wood: "oak")
+  let g = group(at: at, turn: turn)
+    box size: vec(length, 0.03, 0.7), at: vec(0, 0.725, 0), material: wood, round: 0.006
+    box size: vec(0.4, 0.07, 0.55), at: vec(length / 2 - 0.25, 0.675, 0.03), material: wood, round: 0.004, collide: no
+    box size: vec(0.1, 0.01, 0.012), at: vec(length / 2 - 0.25, 0.675, -0.25), material: "black", collide: no
+    for each x in [0 - length / 2 + 0.04, length / 2 - 0.04]
+      for each z in [-0.31, 0.31]
+        box size: vec(0.03, 0.71, 0.03), at: vec(x, 0.355, z), material: material(color: rgb(0.03, 0.03, 0.03), metal: 1, roughness: 0.5)
+  return g

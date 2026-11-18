@@ -1,0 +1,17 @@
+# toilet · a wall-hung toilet in white porcelain with its flush plate on the wall above
+# toilet(at, turn) hangs it with `at` the middle of its back on the floor against the wall, facing -z: 0.36 m wide, 0.54 m out.
+#
+# kind: model
+# place: toilet(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: toilet, wc, bathroom, loft
+# size: chair
+# seeds: none, the same every time
+to toilet(at: vec(0, 0, 0), turn: 0)
+  let g = group(at: at, turn: turn)
+    box size: vec(0.36, 0.3, 0.5), at: vec(0, 0.36, -0.25), material: "porcelain", round: 0.08, steps: 3
+    box size: vec(0.37, 0.02, 0.48), at: vec(0, 0.52, -0.255), material: "porcelain", round: 0.009, collide: no
+    box size: vec(0.25, 0.16, 0.012), at: vec(0, 1.05, -0.006), material: "chrome", round: 0.004, collide: no
+  return g

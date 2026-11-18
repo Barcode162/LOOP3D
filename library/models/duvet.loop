@@ -1,0 +1,23 @@
+# duvet · a duvet on a bed, thick and rumpled, turned back at the head, its edges hanging over the sides
+# duvet(at, width, length, cover, seed) lays it with `at` the middle of the mattress top where it starts: it covers
+# `length` (1.6 m) towards -z and `width` (2.0 m) across, hanging 0.25 m down each side.
+#
+# kind: model
+# place: duvet(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: duvet, bedding, quilt, bed, bedroom, loft
+# size: sofa
+# seeds: any whole number
+to duvet(at: vec(0, 0, 0), width: 2.0, length: 1.6, cover: material(like: "linen", color: rgb(0.86, 0.84, 0.8)), seed: 1)
+  let g = group(at: at)
+    box size: vec(width - 0.1, 0.09, length), at: vec(0, 0.045, 0 - length / 2), material: cover, round: 0.04, steps: 3, collide: no
+    for each s in [-1, 1]
+      box size: vec(0.05, 0.28, length - 0.05), at: vec(s * (width / 2 - 0.03), -0.1, 0 - length / 2), rotation: vec(0, 0, s * -6 deg), material: cover, round: 0.022, steps: 2, collide: no
+    box size: vec(width - 0.1, 0.28, 0.05), at: vec(0, -0.1, 0 - length + 0.01), tilt: -6 deg, material: cover, round: 0.022, steps: 2, collide: no
+    # the turned-back fold at the head and a few soft rucks across it
+    box size: vec(width - 0.12, 0.08, 0.32), at: vec(0, 0.12, -0.18), tilt: 4 deg, material: cover, round: 0.04, steps: 3, collide: no
+    for each i in range(0, 4, 1)
+      sphere(radius: 0.3, at: vec(noise(seed, i, 0.2) * width * 0.35, 0.085, 0 - 0.5 - i * 0.28), scale: vec(1.2, 0.07, 0.5), turn: noise(seed, i, 0.7), material: cover, sides: 16, collide: no)
+  return g

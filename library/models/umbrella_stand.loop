@@ -1,0 +1,18 @@
+# umbrella_stand · a tall steel umbrella stand with two umbrellas in it
+# umbrella_stand(at) stands it on `at`: 0.5 m tall, the umbrellas to 0.9 m.
+#
+# kind: model
+# place: umbrella_stand(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: umbrella, stand, entry, hall, loft
+# size: hand
+# seeds: none, the same every time
+to umbrella_stand(at: vec(0, 0, 0))
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.1, 0), vec(0.1, 0.5), vec(0.095, 0.5), vec(0.095, 0.01), vec(0, 0.01)], segments: 28, material: material(color: rgb(0.06, 0.06, 0.06), metal: 1, roughness: 0.4), collide: no)
+    for each u in [vec(-0.03, 0.12, 0.1), vec(0.035, -0.1, -0.08)]
+      cone(radius: 0.05, height: 0.6, at: vec(u.x, 0.35, 0), rotation: vec(0, u.y, u.z), material: material(like: "fabric", color: (rgb(0.05, 0.08, 0.15) if u.x < 0 else rgb(0.5, 0.08, 0.06))), sides: 10, collide: no)
+      cylinder(radius: 0.006, height: 0.3, at: vec(u.x + u.z * 0.6, 0.78, 0 - u.y * 0.6), rotation: vec(0, u.y, u.z), material: "black", sides: 6, collide: no)
+  return g

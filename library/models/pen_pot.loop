@@ -1,0 +1,20 @@
+# pen_pot · a pot of pens and pencils, a ruler among them
+# pen_pot(at) stands it on `at`: 0.1 m tall.
+#
+# kind: model
+# place: pen_pot(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: pens, pencils, pot, desk, work, loft
+# size: hand
+# seeds: none, the same every time
+to pen_pot(at: vec(0, 0, 0))
+  let colors = [rgb(0.1, 0.1, 0.1), rgb(0.85, 0.65, 0.1), rgb(0.1, 0.2, 0.5), rgb(0.6, 0.1, 0.08), rgb(0.85, 0.65, 0.1)]
+  let g = group(at: at)
+    lathe(profile: [vec(0, 0), vec(0.035, 0), vec(0.036, 0.1), vec(0.032, 0.1), vec(0.031, 0.006), vec(0, 0.006)], segments: 20, material: "concrete", collide: no)
+    for each i in range(0, 5, 1)
+      let a = i * 72 deg
+      cylinder(radius: 0.004, height: 0.15, at: vec(cos(a) * 0.015, 0.09, sin(a) * 0.015), rotation: vec(a, 0.12, 0), material: material(color: colors[i], roughness: 0.5), sides: 6, collide: no)
+    box size: vec(0.025, 0.2, 0.002), at: vec(0, 0.11, 0), rotation: vec(0, 0, -6 deg), material: "aluminium", collide: no
+  return g

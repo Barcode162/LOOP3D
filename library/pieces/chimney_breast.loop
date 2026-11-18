@@ -1,0 +1,16 @@
+# chimney_breast · a brick chimney breast standing proud of a wall from a fireplace's mantel up to the ceiling
+# chimney_breast(at, width, bottom, to_height, depth, brick) stands it with `at` the middle of its foot against the wall (the
+# wall at +z), its face towards -z: `width` (1.8 m), from `bottom` (1.45 m) up to `to_height` (6 m), `depth` (0.3 m) proud.
+#
+# kind: piece
+# place: chimney_breast(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-18)
+# tags: chimney, chimney breast, fireplace, brick, wall, loft
+# size: room
+# seeds: none, the same every time
+to chimney_breast(at: vec(0, 0, 0), turn: 0, width: 1.8, bottom: 1.45, to_height: 6, depth: 0.3, brick: "brick")
+  let g = group(at: at, turn: turn)
+    box size: vec(width, to_height - bottom, depth), at: vec(0, bottom + (to_height - bottom) / 2, 0 - depth / 2), material: brick
+  return g
