@@ -1,6 +1,8 @@
 // The live renderer: its rays part (see renderer_internal.h).
 #include "engine/gpu/renderer_internal.h"
 
+#include "engine/anim/skin.h"
+
 namespace loop::gpu::impl {
 
 NodeU GpuRenderer::packNode(const AABB& box, uint32_t first, uint32_t count) {
@@ -38,7 +40,17 @@ void GpuRenderer::emptyRayScene() {
 void GpuRenderer::buildRayMeshes(const Scene& scene) {
   if (meshRoot_.size() >= scene.meshes.size()) return;
   for (size_t mi = meshRoot_.size(); mi < scene.meshes.size(); ++mi) {
-    const Mesh& m = scene.meshes[mi];
+    // a skin is traced as it stood when its rays were built (the GPU bends what is drawn)
+    Mesh bentMesh;
+    const Mesh* src = &scene.meshes[mi];
+    if (!src->pulls.empty())
+      for (const MeshInstance& in : scene.instances)
+        if (in.mesh == static_cast<int>(mi) && in.bend >= 0 && in.bend < static_cast<int>(scene.bends.size())) {
+          anim::bend(*src, scene.bends[in.bend], bentMesh);
+          src = &bentMesh;
+          break;
+        }
+    const Mesh& m = *src;
     std::vector<Triangle> geo;
     std::vector<TriU> local;
     for (size_t i = 0; i + 2 < m.indices.size(); i += 3) {

@@ -1,8 +1,10 @@
 # An arm of three bones that bends with no gap: one skin, three poses.
-# What to look at: the same arm three times, straight, half bent and bent to a
-# right angle. The elbow and the wrist stay one smooth surface: no crack, no
-# fold poking through. Each point of the skin is pulled by the bones near it,
-# and near a joint by both of its bones at once.
+# What to look at: the same arm three times, straight, bending and bent to a
+# right angle. The middle one bends and straightens on its own, live: the
+# phone's graphics chip moves every point of its skin each frame. The elbow
+# and the wrist stay one smooth surface: no crack, no fold poking through.
+# Each point of the skin is pulled by the bones near it, and near a joint by
+# both of its bones at once.
 title "The arm"
 mode "game"
 
@@ -41,8 +43,13 @@ box size: vec(12, 7, 0.1), at: vec(0, 3.5, -2.5), material: "plaster"
 box size: vec(2.6, 0.84, 0.6), at: vec(0, 0.42, 0), material: "oak"
 
 arm(-0.85, 0, 0)
-arm(-0.1, 45 deg, 20 deg)
+let swinging = arm(-0.1, 45 deg, 20 deg)
 arm(0.65, 90 deg, 40 deg)
+
+# the middle arm bends and straightens every four seconds, the hand following a moment later
+every 0.01 s
+  pose swinging, "forearm", bend: 45 deg + 40 deg * wave(time(), 4)
+  pose swinging, "hand", bend: 20 deg + 30 deg * wave(time() - 0.35, 4)
 
 light(at: vec(-2, 3, 2.5), lumens: 3000, kelvin: 3000)
 light(at: vec(2.5, 2.5, 2), lumens: 1200, kelvin: 4500)

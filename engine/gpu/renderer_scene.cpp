@@ -16,6 +16,7 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
       meshes_.push_back(upload(scene.meshes[i], mk.get()));
     }
   }
+  makeSkins(scene);
   wantClusters(scene);
   // materials
   std::vector<MaterialU> mats(std::max<size_t>(1, scene.materials.size()));
@@ -59,6 +60,7 @@ void GpuRenderer::sync(const Scene& scene, bool geometryChanged, bool skyChanged
     skyBuilt_ = true;
   }
   syncTransforms(scene);
+  bendSkins(scene);
 }
 
 void GpuRenderer::syncLights(const Scene& scene) {
@@ -81,6 +83,7 @@ void GpuRenderer::reset() {
     if (m.ib) m.ib.Destroy();
   }
   meshes_.clear();
+  skins_.clear(), skinOf_.clear(), bentNow_.clear();
   meshRoot_.clear();
   meshBox_.clear();
   rayTrisCpu_.clear();
@@ -195,6 +198,7 @@ void GpuRenderer::stillAgain(size_t slots) {
 }
 
 void GpuRenderer::writeMotion() {
+  std::sort(bentNow_.begin(), bentNow_.end());
   std::sort(movedNow_.begin(), movedNow_.end());
   movedNow_.erase(std::unique(movedNow_.begin(), movedNow_.end()), movedNow_.end());
   auto write = [&](uint32_t slot, const Mat4& m) { queue_.WriteBuffer(backBuf_, static_cast<uint64_t>(slot) * sizeof(Mat4), &m, sizeof(Mat4)); };
@@ -202,9 +206,12 @@ void GpuRenderer::writeMotion() {
     if (!std::binary_search(movedNow_.begin(), movedNow_.end(), s) && s < drawnModel_.size()) write(s, Mat4{});  // stopped: still again
   for (uint32_t s : movedNow_) {
     if (s >= drawnModel_.size() || s >= instData_.size()) continue;
-    write(s, drawnModel_[s] * instData_[s].model.inverse());
+    Mat4 m = drawnModel_[s] * instData_[s].model.inverse();
+    if (std::binary_search(bentNow_.begin(), bentNow_.end(), s)) m.m[3][3] = 2;  // a skin bending (the frame blending's sign)
+    write(s, m);
     drawnModel_[s] = instData_[s].model;
   }
+  bentNow_.clear();
   movedBefore_.swap(movedNow_);
   movedNow_.clear();
 }
@@ -367,7 +374,9 @@ GpuMesh GpuRenderer::upload(const Mesh& m, const Marks* marks) {
     v.insert(v.end(), {m.positions[i].x, m.positions[i].y, m.positions[i].z, n.x, n.y, n.z, uv.x, uv.y, packedMarks(marks, i)});
   }
   GpuMesh g;
-  g.vb = buffer(std::max<size_t>(v.size() * 4, 16), wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst);
+  // a skin's points are bent into it on the GPU (renderer_skin.cpp)
+  const wgpu::BufferUsage bent = m.pulls.empty() ? wgpu::BufferUsage::None : wgpu::BufferUsage::Storage;
+  g.vb = buffer(std::max<size_t>(v.size() * 4, 16), wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst | bent);
   if (!v.empty()) queue_.WriteBuffer(g.vb, 0, v.data(), v.size() * 4);
   std::vector<uint32_t> idx = m.indices;
   if (idx.size() % 2) idx.push_back(idx.empty() ? 0 : idx.back());  // whole 4-byte words for the copy

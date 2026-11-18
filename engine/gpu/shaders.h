@@ -16,3 +16,4 @@
 #include "engine/gpu/shaders/taa.wgsl.h"
 #include "engine/gpu/shaders/hzb.wgsl.h"
 #include "engine/gpu/shaders/exposure.wgsl.h"
+#include "engine/gpu/shaders/skin.wgsl.h"

@@ -38,6 +38,8 @@ class Renderer {
   virtual void moveInstances(const Scene& scene, const std::vector<int>& ids, const std::vector<Mat4>& xfs) = 0;
   // Only lamps changed (brightness, colour, place): cheap.
   virtual void syncLights(const Scene& scene) = 0;
+  // A skin's bones moved (Scene::bends): bend its points again, on the GPU.
+  virtual void bendSkins(const Scene& scene) { (void)scene; }
   // Draws one frame with this camera and look; fade 0..1 (black..clear).
   // False when the frame was dropped (the GPU is still busy with older ones).
   virtual bool draw(const Camera& cam, const Look& look, float dt, float time, float fade) = 0;

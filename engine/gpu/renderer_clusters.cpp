@@ -39,6 +39,7 @@ void GpuRenderer::uploadClusters(const Scene& scene) {
       for (uint32_t k = 0; k < c.count * 3; ++k) idx.push_back(base + tree->indices[c.first + k]);
       clusters.push_back(u);
     }
+    if (!m.pulls.empty()) poolSkin(m, mi, base, *tree, clusters, info.back().clusterFirst);
   }
   auto send = [&](wgpu::Buffer& b, const void* data, size_t bytes) {
     if (b) b.Destroy();
@@ -57,6 +58,7 @@ void GpuRenderer::uploadClusters(const Scene& scene) {
   all[0] = static_cast<uint32_t>(all.size());
   all.insert(all.end(), idx.begin(), idx.end());
   all[1] = static_cast<uint32_t>(all.size());
+  poolClusterWord_ = all[1];
   const uint32_t* cw = reinterpret_cast<const uint32_t*>(clusters.data());
   all.insert(all.end(), cw, cw + clusters.size() * 16);
   send(poolVerts_, all.data(), all.size() * 4);
@@ -66,6 +68,7 @@ void GpuRenderer::uploadClusters(const Scene& scene) {
   meshClusterCount_.clear();
   for (const MeshInfoU& m : info) meshClusterCount_.push_back(m.clusterCount);
   bindGroupsDirty_ = true;
+  bendSkins(scene);  // the pool came with the skins at rest: bend them again
 }
 
 void GpuRenderer::wantClusters(const Scene& scene) {

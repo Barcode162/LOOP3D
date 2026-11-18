@@ -35,7 +35,7 @@ struct Player {
   std::unique_ptr<gpu::Renderer> renderer;
   std::unique_ptr<Vm> vm;
   std::unique_ptr<Stage> stage;
-  uint64_t seenVersion = ~0ull, seenTransforms = ~0ull, seenLights = ~0ull;
+  uint64_t seenVersion = ~0ull, seenTransforms = ~0ull, seenLights = ~0ull, seenBends = ~0ull;
   uint64_t lastPresented = 0;
   size_t seenMeshes = 0, seenInstances = 0, seenMaterials = 0, seenLightCount = 0;
   uint64_t skyKey = 0;
@@ -160,7 +160,7 @@ uint64_t skySignature(const Scene& s) {
 
 // The renderer has nothing of the world yet: send all of it on the next frame.
 void forgetSynced() {
-  g.seenVersion = ~0ull, g.seenTransforms = ~0ull, g.seenLights = ~0ull, g.seenMeshes = 0, g.seenInstances = 0, g.seenMaterials = 0, g.seenLightCount = 0;
+  g.seenVersion = ~0ull, g.seenTransforms = ~0ull, g.seenLights = ~0ull, g.seenBends = ~0ull, g.seenMeshes = 0, g.seenInstances = 0, g.seenMaterials = 0, g.seenLightCount = 0;
   g.skyKey = 0;
 }
 
@@ -365,12 +365,17 @@ void syncScene() {
     g.seenVersion = s.version;
     g.seenTransforms = s.transformsVersion;
     g.seenLights = s.lightsVersion;
+    g.seenBends = s.bendsVersion;
     s.takeMoves(1, g.movedIds, g.movedXfs);  // the whole world was just read, as it is
     return;
   }
   if (s.lightsVersion != g.seenLights) {
     g.renderer->syncLights(s.scene);
     g.seenLights = s.lightsVersion;
+  }
+  if (s.bendsVersion != g.seenBends) {
+    g.renderer->bendSkins(s.scene);
+    g.seenBends = s.bendsVersion;
   }
   // only what moved, drawn between the clock's last two steps
   s.takeMoves(g.alpha, g.movedIds, g.movedXfs);

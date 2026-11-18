@@ -195,6 +195,7 @@ struct Stage {
   uint64_t version = 0;         // bumps on any change (the live renderer re-reads)
   uint64_t transformsVersion = 0;  // only placements moved
   uint64_t lightsVersion = 0;      // only lamps changed
+  uint64_t bendsVersion = 0;       // only skins' bones moved (Scene::bends)
   std::string title = "Untitled";
   std::string mode = "game";    // "game" or "movie"
   // For the page: lines to show, questions to ask, the next scene to load.

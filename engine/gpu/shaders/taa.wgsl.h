@@ -94,7 +94,14 @@ fn histSharp(uv : vec2f) -> vec3f {
   // a thing that moved: where this point of it was last frame (still things and the sky stay)
   let id = textureLoad(seen, k, 0).x;
   var was = wp;
-  if (id > 0u) { was = back[id - 1u] * wp; }
+  // a skin bending (its corner w is 2): its points moved each their own way, so
+  // its past is read where it is and the fresh sample counts more (no smear)
+  var bending = false;
+  if (id > 0u) {
+    let b = back[id - 1u];
+    bending = b[3].w > 1.5;
+    if (!bending) { was = b * wp; }
+  }
   let prev = tu.prevViewProj * was;
   let now = tu.curViewProj * wp;
   let motion = vec2f(prev.x / prev.w - now.x / now.w, now.y / now.w - prev.y / prev.w) * 0.5;
@@ -103,7 +110,8 @@ fn histSharp(uv : vec2f) -> vec3f {
   let h = tame(histSharp(puv));
   let kept = fromYCoCg(clamp(toYCoCg(h), lo3, hi3));
   // the fresh sample counts by how near it landed (a sample half a drawn pixel away: about half)
-  let weight = tu.full.z * exp(-2.8 * dot(d, d));
+  var weight = tu.full.z * exp(-2.8 * dot(d, d));
+  if (bending) { weight = max(weight, 0.6); }
   return vec4f(untame(mix(kept, c, weight)), 1.0);
 }
 )";

@@ -29,11 +29,17 @@ phase is done when its "done when" is true on the phone.
 - **Goal 7 done (2026-11-15), T-S1:** an arm of three bones bends with no gap, in film: a mesh's points follow
   bones (`engine/anim/skin.*`), the words `skin` and `pose`, the scene "The arm". Live skinning is not built: on
   the phone a skin shows at rest.
+- **Goal 8 done (2026-11-18), T-S3:** the same arm bends live on the phone: the graphics chip bends a skin's points
+  each time its bones move (`engine/gpu/renderer_skin.cpp`, `shaders/skin.wgsl.h`), into what every pass draws;
+  its clusters at full detail with their spheres refit round the bones; its shadows drawn fresh while it bends;
+  frame blending leans on the fresh picture where a skin bends (no smear). Open: rays (Ultra, lamp ray shadows)
+  see a skin as it stood when they were built; per-point motion for frame blending; bones stepped with the
+  script's clock, not drawn between its steps.
 - **Not started:** T-E1 (the editable mesh: no shape can be edited by its points yet). Its claim in `work/claims/`
   still says "working" from the first chat; nothing was built, and the next chat that takes it re-claims it.
 - **Not done either:** the Loop3D Workshop dashboard does not exist as a page yet; the 12 picture tests were not
   run for this deploy (the renderer did not change).
-*Next goal when work resumes:* goal 8, the same arm bending live on the phone (live skinning, T-S3; needs the renderer's files free).
+*Next goal when work resumes:* T-E1, the editable mesh (the first step toward Shape on the Studio's bench), or a skin's bones keyed in a clip so the editor can animate it.
 
 ## Now · The Loft (your word, 2026-11-10: the top priority)
 *Your words:* the Loft, that entire project and everything in it, is the top priority.

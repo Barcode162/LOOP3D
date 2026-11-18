@@ -81,7 +81,7 @@ void Stage::bendSkin(int i) {
   Skinned& k = skinned[i];
   const anim::Skeleton& sk = skeletons[k.skeleton];
   scene.bends[i] = anim::bendMatrices(k.meshToWorld, anim::Pose::rest(sk).world(sk, k.root), k.pose.world(sk, k.root));
-  ++version;
+  ++bendsVersion;  // the live renderer bends it again, nothing else is read again
 }
 
 void Stage::seekClip(int ci, double moment) {

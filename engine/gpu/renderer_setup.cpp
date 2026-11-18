@@ -437,6 +437,16 @@ void GpuRenderer::buildPipelines() {
     countPipe_ = device_.CreateComputePipeline(&cd);
     cd.compute.entryPoint = "pack";
     packPipe_ = device_.CreateComputePipeline(&cd);
+    // live skinning (renderer_skin.cpp): made once, its bind groups kept by each skin
+    if (!skinPipe_) {
+      const auto C = wgpu::ShaderStage::Compute;
+      skinLayout_ = layout({ubo(0, C), ssbo(1, C), ssbo(2, C), ssbo(3, C, true)});
+      wgpu::ComputePipelineDescriptor sd;
+      sd.layout = pipeLayout({skinLayout_}, "skin");
+      sd.compute.module = module(kSkinWgsl, "skin");
+      sd.compute.entryPoint = "bend";
+      skinPipe_ = device_.CreateComputePipeline(&sd);
+    }
     // frame blending
     wgpu::BindGroupLayoutEntry seen = tex(5, F);  // the visibility picture: which copy each pixel shows
     seen.texture.sampleType = wgpu::TextureSampleType::Uint;

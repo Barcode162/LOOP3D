@@ -368,6 +368,40 @@ class GpuRenderer final : public Renderer {
   };
   wgpu::Buffer poolVerts_, poolIdx_, poolClusters_, poolMeshes_;
   size_t pooledMeshes_ = 0, poolClusterCount_ = 0;
+  // ---- live skinning (T-S3; engine/gpu/renderer_skin.cpp): each mesh that
+  // carries pulls (a skin) keeps its rest points and their bones on the GPU,
+  // and a compute pass bends them into its own vertex buffer and its stretch
+  // of the cluster pool whenever its bones move, so every pass that reads
+  // vertices (the eye, shadows, the clusters) draws it bent. Its clusters are
+  // drawn at full detail, their spheres refit round the bones each bend, and
+  // its copies count as movers while it bends.
+  struct GpuSkin {
+    int mesh = -1, bend = -1;               // its mesh, and its bones in Scene::bends
+    uint32_t points = 0;
+    wgpu::Buffer rest, bones, uMesh, uPool;
+    wgpu::BindGroup gMesh, gPool;
+    size_t bonesCap = 0;
+    std::vector<uint16_t> used;             // the bones that pull some point
+    AABB restBox;
+    std::vector<int> instances;             // the scene's copies of it
+    std::vector<Mat4> sent;                 // the bones it was last bent by
+    bool dirty = true;
+    // in the cluster pool (none until the pool is made)
+    bool pooled = false;
+    uint32_t poolBase = 0, clusterFirst = 0;
+    std::vector<ClusterU> clusters;          // its clusters as sent, refit each bend
+    std::vector<std::vector<uint16_t>> clusterBones;
+  };
+  std::vector<GpuSkin> skins_;
+  std::vector<uint32_t> bentNow_;           // slots whose skin bent since the last frame drawn
+  std::vector<int> skinOf_;                 // mesh -> its skin (-1: none)
+  wgpu::ComputePipeline skinPipe_;
+  wgpu::BindGroupLayout skinLayout_;
+  void makeSkins(const Scene& scene);       // a skin for every new mesh with pulls
+  void bendSkins(const Scene& scene) override;
+  // Sets a pooled skin's clusters to full detail and keeps what a refit needs.
+  void poolSkin(const Mesh& m, size_t mesh, uint32_t vertexBase, const ClusterTree& tree, std::vector<ClusterU>& clusters, uint32_t first);
+  uint32_t poolClusterWord_ = 0;            // where the clusters start in the pool (in 4-byte numbers)
   // Cooks every mesh (the cook keeps each tree, so only new shapes cost) and
   // sends the pools again: shapes change only when a scene is built.
   void uploadClusters(const Scene& scene);

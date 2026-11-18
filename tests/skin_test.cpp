@@ -223,3 +223,22 @@ TEST(skin_the_arm_sample_reads_and_bends) {
   CHECK(run->stage.skinned.size() == 3);
   CHECK(run->stage.scene.bends.size() == 3);
 }
+
+// Live skinning (T-S3): a pose while the scene runs moves only the bones, so
+// the live player bends the skin again on the GPU and reads nothing else again.
+TEST(skin_a_pose_while_running_moves_only_the_bones) {
+  std::ifstream f("projects/samples/arm.loop");
+  std::stringstream text;
+  text << f.rdbuf();
+  auto run = looptest::runScene(text.str());
+  CHECK(run->ok && run->stage.scene.bends.size() == 3);
+  if (run->stage.scene.bends.size() != 3) return;
+  const uint64_t version = run->stage.version, bends = run->stage.bendsVersion;
+  const std::vector<Mat4> before = run->stage.scene.bends[1];
+  for (int i = 0; i < 60; ++i) run->vm.update(1.0 / 60);
+  CHECK(run->stage.version == version);  // the world is not read again
+  CHECK(run->stage.bendsVersion > bends);
+  // the middle arm swings; the other two hold
+  const Vec3 tip = run->stage.scene.bends[1][1].point({-0.1f, 1.46f, 0}), was = before[1].point({-0.1f, 1.46f, 0});
+  CHECK(length(tip - was) > 0.01f);
+}
