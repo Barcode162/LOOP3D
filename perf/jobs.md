@@ -70,3 +70,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | M31 | S | asset-smith | 24 | 6 | 2026-11-18 |
 | MREV | S | lead | 10 | 2 | 2026-11-18 |
 | T-E1 | M | lead | 7 | -384 | 2026-11-18 |
+| T-E2 | S | builder | 90 | 21 | 2026-11-18 |

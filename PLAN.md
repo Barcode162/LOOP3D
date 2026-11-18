@@ -42,7 +42,8 @@ phase is done when its "done when" is true on the phone.
   that keep a shape whole, smoothing with creases, a text form. Nothing in the editor uses it yet.
 - **Not done either:** the Loop3D Workshop dashboard does not exist as a page yet; the 12 picture tests were not
   run for this deploy (the renderer did not change).
-*Next goal when work resumes:* the first Shape tool on the Studio's bench on top of T-E1 (its cards are cut now, docs/STUDIO.md section 5), or a skin's bones keyed in a clip so the editor can animate it.
+- **Goal 18 done (2026-11-18), T-E2:** open a box and pull a corner (the word `pull` under a box; the Shape bench's dots).
+*Next goal when work resumes:* goal 19 on the Shape bench (extrude, inset, bevel, loop cut; one tool a card), or a skin's bones keyed in a clip so the editor can animate it.
 
 ## Now · The Loft (your word, 2026-11-10: the top priority)
 *Your words:* the Loft, that entire project and everything in it, is the top priority.
