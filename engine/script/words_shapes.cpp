@@ -26,7 +26,7 @@ void registerShapes(Vm& vm) {
     auto recipe = [&] { return r > 0 ? shapes::roundedBox(sz, r, steps) : shapes::box(sz); };
     int m;
     if (const Value* block = a.get(-1, "of")) {
-      // the lines indented under the box are its hand edits (`pull`), done in order on the recipe's points
+      // the lines indented under the box are its hand edits (`pull`, `extrude`), done in order on the recipe's points
       shapeedit::Shape shape = shapeedit::open(recipe());
       PullScope scope(&shape);
       a.vm.call(*block, {});
@@ -42,7 +42,7 @@ void registerShapes(Vm& vm) {
       m = cachedMesh(st, key, recipe);
     }
     return place(a, m, 'b', sz);
-  }, "box(size: vec(w, h, d), at, turn, material, round, steps) with lines under it: its hand edits, done in order (pull)");
+  }, "box(size: vec(w, h, d), at, turn, material, round, steps) with lines under it: its hand edits, done in order (pull, extrude)");
   vm.native("pull", [](Args& a) {
     if (!gPulling) a.vm.fail("a pull goes under the shape it pulls: write it indented under the box line");
     uint32_t point = static_cast<uint32_t>(a.num(0, "point", 0));
@@ -51,6 +51,16 @@ void registerShapes(Vm& vm) {
     if (!why.empty()) a.vm.fail("pull: " + why, "a box has 8 points; the Studio's Shape bench shows which is which");
     return Value();
   }, "pull(point: 3, by: vec(x, y, z)): under a box, moves one of its points by that much (the Studio writes these lines when you drag a point)");
+  vm.native("extrude", [](Args& a) {
+    if (!gPulling) a.vm.fail("an extrude goes under the shape it changes: write it indented under the box line");
+    shapeedit::Step step;
+    step.kind = shapeedit::Step::Extrude;
+    step.face = static_cast<uint32_t>(a.num(0, "face", 0));
+    step.out = shapeedit::tidy(f32(a.num(1, "by", 0)));
+    std::string why = shapeedit::apply(*gPulling, step);
+    if (!why.empty()) a.vm.fail("extrude: " + why, "a box has 6 faces; the Studio's Shape bench shows which is which (Faces)");
+    return Value();
+  }, "extrude(face: 2, by: 0.3): under a box, pushes one of its faces out that far along the way it faces, with walls joining it to where it was (below 0 it goes in)");
   vm.native("sphere", [](Args& a) {
     float r = f32(a.num(0, "radius", a.num(-1, "size", 1) * 0.5));
     return place(a, cachedMesh(stageOf(a.vm), keyOf("sphere", {r}), [&] { return shapes::sphere(r, 96, 48); }), 's', Vec3(r));

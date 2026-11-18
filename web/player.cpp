@@ -1084,6 +1084,9 @@ struct ShapeGrab {
   uint32_t point = 0;
   Vec3 start{0};
   int liveMesh = -1;
+  uint32_t face = 0;  // or a face being extruded: the shape before it, and how far out it is now
+  EditMesh before;
+  float out = 0;
 };
 ShapeGrab gGrab;
 
@@ -1113,6 +1116,17 @@ const char* shapeJson(int placed, const shapeedit::Shape& sh) {
       e.push(Json(static_cast<int>(sh.now.points[h.from].name))), e.push(Json(static_cast<int>(sh.now.points[h.to].name)));
       edges.push(e);
     }
+  Json faces = Json::array();  // each face's middle and the way it faces, in the world (the Faces tool's arrows)
+  for (const EditMesh::Face& f : sh.now.faces) {
+    Vec3 mid, n;
+    if (!f.alive || !shapeedit::faceFrame(sh.now, f.name, mid, n)) continue;
+    const Vec3 a = w.point(mid), b = w.point(mid + n);
+    const float l = length(b - a);
+    Json e = Json::object();
+    e.set("name", Json(static_cast<int>(f.name))), e.set("at", vec3Json(a)), e.set("out", vec3Json(l > 0 ? (b - a) * (1.0f / l) : Vec3(0, 1, 0)));
+    faces.push(e);
+  }
+  o.set("faces", faces);
   o.set("points", pts), o.set("edges", edges), o.set("steps", Json(static_cast<int>(sh.steps.size())));
   out = o.dump();
   return out.c_str();
@@ -1171,11 +1185,33 @@ EMSCRIPTEN_KEEPALIVE int loop_shape_grab(int index, int point) {
   return 1;
 }
 
-// The finger is at this place in the world: the grabbed point goes there (kept to a tenth of a millimetre,
+// A finger takes a face's arrow: the shape as it is now is what the extrude starts from.
+EMSCRIPTEN_KEEPALIVE int loop_shape_grab_face(int index, int face) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->placed.size())) return 0;
+  shapeedit::Shape* rec = shapeOf(index);
+  Vec3 mid, n;
+  if (!rec || !shapeedit::faceFrame(rec->now, static_cast<uint32_t>(face), mid, n)) return 0;
+  gGrab.placed = index, gGrab.point = 0, gGrab.face = static_cast<uint32_t>(face), gGrab.before = rec->now, gGrab.out = 0;
+  return 1;
+}
+
+// The finger is at this place in the world: the grabbed point goes there (or, for a face, the face goes out
+// as far as that place is along the way it faces) (kept to a tenth of a millimetre,
 // as its step will say it) and the shape is drawn again at once.
 EMSCRIPTEN_KEEPALIVE int loop_shape_drag(float x, float y, float z) {
   if (!g.stage || gGrab.placed < 0) return 0;
   shapeedit::Shape* rec = shapeOf(gGrab.placed);
+  if (rec && gGrab.face) {
+    Vec3 mid, n;
+    if (!shapeedit::faceFrame(gGrab.before, gGrab.face, mid, n)) return 0;
+    const float out = shapeedit::tidy(dot(worldOf(gGrab.placed).inverse().point(Vec3(x, y, z)) - mid, n));
+    if (out == gGrab.out) return 1;
+    gGrab.out = out;
+    rec->now = gGrab.before;
+    if (out != 0) shapeedit::extrude(rec->now, gGrab.face, out);
+    redrawShape(gGrab.placed, *rec);
+    return 1;
+  }
   const int i = rec ? rec->now.pointByName(gGrab.point) : -1;
   if (i < 0) return 0;
   const Vec3 local = worldOf(gGrab.placed).inverse().point(Vec3(x, y, z));
@@ -1186,13 +1222,25 @@ EMSCRIPTEN_KEEPALIVE int loop_shape_drag(float x, float y, float z) {
   return 1;
 }
 
-// The finger lets go: the step that makes this shape from its text, `pull point: 3, by: vec(...)`, or "" when
-// the point did not move. The shape keeps the step, so the next drag starts from here.
+// The finger lets go: the step that makes this shape from its text, `pull point: 3, by: vec(...)` or
+// `extrude face: 11, by: 0.3`, or "" when nothing moved. The shape keeps the step, so the next drag starts from here.
 EMSCRIPTEN_KEEPALIVE const char* loop_shape_drop() {
   static std::string out;
   out.clear();
   if (!g.stage || gGrab.placed < 0) return out.c_str();
   shapeedit::Shape* rec = shapeOf(gGrab.placed);
+  if (rec && gGrab.face) {
+    if (gGrab.out != 0) {
+      shapeedit::Step step;
+      step.kind = shapeedit::Step::Extrude, step.face = gGrab.face, step.out = gGrab.out;
+      rec->steps.push_back(step);
+      out = shapeedit::stepLine(step);
+    }
+    const int live = gGrab.liveMesh;
+    gGrab = ShapeGrab();
+    gGrab.liveMesh = live;
+    return out.c_str();
+  }
   const int i = rec ? rec->now.pointByName(gGrab.point) : -1;
   if (i >= 0) {
     const Vec3 by = shapeedit::tidy(rec->now.points[i].pos - gGrab.start);

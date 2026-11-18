@@ -1,0 +1,18 @@
+# Extrude a face: one box that grew an L by two extrudes.
+# What to look at: a walnut block on a floor. Its right side was pushed out 0.8 m, which grew a long low
+# block from it; then its top was pushed up 0.8 m, which grew a tower from the first block only (the top face
+# is the first block's top, so the new block beside it stays low). The two lines under the box are its hand
+# edits: the Studio writes a line like these when you drag a face's arrow with the Faces tool of its Shape bench.
+# A box's faces are 9 to 14: 9 its right side, 10 its left, 11 its top, 12 its bottom, 13 its front, 14 its back.
+title "Extrude a face"
+mode "game"
+
+box size: vec(8, 0.1, 6), at: vec(0, -0.05, 0), material: "floorboards"
+box size: vec(1, 1, 1), at: vec(-0.4, 0.5, 0), material: "walnut"
+  extrude face: 9, by: 0.8
+  extrude face: 11, by: 0.8
+
+light(at: vec(-2, 3.5, 2.5), lumens: 3000, kelvin: 3000)
+light(at: vec(2.5, 2.5, 2), lumens: 1200, kelvin: 4500)
+sky "color", color: rgb(0.02, 0.02, 0.03), nits: 3
+camera at: vec(3.4, 2.6, 4.4), look_at: vec(0.2, 0.75, 0), lens: 45 mm

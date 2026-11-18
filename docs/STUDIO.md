@@ -324,6 +324,21 @@ Done:   2026-11-18. A box opens with 8 points (1 to 8); `pull point: 3, by: vec(
         before; a rebuild from the text clears them. A box's collision shape stays the plain box.
 ```
 
+```
+T-E3 · Extrude one face (goal 19a)                                    hand: lead   size: S
+Do:     `extrude face: 11, by: 0.3` under a box: the face goes out along the way it faces (in, below 0), walls of
+        four-sided faces join it to where it was; new points and faces take the next names. The engine's hands:
+        each face's middle and way in loop_shape_open, loop_shape_grab_face, and the drag and drop the pulls use.
+        The Shape bench gets two tools, Points and Faces; Faces shows an arrow on each face that looks towards
+        you, and a drag along it writes the line (one undo step). The scene "Extrude a face" (an L from two).
+Done:   2026-11-18. tests/shape_edit_test.cpp: 3 tests (12 points and 10 faces, whole, smooths whole, the face
+        kept its name; text -> shape -> text the same, a later pull takes a point the extrude made; a missing
+        face refused by name). tools/editor_check.js, phone and computer: arrows on the faces that look towards
+        you, a held arrow grows the block, letting go writes one line, undo and redo, still there after a reload.
+Not:    more than one face at once, inset, bevel, loop cut (19b to 19d); a box's faces are named 9 to 14, not 1
+        to 6 (points and faces share one count, T-E1), so the bench may later show names on its arrows.
+```
+
 After wave 1 the helpers have what they need. The next cards are cut then (one tool, one brush, one rule or
 one reader a card), because their exact shape depends on what wave 1 proves.
 
