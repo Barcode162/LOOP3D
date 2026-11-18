@@ -59,7 +59,7 @@ fine and fits the phone budget. The library holds 51 entries, among them every p
 draft below the rubric) and the ten furniture drafts brought in from their work/L-* branches (armchair, bar stool,
 coffee table, dining chair and table, arc floor lamp, kitchen island and run, built-in shelves, modular sofa):
 they pass `loop library check` but nobody has looked at their pictures yet (working, not finished).
-*Next in order:* LOFT4, the stair lights itself (nothing missing). Still to build before the last two goals: M60
+*Done 2026-11-18:* LOFT4, the stair lights itself. *Next in order:* LOFT5, the bones (beams, columns, joists, brick, skirting, duct; all in the library). Still to build before the last two goals: M60
 (the glass as a mirror, for LOFT8), N4 and N6 (for LOFT9). Not published: the public player shows the Loft before
 goal 2.
 *Its two milestones* (`docs/ROADMAP.md`, the table): 3 **The Loft, empty and lit** (about 60 orders), then
