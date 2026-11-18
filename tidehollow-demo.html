@@ -20,6 +20,7 @@
   #hud-stam { height: 100%; width: 100%; background: #4a8c3f; }
   #btn-quests, #btn-sound, #btn-friends { pointer-events: auto; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; border-radius: 10px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
   #quests { position: absolute; top: 48px; left: 8px; background: #fdf3d8; color: #3a2a12; border: 2px solid #8a6d3b; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.7; z-index: 6; max-width: 240px; max-height: 60vh; overflow-y: auto; }
+  #journal-items { max-height: 55vh; overflow-y: auto; }
 
   /* inventory */
   #inv { position: absolute; left: 8px; bottom: 140px; display: flex; gap: 5px; flex-wrap: wrap; max-width: 55vw; z-index: 5; }
@@ -149,7 +150,7 @@
   </div></div>
 
   <div id="journal" class="overlay hidden"><div class="card">
-    <h2>📖 Field journal</h2><p>Fish and sea creatures you have caught — tap the 🐟 chip to come back here.</p>
+    <h2>📖 Field journal</h2><p>Fish and sea creatures you have caught, and the pages of the truth you have earned — tap the 🐟 chip to come back here.</p>
     <div id="journal-items"></div>
     <button class="close-btn" id="journal-close">Done</button>
   </div></div>
@@ -847,6 +848,19 @@ function memoryLines(npc) {
     return [{ text: "You gave me back the missing page. Eight years I looked for it. You're the first person this island has ever given something back to.", mood: 'happy' }];
   if (npc.id === 'bram' && h >= 6 && questIsDone('bram_fog'))
     return [{ text: "You listened to my log, and you believed me. Thirty years, and you're the first.", mood: 'happy' }];
+  // Phase 4a: the Acts 2-3 chain is remembered too, once the hearts are there
+  if (npc.id === 'june' && h >= 6 && questIsDone('a2_tithe'))
+    return [{ text: "The bell rang your name, and you did not run. Your grandfather would be proud — and frightened, the way I am.", mood: 'happy' }];
+  if (npc.id === 'finn' && h >= 6 && questIsDone('a3_finn'))
+    return [{ text: "Five whisper-fish, and you brought their names to me. Ebb is kept, not dead. I waited twelve years to hear that.", mood: 'happy' }];
+  if (npc.id === 'mia' && h >= 6 && questIsDone('a3_lighthouse'))
+    return [{ text: "The terms are a bill, and the bill is almost paid. One more Tithe — or one willing gift. That is what the page says.", mood: 'happy' }];
+  if (npc.id === 'rose' && h >= 6 && questIsDone('a3_rose'))
+    return [{ text: "Tomas spoke to you. 'Bring the bell to the light.' Forty years, and he finally spoke.", mood: 'happy' }];
+  if (npc.id === 'ash' && h >= 6 && questIsDone('a3_ash'))
+    return [{ text: "The bell-metal is in the forge. The Counter-Bell is nearly finished. When it rings back, the tide will finally have to listen.", mood: 'happy' }];
+  if (npc.id === 'sol' && h >= 6 && questIsDone('a3_coins'))
+    return [{ text: "The crate had your name on it all along. The island was expecting you, farmer. I have been carrying your welcome for a year.", mood: 'happy' }];
   if (h >= 3 && gift)
     return [{ text: memoryGiftLine(npc.id, gift), mood: 'happy' }];
   return [];
@@ -937,6 +951,12 @@ const REEF_SPOTS = [
 ];
 function reefSpotAt(tx, ty) { return REEF_SPOTS.find(s => s.tx === tx && s.ty === ty); }
 function reefSpotReady(s) { return s.gathered !== tideId(); }
+// the bell-metal (Act 3): a shard of black metal from the wreck, half
+// buried in the reef at (39,13). It only shows while the chain is at the
+// Ash step and the tide is low; diving for it is the first half of
+// Ash's Counter-Bell. Drawn with canvas strokes — there is no sprite
+// for wreck metal in the art.
+const BELLMETAL = { tx: 39, ty: 13, got: false };
 const NPC_LINES = {
   pip: [
     { text: "You're the new farmer! The scarecrow says hi. He always says hi. That's all he says.", mood: 'happy' },
@@ -998,6 +1018,21 @@ const QUESTS = [
   { id: 'mia_pages', text: 'Give Mia the pages', done: false },
   { id: 'bram_fog', text: 'Ask Bram about the fog', done: false },
   { id: 'bell',   text: 'Hear the Drowned Bell on day 7', done: false },
+  // Phase 4a — the story chains for Acts 2 and 3 (STORY.md), one step at
+  // a time, in order. Each step is a talk exchange, a ground ACT, or a
+  // catch. The truth pages are earned with the quests that reveal them
+  // (questDone maps them).
+  { id: 'a2_tithe',     text: 'Ask June what the bell meant', done: false },
+  { id: 'a2_scarecrow', text: 'Ask Pip about the scarecrow', done: false },
+  { id: 'a2_log',       text: 'Ask Bram about his ship\'s log', done: false },
+  { id: 'a2_pumpkins',  text: 'See the pumpkins in the festival field', done: false },
+  { id: 'a3_books',     text: 'Ask Mia about the shop\'s books', done: false },
+  { id: 'a3_coins',     text: 'Ask Sol about the 1887 coins', done: false },
+  { id: 'a3_lighthouse', text: 'Climb the lighthouse and take back the missing page', done: false },
+  { id: 'a3_whisper',   text: 'Catch the five whisper-fish with Finn', done: false },
+  { id: 'a3_finn',      text: 'Ask Finn what the whisper-fish mean', done: false },
+  { id: 'a3_ash',       text: 'Bring Ash the bell-metal from the reef', done: false },
+  { id: 'a3_rose',      text: 'Bake with Rose, and dream the dream', done: false },
   // Phase 3c — villager quests (12 more, one or two per villager). A quest
   // is either a delivery (hand the item to the giver in dialogue) or an
   // automatic one (the game notices when it happens). Rewards are coins
@@ -1016,6 +1051,35 @@ const QUESTS = [
   { id: 'rose_eggs', giver: 'rose', text: 'Bring Rose 2 eggs for baking', done: false, reward: 25, hearts: 2, deliver: { kind: 'egg', n: 2 } },
   { id: 'sol_truffle', giver: 'sol', text: 'Bring Sol a truffle', done: false, reward: 40, hearts: 2, deliver: { kind: 'animal', key: 'truffle', n: 1 } },
 ];
+// ---------- the story chain, Acts 2 and 3 (Phase 4a) ----------
+// STORY.md: eight villagers, eight pages of the truth, and the player is
+// the Ninth — the one who puts them together. A page is earned with the
+// quest that reveals it (questDone maps quest -> villager). June's page
+// was earned in Act 1, when the torn pages were found; Pip's page waits
+// for Act 4, when he leads the player to the tide caves. The journal
+// shows the pages earned and the ones still missing.
+const TRUTH_PAGES = {
+  june: { n: 1, title: "June's page — the Bargain", text: 'The island feeds its people, and every seven years the tide takes one. The Night of Empty Tables: forty people, gone mid-feast, and only a nine-year-old girl left to remember. The Tithe can be refused — but only by someone the island itself chose.' },
+  bram: { n: 2, title: "Bram's page — the log", text: 'The fog that wrecked the Merry Widow was called. Something sang the ship onto the rocks. The tide is not mindless — it chooses, it sings, it collects. The Bargain is a deal, and deals have loopholes.' },
+  finn: { n: 3, title: "Finn's page — the Kingfish", text: 'The Tithed are not dead. They are kept — in the tide caves, in the water, in the fish. The Tithe can be undone, if someone is willing to pay a different price.' },
+  mia:  { n: 4, title: "Mia's page — the missing page", text: 'Plenty, in exchange for one soul every seven years, until the debt is paid. And the debt is almost paid. One more Tithe — or one willing gift — ends it.' },
+  ash:  { n: 5, title: "Ash's page — the Counter-Bell", text: 'The Drowned Bell can be rung back. A summons can be answered. The tide can be spoken to, not just obeyed.' },
+  rose: { n: 6, title: "Rose's page — the dream", text: "'Bring the bell to the light.' The keepers of the light are the Tithed who chose to stay. There is always a choice, even at the end." },
+  sol:  { n: 7, title: "Sol's page — the crate", text: 'The mainland knows the island exists, and has been buying what the tide leaves behind. The last box has the player\'s name on it. The island was expecting the player.' },
+  pip:  { n: 8, title: "Pip's page — the tide caves", text: 'The way into the tide caves, where the Tithed are kept — and they are not suffering. They are waiting. The door, and how to open it.' },
+};
+// the chain, in order: Act 2 (summer) then Act 3 (autumn). The current
+// step is the first one not done; every exchange, ground ACT and catch in
+// the chain checks it, so the story can only be played in order. The
+// chain only moves while the act matches the season — in real play they
+// always agree (the act is derived from the season and the day), and
+// free play (year 2) keeps act at 5 while the seasons cycle, so it
+// always counts there.
+const STORY_CHAIN = ['a2_tithe', 'a2_scarecrow', 'a2_log', 'a2_pumpkins', 'a3_books', 'a3_coins', 'a3_lighthouse', 'a3_whisper', 'a3_finn', 'a3_ash', 'a3_rose'];
+function storyStep() {
+  if (!S.freePlay && actFor(S.season, S.day) !== S.act) return null;
+  return STORY_CHAIN.find(id => !questIsDone(id)) || null;
+}
 // the torn ledger pages (story chain): walk up, ACT to take
 const PAGES = [
   { tx: 1, ty: 20, found: false, frag: '…seven names, one for each year since the Bargain…' },
@@ -1292,6 +1356,10 @@ const OBJECTS = [
   { tx: 16, ty: 13, w: 1, h: 1, sprite: 'flower_pot_1' },
   { tx: 22, ty: 12, w: 1, h: 1, sprite: 'flower_pot_2' },
   { tx: 18, ty: 11, w: 1, h: 1, sprite: 'flower_pot_3' },
+  // the festival field's pumpkin patch, at the plaza's edge (15,13): in
+  // Act 2 the pumpkins grow overnight, each carved with a face nobody
+  // carved. Just a pumpkin patch until the chain reaches it.
+  { tx: 15, ty: 13, w: 1, h: 1, sprite: 'pumpkin' },
   // dock & beach (south-east)
   { tx: 30, ty: 23, w: 1, h: 1, sprite: 'fish_shop' },
   { tx: 36, ty: 27, w: 1, h: 1, sprite: 'boat', solid: false },
@@ -1425,6 +1493,9 @@ const S = {
   fishGame: null,
   harvested: 0, caught: 0,
   introDone: false, bellDone: false,
+  // story (Phase 4a): pages of the truth earned, whisper-fish caught (0-5),
+  // and whether the player is carrying the bell-metal for Ash
+  truth: {}, whisper: 0, bellMetal: false,
   joy: { active: false, id: null, dx: 0, dy: 0 },
   keys: {},
   msg: null, msgT: 0,
@@ -1446,6 +1517,7 @@ function saveGame() {
       crafted: S.crafted, buffs: S.buffs, giftsGiven: S.giftsGiven, maxStam: S.maxStam,
       hearts: S.hearts, talkedToday: S.talkedToday, giftMemory: S.giftMemory,
       animalProduce: S.animalProduce, animals: S.animals,
+      truth: S.truth, whisper: S.whisper, bellMetal: S.bellMetal, bellmetal: BELLMETAL.got,
     }));
   } catch (e) {}
 }
@@ -1495,14 +1567,23 @@ function loadGame() {
     S.giftMemory = d.giftMemory || {};
     S.animalProduce = { milk: 0, wool: 0, truffle: 0, ...((d.animalProduce) || {}) };
     S.animals = d.animals || {};
+    // Phase 4a: the truth pages, the whisper-fish count and the
+    // bell-metal — old saves merge to none, 0 and false. A save that
+    // finished the Act 1 pages chain but predates the truth system gets
+    // June's page back from the quest itself.
+    S.truth = d.truth || {};
+    S.whisper = d.whisper || 0;
+    S.bellMetal = !!d.bellMetal;
+    if (d.bellmetal) BELLMETAL.got = true;
     placeCraftedObjects();
-    // merge quests by id: an old save has 8, the new list has 12 — the 4
+    // merge quests by id: an old save has 8, the new list has 35 — the
     // story quests default to not-done, saved ones keep their state
     if (d.quests) S.quests = QUESTS.map(q => {
       const sv = d.quests.find(x => x.id === q.id);
       return sv ? { ...q, done: !!sv.done } : { ...q };
     });
     else S.quests = QUESTS.map(q => ({ ...q }));
+    if (S.quests.find(q => q.id === 'pages' && q.done)) S.truth.june = true;
     if (d.pages) d.pages.forEach((f, i) => { if (PAGES[i]) PAGES[i].found = !!f; });
     d.plots.forEach((p, i) => Object.assign(PLOTS[i], p));
     // a festival day gets its gathering and stall; any other day sends
@@ -1517,8 +1598,11 @@ function questDone(id) {
     q.done = true; showMsg('Quest done: ' + q.text + ' ✓'); sfx('coin'); renderQuests();
     // the story quests are a villager's chain: finishing one fills hearts
     // with the villager it belongs to (the pages are June's family story)
-    const hb = { pages: ['june', 2], mia_pages: ['mia', 2], bram_fog: ['bram', 2] }[id];
+    const hb = { pages: ['june', 2], mia_pages: ['mia', 2], bram_fog: ['bram', 2], a2_tithe: ['june', 2], a2_scarecrow: ['pip', 2], a2_log: ['bram', 2], a2_pumpkins: ['june', 2], a3_books: ['mia', 2], a3_coins: ['sol', 2], a3_lighthouse: ['mia', 2], a3_whisper: ['finn', 2], a3_finn: ['finn', 2], a3_ash: ['ash', 2], a3_rose: ['rose', 2] }[id];
     if (hb) addHearts(hb[0], hb[1]);
+    // the truth pages are earned with the quests that reveal them
+    const truthFor = { pages: 'june', a2_log: 'bram', a3_coins: 'sol', a3_lighthouse: 'mia', a3_finn: 'finn', a3_ash: 'ash', a3_rose: 'rose' }[id];
+    if (truthFor) S.truth[truthFor] = true;
     // villager quests (Phase 3c) pay coins and hearts with their giver
     if (q.reward) { S.coins += q.reward; S.earned += q.reward; }
     if (q.hearts && q.giver) addHearts(q.giver, q.hearts);
@@ -1701,6 +1785,13 @@ function nearTile(tx, ty) {
   const px = Math.floor(p.x / TILE), py = Math.floor(p.y / TILE);
   return Math.abs(px - tx) + Math.abs(py - ty) <= 1;
 }
+// next to the lighthouse door: within one tile of its 2x2 footprint
+// (35-36, 3-4) — the player can only ever stand beside it, never on it
+function nearLighthouse() {
+  const p = S.player;
+  const px = Math.floor(p.x / TILE), py = Math.floor(p.y / TILE);
+  return px >= 34 && px <= 37 && py >= 2 && py <= 5;
+}
 // where the player is fishing from: dock, beach (sand facing water), or
 // the reef (standing in the shallows at low tide, or on the reef bridge)
 function fishingPlace() {
@@ -1803,6 +1894,15 @@ function currentContext() {
   // torn ledger page in the facing tile or under the player
   const page = PAGES.find(pg => !pg.found && ((pg.tx === f.tx && pg.ty === f.ty) || (pg.tx === px && pg.ty === py)));
   if (page) return { kind: 'page', page, label: 'Pick up a torn page' };
+  // the story chain's ground steps (Phase 4a): each only fires when the
+  // chain is at that step — the carved pumpkins in the festival field,
+  // the lighthouse door, and the bell-metal on the reef at low tide
+  if (storyStep() === 'a2_pumpkins' && nearTile(15, 13))
+    return { kind: 'pumpkins', label: 'See the carved pumpkins' };
+  if (storyStep() === 'a3_lighthouse' && nearLighthouse())
+    return { kind: 'lighthouse', label: 'Climb the lighthouse' };
+  if (storyStep() === 'a3_ash' && !BELLMETAL.got && isLowTide() && nearTile(BELLMETAL.tx, BELLMETAL.ty))
+    return { kind: 'bellmetal', label: 'Take the bell-metal' };
   // plot in facing tile or under player
   const plot = plotAt(f.tx, f.ty) || plotAt(px, py);
   if (plot) {
@@ -1914,6 +2014,27 @@ function doAction() {
     triggerBounce();
     if (PAGES.every(pg => pg.found)) questDone('pages');
     showMsg('Torn page: ' + c.page.frag);
+  } else if (c.kind === 'pumpkins') {
+    // Act 2: the pumpkins grew overnight in the festival field, each one
+    // carved with a face nobody carved
+    openStoryCard('field', [
+      { text: "The pumpkins grew overnight in the festival field — each one carved with a face nobody carved. One of them looks like the miller's wife. She walked into the sea a hundred years ago, smiling, holding a loaf of bread.", mood: 'worried' },
+      { text: 'The field remembers the feast. Sixty-two years, and it still sets the table. You should tell June what you saw.', mood: 'neutral' },
+    ], () => questDone('a2_pumpkins'));
+  } else if (c.kind === 'lighthouse') {
+    // Act 3: the lighthouse door is unlocked for the first time — inside,
+    // the keeper's log, and the missing page of Mia's ledger
+    openStoryCard('lighthouse', [
+      { text: "The lighthouse door is unlocked — it has never been unlocked. Inside, the keeper's log, and the missing page of Mia's ledger, tucked between its leaves.", mood: 'worried' },
+      { text: "The terms, written as a bill: plenty, in exchange for one soul every seven years, until the debt is paid. And the debt is almost paid. One more Tithe — or one willing gift — ends it.", mood: 'neutral' },
+    ], () => questDone('a3_lighthouse'));
+  } else if (c.kind === 'bellmetal') {
+    // Act 3: the shard of black bell-metal from the wreck, on the reef
+    BELLMETAL.got = true; S.bellMetal = true;
+    sfx('pickup');
+    spawnParticles((BELLMETAL.tx + 0.5) * TILE, (BELLMETAL.ty + 0.5) * TILE, 'sparkle', 6);
+    showMsg('Bell-metal from the wreck — cold, black, and humming faintly. Take it to Ash.');
+    saveGame();
   } else if (c.kind === 'fish') {
     if (!spendStamina(8)) return;
     startFishing();
@@ -1949,6 +2070,77 @@ function closeOverlays() {
   }
 }
 
+// ---------- the story chain, Acts 2 and 3 (Phase 4a) ----------
+// Each step is a talk exchange with the villager who holds that part of
+// the story — some steps need the right act, an item in hand, or a catch
+// before the villager will say it. The ground ACTs (the pumpkins, the
+// lighthouse, the bell-metal) live in currentContext/doAct; the
+// whisper-fish live in fishStop.
+function storyExchange(npc) {
+  const step = storyStep();
+  if (!step) return null;
+  if (npc.id === 'june' && step === 'a2_tithe' && S.act >= 2) return { lines: [
+    { text: 'The bell rang your name. I heard it from the farmhouse, and I have not slept since. Sit down, farmer. It is time you learned the word.', mood: 'worried' },
+    { text: 'The word is Tithe. Every seven years, the tide takes one of us. This year it is due — and this time, the island chose someone who knows.', mood: 'worried' },
+    { text: "Your grandfather made the Bargain, and you are his blood. The island has been waiting for you. Don't be afraid of the bell — be ready for it.", mood: 'neutral' },
+  ], onDone: () => questDone('a2_tithe') };
+  if (npc.id === 'pip' && step === 'a2_scarecrow') return { lines: [
+    { text: 'The scarecrow moved! I saw it this morning — he was facing the farm, and now he is facing the sea! He only does that when the bell is thinking.', mood: 'happy' },
+    { text: 'The crow on his shoulder is facing the sea too. Crows know. Pip knows. You should know too, farmer.', mood: 'worried' },
+  ], onDone: () => questDone('a2_scarecrow') };
+  if (npc.id === 'bram' && step === 'a2_log') return { lines: [
+    { text: "You want to see my log? Nobody has asked in thirty years. Here — read it. The fog that wrecked me came out of a clear sky. Something sang my ship onto those rocks.", mood: 'worried' },
+    { text: 'The tide is not mindless, farmer. It chooses. It sings. It collects. And a Bargain is a deal — and deals have loopholes. Remember that.', mood: 'neutral' },
+  ], onDone: () => questDone('a2_log') };
+  if (npc.id === 'mia' && step === 'a3_books' && S.act >= 3) return { lines: [
+    { text: "The books balance — but only if I count the sea's column. 'Owed to the sea.' Forty years of debts, and my aunt never told me what they were for.", mood: 'worried' },
+    { text: 'Someone has been buying bread with coins from a ship that sank in 1887. Bread, every week, paid in dead men\'s coins. Find out who. Start with Sol — he buys everything.', mood: 'neutral' },
+  ], onDone: () => questDone('a3_books') };
+  if (npc.id === 'sol' && step === 'a3_coins') return { lines: [
+    { text: "The 1887 coins? Oh. Oh dear. All right — the crate. The one I can't sell. It is full of their things. The Tithed people's belongings, bought cheap on the mainland from a boat that drifted in with no crew.", mood: 'worried' },
+    { text: "The mainland knows this island exists, farmer. It has been buying what the tide leaves behind. And the last box in the crate — it has your name on it. It has always had your name on it.", mood: 'happy' },
+  ], onDone: () => questDone('a3_coins') };
+  if (npc.id === 'finn' && step === 'a3_finn') return { lines: [
+    { text: 'Five whisper-fish. You caught them, and they whispered names you almost knew. They swim with the Kingfish, and the Kingfish carries the memories of everyone the tide has taken.', mood: 'worried' },
+    { text: "Ebb is not dead, farmer. He is kept — in the tide caves, in the water, in the fish. The Tithe can be undone, if someone is willing to pay a different price. You are that someone. I know it now.", mood: 'happy' },
+  ], onDone: () => questDone('a3_finn') };
+  if (npc.id === 'ash' && step === 'a3_ash' && S.bellMetal) return { lines: [
+    { text: 'Bell-metal. Cold, black, humming. Yes — this is from the wreck. This is what the Counter-Bell has been waiting five years for.', mood: 'neutral' },
+    { text: 'The bell is nearly finished. It needs coal that has never been wet — and a memory, freely given, as fuel. But first, know this: the Drowned Bell can be rung back. A summons can be answered.', mood: 'worried' },
+  ], onDone: () => questDone('a3_ash') };
+  if (npc.id === 'rose' && step === 'a3_rose' && (S.dishes.bread || 0) > 0) return { lines: [
+    { text: 'A loaf of bread! Thank you, dear. Now — I bake with tidewater tonight, and you will eat, and you will dream. That is how the island talks to those it trusts.', mood: 'happy' },
+    { text: "You dreamed, didn't you? Tomas spoke. I can see it in your face. He said: 'Bring the bell to the light.' Forty years, and my husband finally spoke. The keepers of the light are the Tithed who chose to stay.", mood: 'worried' },
+  ], onDone: () => { S.dishes.bread--; questDone('a3_rose'); } };
+  return null;
+}
+// hints: when the chain is at a step that needs something — a loaf of
+// bread, the bell-metal, five night fish — the villager says so, so the
+// player is never stuck wondering what to do next
+function storyHints(npc) {
+  const step = storyStep();
+  if (!step) return [];
+  if (npc.id === 'rose' && step === 'a3_rose' && !(S.dishes.bread > 0))
+    return [{ text: 'Bring me a loaf of bread, and I will bake with tidewater tonight. Then you will dream — and remember.', mood: 'neutral' }];
+  if (npc.id === 'ash' && step === 'a3_ash' && !S.bellMetal)
+    return [{ text: "The Counter-Bell needs bell-metal from the wreck, on the reef at low tide. Dive for it, and bring it to me.", mood: 'neutral' }];
+  if (npc.id === 'finn' && step === 'a3_whisper')
+    return [{ text: "The whisper-fish swim with the Kingfish, and they only bite at night. Catch five, and bring them to me — I mean, tell me. They slip back into the water.", mood: 'neutral' }];
+  return [];
+}
+// a story card: a dialogue with a place, not a person — the festival
+// field's pumpkins, the lighthouse door. No hearts, no gift button.
+const STORY_CARDS = {
+  field: { id: 'field', name: 'The festival field', portrait: 'pumpkin', noGift: true },
+  lighthouse: { id: 'lighthouse', name: 'The Lighthouse', portrait: 'lighthouse', noGift: true },
+};
+function openStoryCard(cardId, lines, onDone) {
+  S.mode = 'dialogue';
+  S.dlg = { npc: STORY_CARDS[cardId], lines, idx: 0, onDone };
+  sfx('talk');
+  showDialogue();
+}
+
 // ---------- dialogue ----------
 function startDialogue(npc) {
   // talking to a villager once a day fills a heart — the friendship system
@@ -1973,6 +2165,14 @@ function startDialogue(npc) {
     ], idx: 0, onDone: () => questDone('bram_fog') };
     sfx('talk'); showDialogue(); return;
   }
+  // the Acts 2-3 story chain (Phase 4a): the exchange fires when the
+  // chain is at that villager's step, and only then
+  const se = storyExchange(npc);
+  if (se) {
+    S.mode = 'dialogue';
+    S.dlg = { npc, lines: se.lines, idx: 0, onDone: se.onDone };
+    sfx('talk'); showDialogue(); return;
+  }
   // a delivery quest for this villager, and the player has the goods:
   // hand them over when the thank-you dialogue closes (so walking away
   // mid-conversation never eats the items)
@@ -1986,8 +2186,9 @@ function startDialogue(npc) {
   }
   S.mode = 'dialogue';
   // villagers remember: a memory line leads when they have one, then the
-  // usual lines. On a festival day, the fair line leads everything.
-  S.dlg = { npc, lines: [...festivalLine(npc), ...memoryLines(npc), ...NPC_LINES[npc.id]], idx: 0 };
+  // usual lines. On a festival day, the fair line leads everything. A
+  // story hint follows, when the chain needs something from the player.
+  S.dlg = { npc, lines: [...festivalLine(npc), ...memoryLines(npc), ...storyHints(npc), ...NPC_LINES[npc.id]], idx: 0 };
   sfx('talk');
   showDialogue();
 }
@@ -2007,10 +2208,11 @@ function showDialogue() {
   $('dialogue').classList.remove('hidden');
   $('btn-act').textContent = '▶';
   // a gift to give? The gift button shows when the player holds anything
-  // giftable — a dish, a flower, a shell, or animal produce.
-  const hasGift = Object.keys(DISHES).some(k => S.dishes[k] > 0)
+  // giftable — a dish, a flower, a shell, or animal produce. A place
+  // (a story card) never gets one.
+  const hasGift = !d.npc.noGift && (Object.keys(DISHES).some(k => S.dishes[k] > 0)
     || S.forage.flower > 0 || S.forage.shell > 0 || S.eggs > 0
-    || Object.keys(S.animalProduce).some(k => S.animalProduce[k] > 0);
+    || Object.keys(S.animalProduce).some(k => S.animalProduce[k] > 0));
   $('dlg-gift').classList.toggle('hidden', !hasGift);
 }
 function advanceDialogue() {
@@ -2045,9 +2247,13 @@ function openGiftPicker(npc) {
       const r = giveGift(npc.id, key);
       if (r === false) return;
       $('gift').classList.add('hidden');
-      // the villager reacts — loved, liked, or politely cool
+      // the villager reacts — loved, liked, or politely cool. The
+      // conversation that was interrupted still finishes when this
+      // thank-you line closes: a gift given mid-dialogue must not
+      // silently drop a story or delivery quest.
+      const done = S.dlg && S.dlg.onDone;
       S.mode = 'dialogue';
-      S.dlg = { npc, lines: [{ text: giftReaction(npc, key, r), mood: r === 'disliked' ? 'worried' : 'happy' }], idx: 0 };
+      S.dlg = { npc, lines: [{ text: giftReaction(npc, key, r), mood: r === 'disliked' ? 'worried' : 'happy' }], idx: 0, onDone: done };
       showDialogue();
     };
     box.appendChild(b);
@@ -2251,6 +2457,20 @@ function openJournal() {
     row.innerHTML = `<img src="${SPRITES[sea.sprite]}"><span>${sea.name}</span><span>${S.seaCaught[k] ? '× ' + n + ' · ' + sea.sell + 'c' : 'not gathered yet'}</span>`;
     box.appendChild(row);
   });
+  // the pages of the truth (Phase 4a): one row per villager, in the
+  // order the story tells them — the page, or "not found yet"
+  const truthHead = document.createElement('div');
+  truthHead.style.cssText = 'font-weight:700;margin-top:10px';
+  truthHead.textContent = 'Pages of the truth';
+  box.appendChild(truthHead);
+  Object.keys(TRUTH_PAGES).forEach(id => {
+    const pg = TRUTH_PAGES[id];
+    const npc = NPCS.find(n => n.id === id);
+    const row = document.createElement('div');
+    row.className = 'pick-btn';
+    row.innerHTML = `<img src="${SPRITES[npc.portrait]}"><div style="flex:1;text-align:left">Page ${pg.n} — ${pg.title}<br><span style="color:#8a6d3b">${S.truth[id] ? pg.text : 'not found yet'}</span></div>`;
+    box.appendChild(row);
+  });
   $('journal').classList.remove('hidden');
 }
 $('journal-close').onclick = () => { sfx('click'); closeOverlays(); };
@@ -2387,6 +2607,24 @@ function fishStop() {
   S.mode = 'play';
   $('fishing').classList.add('hidden');
   if (!inZone) { showMsg('It got away…'); return; }
+  // the whisper-fish (Act 3): while the chain is at that step, every
+  // night catch is a whisper-fish — they swim with the Kingfish, and
+  // they only bite at night. Five of them, and Finn can tell the player
+  // what they mean. They whisper a name and slip back into the water:
+  // never caught in the journal, never taxed by the crab.
+  if (storyStep() === 'a3_whisper' && fishTimeOfDay(S.minutes) === 'night') {
+    S.whisper = (S.whisper || 0) + 1;
+    S.caught++; S.fishToday++;
+    sfx('bite'); sfx('catch');
+    spawnParticles(S.player.x, S.player.y - 10, 'splash');
+    triggerBounce();
+    checkAutoQuests();
+    showWhisperCatch();
+    if (S.whisper >= 5) questDone('a3_whisper');
+    questDone('fish');
+    renderHUD();
+    return;
+  }
   // the catch table follows the season, the place and the time of day
   const fish = pickFish(fishAvailable(S.season, g.place || 'dock', S.minutes));
   S.fishCaught[fish.name] = (S.fishCaught[fish.name] || 0) + 1;
@@ -2421,6 +2659,14 @@ function showFishCatch(fish, stolen, festNote) {
     ? `You caught a ${fish.name}! …but the crab snatched it and scuttled off. Pip is laughing. "Crab tax," he says, and hands you 5 coins.` + (festNote || '')
     : `You caught a ${fish.name}! Worth ${fish.sell} coins at the stall.` + (festNote || '');
   if (stolen) { S.coins += 5; S.earned += 5; }
+  $('catch').classList.remove('hidden');
+  S.mode = 'catch';
+}
+// a whisper-fish catch: the koi's sprite stands in for it (there is no
+// whisper-fish art — it slips back into the water before anyone sees it)
+function showWhisperCatch() {
+  $('catch-img').src = SPRITES.koi;
+  $('catch-text').textContent = 'You caught a whisper-fish! It whispers a name you almost know — and slips back into the water. (' + S.whisper + ' of 5)';
   $('catch').classList.remove('hidden');
   S.mode = 'catch';
 }
@@ -2985,6 +3231,12 @@ function render(dt) {
       drawH(SEA[s.creature].sprite, (s.tx + 0.5) * TILE, (s.ty + 0.5) * TILE + 12, 30);
     });
   }
+  // the bell-metal (Act 3): a shard of black metal from the wreck, on
+  // the reef at (39,13) — only while the chain is at the Ash step, the
+  // tide is low, and it has not been taken yet
+  if (isLowTide() && storyStep() === 'a3_ash' && !BELLMETAL.got) {
+    drawWreckMetal((BELLMETAL.tx + 0.5) * TILE, (BELLMETAL.ty + 0.5) * TILE + 12);
+  }
   // a withered plant: a few brown drooping stalks, drawn with the canvas
 // (there is no withered sprite in the art) — clearable by hand
 function drawWithered(cx, feetY) {
@@ -2995,6 +3247,17 @@ function drawWithered(cx, feetY) {
     ctx.quadraticCurveTo(cx + dx + lean, feetY - h * 0.6, cx + dx + lean * 2, feetY - h);
     ctx.stroke();
   }
+}
+// a shard of black bell-metal, half-buried: a dark shard with a pale
+// edge, drawn with the canvas (there is no wreck sprite in the art)
+function drawWreckMetal(cx, cy) {
+  ctx.save();
+  ctx.fillStyle = '#2e2e33';
+  ctx.beginPath();
+  ctx.moveTo(cx - 12, cy + 6); ctx.lineTo(cx - 4, cy - 10); ctx.lineTo(cx + 10, cy - 4); ctx.lineTo(cx + 6, cy + 8); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#8a8a9a'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - 4, cy - 10); ctx.lineTo(cx + 2, cy - 2); ctx.stroke();
+  ctx.restore();
 }
 // plots: tilled soil is a rounded brown blob, not a square tile image
   PLOTS.forEach(p => {
@@ -3256,7 +3519,7 @@ $('dialogue').addEventListener('click', () => { if (S.mode === 'dialogue') advan
 
 loadSprites().then(() => { showTitle(); render(); });
 // debug hook (harmless in production): lets tests and future debugging read state
-window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CAT, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, FLOATERS, CROPS, SEASONS, SEASON_GROUND, SPRITES, ACTS, FISH, SEA, TOOLS, REEF_SPOTS, DISHES, CRAFTS, ANIMAL_PRODUCE, ANIMAL_ITEM, GIFT_LIKES, FESTIVALS, FESTIVAL_SPOTS, QUESTS, actFor, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, spawnFloater, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx, questDone, seasonGround, nextSeason, cropInSeason, seasonTreeSprite, sleepNight, isLowTide, nextLowTide, tideId, fishingPlace, fishAvailable, fishWeight, pickFish, reefSpotAt, reefSpotReady, plotsInLine, startFishing, fishStop, toolTier, pushOffReef, cookDish, eatDish, craftItem, canCook, canCraft, ingHave, takeIng, giftDish, giveGift, giftValue, giftHave, giftName, hearts, addHearts, memoryLines, animalState, animalNear, animalEnt, interactAnimal, openFarmhouse, renderFarmhouse, openFriends, spendStamina, dayKey, forageAt, placeCraftedObjects, festivalFor, festivalToday, nextFestival, festivalKey, festivalDone, festivalGuessAnswer, setupFestivalDay, gatherFestival, ungatherFestival, placeFestivalTable, removeFestivalTable, deliveryQuestFor, checkAutoQuests, deliverHave, deliverTake, deliverName, questIsDone, festivalReward, openFestival, drawBunting };
+window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CAT, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, FLOATERS, CROPS, SEASONS, SEASON_GROUND, SPRITES, ACTS, FISH, SEA, TOOLS, REEF_SPOTS, DISHES, CRAFTS, ANIMAL_PRODUCE, ANIMAL_ITEM, GIFT_LIKES, FESTIVALS, FESTIVAL_SPOTS, QUESTS, TRUTH_PAGES, STORY_CHAIN, BELLMETAL, actFor, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, spawnFloater, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx, questDone, seasonGround, nextSeason, cropInSeason, seasonTreeSprite, sleepNight, isLowTide, nextLowTide, tideId, fishingPlace, fishAvailable, fishWeight, pickFish, reefSpotAt, reefSpotReady, plotsInLine, startFishing, fishStop, toolTier, pushOffReef, cookDish, eatDish, craftItem, canCook, canCraft, ingHave, takeIng, giftDish, giveGift, giftValue, giftHave, giftName, hearts, addHearts, memoryLines, animalState, animalNear, animalEnt, interactAnimal, openFarmhouse, renderFarmhouse, openFriends, openJournal, spendStamina, dayKey, forageAt, placeCraftedObjects, festivalFor, festivalToday, nextFestival, festivalKey, festivalDone, festivalGuessAnswer, setupFestivalDay, gatherFestival, ungatherFestival, placeFestivalTable, removeFestivalTable, deliveryQuestFor, checkAutoQuests, deliverHave, deliverTake, deliverName, questIsDone, festivalReward, openFestival, drawBunting, storyStep, storyExchange, storyHints, nearLighthouse };
 })();
 
 </script>
