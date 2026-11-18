@@ -74,6 +74,7 @@
   #bell .card h2 { color: #ffe9a8; }
   #yearend .card { text-align: center; }
   #yearend .stat { font-size: 16px; line-height: 1.9; }
+  #ending .card { text-align: center; }
   #title .card { text-align: center; background: linear-gradient(180deg, #fdf3d8, #f3e3b8); }
   #title h1 { margin: 0 0 4px; font-size: 34px; color: #2e6b2e; letter-spacing: 1px; }
   #title .sub { color: #7a4a12; font-weight: 700; margin-bottom: 10px; }
@@ -192,6 +193,12 @@
     </div>
     <button class="big-btn" id="yearend-continue">Keep playing — free play</button>
     <button class="big-btn secondary" id="yearend-new">Start a new year</button>
+  </div></div>
+
+  <div id="ending" class="overlay hidden"><div class="card">
+    <h2 id="end-title">Break the Bell</h2>
+    <p id="end-text"></p>
+    <button class="big-btn" id="ending-continue">Continue — free play</button>
   </div></div>
 
   <div id="title" class="overlay"><div class="card">
@@ -1033,6 +1040,17 @@ const QUESTS = [
   { id: 'a3_finn',      text: 'Ask Finn what the whisper-fish mean', done: false },
   { id: 'a3_ash',       text: 'Bring Ash the bell-metal from the reef', done: false },
   { id: 'a3_rose',      text: 'Bake with Rose, and dream the dream', done: false },
+  // Phase 4b — the story chains for Acts 4 and 5 (STORY.md). Act 4 is
+  // the Pale Tide: the Kingfish, the Loaf, the memory, the tide caves.
+  // Act 5 is the choice at the lighthouse, on the longest night.
+  { id: 'a4_pale',      text: 'Watch the Pale Tide come in with Finn', done: false },
+  { id: 'a4_kingfish',  text: 'Catch the Kingfish on the night of the Pale Tide', done: false },
+  { id: 'a4_loaf',      text: 'Bake the Loaf of Returning with Rose', done: false },
+  { id: 'a4_leave',     text: 'Leave the Loaf on the lighthouse step', done: false },
+  { id: 'a4_memory',    text: 'Give Ash a memory for the Counter-Bell', done: false },
+  { id: 'a4_caves',     text: 'Follow Pip to the tide caves at low tide', done: false },
+  { id: 'a4_ebb',       text: 'Tell Finn that Ebb is not angry', done: false },
+  { id: 'a5_bell',      text: 'Ring the Counter-Bell at the lighthouse', done: false },
   // Phase 3c — villager quests (12 more, one or two per villager). A quest
   // is either a delivery (hand the item to the giver in dialogue) or an
   // automatic one (the game notices when it happens). Rewards are coins
@@ -1068,14 +1086,14 @@ const TRUTH_PAGES = {
   sol:  { n: 7, title: "Sol's page — the crate", text: 'The mainland knows the island exists, and has been buying what the tide leaves behind. The last box has the player\'s name on it. The island was expecting the player.' },
   pip:  { n: 8, title: "Pip's page — the tide caves", text: 'The way into the tide caves, where the Tithed are kept — and they are not suffering. They are waiting. The door, and how to open it.' },
 };
-// the chain, in order: Act 2 (summer) then Act 3 (autumn). The current
-// step is the first one not done; every exchange, ground ACT and catch in
-// the chain checks it, so the story can only be played in order. The
-// chain only moves while the act matches the season — in real play they
-// always agree (the act is derived from the season and the day), and
-// free play (year 2) keeps act at 5 while the seasons cycle, so it
-// always counts there.
-const STORY_CHAIN = ['a2_tithe', 'a2_scarecrow', 'a2_log', 'a2_pumpkins', 'a3_books', 'a3_coins', 'a3_lighthouse', 'a3_whisper', 'a3_finn', 'a3_ash', 'a3_rose'];
+// the chain, in order: Act 2 (summer), Act 3 (autumn), Act 4 (late
+// autumn), Act 5 (winter). The current step is the first one not done;
+// every exchange, ground ACT and catch in the chain checks it, so the
+// story can only be played in order. The chain only moves while the act
+// matches the season — in real play they always agree (the act is derived
+// from the season and the day), and free play (year 2) keeps act at 5
+// while the seasons cycle, so it always counts there.
+const STORY_CHAIN = ['a2_tithe', 'a2_scarecrow', 'a2_log', 'a2_pumpkins', 'a3_books', 'a3_coins', 'a3_lighthouse', 'a3_whisper', 'a3_finn', 'a3_ash', 'a3_rose', 'a4_pale', 'a4_kingfish', 'a4_loaf', 'a4_leave', 'a4_memory', 'a4_caves', 'a4_ebb', 'a5_bell'];
 function storyStep() {
   if (!S.freePlay && actFor(S.season, S.day) !== S.act) return null;
   return STORY_CHAIN.find(id => !questIsDone(id)) || null;
@@ -1462,7 +1480,7 @@ const CAT = { tx: 5, ty: 18, x: 0, y: 0, wt: 0, bounds: { x0: 3, x1: 6, y0: 18, 
 
 // ---------- state ----------
 const S = {
-  mode: 'title', // title | play | dialogue | picker | shop | fishing | summary | bell | yearend
+  mode: 'title', // title | play | dialogue | picker | shop | fishing | summary | bell | yearend | ending
   day: 1, season: 'spring', minutes: 6 * 60, // 6:00, day of the season (1..28)
   year: 1, act: 1, freePlay: false, // the year runs 112 days; after year 1 the player is in free play
   festivals: {}, // festival results by "year-season" key, e.g. "1-spring"
@@ -1496,6 +1514,11 @@ const S = {
   // story (Phase 4a): pages of the truth earned, whisper-fish caught (0-5),
   // and whether the player is carrying the bell-metal for Ash
   truth: {}, whisper: 0, bellMetal: false,
+  // story (Phase 4b): the Loaf of Returning carried, the memory given to
+  // the Counter-Bell, the Kingfish's question answered, whether Pip has
+  // shown the way to the tide caves, and the ending chosen ('break',
+  // 'keep' or 'name' — null until the longest night)
+  loaf: false, memoryGiven: null, kingfishAsk: null, pipLed: false, ending: null,
   joy: { active: false, id: null, dx: 0, dy: 0 },
   keys: {},
   msg: null, msgT: 0,
@@ -1518,6 +1541,8 @@ function saveGame() {
       hearts: S.hearts, talkedToday: S.talkedToday, giftMemory: S.giftMemory,
       animalProduce: S.animalProduce, animals: S.animals,
       truth: S.truth, whisper: S.whisper, bellMetal: S.bellMetal, bellmetal: BELLMETAL.got,
+      loaf: S.loaf, memoryGiven: S.memoryGiven, kingfishAsk: S.kingfishAsk,
+      pipLed: S.pipLed, ending: S.ending,
     }));
   } catch (e) {}
 }
@@ -1575,6 +1600,13 @@ function loadGame() {
     S.whisper = d.whisper || 0;
     S.bellMetal = !!d.bellMetal;
     if (d.bellmetal) BELLMETAL.got = true;
+    // Phase 4b: the Loaf, the memory, the Kingfish's answer, Pip's lead
+    // and the ending — old saves merge to none, null and false
+    S.loaf = !!d.loaf;
+    S.memoryGiven = d.memoryGiven || null;
+    S.kingfishAsk = d.kingfishAsk || null;
+    S.pipLed = !!d.pipLed;
+    S.ending = d.ending || null;
     placeCraftedObjects();
     // merge quests by id: an old save has 8, the new list has 35 — the
     // story quests default to not-done, saved ones keep their state
@@ -1598,10 +1630,10 @@ function questDone(id) {
     q.done = true; showMsg('Quest done: ' + q.text + ' ✓'); sfx('coin'); renderQuests();
     // the story quests are a villager's chain: finishing one fills hearts
     // with the villager it belongs to (the pages are June's family story)
-    const hb = { pages: ['june', 2], mia_pages: ['mia', 2], bram_fog: ['bram', 2], a2_tithe: ['june', 2], a2_scarecrow: ['pip', 2], a2_log: ['bram', 2], a2_pumpkins: ['june', 2], a3_books: ['mia', 2], a3_coins: ['sol', 2], a3_lighthouse: ['mia', 2], a3_whisper: ['finn', 2], a3_finn: ['finn', 2], a3_ash: ['ash', 2], a3_rose: ['rose', 2] }[id];
+    const hb = { pages: ['june', 2], mia_pages: ['mia', 2], bram_fog: ['bram', 2], a2_tithe: ['june', 2], a2_scarecrow: ['pip', 2], a2_log: ['bram', 2], a2_pumpkins: ['june', 2], a3_books: ['mia', 2], a3_coins: ['sol', 2], a3_lighthouse: ['mia', 2], a3_whisper: ['finn', 2], a3_finn: ['finn', 2], a3_ash: ['ash', 2], a3_rose: ['rose', 2], a4_pale: ['finn', 2], a4_kingfish: ['finn', 2], a4_loaf: ['rose', 2], a4_leave: ['rose', 2], a4_memory: ['ash', 2], a4_caves: ['pip', 2], a4_ebb: ['finn', 2] }[id];
     if (hb) addHearts(hb[0], hb[1]);
     // the truth pages are earned with the quests that reveal them
-    const truthFor = { pages: 'june', a2_log: 'bram', a3_coins: 'sol', a3_lighthouse: 'mia', a3_finn: 'finn', a3_ash: 'ash', a3_rose: 'rose' }[id];
+    const truthFor = { pages: 'june', a2_log: 'bram', a3_coins: 'sol', a3_lighthouse: 'mia', a3_finn: 'finn', a3_ash: 'ash', a3_rose: 'rose', a4_caves: 'pip' }[id];
     if (truthFor) S.truth[truthFor] = true;
     // villager quests (Phase 3c) pay coins and hearts with their giver
     if (q.reward) { S.coins += q.reward; S.earned += q.reward; }
@@ -1903,6 +1935,16 @@ function currentContext() {
     return { kind: 'lighthouse', label: 'Climb the lighthouse' };
   if (storyStep() === 'a3_ash' && !BELLMETAL.got && isLowTide() && nearTile(BELLMETAL.tx, BELLMETAL.ty))
     return { kind: 'bellmetal', label: 'Take the bell-metal' };
+  // the story chain's ground steps (Phase 4b): leave the Loaf on the
+  // lighthouse step, enter the tide caves at low tide (only once Pip has
+  // shown the way), and ring the Counter-Bell at the lighthouse at night
+  // in Act 5 — the final step, and the choice
+  if (storyStep() === 'a4_leave' && S.loaf && nearLighthouse())
+    return { kind: 'leaveloaf', label: 'Leave the Loaf on the step' };
+  if (storyStep() === 'a4_caves' && S.pipLed && isLowTide() && nearTile(31, 3))
+    return { kind: 'caves', label: 'Enter the tide caves' };
+  if (storyStep() === 'a5_bell' && (S.act === 5 || S.freePlay) && nearLighthouse() && S.minutes >= 21 * 60)
+    return { kind: 'finalbell', label: 'Ring the Counter-Bell' };
   // plot in facing tile or under player
   const plot = plotAt(f.tx, f.ty) || plotAt(px, py);
   if (plot) {
@@ -2035,6 +2077,26 @@ function doAction() {
     spawnParticles((BELLMETAL.tx + 0.5) * TILE, (BELLMETAL.ty + 0.5) * TILE, 'sparkle', 6);
     showMsg('Bell-metal from the wreck — cold, black, and humming faintly. Take it to Ash.');
     saveGame();
+  } else if (c.kind === 'leaveloaf') {
+    // Act 4: the Loaf of Returning, left on the lighthouse step for Tomas
+    S.loaf = false;
+    openStoryCard('lighthouse', [
+      { text: 'You set the Loaf of Returning on the lighthouse step. The light burns blue for a moment — Tomas, keeping the light, saying thank you.', mood: 'happy' },
+      { text: 'Somewhere below, the sea is quiet. The Loaf is accepted. The keepers chose to stay — and the island keeps its own.', mood: 'neutral' },
+    ], () => { questDone('a4_leave'); saveGame(); });
+  } else if (c.kind === 'caves') {
+    // Act 4: inside the tide caves, under the north cliff — the Tithed,
+    // waiting, patient, not afraid. Ebb is here. This earns Pip's page.
+    openStoryCard('caves', [
+      { text: 'Inside, the water glows blue, and the fish swim in slow circles. The Tithed are here — waiting, patient, not afraid.', mood: 'worried' },
+      { text: "Ebb is here. He remembers Finn. 'Tell him I am not angry,' he says. 'Tell him the sea keeps us, but it does not hurt us.'", mood: 'happy' },
+    ], () => { questDone('a4_caves'); saveGame(); });
+  } else if (c.kind === 'finalbell') {
+    // Act 5: midnight at the lighthouse, with the Counter-Bell — the
+    // Drowned Bell rings from the bay, and the player rings back
+    sfx('bell');
+    triggerShake(4, 0.6);
+    openEndingChoice();
   } else if (c.kind === 'fish') {
     if (!spendStamina(8)) return;
     startFishing();
@@ -2112,6 +2174,32 @@ function storyExchange(npc) {
     { text: 'A loaf of bread! Thank you, dear. Now — I bake with tidewater tonight, and you will eat, and you will dream. That is how the island talks to those it trusts.', mood: 'happy' },
     { text: "You dreamed, didn't you? Tomas spoke. I can see it in your face. He said: 'Bring the bell to the light.' Forty years, and my husband finally spoke. The keepers of the light are the Tithed who chose to stay.", mood: 'worried' },
   ], onDone: () => { S.dishes.bread--; questDone('a3_rose'); } };
+  // Act 4 (late autumn) — the Pale Tide. Finn watches the white water,
+  // Rose bakes the Loaf, Ash needs a memory, Pip knows the way in.
+  if (npc.id === 'finn' && step === 'a4_pale') return { lines: [
+    { text: 'The tide came in white last night — and it is white again tonight. The fish float belly-up, whispering names. The Kingfish surfaces on a night like this.', mood: 'worried' },
+    { text: 'I hooked him three times, and cut the line three times. I am terrified of the answer. You are not. That is why it has to be you. Fish the bay at night — and hold on.', mood: 'neutral' },
+  ], onDone: () => questDone('a4_pale') };
+  if (npc.id === 'rose' && step === 'a4_loaf' && (S.produce.wheat || 0) > 0) return { lines: [
+    { text: "A wheat sheaf! Good. Now — tidewater, wheat, and a steady hand. This is the Loaf of Returning. Tomas left the recipe in the keeper's log.", mood: 'happy' },
+    { text: 'It is baked. Leave it on the lighthouse step, and the light will know it is for him. The keepers chose to stay — and the island keeps its own.', mood: 'neutral' },
+  ], onDone: () => { S.produce.wheat--; S.loaf = true; questDone('a4_loaf'); } };
+  if (npc.id === 'ash' && step === 'a4_memory') return { lines: [
+    { text: 'The Counter-Bell is finished — all but its voice. It needs a memory, freely given, as fuel. Any memory. The bell will remember it forever, and you will not.', mood: 'worried' },
+    { text: 'Choose one. Choose well. A memory given freely is the only thing the tide has never been given.', mood: 'neutral' },
+  ], onDone: () => openChoice('Give the Counter-Bell a memory', 'Any memory, freely given. The bell will remember it forever — and you will not.', [
+    { label: 'The mainland, before the island', sub: 'The life you left behind', onPick: () => giveMemory('mainland') },
+    { label: "Your grandfather's farm", sub: 'The place you grew up', onPick: () => giveMemory('farm') },
+    { label: 'The first fish you ever caught', sub: 'A small morning, a long time ago', onPick: () => giveMemory('fish') },
+  ]) };
+  if (npc.id === 'pip' && step === 'a4_caves' && !S.pipLed) return { lines: [
+    { text: 'The caves! Follow me — low tide, the water is out, the water glows blue inside. The fish swim in slow circles. They are not scared. I am not scared.', mood: 'happy' },
+    { text: 'The Tithed are in there. Waiting. Not sad. Just waiting. The caves are under the north cliff — go at low tide, and I will be right behind you.', mood: 'neutral' },
+  ], onDone: () => { S.pipLed = true; saveGame(); } };
+  if (npc.id === 'finn' && step === 'a4_ebb') return { lines: [
+    { text: 'Ebb… is not angry? He remembers me? Twelve years, and I have been carrying his anger like a stone. You are telling me the stone was never there.', mood: 'worried' },
+    { text: 'Thank you, farmer. Whatever happens on the longest night — Finn is with you. The whole island is with you.', mood: 'happy' },
+  ], onDone: () => questDone('a4_ebb') };
   return null;
 }
 // hints: when the chain is at a step that needs something — a loaf of
@@ -2126,6 +2214,18 @@ function storyHints(npc) {
     return [{ text: "The Counter-Bell needs bell-metal from the wreck, on the reef at low tide. Dive for it, and bring it to me.", mood: 'neutral' }];
   if (npc.id === 'finn' && step === 'a3_whisper')
     return [{ text: "The whisper-fish swim with the Kingfish, and they only bite at night. Catch five, and bring them to me — I mean, tell me. They slip back into the water.", mood: 'neutral' }];
+  // Act 4 hints: the Kingfish at night, the wheat for the Loaf, the way
+  // into the caves — and Act 5, the longest night at the lighthouse
+  if (npc.id === 'finn' && step === 'a4_kingfish')
+    return [{ text: 'The Kingfish surfaces on the night of the Pale Tide. Fish the bay at night — and hold on tight. It is the one hard catch in the game.', mood: 'neutral' }];
+  if (npc.id === 'rose' && step === 'a4_loaf' && !(S.produce.wheat > 0))
+    return [{ text: 'Bring me a wheat sheaf, and we will bake the Loaf of Returning. Tidewater, wheat, and a steady hand.', mood: 'neutral' }];
+  if (npc.id === 'pip' && step === 'a4_caves' && S.pipLed)
+    return [{ text: 'The caves are under the north cliff — go at low tide, when the water is out. The water glows blue inside.', mood: 'neutral' }];
+  if (npc.id === 'june' && step === 'a5_bell')
+    return [{ text: 'Midnight at the lighthouse, with the Counter-Bell. Ring back — and be ready for what answers.', mood: 'worried' }];
+  if (npc.id === 'ash' && step === 'a5_bell')
+    return [{ text: 'The Counter-Bell is finished. It only needs a hand to ring it — at the lighthouse, at night.', mood: 'neutral' }];
   return [];
 }
 // a story card: a dialogue with a place, not a person — the festival
@@ -2133,6 +2233,12 @@ function storyHints(npc) {
 const STORY_CARDS = {
   field: { id: 'field', name: 'The festival field', portrait: 'pumpkin', noGift: true },
   lighthouse: { id: 'lighthouse', name: 'The Lighthouse', portrait: 'lighthouse', noGift: true },
+  // the Kingfish (Act 4): the koi stands in for it, as it did for the
+  // whisper-fish — there is no Kingfish art, and it slips back into the
+  // water before anyone sees it. The tide caves (Act 4): the well stands
+  // in for the dark mouth under the north cliff.
+  kingfish: { id: 'kingfish', name: 'The Kingfish', portrait: 'koi', noGift: true },
+  caves: { id: 'caves', name: 'The tide caves', portrait: 'well', noGift: true },
 };
 function openStoryCard(cardId, lines, onDone) {
   S.mode = 'dialogue';
@@ -2140,6 +2246,101 @@ function openStoryCard(cardId, lines, onDone) {
   sfx('talk');
   showDialogue();
 }
+
+// ---------- choices (Phase 4b) ----------
+// A generic choice overlay, reusing the picker card: a title, a line, and
+// one button per option. A disabled option shows its requirement instead
+// of doing anything. Closing it (Not now) leaves the quest undone, so the
+// player can come back and choose later.
+function openChoice(title, sub, options) {
+  S.mode = 'picker';
+  const box = $('picker-items');
+  box.innerHTML = '';
+  document.querySelector('#picker h2').textContent = title;
+  document.querySelector('#picker p').textContent = sub;
+  options.forEach(o => {
+    const b = document.createElement('button');
+    b.className = 'pick-btn';
+    b.innerHTML = `<span>${o.label}</span><span>${o.sub || ''}</span>`;
+    b.disabled = !!o.disabled;
+    b.onclick = () => { if (o.disabled) return; closeOverlays(); o.onPick(); };
+    box.appendChild(b);
+  });
+  $('picker').classList.remove('hidden');
+}
+// the Kingfish answers one question, then it is gone
+function askKingfish() {
+  openChoice('Ask the Kingfish one question', 'It carries the memories of everyone the tide has taken. It will answer once — then it is gone.', [
+    { label: 'Where is Ebb?', sub: 'Finn has waited twelve years', onPick: () => kingfishAnswer('ebb') },
+    { label: 'How do I break the Bargain?', sub: 'The debt, and how it ends', onPick: () => kingfishAnswer('break') },
+  ]);
+}
+function kingfishAnswer(which) {
+  S.kingfishAsk = which;
+  const lines = which === 'ebb' ? [
+    { text: 'Ebb is in the tide caves, under the north cliff. He waits, and he is not angry. He remembers Finn — tell him. The sea keeps us, but it does not hurt us.', mood: 'neutral' },
+    { text: 'The Kingfish turns in the water, and is gone. You have your answer. Now go to the caves.', mood: 'neutral' },
+  ] : [
+    { text: 'The bell must be answered, not obeyed. Ring it back, at the lighthouse, on the longest night — and bring the tide something it has never been given: a choice.', mood: 'neutral' },
+    { text: 'The Kingfish turns in the water, and is gone. You have your answer. Now finish the Counter-Bell.', mood: 'neutral' },
+  ];
+  openStoryCard('kingfish', lines, () => questDone('a4_kingfish'));
+}
+// a memory, freely given, as fuel for the Counter-Bell. The bell will
+// remember it forever — and the player will not.
+function giveMemory(key) {
+  S.memoryGiven = key;
+  const names = { mainland: 'the mainland', farm: "your grandfather's farm", fish: 'the first fish you ever caught' };
+  const npc = NPCS.find(n => n.id === 'ash');
+  S.mode = 'dialogue';
+  S.dlg = { npc, lines: [
+    { text: 'You give the bell ' + names[key] + '. Ash strikes it once, softly — and it rings. A clear note, like a held breath let out.', mood: 'happy' },
+    { text: 'It is done. The Counter-Bell has its voice. The bell will remember ' + names[key] + ' forever — and you… you will not. Thank you, farmer.', mood: 'neutral' },
+  ], idx: 0, onDone: () => questDone('a4_memory') };
+  sfx('talk'); showDialogue();
+}
+// ---------- the three endings (Phase 4b) ----------
+// STORY.md: Break the Bell (brave), Keep the Bargain (dark), Give Your
+// Name (secret). The secret one needs all eight pages of the truth and
+// max hearts with all eight villagers (GAMEPLAY.md) — until then it shows
+// greyed out, with what it needs, so the player knows what to aim for.
+const ENDINGS = {
+  break: { short: 'the Bell is broken', title: 'Break the Bell', text: 'You ring the Counter-Bell until the Drowned Bell cracks. The Bargain breaks. At dawn the Tithed walk out of the sea — Ebb, the miller\'s wife, the forty from the feast — exactly as they were when they were taken. But the plenty fades: the fish grow shy, the soil turns ordinary, the lighthouse goes dark. The fog lifts, and Tidehollow appears on maps for the first time in a hundred years. The island becomes an ordinary place — and that is the miracle.' },
+  keep: { short: 'the Keeper', title: 'Keep the Bargain', text: 'You renew the deal. You become the new Keeper of the light. The island stays magical — full nets, full fields, the light burning gold every night. But in seven years you must choose the next Tithe. Or offer your own name. The last thing you see is a boat arriving in the fog, holding a letter with no return address.' },
+  name: { short: 'the Nameless', title: 'Give Your Name', text: 'You offer the tide your own name — every memory of the mainland, freely given. The tide accepts a willing gift: the debt is paid, the Tithed return, and the plenty stays. But no one on the island remembers your old life — and neither do you. The farmer belongs to Tidehollow now. Pip introduces you to the scarecrow, as if for the first time.' },
+};
+function canSecretEnding() {
+  return Object.keys(TRUTH_PAGES).every(id => S.truth[id]) && NPCS.every(n => hearts(n.id) >= 10);
+}
+function openEndingChoice() {
+  const secret = canSecretEnding();
+  openChoice('The Hollow Tide asks what you have brought', 'Midnight at the lighthouse. The Drowned Bell rings from the bay — and you ring back.', [
+    { label: 'Break the Bell', sub: 'Ring until the Drowned Bell cracks', onPick: () => chooseEnding('break') },
+    { label: 'Keep the Bargain', sub: 'Renew the deal — become the Keeper', onPick: () => chooseEnding('keep') },
+    { label: 'Give Your Name', sub: secret ? 'Offer your own name — a willing gift' : 'Needs all 8 pages and all hearts', disabled: !secret, onPick: () => chooseEnding('name') },
+  ]);
+}
+function chooseEnding(key) {
+  S.ending = key; S.freePlay = true;
+  questDone('a5_bell');
+  showEnding(key);
+  saveGame();
+}
+function showEnding(key) {
+  const e = ENDINGS[key];
+  S.mode = 'ending';
+  $('end-title').textContent = e.title + ' 🌙';
+  $('end-text').textContent = e.text;
+  $('ending').classList.remove('hidden');
+}
+$('ending-continue').onclick = () => {
+  sfx('click');
+  $('ending').classList.add('hidden');
+  S.mode = 'play';
+  saveGame();
+  showMsg('The island is yours now — farm, fish, and remember.');
+  renderHUD();
+};
 
 // ---------- dialogue ----------
 function startDialogue(npc) {
@@ -2284,6 +2485,9 @@ function openPicker(plot) {
   S.pickerPlot = plot;
   const box = $('picker-items');
   box.innerHTML = '';
+  // the picker card is shared with openChoice — put its own title back
+  document.querySelector('#picker h2').textContent = 'Plant seeds';
+  document.querySelector('#picker p').textContent = 'What should grow here?';
   Object.keys(CROPS).forEach(key => {
     const c = CROPS[key];
     const b = document.createElement('button');
@@ -2592,9 +2796,12 @@ function startFishing(place) {
   S.mode = 'fishing';
   sfx('splash');
   const rod = TOOLS.rod.tiers[toolTier('rod')];
-  const w = rand(18, 26) + (rod.zone || 0);
+  // the Kingfish (Act 4) is the one hard catch in the game: a narrow
+  // zone and a fast marker, on the night of the Pale Tide
+  const king = storyStep() === 'a4_kingfish' && fishTimeOfDay(S.minutes) === 'night';
+  const w = king ? rand(12, 16) : rand(18, 26) + (rod.zone || 0);
   const zone = { x: rand(10, Math.max(11, 95 - w)), w };
-  S.fishGame = { pos: 0, dir: 1, speed: rand(55, 80) * (rod.speed || 1), zone, caught: false, place: place || fishingPlace() };
+  S.fishGame = { pos: 0, dir: 1, speed: (king ? rand(90, 120) : rand(55, 80)) * (rod.speed || 1), zone, caught: false, place: place || fishingPlace() };
   const zEl = $('fish-zone');
   zEl.style.left = zone.x + '%'; zEl.style.width = zone.w + '%';
   $('fish-marker').style.left = '0%';
@@ -2621,6 +2828,23 @@ function fishStop() {
     checkAutoQuests();
     showWhisperCatch();
     if (S.whisper >= 5) questDone('a3_whisper');
+    questDone('fish');
+    renderHUD();
+    return;
+  }
+  // the Kingfish (Act 4): while the chain is at that step, a night catch
+  // is the Kingfish — a story catch, not one of the 15 journal fish, and
+  // the crab never taxes it. It answers one question, then it is gone.
+  if (storyStep() === 'a4_kingfish' && fishTimeOfDay(S.minutes) === 'night') {
+    S.caught++; S.fishToday++;
+    sfx('bite'); sfx('catch');
+    spawnParticles(S.player.x, S.player.y - 10, 'splash');
+    triggerBounce();
+    checkAutoQuests();
+    openStoryCard('kingfish', [
+      { text: 'The line goes taut — and the bay goes still. The Kingfish rises: a great pale fish, old as the island, carrying the memories of everyone the tide has taken.', mood: 'worried' },
+      { text: "It looks at you with Ebb's eyes. It will answer one question — and only one. Choose well.", mood: 'neutral' },
+    ], () => askKingfish());
     questDone('fish');
     renderHUD();
     return;
@@ -2848,7 +3072,7 @@ $('yearend-new').onclick = () => {
 // ---------- HUD ----------
 function renderHUD() {
   $('hud-day').textContent = SEASON_LABEL[S.season] + ' · Day ' + S.day;
-  $('hud-act').textContent = S.freePlay ? 'Free play · Year ' + S.year : 'Act ' + S.act + ' · ' + ACTS[S.act].title;
+  $('hud-act').textContent = S.freePlay ? 'Free play · Year ' + S.year + (S.ending ? ' · ' + ENDINGS[S.ending].short : '') : 'Act ' + S.act + ' · ' + ACTS[S.act].title;
   const hh = Math.floor(S.minutes / 60), mm = Math.floor(S.minutes % 60);
   $('hud-time').textContent = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
   $('hud-coins').textContent = '🪙 ' + S.coins;
@@ -2869,6 +3093,13 @@ function renderHUD() {
     chip.className = 'chip';
     chip.innerHTML = `🐟 ${fishN}`;
     chip.onclick = () => { initAudio(); openJournal(); };
+    inv.appendChild(chip);
+  }
+  // the Loaf of Returning, carried until it is left on the lighthouse step
+  if (S.loaf) {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = '🍞 Loaf of Returning';
     inv.appendChild(chip);
   }
   const creatN = Object.values(S.creatures).reduce((a, b) => a + b, 0);
@@ -3025,7 +3256,9 @@ function nightGlow() {
       glow((o.tx + 0.5) * TILE, (o.ty + 0.5) * TILE - 10, 90, 0.30);
   });
   glow(3 * TILE, 18 * TILE, 110, 0.25); // farmhouse lit windows
-  glow(36 * TILE, 4 * TILE, 150, 0.30); // lighthouse
+  // after Break the Bell the lighthouse is dark — the Bargain is broken
+  // and the light has no keeper left to feed it
+  if (S.ending !== 'break') glow(36 * TILE, 4 * TILE, 150, 0.30); // lighthouse
   if (festivalToday()) { // the fair lanterns, strung over the plaza
     glow(18 * TILE, 12 * TILE, 100, 0.25);
     glow(22 * TILE, 14 * TILE, 100, 0.25);
@@ -3519,7 +3752,7 @@ $('dialogue').addEventListener('click', () => { if (S.mode === 'dialogue') advan
 
 loadSprites().then(() => { showTitle(); render(); });
 // debug hook (harmless in production): lets tests and future debugging read state
-window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CAT, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, FLOATERS, CROPS, SEASONS, SEASON_GROUND, SPRITES, ACTS, FISH, SEA, TOOLS, REEF_SPOTS, DISHES, CRAFTS, ANIMAL_PRODUCE, ANIMAL_ITEM, GIFT_LIKES, FESTIVALS, FESTIVAL_SPOTS, QUESTS, TRUTH_PAGES, STORY_CHAIN, BELLMETAL, actFor, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, spawnFloater, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx, questDone, seasonGround, nextSeason, cropInSeason, seasonTreeSprite, sleepNight, isLowTide, nextLowTide, tideId, fishingPlace, fishAvailable, fishWeight, pickFish, reefSpotAt, reefSpotReady, plotsInLine, startFishing, fishStop, toolTier, pushOffReef, cookDish, eatDish, craftItem, canCook, canCraft, ingHave, takeIng, giftDish, giveGift, giftValue, giftHave, giftName, hearts, addHearts, memoryLines, animalState, animalNear, animalEnt, interactAnimal, openFarmhouse, renderFarmhouse, openFriends, openJournal, spendStamina, dayKey, forageAt, placeCraftedObjects, festivalFor, festivalToday, nextFestival, festivalKey, festivalDone, festivalGuessAnswer, setupFestivalDay, gatherFestival, ungatherFestival, placeFestivalTable, removeFestivalTable, deliveryQuestFor, checkAutoQuests, deliverHave, deliverTake, deliverName, questIsDone, festivalReward, openFestival, drawBunting, storyStep, storyExchange, storyHints, nearLighthouse };
+window.__tidehollow = { S, PLOTS, NPCS, CHICKEN, DOG, CAT, CRAB, ANIMALS, SEAGULL, PAGES, TILES, OBJECTS, DOCK, CAM, DBG, GRASS_BASE, PAL, PATH_LINES, AUDIO, PARTICLES, FLOATERS, CROPS, SEASONS, SEASON_GROUND, SPRITES, ACTS, FISH, SEA, TOOLS, REEF_SPOTS, DISHES, CRAFTS, ANIMAL_PRODUCE, ANIMAL_ITEM, GIFT_LIKES, FESTIVALS, FESTIVAL_SPOTS, QUESTS, TRUTH_PAGES, STORY_CHAIN, BELLMETAL, actFor, solidAt, isDock, isReef, camTarget, dayTint, skyColor, tracePaths, spawnParticles, spawnFloater, triggerShake, triggerBounce, musicTick, musicIsMinor, saveGame, loadGame, initAudio, sfx, questDone, seasonGround, nextSeason, cropInSeason, seasonTreeSprite, sleepNight, isLowTide, nextLowTide, tideId, fishingPlace, fishAvailable, fishWeight, pickFish, reefSpotAt, reefSpotReady, plotsInLine, startFishing, fishStop, toolTier, pushOffReef, cookDish, eatDish, craftItem, canCook, canCraft, ingHave, takeIng, giftDish, giveGift, giftValue, giftHave, giftName, hearts, addHearts, memoryLines, animalState, animalNear, animalEnt, interactAnimal, openFarmhouse, renderFarmhouse, openFriends, openJournal, spendStamina, dayKey, forageAt, placeCraftedObjects, festivalFor, festivalToday, nextFestival, festivalKey, festivalDone, festivalGuessAnswer, setupFestivalDay, gatherFestival, ungatherFestival, placeFestivalTable, removeFestivalTable, deliveryQuestFor, checkAutoQuests, deliverHave, deliverTake, deliverName, questIsDone, festivalReward, openFestival, drawBunting, storyStep, storyExchange, storyHints, nearLighthouse, ENDINGS, canSecretEnding, chooseEnding, showEnding, openChoice, openEndingChoice, askKingfish, kingfishAnswer, giveMemory };
 })();
 
 </script>
