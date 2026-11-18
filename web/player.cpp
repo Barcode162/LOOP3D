@@ -387,6 +387,19 @@ void syncScene() {
 // The walking body moves in fixed steps (the same at any frame rate); the eye
 // is drawn between its last two places, and the look follows every frame.
 void stepWalker(float dt) {
+  if (g.stage->sitting) {
+    // seated: no walking; pushing the stick (or a move key) past half stands up
+    Vec2 m = g.move;
+    if (g.keys[0]) m.y += 1;
+    if (g.keys[1]) m.y -= 1;
+    if (g.keys[2]) m.x -= 1;
+    if (g.keys[3]) m.x += 1;
+    g.prevPos = g.pos;
+    g.vel = Vec3(0);
+    if (length(m) <= 0.5f) return;
+    g.stage->sitting = false;  // where they stood, facing as they face now
+    g.pos = g.prevPos = g.stage->standAt + Vec3(0, config().player.eye, 0);
+  }
   // ease the body toward the speed asked for: starting and stopping feel like
   // a person, not a robot
   const Config::Player& pc = config().player;
@@ -571,7 +584,7 @@ bool frameBody(double now) {
     if (!s.film.shots[shot].look.empty()) lookByName(s.film.shots[shot].look, look);
   } else {
     if (s.teleport) {
-      g.pos = g.prevPos = s.teleportTo + Vec3(0, 1.6f, 0);
+      g.pos = g.prevPos = s.teleportTo + Vec3(0, s.sitting ? kSitEyeHeight : 1.6f, 0);
       Vec3 f = normalize(s.teleportLook - g.pos);
       g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
       g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
@@ -592,7 +605,7 @@ bool frameBody(double now) {
   g.lastCam = cam;
   updateWorkLight(s, cam);
   g.stage->setListener(cam);
-  g.stage->playerPos = g.movie ? cam.position : g.pos - Vec3(0, 1.6f, 0);
+  g.stage->playerPos = g.movie ? cam.position : g.stage->sitting ? g.stage->sitAt : g.pos - Vec3(0, 1.6f, 0);
   double drawStart = Meter::nowMs();
   bool drawn = g.renderer->draw(cam, look, static_cast<float>(dt), static_cast<float>(g.vm->time()), fade);
   Meter::get().add(Part::kDraw, Meter::nowMs() - drawStart);
@@ -984,14 +997,25 @@ EMSCRIPTEN_KEEPALIVE int loop_edit_camera(const char* json) {
 
 // What's under a point of the view (x, y from 0 to 1, from the top left):
 // the placed thing's index, or -1. The ray leaves the camera shown last.
-EMSCRIPTEN_KEEPALIVE int loop_pick(float x, float y) {
-  if (!g.stage) return -1;
+// The ray under a point of the view (x, y from 0 to 1, from the top left),
+// leaving the camera shown last.
+static Ray viewRay(float x, float y) {
   const Camera& c = g.lastCam;
   float aspect = viewAspect();
   float ty = std::tan(c.fovY() * 0.5f), tx = ty * aspect;
   Vec3 f = normalize(c.target - c.position), r = normalize(cross(f, c.up)), u = cross(r, f);
-  Vec3 d = normalize(f + r * ((2 * x - 1) * tx) + u * ((1 - 2 * y) * ty));
-  return g.stage->pick(Ray{c.position, d});
+  return Ray{c.position, normalize(f + r * ((2 * x - 1) * tx) + u * ((1 - 2 * y) * ty))};
+}
+EMSCRIPTEN_KEEPALIVE int loop_pick(float x, float y) {
+  if (!g.stage) return -1;
+  return g.stage->pick(viewRay(x, y));
+}
+
+// A tap on the view (x, y as for loop_pick): the script hears "tap" with what
+// was under it. Nothing in a movie or with no scene.
+EMSCRIPTEN_KEEPALIVE void loop_tap(float x, float y) {
+  if (!g.stage || !g.vm || g.movie) return;
+  g.vm->emit("tap", g.stage->tap(*g.vm, viewRay(x, y)));
 }
 
 // The view as last drawn, light enough to ask every frame: where 3D points

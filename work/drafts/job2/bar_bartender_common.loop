@@ -1,0 +1,270 @@
+# The bartender's job, brought over from the old bar (bar/bartender.cpp): start a shift at the
+# station behind the bar, pick a drink, make it one tap at a time, it stands on the counter,
+# anyone can take it and sip it.
+# bar.loop pastes this at its end (`use "bar_bartender_common"`, after `use "bar_use_common"`):
+# it adds one function to `tap_first` and one to `use_first`, so a tap or Use that is the
+# job's own is answered here and nowhere else.
+# Written by hand, not by tools/import_bar.py.
+#
+# Left out, on purpose: the avatar's crude animation of shaking, pouring and sipping (the
+# avatar is another job), the drink in the hand (nothing is drawn in the hand), the old
+# CANCEL button (a drink being made is left by walking away from the station), the network
+# (the room's `dk<n>` keys: `bar_drinks` and `held_drink` are plain values a room can share later).
+
+# Today everyone may be a bartender. The old bar gave the job only to players with the
+# "bartender" badge, given by the owner in the menu; accounts and badges are another job,
+# and that job sets this.
+let can_bartend = yes
+
+let station_at = vec(-2.66255, 0.5, -5.26471)         # the thing `bartender` (it has no model)
+let station_box = [vec(-0.6, 0, -0.4), vec(0.6, 1, 0.4)]   # its `uses` box, from its place
+let station_reach = 1.5      # Use within this of the station (across the floor)
+let station_leave = 6        # a shift ends this far from the station
+
+# the eight drink spots on the counter (things `drink-spot-1` .. `drink-spot-8`), where a glass stands
+let drink_spots = [
+  vec(-6.86628, 1.08, -4.6385), vec(-5.82598, 1.08, -4.38043), vec(-4.78568, 1.08, -4.21195),
+  vec(-3.74538, 1.08, -4.12954), vec(-2.70508, 1.08, -4.13154), vec(-1.66478, 1.08, -4.218),
+  vec(-0.62448, 1.08, -4.39065), vec(0.41582, 1.08, -4.65312)]
+let spot_box = [vec(-0.09, -0.03, -0.09), vec(0.09, 0.15, 0.09)]   # their `uses` box, from the spot
+let spot_order = [4, 3, 5, 2, 6, 1, 7, 0]   # the middle of the counter first (closest to the station), then outward
+let take_tap_reach = 2       # a tap takes a drink from this far (metres from the eye)
+let take_use_reach = 1.2     # Use takes a drink from this far (across the floor)
+
+let sips_per_drink = 4
+let sip_wait = 2.2           # seconds between two sips
+let step_wait = 0.9          # seconds a step takes before the next tap counts
+let shake_wait = 1.6         # a shake takes longer
+
+# every drink: its name, its colour, its steps, in the old order
+let drink_recipes = [
+  {name: "Beer", color: rgb(0.95, 0.62, 0.12), steps: ["Grab a pint glass", "Pull the tap", "Let the foam settle"]},
+  {name: "Old Fashioned", color: rgb(0.72, 0.33, 0.08), steps: ["Grab a rocks glass", "Sugar and bitters", "Muddle", "Ice", "Pour the whiskey", "Stir", "Orange peel"]},
+  {name: "Martini", color: rgb(0.88, 0.9, 0.78), steps: ["Chill a martini glass", "Ice in the mixing glass", "Pour the gin", "Pour the vermouth", "Stir", "Strain", "Add an olive"]},
+  {name: "Mojito", color: rgb(0.78, 0.95, 0.72), steps: ["Grab a highball glass", "Mint and lime", "Muddle", "Pour the rum", "Ice", "Top with soda", "Mint sprig"]},
+  {name: "Margarita", color: rgb(0.85, 0.95, 0.5), steps: ["Salt the rim of a glass", "Pour the tequila", "Squeeze a lime", "Pour the triple sec", "Shake with ice", "Strain"]},
+  {name: "Cosmopolitan", color: rgb(0.95, 0.32, 0.5), steps: ["Chill a coupe glass", "Pour the vodka", "Pour the cranberry", "Squeeze a lime", "Shake with ice", "Strain", "Lime twist"]},
+  {name: "Whiskey", color: rgb(0.78, 0.45, 0.14), steps: ["Grab a rocks glass", "Pour two fingers"]},
+  {name: "Red wine", color: rgb(0.5, 0.04, 0.12), steps: ["Grab a wine glass", "Pour the wine"]},
+  {name: "Gin & Tonic", color: rgb(0.86, 0.96, 0.96), steps: ["Grab a highball glass", "Ice", "Pour the gin", "Top with tonic", "Lime wedge"]},
+  {name: "Coffee", color: rgb(0.25, 0.14, 0.07), steps: ["Grab a cup", "Grind the beans", "Brew the coffee"]}]
+
+# ---- what is happening (plain values, so a room can share them later)
+
+let on_shift = no
+let making = -1              # the drink (number in drink_recipes) being made, or -1
+let step_i = 0               # the next step of it
+let busy_until = 0           # time() until which the last step is still being done
+let asking = no              # the "which drink?" question is on screen
+let bar_drinks = [0, 0, 0, 0, 0, 0, 0, 0]   # per counter spot: drink number + 1, 0 = nothing (the old `dk<n>`)
+let held_drink = 0           # drink number + 1 in this player's hand, 0 = nothing
+let sips_left = 0
+let sip_at = -100            # time() of the last sip
+
+# ---- the glasses on the counter: made once, shown when a drink stands there
+
+let glass_mat = material("glass")
+let drink_mats = []
+for each r in drink_recipes
+  drink_mats.push(material(color: r.color, roughness: 0.15))
+let glasses = []             # per spot: {body, drink}
+for each i in 8
+  let p = drink_spots[i]
+  # 7 cm across, 11 cm tall (the old box), the drink inside a little smaller
+  let body = cylinder(0.035, 0.11, at: p + vec(0, 0.056, 0), material: glass_mat, collide: no, name: "drink_glass_{i}")
+  let inner = cylinder(0.03, 0.085, at: p + vec(0, 0.044, 0), material: drink_mats[0], collide: no, name: "drink_{i}")
+  body.visible = no
+  inner.visible = no
+  glasses.push({body: body, drink: inner})
+
+to show_glass(slot, drink)
+  # drink = drink number + 1, or 0 to take the glass away
+  let g = glasses[slot]
+  if drink > 0
+    g.drink.material = drink_mats[drink - 1]
+  g.body.visible = drink > 0
+  g.drink.visible = drink > 0
+
+# ---- sounds: the old bar's four (clink, pour, shake, click) from the words the engine has
+
+# clink: a glass knocked; click: a small click. Pour is a brief trickle (the endless "stream"
+# played for under a second). Shake has no fair match among the engine's sounds: it stays quiet.
+to step_sound(step, at)
+  if step.contains("Shake")
+    return
+  if step.contains("Pour") or step.contains("Pull") or step.contains("Top") or step.contains("Brew")
+    let s = sound("stream", at: at, volume: 0.7)
+    after 0.8 s
+      s.playing = no
+  else if step.contains("glass") or step.contains("Glass") or step.contains("Ice") or step.contains("cup")
+    sound("impact", "glass", at: at, strength: 0.7)
+  else
+    sound("click", "plastic", at: at, strength: 0.7)
+
+# ---- the station
+
+to in_box(p, centre, box)
+  let d = p - centre
+  return d.x > box[0].x and d.x < box[1].x and d.y > box[0].y and d.y < box[1].y and d.z > box[0].z and d.z < box[1].z
+
+to end_shift()
+  on_shift = no
+  making = -1
+  asking = no
+  line("", "Shift over. Thanks!")
+
+to station_used()
+  if not can_bartend
+    line("", "Only bartenders can work here.")
+    return
+  if not on_shift
+    on_shift = yes
+    line("", "Your shift started. Pick a drink to make.")
+    return
+  let names = []
+  for each r in drink_recipes
+    names.push(r.name)
+  names.push("End shift")
+  asking = yes
+  ask("Which drink?", names)
+
+when "choice"
+  if not asking
+    return
+  asking = no
+  let n = event
+  if n >= drink_recipes.length
+    end_shift()
+  else
+    make_drink(n)
+
+# the first free spot, middle of the counter first; -1 if the counter is full
+to free_spot()
+  for each i in spot_order
+    if bar_drinks[i] == 0
+      return i
+  return -1
+
+to make_drink(n)
+  if not on_shift or n < 0 or n >= drink_recipes.length
+    return
+  if free_spot() < 0
+    line("", "The counter is full: wait until someone takes a drink.")
+    return
+  making = n
+  step_i = 0
+  busy_until = 0
+  line("", "Making: {drink_recipes[n].name}")
+
+# one tap (or Use) while a drink is being made: the next step, or serving it
+to next_step()
+  if time() < busy_until
+    return
+  let r = drink_recipes[making]
+  if step_i >= r.steps.length
+    let slot = free_spot()
+    if slot < 0
+      line("", "The counter is full: wait until someone takes a drink.")
+      return
+    bar_drinks[slot] = making + 1
+    show_glass(slot, making + 1)
+    line("", "{r.name} served on the counter!")
+    sound("impact", "glass", at: drink_spots[slot], strength: 0.8)
+    making = -1
+    return
+  let step = r.steps[step_i]
+  line("", step)
+  step_sound(step, player())
+  busy_until = time() + (shake_wait if step.contains("Shake") else step_wait)
+  step_i += 1
+
+# ---- taking and sipping
+
+to take_drink(slot)
+  held_drink = bar_drinks[slot]
+  sips_left = sips_per_drink
+  sip_at = -100
+  bar_drinks[slot] = 0
+  show_glass(slot, 0)
+  sound("impact", "glass", at: drink_spots[slot], strength: 0.5)
+  line("", "Cheers! Tap anywhere to take a sip.")
+
+to sip()
+  if time() < sip_at + sip_wait
+    return
+  sip_at = time()
+  sips_left -= 1
+  if sips_left <= 0
+    held_drink = 0     # finished: the empty glass goes (crudely: it disappears)
+
+# the spot whose glass a tap hit (point `p`), or -1
+to spot_tapped(p)
+  for each i in 8
+    if bar_drinks[i] > 0 and in_box(p, drink_spots[i], spot_box)
+      return i
+  return -1
+
+# the spot with a drink nearest the player within Use reach, or -1
+to spot_near_player()
+  let me = player()
+  let best = -1
+  let best_d = take_use_reach
+  for each i in 8
+    if bar_drinks[i] > 0
+      let d = across(drink_spots[i], me)
+      if d < best_d
+        best = i
+        best_d = d
+  return best
+
+# ---- the hooks: gives yes when the tap or the Use was the job's own
+
+to bartender_tap(e)
+  if making >= 0
+    next_step()          # while a drink is made, every tap is the bartender's own
+    return yes
+  if e.hit and e.distance <= take_tap_reach
+    let slot = spot_tapped(e.at)
+    if slot >= 0
+      if held_drink > 0
+        line("", "Finish your drink first.")
+      else
+        take_drink(slot)
+      return yes
+  if e.hit and e.distance <= reach_tap and in_box(e.at, station_at, station_box)
+    station_used()
+    return yes
+  if held_drink > 0 and not player_sitting()
+    # a tap that nothing else in the bar answers is a sip
+    let found = find_tapped(e.name, e.at) if e.hit and e.distance <= reach_tap else nothing
+    if found == nothing
+      sip()
+      return yes
+  return no
+
+to bartender_use(e)
+  if making >= 0
+    next_step()
+    return yes
+  let slot = spot_near_player()
+  if slot >= 0
+    if held_drink > 0
+      line("", "Finish your drink first.")
+    else
+      take_drink(slot)
+    return yes
+  if across(station_at, player()) < station_reach
+    station_used()
+    return yes
+  if held_drink > 0 and not player_sitting() and not near(switch_at, within: reach_use) and find_by_use() == nothing
+    sip()
+    return yes
+  return no
+
+tap_first.push(bartender_tap)
+use_first.push(bartender_use)
+
+# a shift ends when the bartender walks off
+every 0.5 s
+  if on_shift and across(station_at, player()) > station_leave
+    end_shift()

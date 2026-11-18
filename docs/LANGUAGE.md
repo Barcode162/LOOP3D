@@ -219,12 +219,14 @@ Every setting has a sensible default; give only what matters.
   - `tempo 100, swing: 0.1`: beats a minute (4 steps a beat, 16 a bar) and a shuffle (0 straight .. 0.5)
   - `track "kick", "x...x...x...x..."`: a line of music that loops over its own length; drums take one character a step (`x` a hit, `X` a loud one, `.` nothing)
   - `track "bass", "C2 . . Eb2 - - G1 .", volume: 0.8`: notes take one word a step (a note like `C4`, `Eb3`, `F#2`, `G2!` loud; `.` a rest; `-` holds the note before)
+  - `note "keys", "Eb3", volume: 0.6, length: 1.2 s`: one note sounded now (not on a step), needs no `tempo` or `track`; a drum takes no pitch (`note "kick"`); several at once make a chord; at most 96 sounds play at once, then the oldest gives way
   - Instruments: drums `kick snare hat open_hat clap tom`; with notes `bass lead pad pluck keys bell`
   - The editor's Sound space writes these lines with a drum grid and a melody grid
 - **Story** (see [`STORY_GUIDE.md`](STORY_GUIDE.md)):
   - `line(speaker, text, seconds)` shows a line and gives back its seconds (by default long enough to read at `story.textSpeed`, at least `story.lineMin`); `clear_lines()` takes them away; `ask(question, [options])` sends `"choice"` with `event` = the option picked
   - `go_to("next scene")`; `remember(key, value)`, `recall(key, otherwise)` and `forget_story()` for what the story keeps between scenes
-  - `player()`, `near(place, within)`, `move_player(at, look_at)`; pressing Use sends `"use"`
+  - `player()`, `near(place, within)`, `move_player(at, look_at, sitting)`; pressing Use sends `"use"`; a tap on the view (a press and release within 300 ms, under 10 px of movement) sends `"tap"` with `event.name` (the thing's name, `""` if none), `event.at` (the point hit), `event.distance` (metres from the eye) and `event.hit` (yes or no; nothing hit gives the point 100 m out and an infinite distance); hidden things are passed through, `collide: no` ones can still be tapped
+  - Sitting: `move_player(at, look_at, sitting: yes)` puts the player on a seat (`at` is its top; the eye 0.75 m above), looking at `look_at`; they do not walk, looking stays free, and pushing the stick (or a move key) past half stands them up where they stood before (a plain `move_player` also ends it); `player_sitting()` says yes or no, and `player()` gives the seat while sitting
   - The player stands on the land and on the top of any fixed thing underfoot (a dock, a bridge, a stair), stepping up as high as `physics.charStep`
   - `use "common"` at the start of a line brings in `common.loop` from the same folder; in a project's `places/`, a script whose name ends in `_common` holds what the scenes share and is never listed as a scene
   - **The library** (`library/`, shared by every project): `use "lantern"` brings in a library entry by name when the scene's folder has no script of that name. Each entry starts with its card (what it is, how to place it, its credit and licence, where it came from); `loop library list` shows them, and the editor's Build space places them with a tap. Entries so far: `lantern`, `sailing_boat` (models), `room_shell` (rooms), `plinth`, `lintel` (pieces)

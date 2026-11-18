@@ -177,3 +177,62 @@ TEST(music_words) {
   for (int i = 0; i < 6000; ++i) st.update(1.0f / 60);
   CHECK(st.mixer.voices() <= 96);
 }
+
+// note: one note sounded now, no tempo or track needed.
+TEST(music_note_word) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  std::vector<float> quiet(audio::kRate / 5 * 2);
+  st.mixer.render(quiet.data(), audio::kRate / 5);
+  float qpeak = 0;
+  for (float x : quiet) qpeak = std::max(qpeak, std::fabs(x));
+  CHECK(qpeak == 0.0f);  // before any note: silent
+  CHECK(vm.load("note \"keys\", \"A4\"\n", "note.loop"));
+  const int n = audio::kRate / 5;  // 0.2 s
+  std::vector<float> buf(n * 2);
+  st.mixer.render(buf.data(), n);
+  float peak = 0;
+  int crossings = 0;
+  for (int i = 0; i < n; ++i) {
+    peak = std::max(peak, std::fabs(buf[i * 2]));
+    if (i) crossings += (buf[(i - 1) * 2] < 0) != (buf[i * 2] < 0);
+  }
+  CHECK(peak > 0.02f);
+  CHECK_NEAR(crossings / 2.0f / 0.2f, 440.0f, 440.0f * 0.02f);
+  // a drum makes sound
+  Stage sd;
+  Vm vd;
+  installStandardLibrary(vd);
+  installSceneApi(vd, sd);
+  CHECK(vd.load("note \"kick\"\n", "kick.loop"));
+  CHECK(measure(sd.mixer, 4800).peak > 0.02f);
+  // two at once are louder than one
+  Stage s1, s2;
+  Vm v1, v2;
+  installStandardLibrary(v1), installSceneApi(v1, s1);
+  installStandardLibrary(v2), installSceneApi(v2, s2);
+  CHECK(v1.load("note \"keys\", \"C4\"\n", "one.loop"));
+  CHECK(v2.load("note \"keys\", \"C4\"\nnote \"keys\", \"C4\"\n", "two.loop"));
+  CHECK(measure(s2.mixer, 2400).rmsL > measure(s1.mixer, 2400).rmsL * 1.2f);
+  // mistakes say what is wrong
+  Vm vb;
+  Stage sb;
+  installStandardLibrary(vb);
+  installSceneApi(vb, sb);
+  CHECK(!vb.load("note \"kyes\", \"C4\"\n", "bad.loop"));
+  CHECK(!vb.problems().empty() && vb.problems()[0].what.find("keys") != std::string::npos && vb.problems()[0].what.find("kyes") != std::string::npos);
+  Vm vc;
+  Stage sc;
+  installStandardLibrary(vc);
+  installSceneApi(vc, sc);
+  CHECK(!vc.load("note \"keys\"\n", "nopitch.loop"));
+  CHECK(!vc.problems().empty() && vc.problems()[0].what.find("pitch") != std::string::npos);
+  Vm ve;
+  Stage se;
+  installStandardLibrary(ve);
+  installSceneApi(ve, se);
+  CHECK(!ve.load("note \"keys\", \"Q9\"\n", "badpitch.loop"));
+  CHECK(!ve.problems().empty() && ve.problems()[0].what.find("Q9") != std::string::npos);
+}

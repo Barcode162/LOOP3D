@@ -41,6 +41,9 @@ struct RenderRequest {
   float at = 0;       // script time to render at (stills)
 };
 
+// How far above a seat's top the eye sits when the player sits.
+constexpr float kSitEyeHeight = 0.75f;
+
 struct StreamedWorld;  // a generated world, its land and trees streamed round the player (scene_api.cpp)
 
 struct Stage {
@@ -212,12 +215,24 @@ struct Stage {
   // move_player(): the player is carried somewhere new (the player takes it)
   bool teleport = false;
   Vec3 teleportTo{0}, teleportLook{0, 0, -1};
+  // Sitting (move_player(..., sitting: yes)): the player is on a seat, `sitAt`
+  // its top, and does not walk. `standAt` is where they stood just before, and
+  // where they are put back when they stand up.
+  bool sitting = false;
+  Vec3 sitAt{0}, standAt{0};
   bool story = false;            // the script has spoken a line or asked (a story scene)
   void updateTransform(int placedIndex);
   // What a ray meets first: the placed thing (its index) whose triangles it
   // hits nearest, or -1. Hidden things are passed through. For the editor's
   // tap-to-select; `distance` gets how far along the ray.
   int pick(const Ray& ray, float* distance = nullptr) const;
+  // A tap on the view, as the event `when "tap"` hears: a table with `name`
+  // (the thing's name, "" if it has none or nothing was hit), `at` (the point
+  // hit; the ray's point 100 m out when nothing was hit), `distance` (metres
+  // from the eye; infinity when nothing was hit) and `hit` (yes or no). It
+  // follows pick: hidden things are passed through, but a thing with
+  // `collide: no` can still be tapped.
+  Value tap(Vm& vm, const Ray& ray) const;
 };
 
 // Adds every world-making word to `vm`, filling `stage`.

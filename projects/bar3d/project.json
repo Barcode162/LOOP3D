@@ -10,5 +10,8 @@
   "stills": "stills",
   "build": {
     "listed": false
-  }
+  },
+  "library": [
+    "bar_use_common"
+  ]
 }
