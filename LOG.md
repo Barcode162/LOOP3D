@@ -1,3 +1,4 @@
+- 2026-11-18: Surface: walnut: walnut surface made; 2 gaps: noise/pores ignore stretch; library check can't load surface entries (deployed)
 - 2026-11-18: Surface: oak: oak surface: muted warm brown, arched grain, pores, rays coat, wear, dirt (deployed)
 # Log
 
