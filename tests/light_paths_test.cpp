@@ -2,6 +2,7 @@
 // from the bulb (engine/render/pathtracer.h, RenderSettings::lightPaths).
 #include "engine/geometry/mesh.h"
 #include "engine/render/pathtracer.h"
+#include "engine/render/scene_bvh.h"
 #include "tests/test.h"
 
 using namespace loop;
@@ -141,4 +142,29 @@ TEST(a_probe_skips_a_glow_its_lamp_stands_for) {
   CHECK(seen > 1000);
   CHECK(skipped < 0.01f * seen);  // only the dark square's own faint shine of the floor
   CHECK(downB > 0.8 * downA && downB < 1.25 * downA);
+}
+
+// The shadow terminator: a shadow ray leaves a smooth-shaded facet from the curved shape its vertex
+// normals describe (a coarse ball once shaded itself in steps along its shadow's edge).
+TEST(a_shadow_ray_leaves_from_the_smooth_shape_not_the_facet) {
+  // one facet of a coarse unit ball: corners on the ball, normals pointing out from its centre
+  TriInfo t;
+  const Vec3 a = normalize(Vec3(1, 0, 0)), b = normalize(Vec3(1, 0.2f, 0)), c = normalize(Vec3(1, 0, 0.2f));  // about 11 degrees apart
+  t.v0 = a, t.e1 = b - a, t.e2 = c - a, t.n[0] = a, t.n[1] = b, t.n[2] = c;
+  t.ng = normalize(cross(t.e1, t.e2));
+  const float u = 1.0f / 3, v = 1.0f / 3;
+  const Vec3 p = t.v0 + t.e1 * u + t.e2 * v;  // the facet's middle: inside the ball
+  const Vec3 q = terminatorPoint(t, p, u, v, true);
+  CHECK(length(p) < 0.995f);
+  CHECK(length(q) > length(p) + 0.004f);       // lifted toward the ball's surface
+  printf("    the facet's middle, from the ball's centre: %.4f, lifted %.4f\n", length(p), length(q));
+  CHECK(length(q) - 1 < 1.1f * (1 - length(p)));  // past it by no more than the facet sagged (the corners' tangent planes meet just outside)
+  CHECK(dot(q - p, t.ng) > 0);                 // outward, the way the facet faces
+  CHECK(length(terminatorPoint(t, a, 0, 0, true) - a) < 1e-5f);  // a corner stays where it is
+  // a flat facet (its normals its own facing) keeps the point as it was
+  for (auto& n : t.n) n = t.ng;
+  CHECK(length(terminatorPoint(t, p, u, v, true) - p) < 1e-6f);
+  // met from the back, the normals turn and the point is not pushed into the ball
+  t.n[0] = a, t.n[1] = b, t.n[2] = c;
+  CHECK(length(terminatorPoint(t, p, u, v, false) - p) < 1e-6f);
 }

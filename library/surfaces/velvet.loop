@@ -1,0 +1,23 @@
+# velvet · crimson cotton velvet, its pile crushed one way and another into patches of light and dark
+# For sofas, curtains, cushions and stage drapes. Wears bald, darker and shinier on edges; pale dust sits in the creases.
+#
+# kind: surface
+# place: test_ball("velvet", AT)
+# tags: fabric, velvet, soft, indoor
+# size: sofa
+# seeds: 1 to 4
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: order M36 (2026-11-11)
+
+let crush = 10 cm       # one patch of pile laid the same way
+let thread = 0.2 mm     # one fibre of the pile
+
+to velvet(seed: 1)
+  return surface("velvet", seed: seed, tile: 0.5 m, sheen: 1,
+    base: {color: rgb(0.39, 0.06, 0.09), color2: rgb(0.54, 0.10, 0.13), roughness: 0.8,
+           pattern: "noise", size: crush, stretch: 2, contrast: 0.7, bump: 0.2 mm},
+    vary: {large: 0.5 m, amount: 0.06},
+    wear: {color: rgb(0.24, 0.03, 0.05), roughness: 0.4, amount: 0.6},
+    dirt: {color: rgb(0.62, 0.60, 0.58), roughness: 0.9, amount: 0.4},
+    detail: {pattern: "speckle", size: thread, bump: 0.02 mm})

@@ -1,8 +1,10 @@
 #pragma once
+
 // Ray casts against a whole scene with instancing: every mesh gets its own
 // BVH once (in its own space), and a top-level tree over the placed copies
 // finds which copies a ray might hit. A forest of 5,000 trees costs the
 // memory of the few tree shapes, not 5,000 copies.
+#include <algorithm>
 #include <cstdint>
 #include <deque>
 #include <vector>
@@ -27,6 +29,22 @@ struct TriInfo {
   Vec3 v0, e1, e2;
   int material = -1;
 };
+
+// Where a shadow ray should leave a point on a smooth-shaded triangle (Hanika 2021, "Hacking the shadow
+// terminator"): the point lifted onto the curved shape its vertex normals describe, so the flat facets do
+// not shade each other in steps along the shadow's edge. `u`, `v` are the hit's weights for the second and
+// third corner; `front` false means the ray met the back, so the normals are turned. A flat triangle (its
+// normals all its own facing) gives the point back as it was.
+inline Vec3 terminatorPoint(const TriInfo& t, Vec3 p, float u, float v, bool front) {
+  const float w[3] = {1 - u - v, u, v};
+  const Vec3 corner[3] = {t.v0, t.v0 + t.e1, t.v0 + t.e2};
+  Vec3 lift{0};
+  for (int k = 0; k < 3; ++k) {
+    const Vec3 n = front ? t.n[k] : -t.n[k];
+    lift = lift - n * (w[k] * std::min(0.0f, dot(p - corner[k], n)));
+  }
+  return p + lift;
+}
 
 class SceneBvh {
  public:

@@ -182,9 +182,16 @@ void patternAt(const SurfacePattern& p, Vec2 u, float tile, uint32_t seed, float
       break;
     }
     case Kind::kVeins: {
-      float v = fbm(gx, gy, nx, ny, 2, seed, 31);
-      float d = std::fabs(v - 0.5f), wv = 0.015f, w = 0.05f * (1 - sharp) + 0.003f;
-      o.mix = 1 - smoothstep(wv - w * 0.5f, wv + w, d);
+      // marble: the noise's middle line, its ground first pushed about by a second noise (so the veins
+      // wander and fold like flowing stone, not run like a map's height lines), each vein swelling and
+      // thinning along its way, with a faint cloud of the vein's colour around it
+      float wx = gx + 1.4f * (fbm(gx, gy, nx, ny, 2, seed, 33) - 0.5f);
+      float wy = gy + 1.4f * (fbm(gx, gy, nx, ny, 2, seed, 34) - 0.5f);
+      float v = fbm(wx, wy, nx, ny, 3, seed, 31);
+      float thick = 0.2f + 1.6f * smoothstep(0.25f, 0.75f, vnoise(gx, gy, nx, ny, seed, 35));
+      float d = std::fabs(v - 0.5f), wv = 0.012f * thick, w = (0.05f * (1 - sharp) + 0.003f) * thick;
+      float vein = 1 - smoothstep(wv - w * 0.5f, wv + w, d), cloud = 1 - smoothstep(0.0f, 0.1f, d);
+      o.mix = std::max(vein, 0.22f * cloud * cloud);
       o.height = 1 - 0.3f * o.mix;
       o.smoothPiece = true, o.pieceValue = v - 0.5f;
       break;

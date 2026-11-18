@@ -741,7 +741,9 @@ Vec3 PathTracer::Impl::trace(Ray ray, Rng& rng, Vec3* albedoOut, Vec3* normalOut
 
     // lamps, sun, glowing surfaces (not for perfectly smooth lobes alone)
     bool onlyDelta = b.pDiffuse + b.pCoat + b.pTranslucent + (b.smoothSpec() ? 0 : b.pSpec) <= 1e-6f;
-    if (!onlyDelta) addLight(beta * sampleLights(p, ng * 1e-4f + ng * (h.t * 1e-6f), &b, woL, wo, 0, rng));
+    // shadow rays leave from the smooth shape the vertex normals describe, not the flat facet (else the
+    // facets shade each other in steps along the shadow's edge, where sheen and coat stay bright)
+    if (!onlyDelta) addLight(beta * sampleLights(terminatorPoint(td, p, h.u, h.v, front), ng * 1e-4f + ng * (h.t * 1e-6f), &b, woL, wo, 0, rng));
 
     Bsdf::Sample sm;
     if (!b.sample(woL, {rng.uniform(), rng.uniform(), rng.uniform()}, sm)) break;
