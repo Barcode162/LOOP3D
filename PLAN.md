@@ -52,6 +52,16 @@ phase is done when its "done when" is true on the phone.
 *What it is:* a home of two floors under a high ceiling: a stair with a lit rail, a bed on the mezzanine, a
 kitchen under it, a deep sofa on a rug, shelves full of small things, warm strips of light, a wall of glass with
 a city at night behind it (`docs/ROADMAP.md`, star 2). Built from a few hundred library pieces.
+*Ready to work (2026-11-18, set up for your next instructions):* the board is clear and main is green (294 tests).
+Goals 1 to 3 are in (the shell, night falls, the upper floor and the stair); `projects/loft/places/loft.loop` reads
+fine and fits the phone budget. The library holds 51 entries, among them every piece goals 4 to 7 call for
+(step strips; beams, columns, joists, brick, skirting, duct; cove, pendants, track spots; the night city, still a
+draft below the rubric) and the ten furniture drafts brought in from their work/L-* branches (armchair, bar stool,
+coffee table, dining chair and table, arc floor lamp, kitchen island and run, built-in shelves, modular sofa):
+they pass `loop library check` but nobody has looked at their pictures yet (working, not finished).
+*Next in order:* LOFT4, the stair lights itself (nothing missing). Still to build before the last two goals: M60
+(the glass as a mirror, for LOFT8), N4 and N6 (for LOFT9). Not published: the public player shows the Loft before
+goal 2.
 *Its two milestones* (`docs/ROADMAP.md`, the table): 3 **The Loft, empty and lit** (about 60 orders), then
 4 **The Loft, lived in** (about 320 orders, the library grown to 400 entries).
 *Its parts list:* `docs/LIBRARY_PLAN.md`, section 4 (40 building pieces, 25 seats and beds, and the rest by kind).

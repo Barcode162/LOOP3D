@@ -108,3 +108,10 @@ TEST(project_new_from_template) {
   CHECK(!makeProject(root + "projects/template", dir.string(), "9 lives", folder, why));
   fs::remove_all(dir);
 }
+
+TEST(reading_a_folder_as_a_file_fails_plainly) {
+  // `loop check projects/loft` once crashed: a folder opened like a file and reported a huge size
+  std::string s;
+  CHECK(!readText("projects/loft", s));
+  CHECK(readText("projects/loft/loft.looped", s) && s.find("The Loft") != std::string::npos);
+}

@@ -5,16 +5,17 @@
 namespace loop {
 
 bool readFile(const std::string& path, std::vector<uint8_t>& out) {
+  // Read in chunks, never trusting the size a seek reports: a folder opens like a file on some systems and
+  // reports a huge size (asking for that much memory crashed `loop check <folder>`); reading it fails instead.
   FILE* f = std::fopen(path.c_str(), "rb");
   if (!f) return false;
-  std::fseek(f, 0, SEEK_END);
-  long n = std::ftell(f);
-  std::fseek(f, 0, SEEK_SET);
-  if (n < 0) { std::fclose(f); return false; }
-  out.resize(static_cast<size_t>(n));
-  size_t got = n ? std::fread(out.data(), 1, out.size(), f) : 0;
+  out.clear();
+  uint8_t chunk[65536];
+  size_t got;
+  while ((got = std::fread(chunk, 1, sizeof chunk, f)) > 0) out.insert(out.end(), chunk, chunk + got);
+  bool ok = !std::ferror(f);
   std::fclose(f);
-  return got == out.size();
+  return ok;
 }
 
 bool readText(const std::string& path, std::string& out) {

@@ -1,0 +1,57 @@
+# sofa_modular · a deep, low modular sofa: soft seat cushions, fat leaning back cushions, wide low arms
+# sofa_modular(at, seats, chaise, cover) stands it on `at` (the middle of its footprint, on the floor),
+# facing -z. Each seat is 0.85 m wide, plus an arm of 0.22 m at each end; the seat is 0.42 m high and the
+# sofa 1.05 m deep. `chaise: "left"` or `"right"` (your left or right as you sit) stretches that end seat
+# forward to 1.6 m, with no back cushion on the stretch. `cover` is any surface. Gives back
+# {seats: [...], arms: [...]}: the seat spots and the arm tops. Each cushion sags and turns a little,
+# by the scene's seed.
+#
+# kind: model
+# place: sofa_modular(AT, seats: 3, chaise: "left")
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: The Loft (2026-11-11)
+# tags: sofa, couch, seating, soft, fabric, living room, interior
+# size: sofa
+# sockets: seat, top
+# seeds: 1 to 20
+
+let sofa_cover = material(like: "fabric", color: rgb(0.34, 0.33, 0.32), roughness: 0.95)
+let sofa_plinth = material(like: "black", roughness: 0.6)
+
+to sofa_modular(at: vec(0, 0, 0), seats: 3, chaise: no, cover: sofa_cover)
+  let seat_w = 0.85
+  let arm_w = 0.22
+  let depth = 1.05
+  let reach = 0.55
+  let foot = 0.07
+  let base_h = 0.18
+  let run = seats * seat_w
+  let wide = run + 2 * arm_w
+  let seat_spots = []
+  let arm_tops = []
+  # the recessed plinth: a dark gap under the soft base
+  box size: vec(wide - 0.12, foot, depth - 0.1), at: at + vec(0, foot / 2, 0), round: 0.01, material: sofa_plinth
+  # the low back, and a wide low arm at each end
+  box size: vec(run, 0.48, 0.17), at: at + vec(0, foot + 0.24, 0.44), round: 0.05, steps: 3, material: cover
+  for each s in [-1, 1]
+    let x = s * (run / 2 + arm_w / 2)
+    box size: vec(arm_w, 0.5, depth), at: at + vec(x, foot + 0.25, 0), round: 0.08, steps: 3, material: cover
+    arm_tops.push(at + vec(x, foot + 0.5, 0))
+  for each i in range(0, seats, 1)
+    let x = (i + 0.5 - seats / 2) * seat_w
+    let ext = 0
+    if (chaise == "left" and i == 0) or (chaise == "right" and i == seats - 1)
+      ext = reach
+    # the base of the seat, then its cushion (a little sag, a little turn)
+    box size: vec(seat_w - 0.01, base_h, depth - 0.07 + ext), at: at + vec(x, foot + base_h / 2, -0.035 - ext / 2), round: 0.04, steps: 3, material: cover
+    let sag = random(0, 0.014)
+    let cd = 0.8 + ext
+    let t1 = random(-2.5, 2.5)
+    box size: vec(seat_w - 0.02, 0.18 - sag, cd), at: at + vec(x + random(-0.004, 0.004), foot + base_h + 0.09 - sag / 2, (0.28 - 0.52 - ext) / 2), turn: radians(t1), round: 0.075, steps: 3, material: cover
+    # the fat back cushion, leaning on the low back
+    let t2 = random(-3, 3)
+    let lean = random(10, 17)
+    box size: vec(seat_w - 0.03, 0.46 + random(-0.015, 0.015), 0.27), at: at + vec(x + random(-0.01, 0.01), 0.66 - random(0, 0.02), 0.2), turn: radians(t2), rotation: vec(radians(lean), 0, 0), round: 0.1, steps: 3, material: cover
+    seat_spots.push(at + vec(x, 0.42, -0.12 - ext / 2))
+  return {seats: seat_spots, arms: arm_tops}
