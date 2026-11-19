@@ -799,7 +799,23 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   var restW = 0.0;
   var pick = 0xffffffffu;
   var seed = u32(i.clip.x) * 1973u + u32(i.clip.y) * 9277u + u32(frame.ao.z) * 26699u;
-  for (var j = first; j < sureEnd; j++) {
+  // the rest of the cell's lamps (render.lampShare, engine/render/light_grid.h):
+  // past its sure ones, a dim lamp is merged here into one lamp made for this
+  // point: the light all of them bring it (each with its own distance, cone
+  // and slant, so the soft light is theirs exactly) and each one's highlight
+  // shape. Never merged: on a polished surface (each lamp's reflection is its
+  // own), a panel near enough to show its size, a lamp with a shadow map or
+  // one that would get a shadow ray (merged, it would lose its shadow at a
+  // cell's edge). No shadow of their own (the ambient occlusion stands in, as
+  // for a lamp past the rays), or on High, the picked lamp's. Worked out at
+  // each point, so no cell's edge shows, and nothing flickers
+  let merging = sureEnd < last && sf.alpha >= 0.2 && !(sf.coat > 0.0 && sf.coatAlpha < 0.2);
+  var lit = vec3f(0.0);
+  var glint = vec3f(0.0);
+  var coatGlint = vec3f(0.0);
+  var back = vec3f(0.0);
+  var way = vec3f(0.0);
+  for (var j = first; j < last; j++) {
     var k = j;
     if (gridOn) { k = textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x; }
     let L = lights[k];
@@ -819,10 +835,27 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       I = L.color.rgb * L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0) / d2;
     }
     if (dot(I, I) == 0.0 && !wide) { continue; }
+    let mapped = k < u32(frame.lampMaps.x) && frame.lampValid[k] > 0.5;
+    let rayed = kLampShadows && L.dir.w < 1.5 && shadowed < u32(frame.params.y);
+    if (j >= sureEnd && merging && !wide && !mapped && !rayed) {
+      if (nl <= 0.0) { back += I * -nl; continue; }  // (only lit from behind gets here)
+      let Ic = I * nl;
+      lit += Ic;
+      way += l * dot(Ic, vec3f(0.3333));
+      let nh = max(dot(n, normalize(l + sf.v)), 0.0);
+      let bulb = L.pos.w / (2.0 * sqrt(d2));
+      let a = clamp(sf.alpha + bulb, 0.0, 1.0);
+      glint += Ic * (D_ggx(nh, a) * (sf.alpha * sf.alpha / (a * a)));
+      if (kShading >= 1u && sf.coat > 0.0) {
+        let ca = clamp(sf.coatAlpha + bulb, 0.0, 1.0);
+        coatGlint += Ic * (D_ggx(nh, ca) * (sf.coatAlpha * sf.coatAlpha / (ca * ca)));
+      }
+      continue;
+    }
     let off = ng * sign(nl);  // off the surface, on the lamp's side
     // the main lamps' shadow maps (Phone): only the first few lamps have one
     var ownShadow = false;
-    if (k < u32(frame.lampMaps.x) && frame.lampValid[k] > 0.5) {
+    if (mapped) {
       I *= lampMapSeen(i.world + off * 0.02, L, k, i.clip.xy);
       ownShadow = true;
       if (dot(I, I) == 0.0) { continue; }
@@ -856,45 +889,8 @@ fn shade(i : VsOut, front : bool) -> Shaded {
       lo += c;
     }
   }
-  // the rest of the cell's lamps (render.lampShare, engine/render/light_grid.h):
-  // the dim ones, merged here into one lamp made for this point: the light
-  // all of them bring it (each with its own distance, cone and slant, so the
-  // soft light is theirs exactly), and each one's own highlight shape (so a
-  // string of bulbs on a duct still shines bulb by bulb). No shadow of their own (the ambient occlusion
-  // stands in, as for a lamp past the rays), or on High, the picked lamp's.
-  // Worked out at each point, so no cell's edge shows, and nothing flickers
-  if (sureEnd < last) {
-    var lit = vec3f(0.0);
-    var glint = vec3f(0.0);
-    var coatGlint = vec3f(0.0);
-    var back = vec3f(0.0);
-    var way = vec3f(0.0);
-    for (var j = sureEnd; j < last; j++) {
-      let L = lights[textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x];
-      let tl = L.pos.xyz - i.world;
-      let d2 = max(dot(tl, tl), L.pos.w * L.pos.w);
-      let l = tl * inverseSqrt(max(dot(tl, tl), 1e-8));
-      var I = L.color.rgb / d2;
-      if (L.dir.w > 0.5 && L.dir.w < 1.5) {
-        I *= smoothstep(L.cone.y, L.cone.x, dot(-l, L.dir.xyz));
-      } else if (L.dir.w > 1.5) {
-        I *= L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0);
-      }
-      let nl = dot(n, l);
-      if (lit2 && nl < 0.0) { back += I * -nl; }
-      if (nl <= 0.0) { continue; }
-      let Ic = I * nl;
-      lit += Ic;
-      way += l * dot(Ic, vec3f(0.3333));
-      let nh = max(dot(n, normalize(l + sf.v)), 0.0);
-      let bulb = L.pos.w / (2.0 * sqrt(d2));
-      let a = clamp(sf.alpha + bulb, 0.0, 1.0);
-      glint += Ic * (D_ggx(nh, a) * (sf.alpha * sf.alpha / (a * a)));
-      if (kShading >= 1u && sf.coat > 0.0) {
-        let ca = clamp(sf.coatAlpha + bulb, 0.0, 1.0);
-        coatGlint += Ic * (D_ggx(nh, ca) * (sf.coatAlpha * sf.coatAlpha / (ca * ca)));
-      }
-    }
+  // the merged lamp (above)
+  {
     if (dot(lit + back, vec3f(1.0)) > 0.0) {
       let l = select(n, normalize(way), dot(way, way) > 1e-12);
       var c = mergedLight(sf, l, lit, glint, coatGlint, back);

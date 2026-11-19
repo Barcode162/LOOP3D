@@ -250,9 +250,12 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       shadedFronts += shadedOf(std::max(front, 1));
       TriInfo tri = bvh.triangle(first.inst, first.prim);
       const int mat = bvh.materialOf(first.inst);
+      bool shiny = false;  // merges no lamps (render.lampShare): each reflection is its own
       if (mat >= 0 && mat < static_cast<int>(scene.materials.size())) {
-        Pattern::Kind pk = scene.materials[mat].pattern.kind;
+        const Material& m = scene.materials[mat];
+        Pattern::Kind pk = m.pattern.kind;
         if (pk != Pattern::Kind::kNone && pk != Pattern::Kind::kImage) ++patterned;
+        shiny = m.roughness < LightGrid::kShinyRough || (m.clearcoat > 0 && m.clearcoatRoughness < LightGrid::kShinyRough);
       }
       // the lamps that give 95% (and 99%) of this point's direct light (the sun
       // counts toward the light, not as a lamp)
@@ -283,7 +286,7 @@ FrameCost measureFrame(const Scene& scene, const FrameView& view, int maxSamples
       matter += need, matter99 += need99;
       if (grid.on) {
         const int cell = grid.cellOf(p);
-        gridEntries += grid.work(cell);
+        gridEntries += shiny ? static_cast<float>(grid.count(cell)) : grid.work(cell);
       }
       c.lampsThatMatterMost = std::max(c.lampsThatMatterMost, need);
     }

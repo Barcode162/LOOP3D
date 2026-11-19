@@ -64,6 +64,9 @@ struct LightGrid {
     return static_cast<float>(s) + (s < count(c) ? 1.0f + kWeighCost * static_cast<float>(count(c) - s) : 0.0f);
   }
   static constexpr float kWeighCost = 0.5f;
+  // a surface this smooth or smoother (or with a coat this smooth) merges no
+  // lamps: each one's reflection is its own (the shader: alpha = rough^2 < 0.2)
+  static constexpr float kShinyRough = 0.447f;
   int cellOf(Vec3 p) const;       // the nearest cell (a point outside takes the edge's)
   Vec3 cellCenter(int c) const;
   Vec3 cellLow(int c) const;
