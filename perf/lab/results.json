@@ -1,0 +1,93 @@
+[
+ {
+  "id": "loft-today",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "Today's light",
+  "change": "Nothing: the Loft as the phone draws it now (Phone quality)",
+  "switches": "",
+  "score": 16.1,
+  "worst": 32.4,
+  "brightness": 1.83,
+  "lamp_work": 31,
+  "finding": "16 away from film, and 1.8 times too bright. The ceiling and brick glow evenly orange where the film's fall into dark."
+ },
+ {
+  "id": "loft-no_bounce",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "Bounced light off",
+  "change": "The light cache (probes of bounced light) switched off",
+  "switches": "lightcache=0",
+  "score": 16.1,
+  "worst": 32.4,
+  "brightness": 1.83,
+  "lamp_work": 31,
+  "finding": "Changed the picture by 0.05 out of 255: in the Loft, live has almost no bounced light at all. The film's soft fill between the pools is missing."
+ },
+ {
+  "id": "loft-no_ao",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "Corner darkening off",
+  "change": "Ambient occlusion (darkening in creases) switched off",
+  "switches": "ao=0",
+  "score": 16.1,
+  "worst": 32.6,
+  "brightness": 1.86,
+  "lamp_work": 31,
+  "finding": "Almost no change (1 out of 255). Not where the error is."
+ },
+ {
+  "id": "loft-no_lamp_shadows",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "Lamp shadows off",
+  "change": "Shadow maps for the main lamps switched off",
+  "switches": "lampmaps=0",
+  "score": 16.1,
+  "worst": 32.3,
+  "brightness": 1.84,
+  "lamp_work": 31,
+  "finding": "Almost no change (0.8 out of 255). Lamp shadows are barely shaping this view."
+ },
+ {
+  "id": "loft-all_lamp_shadows",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "Every lamp casts shadows",
+  "change": "Shadow maps for every lamp, not only the main ones",
+  "switches": "alllampshadows=1",
+  "score": 16.1,
+  "worst": 32.4,
+  "brightness": 1.83,
+  "lamp_work": 31,
+  "finding": "No change at all: the switch did nothing in this scene. To check."
+ },
+ {
+  "id": "loft-high",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "High quality",
+  "change": "Ray-traced shadows and screen reflections (High)",
+  "switches": "quality=1",
+  "score": 14.4,
+  "worst": 31.1,
+  "brightness": 1.44,
+  "lamp_work": null,
+  "finding": "Closer (14.4) and less over-bright (1.4x): shadows from rays help, but most of the gap stays."
+ },
+ {
+  "id": "loft-ultra",
+  "date": "2026-11-19",
+  "scene": "The Loft",
+  "experiment": "Ultra: rays every frame",
+  "change": "Live path tracing, the film's method at a few rays a pixel",
+  "switches": "quality=2",
+  "score": 13.1,
+  "worst": 27.9,
+  "brightness": 1.51,
+  "lamp_work": null,
+  "finding": "Still 13 away and 1.5x too bright, and grainy. Even the film's own method live doesn't close the gap, so part of it is not the bounce method."
+ }
+]
