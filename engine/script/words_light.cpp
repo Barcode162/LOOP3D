@@ -68,14 +68,20 @@ void registerLight(Vm& vm) {
       s.updateTransform(static_cast<int>(s.placed.size() - 1));
       return static_cast<int>(s.placed.size() - 1);
     };
+    // the diffuser's depth; its two sides send half their light down, so its downward light is as a
+    // flat rectangle (width + depth) wide: its brightness is shared over that (the lamps' light matches)
+    constexpr float kStripDepth = 0.008f;
     Material channel, glow;
     channel.name = "strip channel", channel.baseColor = Vec3(0.04f), channel.roughness = 0.6f;
-    glow.name = "strip glow", glow.baseColor = Vec3(0), glow.emission = color * glowNits(lumens, len * width);
-    // the channel: 2 mm wider and 6 mm deep, its face a hair behind the glowing rectangle
-    put(cachedMesh(s, "strip_box", [] { return shapes::box(Vec3(1)); }), s.scene.addMaterial(channel), mid - face * 0.0035f,
-        Vec3(len, 0.006f, width + 0.002f), "");
-    const int glowing = put(cachedMesh(s, "strip_plane", [] { return shapes::plane({1, 1}); }), s.scene.addMaterial(glow), mid,
-                            Vec3(len, 1, width), a.text(-1, "name", ""));
+    glow.name = "strip glow", glow.baseColor = Vec3(0), glow.emission = color * glowNits(lumens, len * (width + kStripDepth));
+    // the channel: 2 mm wider and 6 mm deep, behind the diffuser
+    const int box = cachedMesh(s, "strip_box", [] { return shapes::box(Vec3(1)); });
+    put(box, s.scene.addMaterial(channel), mid - face * 0.0065f, Vec3(len, 0.006f, width + 0.002f), "");
+    // the diffuser: a glowing bar `width` across and 8 mm deep, standing out of the channel, so it shows
+    // from every side as a real strip's cover does. A flat glowing rectangle seen edge-on is thinner
+    // than a pixel and only some frames catch it: the stair's and shelves' strips came and went in
+    // dashes on the phone (2026-11-19)
+    const int glowing = put(box, s.scene.addMaterial(glow), mid - face * (kStripDepth / 2), Vec3(len, kStripDepth, width), a.text(-1, "name", ""));
     // the lamps that stand for it where the phone needs lamps; a lamp's sides are fixed by its facing
     Vec3 t, b;
     if (std::fabs(face.y) < 0.99f) t = normalize(cross(Vec3{0, 1, 0}, face)), b = cross(face, t);

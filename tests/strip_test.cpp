@@ -29,10 +29,11 @@ TEST(strip_makes_one_glowing_thing_and_lamps_that_stand_for_it) {
     total += l.lumens;
   }
   CHECK_NEAR(total, 600, 0.01);
-  // the glowing rectangle's normal faces `facing`
+  // the glowing bar's front faces `facing`, and it has depth, so it shows edge-on too (the phone, 2026-11-19)
   const Mat4& xf = sc.instances[glowing].transform;
   Vec3 n = xf.point({0, 1, 0}) - xf.point({0, 0, 0});
-  CHECK(n.y < -0.999f);
+  CHECK(normalize(n).y < -0.999f);
+  CHECK(length(n) > 0.005f);
 }
 
 TEST(strip_says_plain_problems) {
