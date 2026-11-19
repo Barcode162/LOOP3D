@@ -118,6 +118,10 @@ window.LE = window.LE || {};
         tog('render.lightCache', 'Bounced light from probes', true, E({ help: 'Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky\'s light everywhere, as if every room were open.' })),
         sl('render.lightCacheMs', 'Bounced light: baking time a frame', 3, 0.25, 16, 0.25, E({ unit: 'ms', help: 'More: the bounced light is ready sooner, frames a little longer while it bakes.' })),
         num('render.lightCacheProbes', 'Bounced light: most probes', 2048, E({ min: 64, max: 8192, step: 64, help: 'More: finer bounced light, longer to bake.' })),
+        tog('render.bake', 'Light bake (experiment)', false, E({ help: 'Still surfaces read the light the film renderer worked out once: every lamp with its own shadow, the sky, the light bounced between them, kept in cells a few centimetres wide. Lamps add only their shine. Baked a little each frame (the bounced light\'s baking time).' })),
+        num('render.bakeCell', 'Light bake: cell size', 0.1, E({ min: 0.02, max: 1, step: 0.01, unit: 'm', help: 'Smaller: sharper shadows, more to bake and keep.' })),
+        num('render.bakeRays', 'Light bake: estimates a cell', 64, E({ min: 4, max: 1024, step: 4, help: 'More: less grain, longer to bake.' })),
+        num('render.bakeReach', 'Light bake: reach', 25, E({ min: 2, max: 200, step: 1, unit: 'm', help: 'How far round you surfaces are baked; beyond it they are lit live.' })),
       ] },
       { title: 'Passes', items: [
         tog('render.passScene', 'Scene lighting', true, E()),

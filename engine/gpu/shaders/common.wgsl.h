@@ -34,6 +34,8 @@ struct Frame {
   shade : vec4f,         // the sun's shadow in true sizes: tan of the sun's angular radius, the near box's width (m), its depth (m); -
   mirror : vec4f,        // the pane that mirrors the room (order M60): its plane, n.xyz towards the eye and d (n.p + d = 0)
   mirror1 : vec4f,       // x: 1 the glass reads the mirror picture, 2 this is the mirror's own drawing (cut at the plane), 0 none; yz: drawn share of the mirror picture
+  bake0 : vec4f,         // the light bake: cell (0,0,0)'s low corner, cell size (m)
+  bake1 : vec4f,         // where its table starts in gridList, its slots (a power of two), on
 };
 struct Light {
   pos : vec4f,     // xyz, radius

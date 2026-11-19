@@ -43,6 +43,10 @@ struct Config {
     bool lightCache = true;    // bounced light from probes baked by the path tracer (phase 6)
     float lightCacheMs = 3;    // the probes' baking time a frame (ms)
     int lightCacheProbes = 2048;  // most probes over a scene
+    bool bake = false;         // the light bake: still surfaces read light the film renderer baked (lamps with their shadows, bounce)
+    float bakeCell = 0.1f;     // its cells' size (m)
+    int bakeRays = 64;         // estimates a cell
+    float bakeReach = 25;      // how far round the eye (m) surfaces are baked
     int lampMaps = 2;          // where no rays are traced (Phone): the main lamps with shadow maps
     int lampMapSize = 256;     // each of a mapped lamp's six views, pixels square
     bool clusters = true;  // draw from the cook's cluster trees (Nanite's way; off: the triangle drawing)

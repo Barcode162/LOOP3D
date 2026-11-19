@@ -50,6 +50,74 @@ fn cacheLight4(p : vec3f, n : vec3f) -> vec4f {
 }
 fn cacheLight(p : vec3f, n : vec3f) -> vec3f { return cacheLight4(p, n).rgb; }
 
+// The light bake (engine/render/surface_light.h, the same sums): its table sits
+// in gridList after the lamp lists, two words a slot (the cell's key, its light
+// as RGB9E5); a cell is found by the hash of its key, looking on past full slots.
+fn bakeWord(i : u32) -> u32 {
+  let j = u32(frame.bake1.x) + i;
+  return textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x;
+}
+fn bakeKey(c : vec3i, f : u32) -> u32 {
+  if (any(c < vec3i(0)) || c.x >= 1024 || c.y >= 512 || c.z >= 1024) { return 0xFFFFFFFFu; }
+  return u32(c.x) | (u32(c.y) << 10u) | (u32(c.z) << 19u) | (f << 29u);
+}
+fn bakeCell(k : u32) -> vec4f {  // the cell's light, w 1; or nothing (w 0)
+  if (k == 0xFFFFFFFFu) { return vec4f(0.0); }
+  var h = k;
+  h ^= h >> 16u; h *= 0x7feb352du;
+  h ^= h >> 15u; h *= 0x846ca68bu;
+  h ^= h >> 16u;
+  let mask = u32(frame.bake1.y) - 1u;
+  var s = h & mask;
+  for (var n = 0u; n < 32u; n++) {
+    let key = bakeWord(2u * s);
+    if (key == k) {
+      let w = bakeWord(2u * s + 1u);
+      return vec4f(vec3f(f32(w & 511u), f32((w >> 9u) & 511u), f32((w >> 18u) & 511u)) * exp2(f32(i32(w >> 27u) - 24)), 1.0);
+    }
+    if (key == 0xFFFFFFFFu) { break; }
+    s = (s + 1u) & mask;
+  }
+  return vec4f(0.0);
+}
+// The baked light on a surface at p facing n (its own facing, before bumps):
+// the four cells round it in its plane, blended; w 0 where none is near.
+fn bakeLight(p : vec3f, n : vec3f) -> vec4f {
+  let an = abs(n);
+  var ax = 2u;
+  if (an.x >= an.y && an.x >= an.z) { ax = 0u; } else if (an.y >= an.z) { ax = 1u; }
+  let f = 2u * ax + select(0u, 1u, n[ax] < 0.0);
+  let u = (ax + 1u) % 3u;
+  let v = (ax + 2u) % 3u;
+  let q = (p - frame.bake0.xyz) / frame.bake0.w;
+  var c = vec3i(floor(q));
+  let k0 = c[ax];
+  let edge = q[ax] - f32(k0);
+  var layer = k0;
+  var found = bakeCell(bakeKey(c, f)).w > 0.0;
+  if (!found && edge < 0.25) { c[ax] = k0 - 1; found = bakeCell(bakeKey(c, f)).w > 0.0; layer = k0 - 1; }
+  if (!found && edge > 0.75) { c[ax] = k0 + 1; found = bakeCell(bakeKey(c, f)).w > 0.0; layer = k0 + 1; }
+  if (!found) { return vec4f(0.0); }
+  let fu = q[u] - 0.5;
+  let fv = q[v] - 0.5;
+  let tu = fu - floor(fu);
+  let tv = fv - floor(fv);
+  var sum = vec3f(0.0);
+  var w = 0.0;
+  for (var j = 0u; j < 4u; j++) {
+    var cc = vec3i(0);
+    cc[ax] = layer;
+    cc[u] = i32(floor(fu)) + i32(j & 1u);
+    cc[v] = i32(floor(fv)) + i32(j >> 1u);
+    let l = bakeCell(bakeKey(cc, f));
+    let wj = select(1.0 - tu, tu, (j & 1u) == 1u) * select(1.0 - tv, tv, (j >> 1u) == 1u) * l.w;
+    sum += l.rgb * wj;
+    w += wj;
+  }
+  if (w <= 1e-6) { return vec4f(0.0); }
+  return vec4f(sum / w, 1.0);
+}
+
 // How much of lamp k (one of the first, mapped) a point sees: its depth in the
 // lamp's view that faces it, against the map (the chip blends 2x2 of them).
 fn lampMapSeen(p : vec3f, L : Light, k : u32, pix : vec2f) -> f32 {
@@ -741,13 +809,20 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   if (kShading >= 1u) { sf.comp = vec3f(1.0) + sf.f0 * (1.0 / max(ab.x + ab.y, 0.05) - 1.0); }
   let lit2 = dot(sf.translucent, vec3f(1.0)) > 0.0;  // lit from behind too
   var lo = vec3f(0.0);
+  // the light bake: a still surface baked near here takes its matte light from
+  // it (every lamp with its shadow, the bounce, the sky); the sun and the lamps
+  // add only their shine
+  var baked = vec4f(0.0);
+  if (frame.bake1.z > 0.5) { baked = bakeLight(i.world, ng); }
+  var sfL = sf;
+  if (baked.w > 0.0) { sfL.diffuse = vec3f(0.0); }
 
   // the sun, with shadows
   if (frame.sunDir.w > 0.5) {
     let l = frame.sunDir.xyz;
     let nl = dot(n, l);
     if (nl > 0.0 || lit2) {
-      let c = surfLight(sf, l, 0.0);
+      let c = surfLight(sfL, l, 0.0);
       if (dot(c, c) > 0.0) { lo += c * frame.sunColor.rgb * shadowAt(i.world, n * sign(nl), i.clip.xy); }
     }
   }
@@ -819,9 +894,9 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     // lamps on Phone), in part
     let picked = picking && !ownShadow && L.dir.w < 1.5;
     if (!ownShadow && !picked) { I *= mix(1.0, aoTerm, 0.7); }
-    var c = surfLight(sf, l, L.pos.w / (2.0 * sqrt(d2))) * I;
+    var c = surfLight(sfL, l, L.pos.w / (2.0 * sqrt(d2))) * I;
     // (blended into the point's light over the last of that reach: no ring where one takes over)
-    if (wide) { c = mix(panelLight(sf, i.world, L) * mix(1.0, aoTerm, 0.7), c, smoothstep(25.0, 36.0, d2 / diag2)); }
+    if (wide) { c = mix(panelLight(sfL, i.world, L) * mix(1.0, aoTerm, 0.7), c, smoothstep(25.0, 36.0, d2 / diag2)); }
     if (picked) {
       // one kept, each with the chance of its share of the light so far
       let w = dot(c, vec3f(0.3333));
@@ -893,7 +968,11 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   let under = select(1.0, 1.0 - coatNow, kShading >= 1u);
   let seenBase = ssrSeen * (1.0 - smoothstep(0.25, 0.5, rough));
   let mirror = (sf.f0 * ab.x + ab.y) * sf.comp;
-  lo += (sf.diffuse * softN * under + sf.translucent * softBack) / PI * occl * aoDiffuse;
+  if (baked.w > 0.0) {
+    lo += sf.diffuse * baked.rgb * (under / PI) + sf.translucent * softBack / PI * occl * aoDiffuse;
+  } else {
+    lo += (sf.diffuse * softN * under + sf.translucent * softBack) / PI * occl * aoDiffuse;
+  }
   lo += ((skyRadiance(r, rough * 6.0) * skySeen + room) * (1.0 - seenBase) * occl + ssrColor * seenBase) * mirror * under * aoMirror;
   if (sf.coat > 0.0) {  // clear coat: a second, sharp reflection over everything
     let coatRough = sqrt(sf.coatAlpha);

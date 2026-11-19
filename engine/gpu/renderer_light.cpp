@@ -160,6 +160,38 @@ void GpuRenderer::keepLightCache(Vec3 eye) {
   if (done) tracer_.reset();  // its tens of MB back
 }
 
+void GpuRenderer::keepBake(Vec3 eye) {
+  const auto& r = config().render;
+  if (!r.bake || !lastScene_ || quality_ == Quality::kUltra) {
+    if (bake_.on || bakeTracer_ || !bakeWords_.empty()) bake_ = SurfaceLight(), bakeTracer_.reset(), bakeWords_.clear(), bakeMade_ = {}, layOutGrid();
+    return;
+  }
+  // baked again from the start when shapes, placements, lamps or settings change (its tracer points into the scene as it was)
+  static const std::vector<std::string> kFrom = {"shapes", "placements", "lamp places", "settings"};
+  if (changes_.stale(bakeMade_, kFrom)) {
+    changes_.made(bakeMade_, kFrom);
+    bake_ = layOutSurfaceLight(*lastScene_, AABB(eye - Vec3(r.bakeReach), eye + Vec3(r.bakeReach)), r.bakeCell);
+    bakeOrder_.resize(static_cast<size_t>(bake_.cells()));
+    for (int i = 0; i < bake_.cells(); ++i) bakeOrder_[static_cast<size_t>(i)] = i;
+    std::sort(bakeOrder_.begin(), bakeOrder_.end(), [&](int a, int b) { return lengthSq(bake_.at[static_cast<size_t>(a)] - eye) < lengthSq(bake_.at[static_cast<size_t>(b)] - eye); });
+    bakeNext_ = 0;
+    bakeTracer_.reset();
+    if (bake_.on) bakeTracer_ = std::make_unique<PathTracer>(), bakeTracer_->setScene(*lastScene_);
+    if (!bakeWords_.empty()) bakeWords_.clear(), layOutGrid();  // lit live until baked again
+  }
+  if (!bakeTracer_) return;
+  const double start = emscripten_get_now(), budget = std::clamp(r.lightCacheMs, 0.25f, 60000.0f);
+  while (bakeNext_ < bakeOrder_.size()) {
+    bakeCell(bake_, bakeOrder_[bakeNext_++], *bakeTracer_, r.bakeRays, 2, 1);
+    if (emscripten_get_now() - start > budget) break;
+  }
+  if (bakeNext_ >= bakeOrder_.size()) {
+    bakeWords_ = bake_.packed();
+    layOutGrid();
+    bakeTracer_.reset();  // its tens of MB back
+  }
+}
+
 wgpu::Texture GpuRenderer::gridTexture(wgpu::TextureDimension dim, uint32_t x, uint32_t y, uint32_t z) {
   wgpu::TextureDescriptor td;
   td.size = {std::max(1u, x), std::max(1u, y), std::max(1u, z)};
@@ -197,7 +229,20 @@ void GpuRenderer::layOutGrid() {
   gridCellsTex_ = gridTexture(wgpu::TextureDimension::e3D, nx, ny, nz);
   writeGridTexture(gridCellsTex_, cells.data(), nx, ny, nz);
   const uint32_t rows = std::max<uint32_t>(1, static_cast<uint32_t>((grid_.entries.size() + 1023) / 1024));
-  gridListTex_ = gridTexture(wgpu::TextureDimension::e2D, 1024, rows, 1);
+  // the light bake's table in the rows after the lists (written once here; the lists are written when the lamps are)
+  const uint32_t bakeRows = static_cast<uint32_t>((bakeWords_.size() + 1023) / 1024);
+  gridListTex_ = gridTexture(wgpu::TextureDimension::e2D, 1024, rows + bakeRows, 1);
+  bakeStart_ = rows * 1024;
+  if (bakeRows) {
+    std::vector<uint32_t> words(static_cast<size_t>(bakeRows) * 1024, SurfaceLight::kEmpty);
+    std::copy(bakeWords_.begin(), bakeWords_.end(), words.begin());
+    wgpu::TexelCopyTextureInfo dst;
+    dst.texture = gridListTex_, dst.origin = {0, rows, 0};
+    wgpu::TexelCopyBufferLayout lay;
+    lay.bytesPerRow = 1024 * 4, lay.rowsPerImage = bakeRows;
+    wgpu::Extent3D ext{1024, bakeRows, 1};
+    queue_.WriteTexture(&dst, words.data(), words.size() * 4, &lay, &ext);
+  }
   gridCellsView_ = gridCellsTex_.CreateView(), gridListView_ = gridListTex_.CreateView();
   lightsDirty_ = true;
   bindGroupsDirty_ = true;

@@ -129,6 +129,10 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Bounced light from probes | `render.lightCache` | true |  | live · script | `setting "render.lightCache", true` | Probes through the scene hold the light bounced off walls, floors and things (and the sky only where it gets in), baked by the film renderer a little each frame, nearest you first. Off: the sky's light everywhere, as if every room were open. |
 | Bounced light: baking time a frame | `render.lightCacheMs` | 3 | 0.25 … 16 ms | live · script | `setting "render.lightCacheMs", 3` | More: the bounced light is ready sooner, frames a little longer while it bakes. |
 | Bounced light: most probes | `render.lightCacheProbes` | 2048 | 64 … 8192 | live · script | `setting "render.lightCacheProbes", 2048` | More: finer bounced light, longer to bake. |
+| Light bake (experiment) | `render.bake` | false |  | live · script | `setting "render.bake", false` | Still surfaces read the light the film renderer worked out once: every lamp with its own shadow, the sky, the light bounced between them, kept in cells a few centimetres wide. Lamps add only their shine. Baked a little each frame (the bounced light's baking time). |
+| Light bake: cell size | `render.bakeCell` | 0.1 | 0.02 … 1 m | live · script | `setting "render.bakeCell", 0.1` | Smaller: sharper shadows, more to bake and keep. |
+| Light bake: estimates a cell | `render.bakeRays` | 64 | 4 … 1024 | live · script | `setting "render.bakeRays", 64` | More: less grain, longer to bake. |
+| Light bake: reach | `render.bakeReach` | 25 | 2 … 200 m | live · script | `setting "render.bakeReach", 25` | How far round you surfaces are baked; beyond it they are lit live. |
 
 ### Passes
 
@@ -604,4 +608,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 156 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you
+11 project.json · 160 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you

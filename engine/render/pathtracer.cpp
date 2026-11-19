@@ -105,6 +105,7 @@ struct PathTracer::Impl {
   bool probeFirst = false;  // probeLight: the first stretch skips lamps and the sun seen straight on
   std::vector<char> stoodFor;  // per instance: a lamp stands for its glow (Light::standsFor), so a probe's first stretch skips it too
   std::vector<float> lampWeights;  // probeLight's lamp picking
+  bool bakeDirect = false;  // surfaceLight's own lamp sampling: every lamp counted whole (its ray skips them), no glows (its ray finds those)
   // surface recipes (docs/SURFACES.md): what each needs about a hit
   bool hasSurfaces = false;
   std::vector<int> sceneOf;                           // per geometry instance: its number in Scene::instances
@@ -512,10 +513,10 @@ Vec3 PathTracer::Impl::sampleLights(Vec3 p, Vec3 nOff, const Bsdf* bsdf, Vec3 wo
         if (pick > 0) sum += one(lights[i], false) / (pick * picks);
       }
   } else {
-    for (const LightData& L : lights) sum += one(L, true);
+    for (const LightData& L : lights) sum += one(L, !bakeDirect);
   }
   // one glowing triangle, picked by power
-  if (!emitters.empty() && emitterPower > 0) {
+  if (!emitters.empty() && emitterPower > 0 && !bakeDirect) {
     float x = rng.uniform() * emitterPower;
     size_t k = std::lower_bound(emitterCdf.begin(), emitterCdf.end(), x) - emitterCdf.begin();
     k = std::min(k, emitters.size() - 1);
@@ -833,6 +834,29 @@ Vec3 PathTracer::probeLight(Vec3 p, Vec3 d, uint32_t seed, int bounces, bool* ba
   Vec3 c = I.trace(r, rng, nullptr, nullptr);
   I.probeFirst = false;
   return isFinite(c) ? c : Vec3(0);
+}
+
+Vec3 PathTracer::surfaceLight(Vec3 p, Vec3 n, uint32_t seed, int bounces) {
+  Impl& I = *impl_;
+  Rng rng(seed);
+  Vec3 t, b;
+  orthonormalBasis(n, t, b);
+  // the lamps and the sun, each shadowed: what a white matte surface here would give back, times pi
+  Bsdf white;
+  white.t = t, white.b = b, white.n = n;
+  white.diffuse = Vec3(1), white.f0 = Vec3(0), white.alpha = 0;  // no shine of its own
+  white.finalize({0, 0, 1});
+  const Vec3 off = n * 1e-3f;
+  I.probeFirst = true, I.bakeDirect = true;
+  const Vec3 direct = I.sampleLights(p, off, &white, {0, 0, 1}, n, 0, rng) * kPi;
+  I.bakeDirect = false;
+  // everything else, along one ray picked by its cosine: bounced light, the sky, glowing surfaces
+  const Vec3 c = cosineHemisphere(rng.uniform2());
+  I.settings.maxBounces = std::max(bounces, 1);
+  const Vec3 rest = I.trace({p + off, t * c.x + b * c.y + n * c.z}, rng, nullptr, nullptr) * kPi;
+  I.probeFirst = false;
+  const Vec3 e = direct + rest;
+  return isFinite(e) && e.x >= 0 && e.y >= 0 && e.z >= 0 ? e : Vec3(0);
 }
 
 RenderOutput PathTracer::render(const RenderSettings& s) {

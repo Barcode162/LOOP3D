@@ -51,6 +51,8 @@ class Renderer {
   virtual uint64_t lampShadowDraws() const { return 0; }
   // The light cache: probes still to bake (0: done or off).
   virtual int lightCacheWaiting() const { return 0; }
+  virtual int bakeWaiting() const { return 0; }  // the light bake's cells still to bake
+  virtual int bakeCells() const { return 0; }    // its cells in use
   // parts of the far sun shadow still to draw before it is shown (High)
   virtual int farShadowWaiting() const { return 0; }
   // How many probes were marked to bake again near a change, and how many there are.

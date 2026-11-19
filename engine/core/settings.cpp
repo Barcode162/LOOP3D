@@ -85,6 +85,10 @@ Settings::Settings() {
   B("render.lightCache", r.lightCache, "bounced light: probes through the scene baked by the film renderer a little each frame (off: the sky's light everywhere, as if every room were open)");
   F("render.lightCacheMs", r.lightCacheMs, 0.25, 60000, "milliseconds a frame for baking the light cache's probes (more: done sooner, frames a little longer while it bakes)");
   I("render.lightCacheProbes", r.lightCacheProbes, 64, 8192, "most probes over a scene (more: finer bounced light, longer to bake)");
+  B("render.bake", r.bake, "the light bake (docs/LIGHT_LAB.md): still surfaces read the light the film renderer worked out once (every lamp with its own shadow, the sky, the light bounced), kept in cells a few centimetres wide; lamps add only their shine (an experiment: baked a little each frame by render.lightCacheMs)");
+  F("render.bakeCell", r.bakeCell, 0.02, 1, "the light bake's cells (m): smaller is sharper shadows, more to bake and keep");
+  I("render.bakeRays", r.bakeRays, 4, 1024, "the light bake: estimates a cell (more: less grain, longer to bake)");
+  F("render.bakeReach", r.bakeReach, 2, 200, "the light bake: how far round the eye (m) surfaces are baked");
   I("render.lampMaps", r.lampMaps, 0, 2, "on Phone (no rays): how many of the main lamps near you cast shadows, from shadow maps");
   I("render.lampMapSize", r.lampMapSize, 64, 1024, "each of a lamp shadow map's six views, pixels square (sharper costs memory: 256 is 3 MB for two lamps)");
   F("render.lampError", r.lampError, 0, 0.2, "a nearer group of lamps is worked out as one too when the most its light could be wrong is under this share of all the light there (lightcuts): dim lamps beside bright ones cost little (0: distance alone)");

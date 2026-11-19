@@ -54,6 +54,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
   if (bindGroupsDirty_) makeBindGroups();
   keepGrid();
   keepLightCache(cam.position);
+  keepBake(cam.position);
   uploadLights(cam.position);
   drawCalls_ = 0;
 
@@ -135,6 +136,8 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
   f.prevScreen = {static_cast<float>(histValid_ ? prevScreen_[0] : width_), static_cast<float>(histValid_ ? prevScreen_[1] : height_), 0, 0};
   f.cache0 = {cache_.origin, cache_.spacing};
   f.cache1 = {static_cast<float>(cache_.nx), static_cast<float>(cache_.ny), static_cast<float>(cache_.nz), cache_.on && cacheTex_[0] ? 1.0f : 0.0f};
+  f.bake0 = {bake_.origin, bake_.cell};
+  f.bake1 = {static_cast<float>(bakeStart_), static_cast<float>(bake_.slots.size()), bakeWords_.empty() ? 0.0f : 1.0f, 0};
   for (int i = 0; i < 9; ++i) f.sh[i] = {sh_[i], 0};
   f.sh[0].w = C.render.shadowSoftness, f.sh[1].w = C.world.patternFade;
   f.sh[2].w = fog_.haze.visibility, f.sh[3].w = fog_.haze.height;  // haze (0: off)

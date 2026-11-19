@@ -58,6 +58,11 @@ class PathTracer {
   // live renderer works those out itself), over at most `bounces` bounces.
   // `back`: the ray's first hit was the back of a surface (p is inside it).
   Vec3 probeLight(Vec3 p, Vec3 d, uint32_t seed, int bounces, bool* back);
+  // The light bake's (engine/render/surface_light.h): one estimate of all the
+  // light falling on a surface at `p` facing `n` (irradiance, what a white
+  // matte surface there would be lit by): every lamp and the sun with its
+  // shadows, the sky, glows and `bounces` bounces. Average many seeds.
+  Vec3 surfaceLight(Vec3 p, Vec3 n, uint32_t seed, int bounces);
   // Radiance cascades (phase 9's experiment): the light from what the ray
   // meets between `t0` and `t1` along it (as probeLight), and whether it met
   // nothing there (`through`: the light comes from farther on).

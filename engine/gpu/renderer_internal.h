@@ -29,6 +29,7 @@
 #include "engine/geometry/bvh.h"
 #include "engine/render/sky.h"
 #include "engine/render/surface_bake.h"
+#include "engine/render/surface_light.h"
 
 namespace loop::gpu {
 
@@ -108,6 +109,7 @@ struct FrameU {
   Vec4 shade;              // the sun's shadow in true sizes: tan of its angular radius, the near box's width, depth (m)
   Vec4 mirror;             // the pane that mirrors the room (order M60): its plane, normal towards the eye, d
   Vec4 mirror1;            // 1: the glass reads the mirror picture; 2: the mirror's own drawing; yz: the drawn share of that picture
+  Vec4 bake0, bake1;       // the light bake: cell (0,0,0)'s low corner, cell size; where its table starts in the lists, slots, on
 };
 struct LightU {
   Vec4 pos, color, dir, cone;
@@ -167,7 +169,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1584, "frame layout");
+static_assert(sizeof(FrameU) == 1616, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -314,6 +316,20 @@ class GpuRenderer final : public Renderer {
   int lightCacheWaiting() const override { return tracer_ ? static_cast<int>(cacheOrder_.size() - cacheNext_) : 0; }
   uint64_t lightCacheRelit() const override { return cacheRelit_; }
   int lightCacheProbes() const override { return cache_.on ? cache_.probes() : 0; }
+
+  // ---- the light bake (engine/render/surface_light.h; docs/LIGHT_LAB.md, round 3): the light on
+  // every still surface near the eye, baked by a path tracer of its own a few milliseconds a frame
+  // (nearest first) and sent once whole, after the light grid's lists in their picture
+  SurfaceLight bake_;
+  std::unique_ptr<PathTracer> bakeTracer_;
+  std::vector<int> bakeOrder_;
+  size_t bakeNext_ = 0;
+  ChangeTracker::Made bakeMade_;
+  std::vector<uint32_t> bakeWords_;  // as sent (empty: nothing baked yet)
+  uint32_t bakeStart_ = 0;           // where they start in the lists
+  void keepBake(Vec3 eye);
+  int bakeWaiting() const override { return bakeTracer_ ? static_cast<int>(bakeOrder_.size() - bakeNext_) : 0; }
+  int bakeCells() const override { return bakeWords_.empty() ? 0 : bake_.cells(); }
 
   // ---- the light grid (engine/render/light_grid.h): the lamps in a tree of
   // groups, each group sent as one more lamp (its members' light added up,
