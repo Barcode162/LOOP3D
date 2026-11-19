@@ -1,0 +1,466 @@
+# The Loft: a home of two floors under a high ceiling, at night (9 m wide, 6 m high, 12 m deep), one wall of glass
+# with a city beyond. Built from library pieces in goals 1 to 7 and furnished (2026-11-18): no sun, no fill light;
+# every pool of light is a lamp you can find (the stair's strips, the cove on the brick, pendants over the island,
+# the table and the bed, spots on the sofa, the arc lamp, strips under the shelves, the fire, a laptop left on),
+# warm inside against the cool city. The camera's exposure is held, so dark stays dark.
+use "loft_shell"
+use "glazing_wall"
+use "mezzanine_deck"
+use "stair_straight"
+use "steel_rail"
+use "glass_balustrade"
+use "step_strips"
+use "steel_beam"
+use "column"
+use "timber_joists"
+use "brick_wall_bay"
+use "skirting"
+use "duct_run"
+use "radiator"
+use "door_and_frame"
+use "cove"
+use "pendant_dome"
+use "track_spots"
+use "city_night"
+use "kitchen_run"
+use "kitchen_island"
+use "bar_stool"
+use "dining_table_oak"
+use "dining_chair_wood"
+use "sofa_modular"
+use "coffee_table_slab"
+use "armchair_leather"
+use "floor_lamp_arc"
+use "fireplace"
+use "window_seat"
+use "built_in_shelves"
+use "bed_platform"
+use "bookshelf"
+use "rug_wool"
+use "cushion"
+use "book_row"
+use "potted_fern"
+use "laptop_open"
+use "fridge"
+use "oven"
+use "hob"
+use "sink_tap"
+use "kettle"
+use "coffee_machine"
+use "toaster"
+use "knife_block"
+use "chopping_board"
+use "utensil_pot"
+use "pan"
+use "pot"
+use "plates"
+use "bowl"
+use "mug"
+use "wine_glass"
+use "tumbler"
+use "cutlery"
+use "jar"
+use "bottle"
+use "fruit_bowl"
+use "bread"
+use "herb_pots"
+use "wine_rack"
+use "vase_flowers"
+use "tea_towel"
+use "dish_rack"
+use "bin"
+use "lounge_chair"
+use "footstool"
+use "pouffe"
+use "side_table"
+use "tv_unit"
+use "tv"
+use "rug_flat"
+use "sheepskin"
+use "floor_cushion"
+use "throw_blanket"
+use "record_player"
+use "records"
+use "speaker"
+use "ladder_shelf"
+use "round_mirror"
+use "wall_art"
+use "candle_tray"
+use "book_stack"
+use "magazines"
+use "picture_frame"
+use "vase"
+use "sculpture"
+use "candles"
+use "storage_box"
+use "basket"
+use "wall_clock"
+use "plant_pot"
+use "guitar_stand"
+use "fiddle_leaf_fig"
+use "monstera"
+use "olive_tree"
+use "snake_plant"
+use "pothos"
+use "hanging_basket"
+use "table_lamp"
+use "wall_light"
+use "globe_pendants"
+use "string_lights"
+use "neon_sign"
+use "picture_light"
+use "duvet"
+use "pillow"
+use "bedside_table"
+use "chest_of_drawers"
+use "wardrobe"
+use "laundry_basket"
+use "alarm_clock"
+use "book_glasses"
+use "slippers"
+use "desk"
+use "office_chair"
+use "monitor"
+use "keyboard"
+use "desk_lamp"
+use "pen_pot"
+use "headphones"
+use "bathroom_pod"
+use "sliding_door"
+use "shower_screen"
+use "toilet"
+use "basin"
+use "mirror_cabinet"
+use "shower_head"
+use "towel_rail"
+use "bath_mat"
+use "toiletries"
+use "coat_stand"
+use "shoe_rack"
+use "entry_bench"
+use "umbrella_stand"
+use "key_dish"
+use "chimney_breast"
+use "roof_light"
+use "curtain_track"
+use "splashback"
+use "extractor_hood"
+use "cat"
+use "neighbor_building"
+use "water_tower"
+use "moon"
+title "The Loft"
+mode "game"
+loft_shell(size: vec(9, 6, 12), floor: "floorboards", walls: "plaster")
+glazing_wall(at: vec(0, 0, -6), width: 9, height: 6, across: 6, up: 4)
+# the upper floor. The "back" of the room is +z (the far end from the glass wall at z = -6), so the
+# deck covers z from 2 to 6 and leaves the glass wall free. Its top is at 3.06 m (17 rises of 0.18 m).
+mezzanine_deck(at: vec(0, 0, 2), width: 9, depth: 4, top: 3.06)
+# the stair climbs the left wall towards +z: 17 rises, 16 treads, its top step level with the deck at z = 2
+# (the stair is 0.95 wide, its middle 4.0 m left of centre, so its steel sits just off the wall at x = -4.5)
+stair_straight(at: vec(-4, 0, -2.32), rises: 17, rise: 0.18, going: 0.27, width: 0.95)
+# the rail on the stair's open (right) side, climbing along the nosing line from 0.18 m at the foot to the deck
+steel_rail(vec(-3.48, 0.18, -2.32), vec(-3.48, 3.06, 2))
+# the glass guard along the deck's front edge, from the stair's mouth to the right wall, standing on the deck
+glass_balustrade(vec(-3.4, 3.06, 2.06), vec(4.5, 3.06, 2.06))
+# the stair lights itself: a strip under every tread (16, 250 lumens a metre), with the stair's own numbers
+step_strips(at: vec(-4, 0, -2.32), rises: 17, rise: 0.18, going: 0.27, width: 0.95, lumens: 0, kelvin: 2700, piece: 1)
+# and one under the handrail's top bar, facing down along the rail's whole climb (the rail is 0.95 m high,
+# its top bar 12 mm thick), so the stair's open side glows from above
+strip(vec(-3.48, 1.122, -2.32), vec(-3.48, 4.002, 2), lumens: 0, kelvin: 2700, facing: vec(0, -1, 0), width: 0.01, piece: 1.5)
+# ---- goal 5, the bones: detail in three sizes, the same warm light on steel, timber and brick
+# timber joists under the whole ceiling (boards' top at 6 m, joists 0.22 m deep under them)
+timber_joists(at: vec(0, 0, 0), width: 9, depth: 12, top: 6, spacing: 0.6, timber: "oak")
+# a steel beam across the room under the joists, on two columns at the side walls, clear of the stair's foot
+steel_beam(vec(-4.5, 5.755, -3.4), vec(4.5, 5.755, -3.4))
+column(at: vec(-4.35, 0, -3.4), height: 5.455)
+column(at: vec(4.05, 0, -3.4), height: 5.455)
+# the right wall is brick: four bays side by side, the whole height of the room
+for each z in [-4.5, -1.5, 1.5, 4.5]
+  brick_wall_bay(at: vec(4.5, 0, z), width: 3, height: 6, faces: "x")
+# skirting along the plaster walls: the left wall, and the back wall up to where the kitchen will stand
+skirting(vec(-4.5, 0, -6), vec(-4.5, 0, 6), side: 1)
+skirting(vec(-4.5, 0, 6), vec(-1.2, 0, 6), side: -1)
+# one galvanised duct along the ceiling, under the beam, from near the glass to the deck
+duct_run(vec(2.4, 5.1, -5.4), vec(2.4, 5.1, 1.8), across: 0.4, ceiling: 6)
+# a radiator on the back wall under the deck, and the way in: a door in the brick under the deck
+radiator(at: vec(-3.2, 0, 5.85), columns: 16, height: 0.6)
+group at: vec(4.3, 0, 2.9), turn: 90 deg
+  door_and_frame(width: 0.9, height: 2.1)
+# ---- goal 6, pools of warm light: where a lamp is aimed is where you look; the corners stay dark
+# a cove along the brick, its strip hidden on the ledge, washing the brick and the joists above it
+cove(vec(4.29, 2.4, -5.9), vec(4.29, 2.4, -2.15), lumens: 0, kelvin: 2700, out: -1, piece: 1.6)
+cove(vec(4.29, 2.4, -0.25), vec(4.29, 2.4, 1.9), lumens: 0, kelvin: 2700, out: -1, piece: 1.6)
+# three pendants under the deck, over where the kitchen island stands
+for each x in [0.6, 1.4, 2.2]
+  pendant_dome(vec(x, 2.83, 3.6), drop: 0.85, across: 0.32, lumens: 450, kelvin: 2700)
+# a track of three spots under the beam's level, aimed at the floor where the sofa stands
+track_spots(vec(1.5, 5.4, -4.6), vec(1.5, 5.4, -1.2), count: 3, aims: [vec(0.6, 0.4, -2.4), vec(1.5, 0.45, -3.7), vec(2.7, 0.4, -4.4)], lumens: 0, kelvin: 3000)
+# ---- goal 7, the city outside: warm inside against a cool outside; far things fade to blue
+# the loft is 40 m up; the city fans out beyond the glass. Its own light is a panel that can't yet be unseen
+# (it stood in the room as a grey wall), so the city's glow is one cool lamp far out beyond the glass instead:
+# a little blue light on the floor by the glass, with the bars' shadows
+city_night(toward: vec(0, 0, -1), eye_height: 40, seed: 3, lit: 0.35, lamp: no, visibility: 6000)
+light(vec(0, 30, -25), lumens: 0, kelvin: 7500, radius: 0.5)
+# the building next door across the street, off to the right so the city stays open, two water towers on its
+# roof, and the moon low over the far towers (the loft is 40 m up: the street is at y = -40)
+neighbor_building(at: vec(11, -40, -27), turn: -22 deg, width: 18, height: 45, depth: 14, lit: 0.45, seed: 4)
+water_tower(at: vec(8.5, 5.6, -31), seed: 1)
+water_tower(at: vec(13.5, 5.6, -35), size: 0.8, seed: 2)
+moon(toward: vec(0.12, 0.4, -1), at: vec(0, 1.6, 0), size: 2.2)
+# ---- lived in: the furniture, from the library
+# the kitchen under the deck: a run along the back wall, the island in front of it turned so the cook faces
+# the run and the stools sit on the room's side, under the three pendants
+kitchen_run(at: vec(1.4, 0, 6), length: 5.0, tall: yes)
+group at: vec(1.4, 0, 3.6), turn: 180 deg
+  kitchen_island(length: 2.4)
+for each x in [0.6, 1.4, 2.2]
+  bar_stool(at: vec(x, 0, 2.5), turn: 180 deg)
+# dining for six in front of the deck, one wide pendant hanging over it from the high ceiling
+dining_table_oak(at: vec(-1.7, 0, 0.3), length: 2.0)
+for each x in [-2.4, -1.0]
+  dining_chair_wood(at: vec(x, 0, -0.35), turn: 180 deg)
+  dining_chair_wood(at: vec(x, 0, 0.95))
+group at: vec(-3.05, 0, 0.3), turn: -90 deg
+  dining_chair_wood(at: vec(0, 0, 0))
+group at: vec(-0.35, 0, 0.3), turn: 90 deg
+  dining_chair_wood(at: vec(0, 0, 0))
+pendant_dome(vec(-1.7, 5.75, 0.3), drop: 4.05, across: 0.42, lumens: 650, kelvin: 2700)
+# the sofa faces the glass and the city; the coffee table before it, an armchair turned in by the glass, the
+# arc lamp reaching over the sofa's left end from behind, the fire on the brick to its right
+sofa_modular(at: vec(1.5, 0, -2.2), seats: 3, chaise: "right")
+coffee_table_slab(at: vec(1.5, 0, -3.55), length: 1.3)
+armchair_leather(at: vec(2.9, 0, -4.7), turn: 140 deg)
+floor_lamp_arc(at: vec(0.2, 0, -1.0), lumens: 0)
+group at: vec(4.29, 0, -1.2), turn: 90 deg
+  fireplace(width: 1.6, height: 1.4)
+# a window seat against the glass, and open shelves on the left wall between the glass and the stair
+group at: vec(-1.6, 0, -6), turn: 180 deg
+  window_seat(length: 3.0)
+group at: vec(-4.5, 0, -4.15), turn: -90 deg
+  built_in_shelves(width: 3.0, height: 2.6, bays: 4, shelves: 6)
+  # about two thirds full: rows of books in odd counts with gaps, one leaning, a fern on one shelf
+  # (shelf j's top is at 0.1 + (j + 1) x 0.4167; bay i's left end at -1.44 + i x 0.74)
+  book_row(at: vec(-1.42, 0.517, -0.29), count: 15, seed: 1)
+  book_row(at: vec(0.06, 0.517, -0.29), count: 9, lean: yes, seed: 2)
+  book_row(at: vec(-0.68, 0.933, -0.29), count: 17, seed: 3)
+  book_row(at: vec(0.8, 0.933, -0.29), count: 13, seed: 4)
+  book_row(at: vec(-1.42, 1.35, -0.29), count: 11, lean: yes, seed: 5)
+  book_row(at: vec(0.06, 1.767, -0.29), count: 14, seed: 6)
+  book_row(at: vec(0.8, 2.183, -0.29), count: 3, lean: yes, seed: 7)
+  potted_fern(at: vec(1.11, 1.35, -0.16), size: 0.55, seed: 3)
+
+# upstairs: the bed, head to the back wall; a bookshelf by it
+bed_platform(at: vec(1.8, 3.06, 4.65), width: 1.9, length: 2.1)
+bookshelf(at: vec(-1.2, 3.06, 5.85), height: 2.2, width: 1.2)
+# a low pendant hanging beside the bed as its bedside light, and two pillows lying back against the head
+pendant_dome(vec(0.45, 5.75, 5.2), drop: 2.05, across: 0.28, lumens: 300, kelvin: 2400)
+# a soft hidden strip under the front of each shelf board, washing the shelf below (one lamp each on the
+# phone); the shelves' front is at x = -4.19, they run from z = -5.6 to -2.7
+for each j in range(1, 6, 1)
+  let y = 0.1 + (j + 1) * 0.4167 - 0.045
+  strip(vec(-4.19, y, -5.6), vec(-4.19, y, -2.7), lumens: 0, kelvin: 2700, facing: vec(0, -1, 0), piece: 3)
+# ---- the soft things and a sign of life
+# a thick wool rug under the sofa group: the sofa and the table's feet press into it
+rug_wool(at: vec(1.5, 0, -3.0), length: 3.4, width: 2.6)
+# cushions leaning on the sofa's back, in odd number: two together at the left, one on the right, one on the chaise
+cushion(at: vec(0.42, 0.64, -2.24), tilt: -14 deg)
+cushion(at: vec(0.9, 0.62, -2.23), turn: 8 deg, tilt: -18 deg, cover: material(like: "linen"))
+cushion(at: vec(2.5, 0.63, -2.24), turn: -6 deg, tilt: -14 deg)
+cushion(at: vec(-2.3, 0.75, -5.75), turn: 180 deg, tilt: -14 deg, cover: material(like: "linen"))
+# someone was just here: the laptop left open on the coffee table, its screen towards the sofa
+laptop_open(at: vec(1.25, 0.36, -3.6), turn: 180 deg, lid: 18)
+# ferns: a big one by the window seat, one beside the fire, one upstairs by the bed
+potted_fern(at: vec(-3.75, 0, -5.4), size: 1.4, seed: 1)
+potted_fern(at: vec(3.75, 0, 0.15), size: 1.1, seed: 2)
+potted_fern(at: vec(0.35, 3.06, 5.5), size: 0.9, seed: 4)
+# ---- the kitchen in use (worktop 0.9 m up, its front at z = 5.38; the island's top 0.95 m, z 2.85 to 4.07)
+# the fridge stands at the run's far end by the brick; the oven under the hob, a towel over its handle
+fridge(at: vec(4.18, 0, 5.66))
+oven(at: vec(1.1, 0.18, 5.4))
+tea_towel(at: vec(0.92, 0.62, 5.35))
+hob(at: vec(1.1, 0.9, 5.7))
+pan(at: vec(0.95, 0.906, 5.6), turn: -30 deg)
+pot(at: vec(1.27, 0.906, 5.83))
+# the sink with its rack, jars of pasta, rice and beans, the tools by the hob, the board, the kettle and the coffee
+sink_tap(at: vec(-0.2, 0.9, 5.72))
+dish_rack(at: vec(-0.8, 0.9, 5.7), turn: 4 deg)
+bin(at: vec(-1.42, 0, 5.72))
+jar(at: vec(0.17, 0.9, 5.88), height: 0.2, fill: rgb(0.86, 0.7, 0.38), filled: 0.8)
+jar(at: vec(0.29, 0.9, 5.88), height: 0.16, fill: rgb(0.93, 0.92, 0.88), filled: 0.55)
+jar(at: vec(0.41, 0.9, 5.88), height: 0.13, fill: rgb(0.32, 0.12, 0.08), filled: 0.7)
+utensil_pot(at: vec(0.66, 0.9, 5.86))
+chopping_board(at: vec(1.7, 0.9, 5.62), turn: 6 deg)
+knife_block(at: vec(1.72, 0.9, 5.9))
+kettle(at: vec(2.12, 0.9, 5.78), turn: 20 deg)
+mug(at: vec(2.3, 0.9, 5.6), turn: 40 deg)
+coffee_machine(at: vec(2.62, 0.9, 5.78))
+toaster(at: vec(3.06, 0.9, 5.76))
+# the island: herbs, the bread half cut, flowers under the pendants, fruit, a stack of plates, wine and two glasses
+herb_pots(at: vec(0.55, 0.95, 3.95))
+bread(at: vec(1.0, 0.95, 3.62), turn: -10 deg)
+vase_flowers(at: vec(1.4, 0.95, 3.75), kind: "poppy", seed: 2)
+fruit_bowl(at: vec(1.9, 0.95, 3.7), seed: 3)
+plates(at: vec(2.42, 0.95, 3.9), count: 6)
+bottle(at: vec(2.3, 0.95, 3.45))
+bottle(at: vec(0.3, 0.95, 3.6), kind: "oil")
+wine_glass(at: vec(2.15, 0.95, 3.05), wine: 0.6)
+wine_glass(at: vec(2.47, 0.95, 3.1))
+mug(at: vec(0.75, 0.95, 3.1), turn: -60 deg, glaze: material(like: "porcelain", color: rgb(0.85, 0.83, 0.78)))
+# a rack of wine on the plaster wall by the dining table
+group at: vec(-4.5, 1.15, 1.2), turn: -90 deg
+  wine_rack(rows: 3, columns: 4)
+# the dining table laid for two at one end, a bowl of fruit's worth of flowers between, a jug of water
+for each s in [-1, 1]
+  plates(at: vec(-2.4, 0.75, 0.3 + s * 0.33), count: 1)
+  cutlery(at: vec(-2.24, 0.75, 0.3 + s * 0.33), turn: 90 deg + s * 90 deg)
+  wine_glass(at: vec(-2.15, 0.75, 0.3 + s * 0.2), wine: 0.3)
+  tumbler(at: vec(-2.62, 0.75, 0.3 + s * 0.2), water: 0.6)
+vase_flowers(at: vec(-1.6, 0.75, 0.3), kind: "bluebell", seed: 5)
+bowl(at: vec(-1.15, 0.75, 0.25), across: 0.22)
+bottle(at: vec(-1.95, 0.75, 0.38))
+mug(at: vec(1.75, 0.36, -3.45), turn: 120 deg)
+# ---- the living room filled in
+# a reading corner by the shelves: the lounge chair turned to the glass, its stool with a folded throw, a lamp
+lounge_chair(at: vec(-2.9, 0, -3.7), turn: -30 deg)
+footstool(at: vec(-2.5, 0, -4.45), turn: -30 deg)
+throw_blanket(at: vec(-2.5, 0.42, -4.45), turn: -20 deg)
+side_table(at: vec(-3.6, 0, -3.0))
+table_lamp(at: vec(-3.6, 0.55, -3.0), lumens: 0)
+pouffe(at: vec(0.45, 0, -4.2))
+# by the sofa's left end, a second table with a plant and a few books
+side_table(at: vec(-0.15, 0, -2.35), top: "oak")
+plant_pot(at: vec(-0.25, 0.55, -2.3), kind: "leafy", seed: 4)
+book_stack(at: vec(-0.05, 0.55, -2.4), count: 2, seed: 7)
+# the coffee table: books, a tray of candles lit
+book_stack(at: vec(1.98, 0.36, -3.62), turn: 10 deg, seed: 2)
+candle_tray(at: vec(1.6, 0.36, -3.7), lamp: no)
+# the media wall on the brick, beside the fire: a long low unit, the TV off, the record player and its speakers,
+# the records on the floor, our neon above
+group at: vec(4.06, 0, -3.3), turn: 90 deg
+  tv_unit(length: 2.0)
+  speaker(at: vec(0.85, 0.5, 0))
+  record_player(at: vec(0.45, 0.5, 0.02))
+  tv(at: vec(-0.35, 0.5, 0.04), size: 40)
+  speaker(at: vec(-0.9, 0.5, 0))
+group at: vec(3.9, 0, -4.65), turn: 90 deg
+  records(count: 22, seed: 3)
+neon_sign(at: vec(4.29, 1.8, -3.3), turn: 90 deg, words: "stay a while")
+# by the fire: a sheepskin and two floor cushions
+sheepskin(at: vec(3.55, 0, -1.2), turn: 90 deg, seed: 2)
+floor_cushion(at: vec(3.4, 0, -0.35), turn: 12 deg)
+floor_cushion(at: vec(3.3, 0, -2.05), turn: -8 deg, cover: material(like: "velvet", color: rgb(0.16, 0.22, 0.2)))
+# two more cushions on the window seat, a guitar by it
+cushion(at: vec(-1.3, 0.75, -5.75), turn: 186 deg, tilt: -16 deg, cover: material(like: "velvet", color: rgb(0.5, 0.36, 0.12)))
+cushion(at: vec(-0.75, 0.73, -5.75), turn: 174 deg, tilt: -12 deg, side: 0.4, cover: material(like: "wool", color: rgb(0.78, 0.74, 0.66)))
+guitar_stand(at: vec(0.3, 0, -5.3), turn: -20 deg)
+# a flat-woven rug under the dining table
+rug_flat(at: vec(-1.7, 0, 0.3), length: 3.0, width: 2.3)
+# the stair wall: two of our paintings climbing with the steps, three globes hanging in the stairwell
+wall_art(at: vec(-4.48, 2.5, -1.0), turn: -90 deg, seed: 1, palette: "warm")
+wall_art(at: vec(-4.48, 3.3, 0.3), turn: -90 deg, width: 0.7, height: 0.9, seed: 4, palette: "cool")
+globe_pendants(vec(-3.95, 5.78, 1.0), drops: [0.8, 1.0, 1.2], lumens: 600)
+# under the deck on the plaster: a clock, a round mirror
+wall_clock(at: vec(-4.48, 2.3, 3.0), turn: -90 deg, hour: 9, minute: 40)
+# the shelves, the rest filled: boxes, a basket, vases, frames, small sculptures, candles, a trailing plant
+group at: vec(-4.5, 0, -4.15), turn: -90 deg
+  storage_box(at: vec(-0.48, 0.517, -0.15), width: 0.32)
+  vase(at: vec(-0.12, 0.517, -0.15), shape: "round", height: 0.16)
+  basket(at: vec(1.15, 0.517, -0.16), across: 0.3, height: 0.28)
+  vase(at: vec(-1.27, 0.933, -0.15), shape: "bottle", height: 0.26)
+  vase(at: vec(-1.06, 0.933, -0.15), shape: "tall", height: 0.32, glaze: material(like: "porcelain", color: rgb(0.2, 0.26, 0.28)))
+  vase(at: vec(-0.86, 0.933, -0.15), shape: "round", height: 0.15, glaze: material(like: "clay", color: rgb(0.6, 0.35, 0.22)))
+  picture_frame(at: vec(0.28, 0.933, -0.1), size: "medium", seed: 2)
+  sculpture(at: vec(0.6, 0.933, -0.15), kind: "loop")
+  book_stack(at: vec(-0.42, 1.35, -0.15), turn: 4 deg, seed: 5)
+  sculpture(at: vec(-0.42, 1.43, -0.15), kind: "stack")
+  bowl(at: vec(-0.1, 1.35, -0.15), across: 0.14)
+  candles(at: vec(0.41, 1.35, -0.15), lit: no)
+  magazines(at: vec(-1.17, 1.767, -0.16), seed: 2)
+  plant_pot(at: vec(-0.86, 1.767, -0.15), kind: "succulent", seed: 3)
+  sculpture(at: vec(-0.36, 1.767, -0.15), kind: "figure")
+  picture_frame(at: vec(-0.12, 1.767, -0.1), size: "small", frame: "brass", seed: 5)
+  vase(at: vec(1.0, 1.767, -0.15), shape: "flask", height: 0.22, glaze: material(like: "porcelain", color: rgb(0.1, 0.1, 0.1)))
+  vase(at: vec(1.3, 1.767, -0.15), shape: "pot", height: 0.14, glaze: material(like: "clay", color: rgb(0.72, 0.6, 0.45)))
+  storage_box(at: vec(-1.07, 2.183, -0.15), width: 0.36, height: 0.24, cover: material(like: "paper", color: rgb(0.2, 0.2, 0.2)))
+  pothos(at: vec(-0.33, 2.183, -0.16), trail: 0.7, seed: 2)
+  picture_frame(at: vec(0.3, 2.183, -0.1), size: "large", frame: "oak", seed: 8)
+  vase(at: vec(0.6, 2.183, -0.15), shape: "tall", height: 0.28)
+# plants: a fig in the corner by the glass, a snake plant by the door, a fern hung by the window seat
+fiddle_leaf_fig(at: vec(3.9, 0, -5.15), seed: 2)
+snake_plant(at: vec(3.9, 0, 1.0), seed: 3)
+hanging_basket(at: vec(-3.6, 5.78, -5.2), drop: 2.2, seed: 5)
+# upstairs: a monstera and an olive by the glass guard, a ladder shelf, our painting over the bed with its light,
+# reading lights either side of the bed and a string of small bulbs above
+monstera(at: vec(-0.25, 3.06, 2.55), seed: 2)
+olive_tree(at: vec(4.0, 3.06, 2.6), seed: 3)
+ladder_shelf(at: vec(-2.6, 3.06, 5.62))
+book_row(at: vec(-2.85, 3.48, 5.57), count: 9, lean: yes, seed: 9)
+plant_pot(at: vec(-2.45, 3.86, 5.7), kind: "cactus")
+wall_art(at: vec(1.8, 4.55, 5.98), width: 1.2, height: 0.8, seed: 7, palette: "night")
+picture_light(at: vec(1.8, 5.05, 5.98), width: 0.6)
+wall_light(at: vec(0.62, 4.0, 5.99))
+wall_light(at: vec(2.98, 4.0, 5.99), on: no)
+string_lights(vec(0.2, 5.5, 5.95), vec(3.4, 5.5, 5.95), bulbs: 22, sag: 0.18, lamp: no)
+# ---- the rest of the building: the chimney breast over the fire, curtains drawn back from the glass, a roof light,
+# the splashback and a slim hood in the kitchen
+group at: vec(4.5, 0, -1.2), turn: 90 deg
+  chimney_breast(width: 1.8, bottom: 1.45, to_height: 5.78, depth: 0.25)
+curtain_track(at: vec(0, 5.92, -5.85), width: 9, drop: 5.6, open: 0.85)
+roof_light(at: vec(-1.5, 6.0, -3.0))
+splashback(at: vec(1.1, 0.9, 6.0), length: 4.4)
+extractor_hood(at: vec(1.1, 1.45, 6.0), lumens: 0)
+# ---- the bathroom under the deck, in the back left corner: a pod of plaster walls, a sliding door part open
+bathroom_pod(at: vec(-3.3, 0, 3.8), width: 2.4, depth: 2.2, height: 2.8, door: 0.6, sides: "right")
+sliding_door(at: vec(-2.7, 0, 3.8), width: 0.8, height: 2.05, open: 0.35)
+toilet(at: vec(-2.55, 0, 6.0))
+group at: vec(-4.5, 0, 4.5), turn: -90 deg
+  basin()
+  mirror_cabinet(at: vec(0, 1.2, 0), lumens: 0)
+shower_head(at: vec(-4.05, 0, 6.0))
+group at: vec(-3.65, 0, 5.55), turn: 90 deg
+  shower_screen(length: 0.9)
+toiletries(at: vec(-4.3, 0, 5.85))
+group at: vec(-2.2, 1.2, 4.6), turn: 90 deg
+  towel_rail(folded: 2)
+bath_mat(at: vec(-3.4, 0, 4.9))
+# ---- the entry by the door in the brick: a coat stand and umbrellas, a shoe rack, a bench under a round mirror
+coat_stand(at: vec(4.1, 0, 1.85))
+umbrella_stand(at: vec(4.25, 0, 2.25))
+group at: vec(4.28, 0, 3.85), turn: 90 deg
+  shoe_rack(length: 0.6)
+key_dish(at: vec(4.28, 0.45, 3.95))
+group at: vec(4.27, 0, 4.75), turn: 90 deg
+  entry_bench(length: 1.0)
+round_mirror(at: vec(4.4, 1.55, 4.75), turn: 90 deg)
+# ---- the bedroom upstairs: pillows and a rumpled duvet, a table each side, drawers by the brick, a wardrobe wall
+pillow(at: vec(1.35, 3.62, 5.42), tilt: -25 deg)
+pillow(at: vec(2.25, 3.62, 5.42), tilt: -22 deg)
+pillow(at: vec(1.8, 3.62, 5.22), tilt: -12 deg, cover: material(like: "linen", color: rgb(0.55, 0.5, 0.42)))
+duvet(at: vec(1.8, 3.53, 5.05), width: 2.0, length: 1.5, seed: 2)
+bedside_table(at: vec(0.4, 3.06, 5.5))
+bedside_table(at: vec(3.2, 3.06, 5.5))
+book_glasses(at: vec(0.4, 3.56, 5.45), turn: 15 deg)
+alarm_clock(at: vec(3.15, 3.56, 5.45), turn: -15 deg)
+group at: vec(4.21, 3.06, 4.3), turn: 90 deg
+  chest_of_drawers()
+group at: vec(-4.19, 3.06, 4.0), turn: -90 deg
+  wardrobe(width: 1.8, height: 2.3)
+laundry_basket(at: vec(3.95, 3.06, 5.6))
+rug_flat(at: vec(1.8, 3.06, 3.9), length: 2.8, width: 1.6, ground: rgb(0.7, 0.66, 0.58), band: rgb(0.45, 0.2, 0.12))
+slippers(at: vec(0.55, 3.06, 4.2), turn: -80 deg)
+# ---- the work corner at the front of the deck, looking out over the room to the glass
+group at: vec(-1.6, 3.06, 2.5), turn: 180 deg
+  desk(length: 1.4)
+  monitor(at: vec(0, 0.74, 0.2), size: 27)
+  keyboard(at: vec(0, 0.74, -0.18))
+  desk_lamp(at: vec(0.55, 0.74, 0.15), turn: 20 deg)
+  pen_pot(at: vec(-0.55, 0.74, 0.2))
+  headphones(at: vec(-0.5, 0.74, -0.1), turn: 30 deg)
+office_chair(at: vec(-1.6, 3.06, 3.1), turn: 8 deg)
+# ---- a sign of life: the cat on the window seat, watching the city
+cat(at: vec(-2.0, 0.53, -5.8), turn: 10 deg, pose: "sitting")
+# the view: from under the deck by the stair's foot, looking past the dining table and the sofa to the glass and
+# the city (near and dark, then the seating, then the view far: three layers)
+camera at: vec(-1.7, 1.65, 3.45), look_at: vec(1.4, 1.5, -6), lens: 20 mm, f_stop: 2, shutter: 1 / 50, iso: 1600, auto_exposure: no
+move_player at: vec(-1.7, 0, 3.45), look_at: vec(1.4, 1.5, -6)

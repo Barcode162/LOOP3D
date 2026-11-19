@@ -1,0 +1,7 @@
+{"scene":"loft","name":"today","params":"","score":16.1,"worst":32.4,"brightness":1.83}
+{"scene":"loft","name":"no_ao","params":"ao=0","score":16.1,"worst":32.6,"brightness":1.86}
+{"scene":"loft","name":"no_lamp_shadows","params":"lampmaps=0","score":16.1,"worst":32.3,"brightness":1.84}
+{"scene":"loft","name":"all_lamp_shadows","params":"alllampshadows=1","score":16.1,"worst":32.4,"brightness":1.83}
+{"scene":"loft","name":"high","params":"","score":14.4,"worst":31.1,"brightness":1.44}
+{"scene":"loft","name":"ultra","params":"","score":13.1,"worst":27.9,"brightness":1.51}
+{"scene":"loft","name":"no_bounce","params":"lightcache=0","score":16.1,"worst":32.4,"brightness":1.83}
