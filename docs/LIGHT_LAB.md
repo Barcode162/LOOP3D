@@ -27,3 +27,14 @@ the picture tests do, reads it back from the GPU, scores it against the film pic
 
 ## The methods (level 1: ours; level 2: the best that exists; level 3: what nobody has done)
 See `perf/lab/methods.json` for the list the sheet shows, with each one's verdict as experiments land.
+
+## Round 1 (2026-11-19, the Loft, Phone quality unless named)
+Seven experiments; the rows are in `perf/lab/results.json` and the sheet.
+- Today: **16.1** from film, **1.8x** too bright. Lamp work 31 (budget 24).
+- Bounce off, corner darkening off, lamp shadows off, every lamp shadowed: **16.1** each, pictures within 1 of 255
+  of today's. Live has almost no bounced light in the Loft, and none of these parts is where the gap is.
+- High (ray shadows, screen reflections): **14.4**, 1.4x. Ultra (rays every frame): **13.1**, 1.5x and grainy.
+- So even the film's own method, live, stays 13 away: a large part of the gap is not the bounce method. Next
+  round, find it: (1) where live's light on the ceiling and brick comes from when the film's is dark (a lamp
+  through its own shade?); (2) whether the light cache bakes anything at night; (3) a still room, baked by the
+  film renderer and shown by the phone, to measure how close "film light, looked up" gets.
