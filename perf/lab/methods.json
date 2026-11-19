@@ -24,7 +24,7 @@
   "how": "The slow renderer works out all the light once (bounces too) and stores it on every surface; the phone reads one picture per pixel.",
   "phone_fit": "Cheapest there is",
   "status": "Next to test",
-  "verdict": "Round 2 makes the case: the gap is lamps without shadows, and a bake gives every lamp its shadows and bounce for one picture read. Estimate for the Loft: about 1-5 MB at 2.5-5 cm, about a minute to bake. Risk: lamps can't change."
+  "verdict": "Round 3 built it (render.bake): 16.1 to 10.9 from film, 1.8x to 1.2x bright, the best of every method tried. Kept in 10 cm cells per facing, found by hash, no unwrapping; 122,525 cells, 2.5 MB. Still to do: shipped baked instead of baked on the phone, lamps that change, sharper than 10 cm."
  },
  {
   "method": "Light maps with light groups (a mixer)",

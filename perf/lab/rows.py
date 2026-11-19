@@ -28,6 +28,8 @@ WORDS = {
    "16.0 and 2x too bright, the same as against the full film: the phone isn't mainly missing bounce, it adds direct light the film blocks."),
  ('loft_strips', 'today'): ('2026-11-19', "Only the strip lights", "Stair strips, coves, shelf strips on; other lamps at 0", None, "15 times too bright: the cause. A strip's lamps cast no shadows on the phone, so light hidden in its channel, cove or shelf pours across the whole room."),
  ('loft_pendants', 'today'): ('2026-11-19', "Only the pendants", "Pendant domes and globes on; other lamps at 0", None, "Right brightness (1.2x), 11 away: light lands in the wrong places (no shadows), but the amount is right."),
+ ('loft', 'bake'): ('2026-11-19', "Round 3: the light bake", "Still surfaces read light the film renderer baked once (every lamp with its shadow, the bounce, the sky) in 10 cm cells; lamps add only their shine", 31,
+   "10.9 away and 1.2x: the best yet (today 16.1, High 14.4, Ultra 13.1). The ceiling falls dark and the table casts its shadow, as in the film. 122,525 cells, about 6 minutes to bake on the lab's computer."),
  ('loft_spots', 'today'): ('2026-11-19', "Only the spotlights", "The track spots on; other lamps at 0", None, "2.2x too bright: spots light past what should block them too."),
 }
 

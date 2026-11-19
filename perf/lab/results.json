@@ -180,5 +180,18 @@
   "brightness": 2.15,
   "lamp_work": null,
   "finding": "2.2x too bright: spots light past what should block them too."
+ },
+ {
+  "id": "loft-bake",
+  "date": "2026-11-19",
+  "scene": "loft",
+  "experiment": "Round 3: the light bake",
+  "change": "Still surfaces read light the film renderer baked once (every lamp with its shadow, the bounce, the sky) in 10 cm cells; lamps add only their shine",
+  "switches": "bake=1",
+  "score": 10.9,
+  "worst": 25.7,
+  "brightness": 1.2,
+  "lamp_work": 31,
+  "finding": "10.9 away and 1.2x: the best yet (today 16.1, High 14.4, Ultra 13.1). The ceiling falls dark and the table casts its shadow, as in the film. 122,525 cells, about 6 minutes to bake on the lab's computer."
  }
 ]

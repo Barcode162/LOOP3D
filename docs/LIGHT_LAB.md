@@ -55,3 +55,19 @@ Test versions of the room in `perf/lab/scenes/` (each against its own film pictu
 hidden in housings. Any live-lamp method pays per lamp for shadows. A bake (light maps) gives every still lamp
 its shadows and its bounce for one picture read a pixel, so it attacks the measured cause directly. Round 3:
 build the smallest bake (one surface layer of light, made by the film renderer) and score it here.
+
+## Round 3 (2026-11-19): the light bake
+Built as `render.bake` (off by default; `engine/render/surface_light.h`, 4 tests). The film renderer's path tracer
+works out the light falling on every still surface near the eye once (every lamp with its own shadow, the sun, the
+sky, glows, two bounces) and keeps it in cells 10 cm wide, one per way a surface faces, found by a hash of the cell:
+no unwrapping, no light-map coordinates. A surface reads the four cells round it in its own plane, blended; the
+lamps then add only their shine. The table sits after the lamp lists in their picture (no new binding).
+- **The Loft: 10.9 from film, 1.2x bright** (today 16.1 and 1.8x; High 14.4; Ultra 13.1). The ceiling falls dark,
+  the table casts its shadow on the rug. 122,525 cells (2.5 MB), baked in about 6 minutes on the lab's computer.
+- What's left of the gap: the lamps' shine is still unshadowed (bright streaks on the ceiling slats); the brick
+  glows warmer than the film's; 10 cm cells soften small shadows.
+- Not yet: baked once and shipped with the scene (today the phone would bake it itself, far too slow), lamps that
+  change or move, things that move (they read the bake if near a still surface facing their way), lamp work (the
+  lamp loop still runs, for the shine).
+Next: ship the bake as a file made by `loop` and time it on the phone; shadow the shine (or drop it for matte
+surfaces); 5 cm cells near the eye.
