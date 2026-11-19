@@ -82,6 +82,10 @@ def main():
             text = models / (p.name + ".json")
             text.write_text(json.dumps({"glb": base64.b64encode(p.read_bytes()).decode()}))
             files[f + ".json"] = str(text.relative_to(ROOT))
+        elif p.suffix == ".bake":  # a scene's light bake, as text the same way
+            text = OUT / (p.name + ".json")
+            text.write_text(json.dumps({"bake": base64.b64encode(p.read_bytes()).decode()}))
+            files[f + ".json"] = str(text.relative_to(ROOT))
         else:
             files[f] = f"site/{f}"
     # the models last, so the first upload holds the player and every scene
