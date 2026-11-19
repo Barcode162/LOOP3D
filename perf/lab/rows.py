@@ -30,6 +30,8 @@ WORDS = {
  ('loft_pendants', 'today'): ('2026-11-19', "Only the pendants", "Pendant domes and globes on; other lamps at 0", None, "Right brightness (1.2x), 11 away: light lands in the wrong places (no shadows), but the amount is right."),
  ('loft', 'bake'): ('2026-11-19', "Round 3: the light bake", "Still surfaces read light the film renderer baked once (every lamp with its shadow, the bounce, the sky) in 10 cm cells; lamps add only their shine", 31,
    "10.9 away and 1.2x: the best yet (today 16.1, High 14.4, Ultra 13.1). The ceiling falls dark and the table casts its shadow, as in the film. 122,525 cells, about 6 minutes to bake on the lab's computer."),
+ ('loft', 'bake_shipped'): ('2026-11-19', "The bake, made ahead", "The same bake made by `loop bake` when the site is built (54 s on 4 cores) and shipped beside the scene; the phone only reads it", 31,
+   "11.0 away and 1.13x bright, as the bake made in the browser, with nothing baked on the device. 256,227 cells, a 2.1 MB file."),
  ('loft_spots', 'today'): ('2026-11-19', "Only the spotlights", "The track spots on; other lamps at 0", None, "2.2x too bright: spots light past what should block them too."),
 }
 

@@ -56,7 +56,11 @@
 #include "engine/render/radiance_cascades.h"
 #include "engine/geometry/mesh.h"
 #include "engine/core/random.h"
+#include <thread>
+#include <fstream>
+#include <atomic>
 #include "engine/render/score.h"
+#include "engine/render/surface_light.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
 
@@ -74,6 +78,7 @@ int usage() {
       "loop demo   <studio|valley> [--look name] [--size 1280x720] [--samples 64] [-o out.png]\n"
       "loop budget <script.loop or folder> [--quality phone|high] [--seconds 1] [--size 374x811] [--set name=value]\n"
       "loop score  <script.loop> <live.png> [--filmtime T] [--samples 256] [-o folder]   how far live is from cinema\n"
+      "loop bake   <script.loop> -o <name.bake>   the light bake made ahead, on every core (the player reads it beside the scene)\n"
       "loop score  tests/pictures [--samples 256] [-o folder] [--reuse]   every picture test's scene, scored (--reuse: the folder's saved cinema pictures)\n"
       "loop research cascades  phase 9: radiance cascades against the light cache (error, rays)\n"
       "loop world <seed> [-o map.png] [--cells 257]   a generated world's map (plates, rivers, climate, ground)\n"
@@ -743,6 +748,50 @@ int score(const std::string& target, const Options& o) {
   return n ? 0 : 1;
 }
 
+// `loop bake`: the light bake (engine/render/surface_light.h) made ahead for the
+// scene's own camera and settings (render.bakeCell, bakeRays, bakeReach), on
+// every core, so the phone only reads it.
+int bake(const std::string& path, const Options& o) {
+  Vm vm;
+  Stage stage;
+  if (!loadScript(path, vm, stage)) return 1;
+  for (auto& [name, value] : o.sets) {
+    Json v;
+    if (!Json::parse(value, v)) v = Json(value);
+    if (!Settings::get().set(Settings::kEditor, name, v)) std::fprintf(stderr, "--set: no setting %s, or a value it can't take\n", name.c_str());
+  }
+  const Scene& sc = stage.scene;
+  const auto& r = config().render;
+  Stopwatch sw;
+  const Vec3 eye = sc.camera.position;
+  SurfaceLight b = layOutSurfaceLight(sc, AABB(eye - Vec3(r.bakeReach), eye + Vec3(r.bakeReach)), r.bakeCell);
+  if (!b.on) {
+    std::fprintf(stderr, "%s: nothing to bake near the camera\n", path.c_str());
+    return 1;
+  }
+  const int threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+  std::atomic<int> next{0};
+  std::vector<std::thread> pool;
+  for (int t = 0; t < threads; ++t)
+    pool.emplace_back([&] {
+      PathTracer pt;  // its own: a path tracer keeps state while it follows a path
+      pt.setScene(sc);
+      for (int i; (i = next.fetch_add(1)) < b.cells();) bakeCell(b, i, pt, r.bakeRays, 2, 1);
+    });
+  for (std::thread& t : pool) t.join();
+  const std::vector<uint8_t> bytes = b.save(bakeSignature(sc));
+  const std::string out = o.out.empty() ? path.substr(0, path.find_last_of('.')) + ".bake" : o.out;
+  std::ofstream f(out, std::ios::binary);
+  f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+  if (!f) {
+    std::fprintf(stderr, "can't write %s\n", out.c_str());
+    return 1;
+  }
+    std::printf("%s: %d cells of %.0f cm, %d estimates each, in %.1f s on %d cores -> %s (%.1f MB)\n", path.c_str(), b.cells(),
+              static_cast<double>(b.cell) * 100, r.bakeRays, sw.ms() / 1000, threads, out.c_str(), static_cast<double>(bytes.size()) / 1e6);
+  return 0;
+}
+
 int budget(const std::string& target, const Options& o) {
   if (std::filesystem::is_directory(target)) return budgetFolder(target, o);
   return budgetScene(target, o);
@@ -1030,6 +1079,7 @@ int main(int argc, char** argv) {
   if (cmd == "demo") return demo(target, o);
   if (cmd == "budget") return budget(target, o);
   if (cmd == "score") return score(target, o);
+  if (cmd == "bake") return bake(target, o);
   if (cmd == "research" && target == "cascades") return research::cascades();
   if (cmd == "world") return research::worldMap(target, o.out.empty() ? "world.png" : o.out, o.worldCells);
   if (cmd == "words") {

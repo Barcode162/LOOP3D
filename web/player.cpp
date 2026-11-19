@@ -53,6 +53,7 @@ struct Player {
   Vec2 move{0};  // -1..1 from keys or the thumb
   bool keys[8] = {};
   std::string pendingScript, problems;
+  std::vector<uint8_t> pendingBake;  // the next scene's light bake, made ahead (empty: none)
   bool autoplay = false;
   int frames = 0;
   double fpsTime = 0;
@@ -497,6 +498,8 @@ bool frame(double now, void*) {
 }
 bool frameBody(double now) {
   if (!g.pendingScript.empty()) {
+    if (g.renderer) g.renderer->setBakeFile(std::move(g.pendingBake));
+    g.pendingBake.clear();
     startScript(g.pendingScript);
     g.pendingScript.clear();
   }
@@ -648,6 +651,8 @@ Json matJson(const Mat4& m) {
 
 extern "C" {
 EMSCRIPTEN_KEEPALIVE void loop_run_script(const char* text) { g.pendingScript = text ? text : ""; }
+// The scene's light bake made ahead (scenes/<name>.bake, by `loop bake`), handed in before loop_run_script.
+EMSCRIPTEN_KEEPALIVE void loop_set_bake(const uint8_t* bytes, int size) { g.pendingBake.assign(bytes, bytes + std::max(size, 0)); }
 EMSCRIPTEN_KEEPALIVE void loop_key(int code, int down) {
   if (code >= 0 && code < 8) g.keys[code] = down != 0;
 }
@@ -1443,14 +1448,14 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
   static char buf[768];
   if (!g.stage) return "{}";
-  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f,\"frames\":%llu,\"exposure\":%.6g,\"clustered\":%d,\"shadowDraws\":%llu,\"lampShadowDraws\":%llu,\"cacheWaiting\":%d,\"cacheRelit\":%llu,\"cacheProbes\":%d,\"farWaiting\":%d,\"bakeWaiting\":%d,\"bakeCells\":%d}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
+  std::snprintf(buf, sizeof buf, "{\"fps\":%.1f,\"cpu\":%.1f,\"gpu\":%.1f,\"scale\":%.2f,\"things\":%zu,\"lights\":%zu,\"draws\":%zu,\"ratio\":%.2f,\"time\":%.2f,\"movie\":%d,\"film\":%.2f,\"inflight\":%d,\"gpuLast\":%.1f,\"frames\":%llu,\"exposure\":%.6g,\"clustered\":%d,\"shadowDraws\":%llu,\"lampShadowDraws\":%llu,\"cacheWaiting\":%d,\"cacheRelit\":%llu,\"cacheProbes\":%d,\"farWaiting\":%d,\"bakeWaiting\":%d,\"bakeCells\":%d,\"bakeFile\":%d}", g.fps, g.cpuMs, g.renderer ? g.renderer->gpuMs() : 0.0f,
                 g.renderer ? g.renderer->renderScale() : 1.0f, g.stage->scene.instances.size(), g.stage->scene.lights.size(), g.renderer ? g.renderer->drawCalls() : 0,
                 g.renderer ? g.renderer->pixelRatio() : 1.0f, g.vm ? g.vm->time() : 0.0, g.movie ? 1 : 0, g.filmTime, g.renderer ? g.renderer->framesInFlight() : 0, g.renderer ? g.renderer->lastGpuMs() : 0.0f,
                 static_cast<unsigned long long>(g.renderer ? g.renderer->presentedFrames() : 0), g.renderer ? g.renderer->currentExposure() : 0.0f, g.renderer && g.renderer->clustered() ? 1 : 0,
                 static_cast<unsigned long long>(g.renderer ? g.renderer->shadowDraws() : 0),
                 static_cast<unsigned long long>(g.renderer ? g.renderer->lampShadowDraws() : 0), g.renderer ? g.renderer->lightCacheWaiting() : 0,
                 static_cast<unsigned long long>(g.renderer ? g.renderer->lightCacheRelit() : 0), g.renderer ? g.renderer->lightCacheProbes() : 0,
-                g.renderer ? g.renderer->farShadowWaiting() : 0, g.renderer ? g.renderer->bakeWaiting() : 0, g.renderer ? g.renderer->bakeCells() : 0);
+                g.renderer ? g.renderer->farShadowWaiting() : 0, g.renderer ? g.renderer->bakeWaiting() : 0, g.renderer ? g.renderer->bakeCells() : 0, g.renderer && g.renderer->bakeFromFile() ? 1 : 0);
   return buf;
 }
 }

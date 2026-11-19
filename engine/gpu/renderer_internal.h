@@ -328,6 +328,10 @@ class GpuRenderer final : public Renderer {
   std::vector<uint32_t> bakeWords_;  // as sent (empty: nothing baked yet)
   uint32_t bakeStart_ = 0;           // where they start in the lists
   void keepBake(Vec3 eye);
+  std::vector<uint8_t> bakeFile_;  // made ahead and shipped (empty: none; baked here when render.bake asks)
+  bool bakeFromFile_ = false;
+  void setBakeFile(std::vector<uint8_t> bytes) override { bakeFile_ = std::move(bytes), bakeMade_ = {}; }
+  bool bakeFromFile() const override { return bakeFromFile_; }
   int bakeWaiting() const override { return bakeTracer_ ? static_cast<int>(bakeOrder_.size() - bakeNext_) : 0; }
   int bakeCells() const override { return bakeWords_.empty() ? 0 : bake_.cells(); }
 

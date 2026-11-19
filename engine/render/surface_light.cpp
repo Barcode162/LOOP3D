@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <unordered_map>
 
 #include "engine/core/random.h"
@@ -102,6 +103,95 @@ std::vector<uint32_t> SurfaceLight::packed() const {
   return out;
 }
 
+void SurfaceLight::index() {
+  size_t size = 1;
+  while (size < 4 * keys.size() + 1) size <<= 1;  // a quarter full at most: few slots looked past (the shader looks at 32 at most)
+  slots.assign(size, -1);
+  const uint32_t mask = static_cast<uint32_t>(size - 1);
+  for (size_t i = 0; i < keys.size(); ++i) {
+    uint32_t s = hash(keys[i]) & mask;
+    while (slots[s] >= 0) s = (s + 1) & mask;
+    slots[s] = static_cast<int>(i);
+  }
+  on = !keys.empty();
+}
+
+namespace {
+template <typename T>
+void put(std::vector<uint8_t>& out, T v) {
+  const auto* b = reinterpret_cast<const uint8_t*>(&v);
+  out.insert(out.end(), b, b + sizeof(T));
+}
+template <typename T>
+bool take(const uint8_t*& p, const uint8_t* end, T& v) {
+  if (end - p < static_cast<std::ptrdiff_t>(sizeof(T))) return false;
+  std::memcpy(&v, p, sizeof(T));
+  p += sizeof(T);
+  return true;
+}
+constexpr uint32_t kMagic = 0x314b424cu;  // "LBK1"
+}  // namespace
+
+std::vector<uint8_t> SurfaceLight::save(const std::vector<float>& signature) const {
+  std::vector<uint8_t> out;
+  out.reserve(32 + signature.size() * 4 + keys.size() * 8);
+  put(out, kMagic), put(out, static_cast<uint32_t>(signature.size()));
+  for (float v : signature) put(out, v);
+  put(out, origin.x), put(out, origin.y), put(out, origin.z), put(out, cell);
+  put(out, static_cast<uint32_t>(keys.size()));
+  for (size_t i = 0; i < keys.size(); ++i) put(out, keys[i]), put(out, packRgb9e5(light[i]));
+  return out;
+}
+
+bool SurfaceLight::load(const uint8_t* data, size_t size, std::vector<float>* signature) {
+  *this = SurfaceLight();
+  const uint8_t *p = data, *end = data + size;
+  uint32_t magic = 0, ns = 0, n = 0;
+  if (!take(p, end, magic) || magic != kMagic || !take(p, end, ns) || static_cast<size_t>(end - p) < static_cast<size_t>(ns) * 4) return false;
+  std::vector<float> sig(ns);
+  for (float& v : sig) take(p, end, v);
+  if (!take(p, end, origin.x) || !take(p, end, origin.y) || !take(p, end, origin.z) || !take(p, end, cell) || !take(p, end, n) ||
+      static_cast<size_t>(end - p) != static_cast<size_t>(n) * 8 || !(cell > 0))
+    return *this = SurfaceLight(), false;
+  keys.resize(n), light.resize(n), rays.assign(n, 0);
+  for (uint32_t i = 0; i < n; ++i) {
+    uint32_t w = 0;
+    take(p, end, keys[i]), take(p, end, w);
+    light[i] = unpackRgb9e5(w);
+  }
+  index();
+  if (signature) *signature = std::move(sig);
+  return true;
+}
+
+std::vector<float> bakeSignature(const Scene& scene) {
+  std::vector<float> s;
+  for (const MeshInstance& inst : scene.instances) {
+    if (inst.bend >= 0 || inst.mesh < 0 || inst.mesh >= static_cast<int>(scene.meshes.size())) continue;
+    const Mesh& m = scene.meshes[static_cast<size_t>(inst.mesh)];
+    const AABB b = m.bounds();
+    const Vec3 lo = inst.transform.point(b.lo), hi = inst.transform.point(b.hi);
+    s.insert(s.end(), {static_cast<float>(m.positions.size()), static_cast<float>(m.indices.size()), lo.x, lo.y, lo.z, hi.x, hi.y, hi.z});
+  }
+  for (const Light& l : scene.lights)
+    s.insert(s.end(), {static_cast<float>(l.kind), l.position.x, l.position.y, l.position.z, l.lumens, l.color.x, l.color.y, l.color.z});
+  return s;
+}
+
+bool sameScene(const std::vector<float>& a, const std::vector<float>& b) {
+  if (a.size() != b.size()) return false;
+  for (size_t i = 0; i < a.size(); ++i)
+    if (!(std::fabs(a[i] - b[i]) <= 0.01f + 1e-3f * std::fabs(a[i]))) return false;
+  return true;
+}
+
+std::vector<int> bakeOrder(const SurfaceLight& bake, Vec3 eye) {
+  std::vector<int> order(static_cast<size_t>(bake.cells()));
+  for (int i = 0; i < bake.cells(); ++i) order[static_cast<size_t>(i)] = i;
+  std::sort(order.begin(), order.end(), [&](int a, int b) { return lengthSq(bake.at[static_cast<size_t>(a)] - eye) < lengthSq(bake.at[static_cast<size_t>(b)] - eye); });
+  return order;
+}
+
 SurfaceLight layOutSurfaceLight(const Scene& scene, const AABB& box, float cell, int maxCells) {
   SurfaceLight b;
   if (!box.valid()) return b;
@@ -159,16 +249,7 @@ SurfaceLight layOutSurfaceLight(const Scene& scene, const AABB& box, float cell,
       const float nl = length(acc[i].n);
       b.normal[i] = nl > 1e-6f ? acc[i].n / nl : Vec3(0, 1, 0);
     }
-    size_t size = 1;
-    while (size < 4 * n + 1) size <<= 1;  // a quarter full at most: few slots looked past (the shader looks at 32 at most)
-    b.slots.assign(size, -1);
-    const uint32_t mask = static_cast<uint32_t>(size - 1);
-    for (size_t i = 0; i < n; ++i) {
-      uint32_t s = SurfaceLight::hash(b.keys[i]) & mask;
-      while (b.slots[s] >= 0) s = (s + 1) & mask;
-      b.slots[s] = static_cast<int>(i);
-    }
-    b.on = n > 0;
+    b.index();
     return b;
   }
   return SurfaceLight();

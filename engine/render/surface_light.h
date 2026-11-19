@@ -41,7 +41,25 @@ struct SurfaceLight {
   Vec3 irradiance(Vec3 p, Vec3 n, bool* found = nullptr) const;
   // What the GPU reads: two words a slot (the key, the light as RGB9E5), table-long.
   std::vector<uint32_t> packed() const;
+  // The table made again from the keys (after load).
+  void index();
+  // As a file, made ahead by `loop bake` and shipped beside the scene, so the
+  // phone only reads it: "LBK1", the scene's fingerprint, the cells' corner and
+  // size, then each cell's key and light (no table: made again on loading).
+  std::vector<uint8_t> save(const std::vector<float>& signature) const;
+  bool load(const uint8_t* data, size_t size, std::vector<float>* signature);
 };
+
+// What the bake depends on, so a file baked from another version of the scene
+// is never used: each still shape's points, triangles and box in the world,
+// each lamp's kind, place, lumens and colour. Kept as numbers, not a hash: the
+// phone works a scene out a hair differently from a computer (its own sines),
+// so two signatures are the same scene when every number is within a
+// centimetre (or a thousandth of itself).
+std::vector<float> bakeSignature(const Scene& scene);
+bool sameScene(const std::vector<float>& a, const std::vector<float>& b);
+// The cells to bake, nearest `eye` first.
+std::vector<int> bakeOrder(const SurfaceLight& bake, Vec3 eye);
 
 // Cells over the still surfaces (not skins, not glass) within `box`, `cell`
 // apart (wider when the box is too large for the key, or more than `maxCells`

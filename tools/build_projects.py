@@ -72,6 +72,13 @@ for manifest, p in manifests:
         shutil.copy(src, out / src.name)
         if name in p.get("library", []):
             continue
+        # a scene that asks for the light bake gets it made ahead, beside it (`loop bake`, about a minute on 4 cores)
+        if re.search(r'^setting\s+"render\.bake"\s*,\s*true', src.read_text(), re.M):
+            import subprocess
+            done = subprocess.run([str(root / "build" / "loop"), "bake", str(src), "-o", str(out / f"{name}.bake")], capture_output=True, text=True)
+            if done.returncode:
+                sys.exit(f"{src}: the light bake failed: {done.stderr.strip()}")
+            print(done.stdout.strip())
         m = re.search(r'^title\s+"([^"]*)"', src.read_text(), re.M)
         has_still = with_stills and (stills / f"{name}.png").exists()
         if has_still:

@@ -217,6 +217,13 @@
     stage('building the world');
     // let the loading screen reach the screen first: building a world takes a moment
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+    // the scene's light bake, made ahead by `loop bake` (only scenes that ask for one have it)
+    if (/render\.bake"\s*,\s*true/.test(text)) {
+      stage('fetching the baked light');
+      const r = await fetch('scenes/' + encodeURIComponent(name) + '.bake').catch(() => null);
+      const bytes = r && r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+      if (bytes && M._loop_set_bake) { const b = M._malloc(bytes.length); M.HEAPU8.set(bytes, b); M._loop_set_bake(b, bytes.length); M._free(b); }
+    }
     const n = M.lengthBytesUTF8(text) + 1, p = M._malloc(n);
     M.stringToUTF8(text, p, n);
     M._loop_run_script(p);

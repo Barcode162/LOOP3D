@@ -101,3 +101,34 @@ TEST(surface_light_open_sky_is_pi_times_its_light) {
   s.add(s.addMesh(shapes::box({6, 0.2f, 6})), s.addMaterial(matte(0.0f)), Mat4::translation({0, -0.1f, 0}));
   CHECK_NEAR(bakedFloor(s, {0, 0, 0}, 1024) / (kPi * 1000), 1.0f, 0.05f);
 }
+
+// Made ahead and shipped: a file gives back the same light, and says which
+// scene it was baked from (a moved lamp or shape is another scene).
+TEST(surface_light_file_keeps_the_light_and_knows_its_scene) {
+  Scene s = floorAndBulb(1, false);
+  SurfaceLight b = layOutSurfaceLight(s, AABB({-3, -1, -3}, {3, 3, 3}), 0.25f);
+  PathTracer pt;
+  pt.setScene(s);
+  for (int i = 0; i < b.cells(); i += 7) bakeCell(b, i, pt, 16);
+  const std::vector<float> sig = bakeSignature(s);
+  const std::vector<uint8_t> bytes = b.save(sig);
+  SurfaceLight back;
+  std::vector<float> got;
+  CHECK(back.load(bytes.data(), bytes.size(), &got));
+  CHECK(sameScene(got, sig));
+  CHECK(back.cells() == b.cells());
+  for (Vec3 p : {Vec3(0, 0, 0), Vec3(1.3f, 0, -0.7f), Vec3(2.6f, 0, 2.2f)}) {
+    const Vec3 a = b.irradiance(p, {0, 1, 0}), c = back.irradiance(p, {0, 1, 0});
+    CHECK_NEAR(luminance(c), luminance(a), luminance(a) / 100 + 1e-6f);
+  }
+  CHECK(!back.load(bytes.data(), bytes.size() - 1, &got));  // cut short: refused
+  Scene moved = s;
+  moved.lights[0].position.x += 0.1f;
+  CHECK(!sameScene(bakeSignature(moved), sig));
+  Scene shifted = s;
+  shifted.instances[0].transform = Mat4::translation({0, -0.2f, 0});
+  CHECK(!sameScene(bakeSignature(shifted), sig));
+  Scene hair = s;  // worked out a hair differently (another machine's sines): the same scene
+  hair.instances[0].transform = Mat4::translation({0, -0.1f + 3e-4f, 0});
+  CHECK(sameScene(bakeSignature(hair), sig));
+}

@@ -193,5 +193,18 @@
   "brightness": 1.2,
   "lamp_work": 31,
   "finding": "10.9 away and 1.2x: the best yet (today 16.1, High 14.4, Ultra 13.1). The ceiling falls dark and the table casts its shadow, as in the film. 122,525 cells, about 6 minutes to bake on the lab's computer."
+ },
+ {
+  "id": "loft-bake_shipped",
+  "date": "2026-11-19",
+  "scene": "loft",
+  "experiment": "The bake, made ahead",
+  "change": "The same bake made by `loop bake` when the site is built (54 s on 4 cores) and shipped beside the scene; the phone only reads it",
+  "switches": "",
+  "score": 11,
+  "worst": 26.2,
+  "brightness": 1.13,
+  "lamp_work": 31,
+  "finding": "11.0 away and 1.13x bright, as the bake made in the browser, with nothing baked on the device. 256,227 cells, a 2.1 MB file."
  }
 ]

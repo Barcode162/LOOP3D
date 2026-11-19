@@ -464,3 +464,6 @@ cat(at: vec(-2.0, 0.53, -5.8), turn: 10 deg, pose: "sitting")
 # the city (near and dark, then the seating, then the view far: three layers)
 camera at: vec(-1.7, 1.65, 3.45), look_at: vec(1.4, 1.5, -6), lens: 20 mm, f_stop: 2, shutter: 1 / 50, iso: 1600, auto_exposure: no
 move_player at: vec(-1.7, 0, 3.45), look_at: vec(1.4, 1.5, -6)
+# the light, baked ahead by the film renderer (every lamp with its own shadow, the light bounced between them) and
+# shipped beside the scene, so the phone only reads it (docs/LIGHT_LAB.md, round 3)
+setting "render.bake", true

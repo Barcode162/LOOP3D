@@ -1,1 +1,2 @@
 {"scene":"loft","name":"bake","params":"bake=1","score":10.9,"worst":25.7,"brightness":1.2,"lights":46,"cacheProbes":1936,"bakeCells":122525,"exposure":0.0666667}
+{"scene":"loft","name":"bake_shipped","params":"","score":11,"worst":26.2,"brightness":1.13,"lights":46,"cacheProbes":1936,"bakeCells":256227,"exposure":0.0666667}

@@ -53,6 +53,9 @@ class Renderer {
   virtual int lightCacheWaiting() const { return 0; }
   virtual int bakeWaiting() const { return 0; }  // the light bake's cells still to bake
   virtual int bakeCells() const { return 0; }    // its cells in use
+  // The light bake made ahead (`loop bake`), shipped beside the scene: used while its fingerprint matches the scene
+  virtual void setBakeFile(std::vector<uint8_t> bytes) { (void)bytes; }
+  virtual bool bakeFromFile() const { return false; }
   // parts of the far sun shadow still to draw before it is shown (High)
   virtual int farShadowWaiting() const { return 0; }
   // How many probes were marked to bake again near a change, and how many there are.

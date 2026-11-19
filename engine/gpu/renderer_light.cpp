@@ -170,12 +170,20 @@ void GpuRenderer::keepBake(Vec3 eye) {
   static const std::vector<std::string> kFrom = {"shapes", "placements", "lamp places", "settings"};
   if (changes_.stale(bakeMade_, kFrom)) {
     changes_.made(bakeMade_, kFrom);
+    bakeTracer_.reset(), bakeOrder_.clear(), bakeNext_ = 0;
+    bakeFromFile_ = false;
+    if (!bakeFile_.empty()) {
+      // made ahead: used while the scene is the one it was baked from; otherwise lit live (a phone can't bake a room)
+      SurfaceLight shipped;
+      std::vector<float> sig;
+      if (shipped.load(bakeFile_.data(), bakeFile_.size(), &sig) && sameScene(sig, bakeSignature(*lastScene_))) bake_ = std::move(shipped), bakeFromFile_ = true;
+      else bake_ = SurfaceLight();
+      bakeWords_ = bakeFromFile_ ? bake_.packed() : std::vector<uint32_t>();
+      layOutGrid();
+      return;
+    }
     bake_ = layOutSurfaceLight(*lastScene_, AABB(eye - Vec3(r.bakeReach), eye + Vec3(r.bakeReach)), r.bakeCell);
-    bakeOrder_.resize(static_cast<size_t>(bake_.cells()));
-    for (int i = 0; i < bake_.cells(); ++i) bakeOrder_[static_cast<size_t>(i)] = i;
-    std::sort(bakeOrder_.begin(), bakeOrder_.end(), [&](int a, int b) { return lengthSq(bake_.at[static_cast<size_t>(a)] - eye) < lengthSq(bake_.at[static_cast<size_t>(b)] - eye); });
-    bakeNext_ = 0;
-    bakeTracer_.reset();
+    bakeOrder_ = bakeOrder(bake_, eye);
     if (bake_.on) bakeTracer_ = std::make_unique<PathTracer>(), bakeTracer_->setScene(*lastScene_);
     if (!bakeWords_.empty()) bakeWords_.clear(), layOutGrid();  // lit live until baked again
   }

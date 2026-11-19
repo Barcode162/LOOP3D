@@ -69,5 +69,13 @@ lamps then add only their shine. The table sits after the lamp lists in their pi
 - Not yet: baked once and shipped with the scene (today the phone would bake it itself, far too slow), lamps that
   change or move, things that move (they read the bake if near a still surface facing their way), lamp work (the
   lamp loop still runs, for the shine).
-Next: ship the bake as a file made by `loop` and time it on the phone; shadow the shine (or drop it for matte
-surfaces); 5 cm cells near the eye.
+
+**Made ahead and shipped (same day).** `loop bake <scene> -o <name.bake>` bakes on every core (the Loft: 256,227
+cells in 54 s on 4 cores, a 2.1 MB file). A scene that says `setting "render.bake", true` gets its file when the
+site is built (`tools/build_projects.py`), and the player fetches it before the scene runs and only reads it.
+The file carries the scene's signature (each still shape's box, each lamp's place and light); it is used while the
+scene is within a centimetre of it, otherwise the scene is lit live (a phone can't bake a room). The signature is
+numbers, not a hash: the browser worked one panel's corner out a hair differently from the computer, and a hash
+of rounded numbers never matched. Shipped, the Loft scores **11.0, 1.13x**, as baked in the browser. The Loft now
+uses it.
+Next: time it on the phone (recording page); shadow the shine (or drop it for matte surfaces); 5 cm cells near the eye.
