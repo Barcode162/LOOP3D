@@ -718,7 +718,13 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     n = select(h.n, normalize(nm * h.n), own);
   }
   let glass = m.props.y * (1.0 - metal);
-  let alpha = max(rough * rough, 0.002);
+  // specular anti-aliasing (Kaplanyan and Tokuyoshi): where the facing turns a lot inside one pixel
+  // (bumped brick, thin edges far off) the highlight widens to cover it, so a lamp's glint can't land
+  // on one pixel one frame and the next ("the lights flickering", the Loft's brick, 2026-11-19)
+  let dnx = dpdx(n);
+  let dny = dpdy(n);
+  let kernel = min(0.5 * (dot(dnx, dnx) + dot(dny, dny)), 0.18);
+  let alpha = max(sqrt(min(rough * rough * rough * rough + kernel, 1.0)), 0.002);
   let nv = max(dot(n, v), 1e-4);
   var sf : Surf;
   sf.n = n;

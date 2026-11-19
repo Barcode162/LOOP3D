@@ -163,7 +163,10 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
               choosePane(Frustum::fromViewProj(f.viewProj), cam.position, f.viewProj, pane, mirrorRect_);
   if (mirrorOn_) {
     const Mat4 R = mirrorIn(pane);
-    mirrorViewProj = f.viewProj * R;
+    // without the frame's fraction-of-a-pixel shift: the mirror's picture is never blended over
+    // frames, so a shift would move it each frame and its thin bright lines (the stair's strips, the
+    // cabinets' edges) would crackle in the glass (the owner's phone, 2026-11-19)
+    mirrorViewProj = steadyViewProj * R;
     FrameU g = f;
     g.viewProj = mirrorViewProj;
     g.invViewProj = mirrorViewProj.inverse();
