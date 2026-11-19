@@ -57,13 +57,13 @@ struct LightGrid {
   int cells() const { return nx * ny * nz; }
   int count(int c) const { return static_cast<int>(start[static_cast<size_t>(c) + 1] - start[static_cast<size_t>(c)]); }
   // a pixel's lamp work in cell c: its sure entries, and (with any left) the
-  // merged lamp: each of the rest added up (its light there, about a third of
-  // a lamp's work: no shine, no shadow), and that one lamp worked out
+  // merged lamp: each of the rest added up (its light there and its highlight's
+  // shape, about half a lamp's work: no shadow, no Fresnel), and that worked out
   float work(int c) const {
     const int s = static_cast<int>(sure[static_cast<size_t>(c)]);
     return static_cast<float>(s) + (s < count(c) ? 1.0f + kWeighCost * static_cast<float>(count(c) - s) : 0.0f);
   }
-  static constexpr float kWeighCost = 0.35f;
+  static constexpr float kWeighCost = 0.5f;
   int cellOf(Vec3 p) const;       // the nearest cell (a point outside takes the edge's)
   Vec3 cellCenter(int c) const;
   Vec3 cellLow(int c) const;
@@ -81,8 +81,8 @@ struct LightGrid {
 // each could give anywhere in it, and the first ones holding that share of it
 // all are `sure`, worked out alone; each pixel merges the rest into one lamp
 // made for its own point: the soft light they bring it, added up lamp by lamp
-// (exact), from their middle way, its shine as wide as they spread (only the
-// shine and the shadows of dim lamps are approximate). It is worked out at
+// (exact), and each one's highlight shape (only the shadows of dim lamps, and
+// the slowly changing parts of their shine, are approximate). It is worked out at
 // the pixel, so no cell's edge shows (unlike a group standing in nearer), and
 // nothing is random, so nothing flickers. 1: every entry is worked out alone.
 LightGrid buildLightGrid(const std::vector<GridLamp>& lamps, float farness = 4, int fewest = 8, int maxCells = 4096, float tolerance = 0,

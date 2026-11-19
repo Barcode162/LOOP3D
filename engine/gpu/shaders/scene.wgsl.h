@@ -385,6 +385,27 @@ fn surfLight(s : Surf, l : vec3f, bulb : f32) -> vec3f {
   return f * nl;
 }
 
+// Lamps merged into one (render.lampShare): what the surface sends to the eye
+// of them all. `lit`: their light times its slant, added up (the soft light,
+// exact); `glint`, `coatGlint`: that times each one's own highlight shape
+// (the GGX lobe, widened by its bulb), so every bulb keeps its highlight;
+// `back`: light through from behind; `l`: their middle way, where the slowly
+// changing parts (Fresnel, the masking of bumps) are taken.
+fn mergedLight(s : Surf, l : vec3f, lit : vec3f, glint : vec3f, coatGlint : vec3f, back : vec3f) -> vec3f {
+  let nl = max(dot(s.n, l), 1e-3);
+  let h = normalize(l + s.v);
+  let fres = pow(1.0 - clamp(dot(s.v, h), 0.0, 1.0), 5.0);
+  let coatF = s.coat * (0.04 + 0.96 * fres);
+  let F = s.f0 + (vec3f(1.0) - s.f0) * fres;
+  var f = s.diffuse / PI * lit + F * s.comp * V_smith(s.nv, nl, s.alpha) * glint;
+  if (kShading >= 1u) {
+    f += s.sheen * (fres / PI) * lit;
+    f *= 1.0 - coatF;
+    if (s.coat > 0.0) { f += coatF * V_smith(s.nv, nl, s.coatAlpha) * coatGlint; }
+  }
+  return f + s.translucent * back / PI;
+}
+
 // ---- panels (windows, softboxes, strips): glowing rectangles, lit as what they are
 // A panel's two sides from the way it faces: the film renderer's rule (engine/render/pathtracer.cpp).
 struct Sides { u : vec3f, v : vec3f };
@@ -838,14 +859,16 @@ fn shade(i : VsOut, front : bool) -> Shaded {
   // the rest of the cell's lamps (render.lampShare, engine/render/light_grid.h):
   // the dim ones, merged here into one lamp made for this point: the light
   // all of them bring it (each with its own distance, cone and slant, so the
-  // soft light is theirs exactly), from their middle way, its highlight as
-  // wide as they are spread. No shadow of their own (the ambient occlusion
+  // soft light is theirs exactly), and each one's own highlight shape (so a
+  // string of bulbs on a duct still shines bulb by bulb). No shadow of their own (the ambient occlusion
   // stands in, as for a lamp past the rays), or on High, the picked lamp's.
   // Worked out at each point, so no cell's edge shows, and nothing flickers
   if (sureEnd < last) {
     var lit = vec3f(0.0);
+    var glint = vec3f(0.0);
+    var coatGlint = vec3f(0.0);
+    var back = vec3f(0.0);
     var way = vec3f(0.0);
-    var weight = 0.0;
     for (var j = sureEnd; j < last; j++) {
       let L = lights[textureLoad(gridList, vec2i(i32(j & 1023u), i32(j >> 10u)), 0).x];
       let tl = L.pos.xyz - i.world;
@@ -858,17 +881,23 @@ fn shade(i : VsOut, front : bool) -> Shaded {
         I *= L.cone.z * L.cone.w * max(dot(-l, L.dir.xyz), 0.0);
       }
       let nl = dot(n, l);
-      let slant = select(max(nl, 0.0), abs(nl), lit2);
-      lit += I * slant;
-      let w = dot(I, vec3f(0.3333)) * slant;
-      way += l * w;
-      weight += w;
+      if (lit2 && nl < 0.0) { back += I * -nl; }
+      if (nl <= 0.0) { continue; }
+      let Ic = I * nl;
+      lit += Ic;
+      way += l * dot(Ic, vec3f(0.3333));
+      let nh = max(dot(n, normalize(l + sf.v)), 0.0);
+      let bulb = L.pos.w / (2.0 * sqrt(d2));
+      let a = clamp(sf.alpha + bulb, 0.0, 1.0);
+      glint += Ic * (D_ggx(nh, a) * (sf.alpha * sf.alpha / (a * a)));
+      if (kShading >= 1u && sf.coat > 0.0) {
+        let ca = clamp(sf.coatAlpha + bulb, 0.0, 1.0);
+        coatGlint += Ic * (D_ggx(nh, ca) * (sf.coatAlpha * sf.coatAlpha / (ca * ca)));
+      }
     }
-    if (weight > 0.0) {
-      let l = select(n, normalize(way), length(way) > 1e-4 * weight);
-      let spread = 1.0 - length(way) / weight;  // 0: all from one way
-      let nl = select(max(dot(n, l), 0.0), abs(dot(n, l)), lit2);
-      var c = surfLight(sf, l, 0.5 * spread) * lit / max(nl, 0.05);
+    if (dot(lit + back, vec3f(1.0)) > 0.0) {
+      let l = select(n, normalize(way), dot(way, way) > 1e-12);
+      var c = mergedLight(sf, l, lit, glint, coatGlint, back);
       if (pick != 0xffffffffu) { restLight += c; } else { lo += c * mix(1.0, aoTerm, 0.7); }
     }
   }

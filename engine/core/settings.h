@@ -33,7 +33,7 @@ struct Config {
     bool cull = true;  // skip what a pass can't see
     bool lightGrid = true;     // lamps near a pixel alone, far groups of lamps as one each
     float lampGrouping = 7;    // a group stands in for its lamps this many of its sizes away
-    float lampShare = 0.8f;  // each pixel works out alone its cell's lamps holding this share of the light, and merges the rest into one
+    float lampShare = 0.65f;  // each pixel works out alone its cell's lamps holding this share of the light, and merges the rest into one
     float lampError = 0;  // (off: blocky light at cell edges on the phone, 2026-11-18) a nearer group of lamps stands in as one when the light it could get wrong is under this share (lightcuts)
     bool ssr = true;     // screen reflections on High
     bool mirrorPane = true;  // the largest flat glass in view mirrors the room (order M60)
