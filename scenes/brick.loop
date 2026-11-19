@@ -12,9 +12,11 @@
 
 let brick_length = 215 mm
 let tile_side = 2 m     # about nine bricks across
+# bricks always lie flat: "x" runs them along x on walls facing z and along z on walls facing x
+# ("long" would stand them up on any wall taller than it is wide)
 
 to brick(seed: 1)
-  return surface("brick", seed: seed, tile: tile_side, space: "world",
+  return surface("brick", seed: seed, tile: tile_side, space: "world", along: "x",
     base: {color: rgb(0.60, 0.30, 0.22), color2: rgb(0.70, 0.68, 0.64), roughness: 0.85, roughness2: 0.95,
            pattern: "bricks", size: brick_length, stretch: 3.3, piece: 0.15, bump: 3 mm},
     coat: {color: rgb(0.20, 0.20, 0.21), roughness: 0.95, cover: 0.3, facing: "any",
