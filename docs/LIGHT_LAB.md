@@ -38,3 +38,20 @@ Seven experiments; the rows are in `perf/lab/results.json` and the sheet.
   round, find it: (1) where live's light on the ceiling and brick comes from when the film's is dark (a lamp
   through its own shade?); (2) whether the light cache bakes anything at night; (3) a still room, baked by the
   film renderer and shown by the phone, to measure how close "film light, looked up" gets.
+
+## Round 2 (2026-11-19): where the gap comes from
+Test versions of the room in `perf/lab/scenes/` (each against its own film picture; `SRC=` in `light_lab.js`).
+- **Film with no bounce** (`cinema.bounces 1`): the phone is 16.0 from it and 2x too bright, as far as from the
+  full film. The phone isn't mainly missing bounce: it adds direct light that the film's geometry blocks.
+- **City light only**: 6.0, 4x too bright (it lights the table through the roof). **Lamps inside only**: 15.5.
+- **By family**: strips (stair, coves, shelves) **15x too bright**, 10.2; spots 2.2x, 11.0; pendants 1.2x, 11.2.
+- **The cause** (`engine/script/words_light.cpp`, `strip`): a strip's stand-in lamps cast no shadows by default,
+  and on Phone only `render.lampMaps` (at most 2) lamps have shadow maps. So 44 of 46 lamps light through their
+  own channels, shades, shelves, floors and the roof. Lamp grouping, the sky, corner darkening: no change.
+- The light cache has 1936 probes baked, yet switching it off changes the picture by 0.05 of 255.
+- Ultra held for 200 frames would not settle on the lab's software GPU (stopped after 50 minutes).
+
+**What it means for the method.** The phone can afford shadows for 2 lamps; good rooms have dozens, mostly
+hidden in housings. Any live-lamp method pays per lamp for shadows. A bake (light maps) gives every still lamp
+its shadows and its bounce for one picture read a pixel, so it attacks the measured cause directly. Round 3:
+build the smallest bake (one surface layer of light, made by the film renderer) and score it here.

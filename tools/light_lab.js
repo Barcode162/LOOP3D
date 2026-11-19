@@ -8,6 +8,8 @@ const fs = require('fs'), http = require('http'), path = require('path'), { exec
 const ROOT = path.resolve(__dirname, '..'), SITE = path.join(ROOT, 'site');
 const [scene, name, params = ''] = process.argv.slice(2);
 const [W, H] = [288, 512];
+// SRC=<file.loop>: a variant scene (perf/lab/scenes/), copied into the built site under <scene>.loop
+if (process.env.SRC) fs.copyFileSync(path.resolve(process.env.SRC), path.join(SITE, 'scenes', scene + '.loop'));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png', '.css': 'text/css', '.glb': 'model/gltf-binary' };
 (async () => {
   const server = http.createServer((req, res) => {
@@ -32,13 +34,13 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'applic
     set('cam.adaptSpeed', '10');
   }).catch(() => {});
   let last = -1, steady = 0, frames0 = -1, st = {};
-  for (let i = 0; i < 400 && steady < 3; i++) {
+  for (let i = 0; i < (+process.env.FRAMES ? 4000 : 400) && steady < 3; i++) {
     await page.waitForTimeout(500);
     st = await page.evaluate(() => JSON.parse(window.Module.UTF8ToString(window.Module._loop_stats())));
     if (frames0 < 0) frames0 = st.frames;
     const moved = Math.abs(st.exposure - last) / Math.max(1e-9, Math.abs(last));
     if (st.cacheWaiting || st.farWaiting) frames0 = st.frames;
-    steady = st.frames - frames0 >= 32 && moved < 0.002 && (st.clustered || params.includes('clusters=0')) ? steady + 1 : 0;
+    steady = st.frames - frames0 >= (+process.env.FRAMES || 32) && moved < 0.002 && (st.clustered || params.includes('clusters=0')) ? steady + 1 : 0;
     last = st.exposure;
   }
   const png = await page.evaluate(() => new Promise((resolve) => {
@@ -50,9 +52,9 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'applic
   const dir = path.join(ROOT, 'perf/lab', scene); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, name + '.png');
   fs.writeFileSync(file, Buffer.from(png.split(',')[1], 'base64'));
-  const src = [`projects/loft/places/${scene}.loop`, `projects/samples/${scene}.loop`].map((p) => path.join(ROOT, p)).find(fs.existsSync)
+  const src = process.env.SRC ? path.resolve(process.env.SRC) : [`projects/loft/places/${scene}.loop`, `projects/samples/${scene}.loop`].map((p) => path.join(ROOT, p)).find(fs.existsSync)
     || execFileSync('bash', ['-c', `ls ${ROOT}/projects/*/places/${scene}.loop | head -1`]).toString().trim();
   const out = execFileSync(path.join(ROOT, 'build/loop'), ['score', src, file, '--samples', process.env.SAMPLES || '256', '-o', path.join(dir, 'film'), '--reuse']).toString();
   const m = out.match(/: ([\d.]+) \(worst tenth over ([\d.]+); brightness live\/cinema ([\d.]+)/);
-  console.log(JSON.stringify({ scene, name, params, score: m && +m[1], worst: m && +m[2], brightness: m && +m[3] }));
+  console.log(JSON.stringify({ scene, name, params, score: m && +m[1], worst: m && +m[2], brightness: m && +m[3], lights: st.lights, cacheProbes: st.cacheProbes, exposure: st.exposure }));
 })();

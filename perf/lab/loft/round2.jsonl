@@ -1,0 +1,14 @@
+{"scene":"loft","name":"today2","params":"","score":16.1,"worst":32.4,"brightness":1.83,"lights":46,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft","name":"every_lamp_alone","params":"lampgrouping=1000","score":16.1,"worst":32.4,"brightness":1.83,"lights":46,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft","name":"sky_off","params":"skyLight=0","score":16.1,"worst":32.4,"brightness":1.83,"lights":46,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_city_only","name":"today","params":"","score":6,"worst":16.5,"brightness":4.17,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_inside_only","name":"today","params":"","score":15.5,"worst":32.4,"brightness":1.79,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_city_only","name":"no_bounce","params":"lightcache=0","score":6.1,"worst":16.7,"brightness":4.19,"lights":45,"cacheProbes":0,"exposure":0.0666667}
+{"scene":"loft_direct_only","name":"today","params":"","score":16,"worst":34.1,"brightness":2.02,"lights":46,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_direct_only","name":"today","params":"","score":16,"worst":34.1,"brightness":2.02,"lights":46,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_strips","name":"today","params":"","score":10.2,"worst":25.7,"brightness":15.43,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_pendants","name":"today","params":"","score":11.2,"worst":30.3,"brightness":1.17,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_spots","name":"today","params":"","score":11,"worst":21.6,"brightness":2.15,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_strips","name":"today","params":"","score":10.2,"worst":25.7,"brightness":15.47,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_pendants","name":"today","params":"","score":11.2,"worst":30.3,"brightness":1.17,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
+{"scene":"loft_spots","name":"today","params":"","score":11.1,"worst":21.6,"brightness":2.15,"lights":45,"cacheProbes":1936,"exposure":0.0666667}
