@@ -3,6 +3,7 @@
 // name is unique (also against every project's scripts, since a scene finds
 // both by name), and each entry's example placement runs with no problems.
 #include <filesystem>
+#include <memory>
 #include <set>
 #include <string>
 
@@ -42,6 +43,13 @@ TEST(library_card_refuses_what_has_no_licence) {
   CHECK(!parseLibraryCard("# chair · a chair\n# kind: piece\n# place: chair(AT)\n# credit: J Production\n# from: here\n\nto chair(at)\n", e, problems));
   CHECK(problems.size() == 1 && problems[0].find("licence") != std::string::npos);
   problems.clear();
+  // a kind the library has no shelf for (a misspelling once let "skie" through)
+  CHECK(!parseLibraryCard("# moon · a moon\n# kind: skie\n# place: moon(AT)\n# credit: J Production\n# licence: ours\n# from: here\n", e, problems));
+  CHECK(problems.size() == 1 && problems[0].find("skie") != std::string::npos);
+  problems.clear();
+  CHECK(parseLibraryCard("# orbit · a camera\n# kind: script\n# place: orbit(AT)\n# credit: J Production\n# licence: ours\n# from: here\n", e, problems));
+  problems.clear();
+  e = LibraryEntry();
   CHECK(!parseLibraryCard("to chair(at)\n", e, problems));
   CHECK(!problems.empty());
 }
@@ -65,9 +73,62 @@ TEST(library_entries_place_their_example) {
     CHECK(ok);
     for (int i = 0; i < 60; ++i) vm.update(1.0 / 120), st.update(1.0f / 120);
     CHECK(vm.problems().empty());
+    if (e.kind == "script") continue;  // a script brings behaviour, not shapes (the test below)
     if (st.scene.instances.empty()) std::printf("    %s placed nothing\n", e.name.c_str());
     CHECK(!st.scene.instances.empty());
   }
+}
+
+// The Scripts shelf (library/scripts/): a camera and controls any project
+// brings in by name, each doing its job once dropped into a scene.
+namespace {
+struct Dropped {
+  Vm vm;
+  Stage st;
+  bool ok = false;
+};
+std::unique_ptr<Dropped> dropScript(const std::string& scene) {
+  Settings::get().resetAll();
+  auto d = std::make_unique<Dropped>();
+  std::vector<std::string> seen;
+  std::string src = expandUses(scene, "projects/showcase/", seen);
+  installStandardLibrary(d->vm);
+  installSceneApi(d->vm, d->st);
+  d->ok = d->vm.load(src, "dropped.loop");
+  for (const auto& p : d->vm.problems()) std::printf("    %s\n", p.text().c_str());
+  return d;
+}
+}  // namespace
+
+TEST(library_scripts_bring_a_camera_and_controls) {
+  // a film camera that goes once round, then again with no jolt
+  auto o = dropScript("use \"orbit_camera\"\norbit_camera(vec(2, 0, 0), seconds: 20)\n");
+  CHECK(o->ok && o->st.mode == "movie");
+  CHECK(o->st.film.shots.size() == 1 && o->st.film.shots[0].orbit);
+  CHECK_NEAR(o->st.film.length(), 20, 1e-4f);
+  Camera a = o->st.film.at(0, o->st.scene.camera), b = o->st.film.at(20, o->st.scene.camera);
+  CHECK(length(a.position - b.position) < 0.01f);
+  // walking: the game, its speeds, and the player stood where it was dropped
+  auto w = dropScript("use \"walk_controls\"\nwalk_controls(vec(3, 0, 4), walk: 2)\n");
+  CHECK(w->ok && w->st.mode == "game" && w->st.teleport);
+  CHECK(length(w->st.teleportTo - Vec3(3, 0, 4)) < 1e-4f);
+  CHECK_NEAR(static_cast<float>(Settings::get().value("player.walk").number()), 2, 1e-4f);
+  // tap to move: a tap on the floor walks there; a tap high on a wall doesn't
+  auto t = dropScript("use \"tap_to_move\"\ntap_to_move()\n");
+  CHECK(t->ok && t->st.mode == "game");
+  Table* wall = t->vm.newTable();
+  wall->set("hit", Value::boolean(true)), wall->set("distance", Value::number(4)), wall->set("at", Value::vec(Vec3(0, 1.5f, -4)));
+  t->vm.emit("tap", Value::object(wall));
+  for (int i = 0; i < 3; ++i) t->vm.update(1.0 / 120);
+  CHECK(!t->st.walkingTo);
+  Table* floor = t->vm.newTable();
+  floor->set("hit", Value::boolean(true)), floor->set("distance", Value::number(4)), floor->set("at", Value::vec(Vec3(1, 0, -4)));
+  t->vm.emit("tap", Value::object(floor));
+  for (int i = 0; i < 3; ++i) t->vm.update(1.0 / 120);
+  CHECK(t->st.walkingTo && length(t->st.walkTarget - Vec3(1, 0, -4)) < 1e-4f);
+  // the starter: light, a floor and both controls in one
+  auto s = dropScript("use \"scene_starter\"\nscene_starter(vec(0, 0, 0))\n");
+  CHECK(s->ok && s->st.mode == "game" && s->st.teleport && !s->st.scene.instances.empty());
 }
 
 TEST(library_card_new_lines_are_read_and_checked) {

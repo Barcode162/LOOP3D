@@ -73,11 +73,22 @@ window.LE = window.LE || {};
   // ---- the library: what every project can use (library/, scenes/library.json)
   SP.library = [];
   fetch('scenes/library.json').then((r) => (r.ok ? r.json() : [])).then((l) => { SP.library = l; if (SP.current === 'build' && !V.sel) SP.redraw(); }).catch(() => {});
-  const KIND_ICON = { model: 'kind', room: 'top', piece: 'part' };
+  // The library's shelves, in the order they're shown: scripts (a camera,
+  // controls) first, since a new scene needs them before anything else.
+  const SHELVES = [
+    ['script', 'Scripts', 'camera, controls and kits: drop one on the view'],
+    ['model', 'Models', 'furniture and things'], ['light', 'Lights', 'lamps that light the room'],
+    ['piece', 'Pieces', 'building parts'], ['room', 'Rooms', 'whole shells'], ['sky', 'Skies', 'what is above'],
+    ['surface', 'Surfaces', 'shown on a test ball'], ['world', 'Worlds', 'whole lands'], ['skeleton', 'Skeletons', 'bones to hang a body on'],
+  ];
+  const KIND_ICON = { model: 'kind', room: 'top', piece: 'part', light: 'light', sky: 'eye', surface: 'sphere', world: 'tree', skeleton: 'person', script: 'code' };
+  const SCRIPT_ICON = { orbit_camera: 'camera', walk_controls: 'walk', tap_to_move: 'hand', scene_starter: 'play' };
+  const iconOf = (e) => (e.kind === 'script' && SCRIPT_ICON[e.name]) || KIND_ICON[e.kind] || 'layers';
   // A library entry into the scene: its `use` line at the top (once), then its
-  // example placed where the view looks (AT in its card's place line).
-  async function addFromLibrary(e) {
-    const p = spotAhead(0);
+  // example placed at `p` (where it was dropped), or where the view looks
+  // (AT in its card's place line).
+  async function addFromLibrary(e, p) {
+    p = p || spotAhead(0);
     const useLine = 'use "' + e.name + '"';
     let text = H.text, shift = 0;
     if (!text.split('\n').some((l) => l.trim() === useLine)) {
@@ -93,6 +104,64 @@ window.LE = window.LE || {};
     if (!H.commit(text, 'added a ' + e.name.replace(/_/g, ' ') + ' from the library')) return;
     SP.pendingSelect = null;
     await SP.rerun();
+  }
+  // Drag and drop from the library: hold an entry a moment (so a quick swipe
+  // still scrolls the shelf), then drag it onto the view and let go where it
+  // goes. A tap adds it where the view looks, as before.
+  function libraryBtn(e) {
+    const b = toolBtn(iconOf(e), e.name.replace(/_/g, ' '), () => { if (!b.dragged) addFromLibrary(e); b.dragged = false; }, { title: e.what + ' (from ' + e.from + ')' });
+    let hold = null, ghost = null, start = null;
+    const drop = () => { if (ghost) ghost.remove(); ghost = null; clearTimeout(hold); hold = null; document.body.classList.remove('lib-dragging'); };
+    b.addEventListener('pointerdown', (ev) => {
+      start = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
+      b.dragged = false;
+      hold = setTimeout(() => {
+        ghost = h('div', { class: 'lib-ghost' }, I(iconOf(e)), e.name.replace(/_/g, ' '));
+        document.body.append(ghost);
+        document.body.classList.add('lib-dragging');
+        try { b.setPointerCapture(start.id); } catch (_) {}
+        place(start.x, start.y);
+        if (navigator.vibrate) navigator.vibrate(8);
+      }, 280);
+    });
+    const place = (x, y) => {
+      if (!ghost) return;
+      ghost.style.transform = 'translate(' + (x - 40) + 'px,' + (y - 70) + 'px)';
+      ghost.classList.toggle('over', !!V.dropPoint(x, y));
+    };
+    b.addEventListener('pointermove', (ev) => {
+      if (!start || ev.pointerId !== start.id) return;
+      if (!ghost) { if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 8) { clearTimeout(hold); hold = null; } return; }
+      place(ev.clientX, ev.clientY);
+    });
+    // while an entry is held, the page doesn't scroll under the finger (Safari)
+    b.addEventListener('touchmove', (ev) => { if (ghost) ev.preventDefault(); }, { passive: false });
+    b.addEventListener('contextmenu', (ev) => ev.preventDefault());
+    b.addEventListener('pointerup', (ev) => {
+      if (ghost) {
+        b.dragged = true;
+        const p = V.dropPoint(ev.clientX, ev.clientY);
+        drop();
+        if (p) addFromLibrary(e, p);
+      } else drop();
+      start = null;
+    });
+    b.addEventListener('pointercancel', () => { drop(); start = null; });
+    return b;
+  }
+  function libraryShelves(body) {
+    const by = {};
+    for (const e of SP.library) (by[e.kind] = by[e.kind] || []).push(e);
+    const kinds = SHELVES.map((s) => s[0]).concat(Object.keys(by).filter((k) => !SHELVES.some((s) => s[0] === k)));
+    body.append(h('div', { class: 'sh-head' }, h('h2', {}, 'From the library'), h('span', { class: 'sub' }, SP.library.length + ' things every project shares')),
+      h('div', { class: 'note' }, h('b', {}, 'Tap'), ' to add one in the middle of the view, or ', h('b', {}, 'hold and drag'), ' it onto the view and let go where it goes.'));
+    for (const k of kinds) {
+      if (!by[k]) continue;
+      const s = SHELVES.find((x) => x[0] === k) || [k, k[0].toUpperCase() + k.slice(1) + 's', ''];
+      const row = h('div', { class: 'tools library' });
+      for (const e of by[k]) row.append(libraryBtn(e));
+      body.append(h('div', { class: 'shelf-head' }, h('b', {}, s[1]), h('span', { class: 'sub' }, by[k].length + (s[2] ? ' · ' + s[2] : ''))), row);
+    }
   }
 
   function toolBtn(icon, label, onclick, opt = {}) {
@@ -121,11 +190,7 @@ window.LE = window.LE || {};
           toolBtn('light', V.workLight ? 'Work light on' : 'Work light', () => { V.setWorkLight(!V.workLight); this.draw(); }, { on: V.workLight, title: 'A lamp at your view, to see while building in the dark. Only in the editor: the world doesn\'t change.' }),
           toolBtn('grid', V.snap ? 'Snap on' : 'Snap off', () => { V.snap = !V.snap; this.draw(); }, { on: V.snap, title: 'Moves snap to 5 cm and turns to 15°' }));
         body.append(tools, view, h('div', { class: 'note' }, 'New things land on the floor in the middle of the view. ', h('b', {}, 'Drag'), ' a picked thing to slide it, use its handles to lift, turn and size it.'));
-        if (SP.library.length) {
-          const lib = h('div', { class: 'tools library' });
-          for (const e of SP.library) lib.append(toolBtn(KIND_ICON[e.kind] || 'layers', e.name.replace(/_/g, ' '), () => addFromLibrary(e), { title: e.what + ' (from ' + e.from + ')' }));
-          body.append(h('div', { class: 'sh-head' }, h('h2', {}, 'From the library'), h('span', { class: 'sub' }, SP.library.length + ' pieces every project shares')), lib);
-        }
+        if (SP.library.length) libraryShelves(body);
         body.append(this.worldCard(), this.listCard());
         return;
       }

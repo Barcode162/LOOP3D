@@ -220,6 +220,27 @@ struct Stage {
   // where they are put back when they stand up.
   bool sitting = false;
   Vec3 sitAt{0}, standAt{0};
+  // walk_player(to): the player walks there by themselves (feet on the ground,
+  // the look left free) until they arrive, push the stick, or give up when
+  // something is in the way (walkTime runs out). walkSpeed 0: the walk speed.
+  bool walkingTo = false;
+  Vec3 walkTarget{0};
+  float walkSpeed = 0, walkTime = 0;
+  // One step of that walk: the velocity wanted on the ground (y 0) for feet at
+  // `feet`, easing in over the last half metre; it stops (walkingTo = false)
+  // within 12 cm or when walkTime runs out. `speed` is the walk speed in use.
+  Vec3 walkStep(Vec3 feet, float speed, float dt) {
+    if (!walkingTo) return Vec3(0);
+    Vec3 d(walkTarget.x - feet.x, 0, walkTarget.z - feet.z);
+    float dist = length(d);
+    walkTime -= dt;
+    if (dist < 0.12f || walkTime <= 0) {
+      walkingTo = false;
+      return Vec3(0);
+    }
+    float v = walkSpeed > 0 ? walkSpeed : speed;
+    return d * (v * std::min(1.0f, dist / 0.5f) / dist);
+  }
   bool story = false;            // the script has spoken a line or asked (a story scene)
   void updateTransform(int placedIndex);
   // What a ray meets first: the placed thing (its index) whose triangles it

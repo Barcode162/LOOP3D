@@ -85,6 +85,11 @@ bool parseLibraryCard(const std::string& text, LibraryEntry& out, std::vector<st
   if (out.what.empty() && problems.size() == before) problems.push_back("its card doesn't say what it is");
   for (auto [field, name] : {std::pair{&out.kind, "kind"}, {&out.place, "place"}, {&out.credit, "credit"}, {&out.licence, "licence"}, {&out.from, "from"}})
     if (field->empty()) problems.push_back(std::string("its card has no \"# ") + name + ": …\" line");
+  // the kinds of docs/LIBRARY_PLAN.md section 1 (each in its folder: a model in models/, a sky in skies/)
+  static const char* const kKinds[] = {"model", "light", "piece", "room", "sky", "surface", "world", "skeleton", "script",
+                                       "set", "plant", "rock", "move", "sound", "song", "screen", "kit"};
+  if (!out.kind.empty() && std::find(std::begin(kKinds), std::end(kKinds), out.kind) == std::end(kKinds))
+    problems.push_back("its kind \"" + out.kind + "\" should be one of docs/LIBRARY_PLAN.md's kinds (model, light, piece, room, sky, surface, world, skeleton, script, …)");
   if (!out.size.empty() && out.size != "hand" && out.size != "chair" && out.size != "sofa" && out.size != "room" && out.size != "land")
     problems.push_back("its size \"" + out.size + "\" should be hand, chair, sofa, room or land");
   if (!out.view.empty() && out.view != "front" && out.view != "back" && out.view != "left" && out.view != "right" && out.view != "below")

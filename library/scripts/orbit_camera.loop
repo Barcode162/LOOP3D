@@ -1,0 +1,13 @@
+# orbit_camera · a film camera that circles one point, slowly and all the way round, again and again
+# orbit_camera(around, radius, height, seconds, lens) makes the scene a film (`mode "movie"`) with one shot that goes
+# once round `around` in `seconds` (30), `radius` metres out (6) and `height` metres up (2.2), always looking at a
+# point a metre above it, then starts again with no jolt. Drop it on the middle of what you want to show.
+# kind: script
+# place: orbit_camera(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the library's Scripts shelf (2026-11-23)
+# tags: camera, orbit, turntable, film, showcase, circle, script
+to orbit_camera(around: vec(0, 0, 0), radius: 6, height: 2.2, seconds: 30, lens: 35 mm)
+  mode "movie"
+  orbit("round", seconds, around: around, radius: radius, height: height, from: 0 deg, to: 360 deg, lens: lens, look_at: around + vec(0, 1, 0), ease: "linear")

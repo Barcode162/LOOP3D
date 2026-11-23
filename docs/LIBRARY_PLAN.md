@@ -20,8 +20,9 @@ at a time, judged, then kept for every project. Today the library holds 6.
 | `lights/` | a light rig | `cove_strip`, `three_point` |
 | `people/` | a person preset | `mara_12` |
 | `clothes/` | a garment | `linen_shirt` |
+| `skeletons/` | bones a body hangs on | `human` |
 | `moves/` | a clip or a set of clips | `walk_relaxed`, `sit_down_chair` |
-| `cameras/` | a rig or a shot pattern | `follow_shoulder`, `talk_coverage` |
+| `scripts/` | behaviour any scene drops in: a camera rig or shot pattern, controls, a starter kit (no shapes of its own; tested by what it does) | `orbit_camera`, `walk_controls`, `tap_to_move`, `scene_starter` |
 | `sounds/` | a sound or a living bed | `desert_wind_light` |
 | `songs/` | music | `quiet_dusk` |
 | `screens/` | a theme | `ember` |

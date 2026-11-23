@@ -248,6 +248,30 @@ TEST(the_player_can_sit) {
   CHECK(!st2.sitting && !vm2.global("now").b);
 }
 
+// walk_player(to): the player walks there by themselves, easing in over the
+// last half metre, and stops when they arrive or when move_player carries them.
+TEST(the_player_can_walk_to_a_point) {
+  Vm vm;
+  Stage st;
+  installStandardLibrary(vm);
+  installSceneApi(vm, st);
+  CHECK(vm.load("walk_player(vec(0, 0, -4))\nlet going = player_walking()\n", "walk.loop"));
+  CHECK(vm.global("going").b && st.walkingTo);
+  Vec3 feet(0, 0, 0);
+  Vec3 v = st.walkStep(feet, 1.4f, 0.01f);
+  CHECK_NEAR(v.z, -1.4f, 1e-4f);  // full speed while far
+  CHECK_NEAR(v.y, 0, 1e-6f);
+  for (int i = 0; i < 2000 && st.walkingTo; ++i) feet += st.walkStep(feet, 1.4f, 0.01f) * 0.01f;
+  CHECK(!st.walkingTo);
+  CHECK(length(feet - Vec3(0, 0, -4)) < 0.13f);  // arrived, and stopped
+  CHECK(vm.load("walk_player(vec(9, 0, 9), speed: 3)\nmove_player(vec(1, 0, 1))\n", "carried.loop"));
+  CHECK(!st.walkingTo);  // carried, so no longer walking
+  // in the way: walkTime runs out and it gives up rather than pushing forever
+  CHECK(vm.load("walk_player(vec(0, 0, -2))\n", "stuck.loop"));
+  for (int i = 0; i < 1000 && st.walkingTo; ++i) st.walkStep(Vec3(1, 0, 1), 1.4f, 0.01f);
+  CHECK(!st.walkingTo);
+}
+
 // The one clock: a thing moved in a step is drawn part-way between where it
 // was and where it is, by how far the clock is into the next step; next time
 // it comes back once more, exactly where it is; things that didn't move

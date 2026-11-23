@@ -415,6 +415,9 @@ void stepWalker(float dt) {
   float speed = g.keys[4] ? pc.run : pc.walk;
   Vec3 fwd{std::sin(g.yaw), 0, -std::cos(g.yaw)}, right{std::cos(g.yaw), 0, std::sin(g.yaw)};
   Vec3 want = (fwd * m.y + right * m.x) * speed;
+  // walk_player(to): walking by themselves, until the stick takes over
+  if (length(m) > 0.1f) g.stage->walkingTo = false;
+  else if (g.stage->walkingTo) want = g.stage->walkStep(g.pos - Vec3(0, pc.eye, 0), speed, dt);
   g.vel += (want - g.vel) * kMove;
   // walk through the world, not through its walls: slide and step like a body
   // the walking body (physics.char*): a capsule whose centre is below the eyes

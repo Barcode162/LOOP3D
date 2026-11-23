@@ -1,0 +1,16 @@
+# walk_controls · walk around the scene yourself: the thumb stick (or WASD) to walk, a drag (or the mouse) to look
+# walk_controls(at, look_at, walk, run, eye) makes the scene a game (`mode "game"`) and stands the player at `at`,
+# looking at `look_at` (5 m ahead if not given), walking at `walk` m/s (1.4, a person's pace), running at `run` (4),
+# with their eyes `eye` metres up (1.65). Drop it where the player should start.
+# kind: script
+# place: walk_controls(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the library's Scripts shelf (2026-11-23)
+# tags: controls, walk, first person, player, game, start, stick, script
+to walk_controls(at: vec(0, 0, 0), look_at: nothing, walk: 1.4, run: 4, eye: 1.65)
+  mode "game"
+  setting "player.walk", walk
+  setting "player.run", run
+  setting "player.eye", eye
+  move_player(at, look_at: at + vec(0, eye, -5) if look_at == nothing else look_at)
