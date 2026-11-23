@@ -71,3 +71,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | MREV | S | lead | 10 | 2 | 2026-11-18 |
 | T-E1 | M | lead | 7 | -384 | 2026-11-18 |
 | T-E2 | S | builder | 90 | 21 | 2026-11-18 |
+| L-scripts | S | builder | 6 | 1 | 2026-11-23 |

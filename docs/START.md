@@ -28,6 +28,7 @@ reply short: what changed, what to look at on the phone, what's next, and "a new
 - **Paused: the Studio** (track T, `docs/STUDIO.md`, PLAN "Beside it"). The skeleton, skin and live bending,
   pull a corner, and extrude a face are done. Next when it resumes: goal 19b (inset, then bevel, loop cut), or keyed bones.
 - **Needs the user** (PLAN "Needs you"): play on the recording page; the three IONOS secrets for the bar (phase C).
+- **The library's Scripts shelf** (2026-11-23): camera, controls and a scene starter any project drops in; the editor drags library entries onto the view. Next there: a follow camera, a third-person walk.
 - **Not built yet:** the Loop3D Workshop dashboard page.
 - **The board:** empty. main is green (297 tests).
 
