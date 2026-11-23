@@ -73,11 +73,29 @@ void registerStory(Vm& vm) {
     s.teleportTo = a.vec(0, "at", s.playerPos);
     s.teleportLook = a.vec(1, "look_at", s.teleportTo + Vec3(0, sit ? kSitEyeHeight : 1.6f, -1));
     s.teleport = true;
+    s.walkingTo = false;  // carried, not walking
     s.sitting = sit;
     if (sit) s.sitAt = s.teleportTo;
     s.playerPos = s.teleportTo;
     return Value();
   }, "move_player(at: vec(…), look_at: vec(…), sitting: no): carry the player somewhere new (feet at `at`); with sitting: yes, `at` is the top of a seat, the eye 0.75 m above it (kSitEyeHeight), and the player stays there until they push to walk (or move_player again)");
+  vm.native("walk_player", [](Args& a) {
+    Stage& s = stageOf(a.vm);
+    const Value* to = a.get(0, "to");
+    if (!to || to->isNothing()) {  // walk_player(nothing): stop where they are
+      s.walkingTo = false;
+      return Value();
+    }
+    if (s.sitting) return Value();  // a seated player stays seated
+    s.walkTarget = to->asVec();
+    s.walkSpeed = f32(a.num(1, "speed", 0));
+    float d = std::hypot(s.walkTarget.x - s.playerPos.x, s.walkTarget.z - s.playerPos.z);
+    s.walkTime = d / (s.walkSpeed > 0 ? s.walkSpeed : 1.0f) * 2 + 1.5f;  // time enough, twice over
+    s.walkingTo = true;
+    return Value();
+  }, "walk_player(to: vec(…), speed): the player walks there by themselves, the look left free; pushing the stick takes over; walk_player(nothing) stops");
+  vm.native("player_walking", [](Args& a) { return Value::boolean(stageOf(a.vm).walkingTo); },
+            "player_walking(): is the player still on their way (see walk_player)?");
   vm.native("player_sitting", [](Args& a) { return Value::boolean(stageOf(a.vm).sitting); },
             "player_sitting(): is the player sitting (see move_player)?");
   vm.native("go_to", [](Args& a) {

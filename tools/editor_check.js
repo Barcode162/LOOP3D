@@ -199,6 +199,16 @@ async function run(browser, name, viewport, touch) {
   await tap('plinth'); await p.waitForTimeout(2500);
   check((await lines('^use "plinth"')).length === 1 && (await lines('^plinth\\(')).length === 1, name + ': a library piece adds its use line and itself (' + (await lines('^plinth'))[0] + ')');
   check(await p.evaluate((n) => LE.spaces.refreshInfo().things.length > n, things0), name + ': the plinth stands in the world');
+  // the Scripts shelf: hold walk controls, drag it onto the view, let go: it lands where the finger left it
+  check(await p.evaluate(() => (document.querySelector('.shelf-head b') || {}).textContent === 'Scripts'), name + ': the library opens on its Scripts shelf');
+  const held = await p.evaluate(() => { const b = [...document.querySelectorAll('.tools.library button')].find((x) => x.textContent.trim() === 'walk controls'); b.scrollIntoView({ block: 'center' }); const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  const onView = await p.evaluate(() => { const r = document.getElementById('view').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.3 }; });
+  await p.mouse.move(held.x, held.y); await p.mouse.down(); await p.waitForTimeout(450);
+  for (let i = 1; i <= 10; i++) { await p.mouse.move(held.x + (onView.x - held.x) * i / 10, held.y + (onView.y - held.y) * i / 10); await p.waitForTimeout(30); }
+  check(await p.evaluate(() => !!document.querySelector('.lib-ghost.over')), name + ': the held script follows the finger over the view');
+  await p.screenshot({ path: `${OUT}/${name}_library_drag.png` });
+  await p.mouse.up(); await p.waitForTimeout(2500);
+  check((await lines('^use "walk_controls"')).length === 1 && (await lines('^walk_controls\\(vec\\(')).length === 1, name + ': dropping it adds its use line and itself (' + (await lines('^walk_controls'))[0] + ')');
   await p.click('#spaces [data-space=logic]'); await p.waitForTimeout(800);
   check(await p.evaluate(() => document.querySelector('.code textarea').value === LE.history.text), name + ': Logic shows the script');
   await p.screenshot({ path: `${OUT}/${name}_logic.png` });

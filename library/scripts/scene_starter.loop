@@ -1,0 +1,19 @@
+# scene_starter · everything a new scene needs to be played: daylight, a sun, a floor, and walking with the stick or a tap
+# scene_starter(at, floor) brings in a soft daylit sky and a low warm sun, a 60 m floor (floor: no leaves it out when
+# the scene has its own ground), walk_controls standing the player 5 m in front of `at` looking at it, and tap_to_move.
+# Drop it on the spot the scene is about; put things around it.
+# kind: script
+# place: scene_starter(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the library's Scripts shelf (2026-11-23)
+# tags: starter, new scene, kit, camera, controls, light, sky, sun, floor, script
+use "walk_controls"
+use "tap_to_move"
+to scene_starter(at: vec(0, 0, 0), floor: yes)
+  sky "physical", haze: 2
+  sun elevation: 28 deg, toward: 210 deg, lux: 90000, kelvin: 5200
+  if floor
+    ground 60, material: material(color: rgb(0.42, 0.4, 0.37), roughness: 0.85)
+  walk_controls(at + vec(0, 0, 5), look_at: at + vec(0, 1.2, 0))
+  tap_to_move()

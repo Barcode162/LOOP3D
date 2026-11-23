@@ -87,6 +87,19 @@ window.LE = window.LE || {};
     const f = norm(sub(v.look_at, v.at)), rt = norm(cross(f, [0, 1, 0])), up = cross(rt, f);
     return { o: v.at, d: norm(add(f, add(mul(rt, (2 * x - 1) * tx), mul(up, (1 - 2 * y) * ty)))), x, y, v };
   }
+  // Where a thing dragged from the library lands when let go at (px, py): the
+  // floor under the finger (to 5 cm), or 6 m out along the finger's line when it
+  // points above the horizon; null when the finger isn't over the view (over the
+  // sheet, say).
+  V.dropPoint = (px, py) => {
+    const over = document.elementFromPoint(px, py);
+    if (!over || !(over === layer || over === canvas || over === ov)) return null;
+    const ray = viewRay(px, py);
+    if (!ray) return null;
+    let p = onPlane(ray, 0);
+    if (!p || len(sub(p, ray.o)) > 60) p = add(ray.o, mul(ray.d, 6));
+    return [Math.round(p[0] * 20) / 20, 0, Math.round(p[2] * 20) / 20];
+  };
   const onPlane = (ray, h) => (Math.abs(ray.d[1]) < 1e-6 ? null : ((t) => (t > 0 ? add(ray.o, mul(ray.d, t)) : null))((h - ray.o[1]) / ray.d[1]));
   let VP = null, W = 0, Hh = 0;
   function project(p) {

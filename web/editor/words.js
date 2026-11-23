@@ -78,6 +78,7 @@ window.LOOP_WORDS = {
 "person": "person(at, height, skin, shirt, trousers, facing): someone who breathes, walks, looks and sits",
 "player": "player(): where the player is",
 "player_sitting": "player_sitting(): is the player sitting (see move_player)?",
+"player_walking": "player_walking(): is the player still on their way (see walk_player)?",
 "pose": "pose(thing, bone, bend, side, twist): turns one bone of a thing with a skin from its rest, no further than the bone's limits; the skin bends with it",
 "print": "print",
 "pull": "pull(point: 3, by: vec(x, y, z)): under a box, moves one of its points by that much (the Studio writes these lines when you drag a point)",
@@ -122,6 +123,7 @@ window.LOOP_WORDS = {
 "tree": "tree(kind: \"oak\" | \"pine\" | \"birch\" | \"bush\", at, height, turn, variant, leaves, leaf_size: 1, detail: 1): gives back the tree (.position, .visible); far away it is drawn as a simpler version of itself on its own",
 "type": "type",
 "vec": "vec(x, y, z)",
+"walk_player": "walk_player(to: vec(…), speed): the player walks there by themselves, the look left free; pushing the stick takes over; walk_player(nothing) stops",
 "wave": "wave(t, period): a smooth -1..1 swing",
 "world": "world(seed, size: 8192 m, mountains: 1, warmth: 14 C, wind: 0 (from the west)): a world grown like nature (plates lift mountains, rivers carve, lakes fill, rain falls on the windward side; sand, grass, forest, rock, snow), its land and trees made round the player as they go; gives back a good place to start (for move_player)"
 };
