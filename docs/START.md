@@ -29,6 +29,7 @@ reply short: what changed, what to look at on the phone, what's next, and "a new
   pull a corner, and extrude a face are done. Next when it resumes: goal 19b (inset, then bevel, loop cut), or keyed bones.
 - **Needs the user** (PLAN "Needs you"): play on the recording page; the three IONOS secrets for the bar (phase C).
 - **The library's Scripts shelf** (2026-11-23): camera, controls and a scene starter any project drops in; the editor drags library entries onto the view. Next there: a follow camera, a third-person walk.
+- **Light on the phone** (2026-11-24): soft lamp shadows, panels cast them, moving lamps keep them; the Dark Room (samples). Still short of film: light bounced off things, and 2 shadowed lamps at a time.
 - **Not built yet:** the Loop3D Workshop dashboard page.
 - **The board:** empty. main is green (297 tests).
 
