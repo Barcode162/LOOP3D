@@ -74,6 +74,11 @@ Design that sets a format, judging pictures and hard algorithms: top tier. Most 
 - **One of everything:** one engine, one language, one way to do each thing. Look for what exists before adding.
 - **Phone first:** judged on an iPhone 15 Pro Max in Safari. Smooth beats pretty; every frame fits its budget.
 - **WebGPU only** (no WebGL).
+- **Live light only** (the user's word, 2026-11-24): every light is worked out while the game runs, so any lamp
+  can move, change colour or go out, and its shadows follow, everywhere in the engine, in play and in movie scenes
+  alike. No light baked ahead of time and stored (no lightmaps). Light kept while playing and redone when
+  something changes (the bounced-light cache) is live, so it stays. Film renders trace their rays and need none.
+  The way to look better is better live light, not baking.
 - **From scratch:** no outside engines or runtime libraries. Build and test tools are fine (compilers, Blender,
   texture compressors, the test browser).
 - **Free:** no paid services or plans.
