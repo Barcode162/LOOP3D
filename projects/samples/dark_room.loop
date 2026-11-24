@@ -15,10 +15,11 @@ box size: vec(0.6, 0.6, 0.6), at: vec(0.7, 0.3, -0.3), turn: 30 deg, material: c
 cylinder(0.12, 1.6, at: vec(0.1, 0.8, -1.1), material: clay)
 cone(0.3, 0.7, at: vec(0.9, 0.35, 0.9), material: clay)
 
-# the bare bulb: a warm 800 lumens, and a small glowing ball to show where it is (inside the bulb's
+# the bare bulb: 800 lumens the colour of the midday sun (5500 K: white with a touch of warmth; a
+# household bulb is 2700 K, orange), and a small glowing ball to show where it is (inside the bulb's
 # own size, so it never shades its own light)
-let bulb = light(at: vec(-1.6, 1.2, 1.2), lumens: 800, kelvin: 2700, radius: 0.04)
-let glass = sphere(0.03, at: vec(-1.6, 1.2, 1.2), material: material(color: rgb(1, 0.8, 0.55), glow: 600), collide: no)
+let bulb = light(at: vec(-1.6, 1.2, 1.2), lumens: 800, kelvin: 5500, radius: 0.04)
+let glass = sphere(0.03, at: vec(-1.6, 1.2, 1.2), material: material(color: kelvin(5500), glow: 600), collide: no)
 # round the shapes in 16 seconds, rising and falling a little, and round again with no jolt
 clip bulb, loop: yes
   key 0 s, at: vec(-1.6, 1.2, 1.2)
