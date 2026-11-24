@@ -241,6 +241,17 @@ average 20.8 over 12 scenes (ΔE: 0 the same picture, about 2 barely visible, 10
    (`markNear`, `waitingOrder`), as are those round a thing that moved over 25 cm and came to rest (where it was
    and where it is); a fresh path tracer bakes only them, nearest the eye first, at most every 2 s. The cabin's
    candle put out: 320 of 980 probes (`tools/cache_check.js`); its fire, all of them (its light fills the room).
+   *Each side reads its own probes, and a carried lamp's bounce keeps up, 2026-11-24:* a surface blends the eight
+   probes round a point a third of the spacing in front of it, each by nearness times how much it is on the
+   surface's side (`probeFacing`: ((cos + 1) / 2)^2, DDGI's weight, Majercik 2019, without its floor of 0.2). Before,
+   probes behind a wall or under a floor were blended in as much as the room's: the Dark Room's shadowed wall got
+   0.6% of its lit part's light (film 24%); now 6%. A lamp moving no longer counts as a new scene (the path tracer
+   keeps its own copy of the lamps): it once cancelled the bake every frame, so a lamp that kept moving got no
+   bounce at all; now the probes near where it went, and where it was, are relit each half metre it moves (or a
+   tenth of its reach; `lampMovedFar`).
+   Against film (cinema at 64 samples, the 16 picture tests): average 16.7 to 14.6; the people 26.2 to 21.2, the
+   courtyard 12.1 to 9.0, the cabin 15.9 to 13.8, the hall 11.7 to 9.9; the fog 11.1 to 11.6 and the windows 1.0
+   to 1.2 a little worse. The Dark Room (now with a pale corner and a film camera at the player's eye): 2.4.
    *The fog's soft light* is the light cache's halfway along each view. Phase 6's scores (cinema at 32 samples):
 
 ```

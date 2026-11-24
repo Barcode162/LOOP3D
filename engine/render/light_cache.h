@@ -16,6 +16,7 @@
 // tried first: they overstate light arriving from the side, which turned the
 // courtyard's shaded walls red.) A probe inside something (most of its rays
 // hit the backs of surfaces) takes its neighbours' light instead.
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -53,6 +54,23 @@ struct LightCache {
   // The light on a surface at p facing n, blended between the probes round it (tests, tools).
   Vec3 irradiance(Vec3 p, Vec3 n) const;
 };
+
+// How much a surface facing n trusts a probe `toProbe` away: fully the ones on
+// its own side, hardly the ones behind it (behind a wall, under a floor: their
+// light is not this side's). A surface blends the probes round it by this and
+// by nearness (DDGI's weight, Majercik 2019, without its floor of 0.2: a
+// probe behind a thin wall in a black world is all dark). The shader's
+// cacheLight4 does the same.
+inline float probeFacing(Vec3 toProbe, Vec3 n) {
+  const float l = length(toProbe);
+  if (l < 1e-4f) return 1;
+  const float c = (dot(toProbe, n) / l + 1) * 0.5f;
+  return c * c + 1e-3f;
+}
+
+// Has a lamp been carried far enough from where its bounced light was worked
+// out to work it out again near it: half a metre, or a tenth of its reach.
+inline bool lampMovedFar(Vec3 was, Vec3 now, float reach) { return length(now - was) > std::max(0.5f, 0.1f * reach); }
 
 // Probes over the box, `spacing` apart (at least `minSpacing`, wider when
 // more than `maxProbes` would be needed).

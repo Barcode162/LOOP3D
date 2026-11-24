@@ -300,6 +300,8 @@ class GpuRenderer final : public Renderer {
   // each lamp's light, smoothed over about a second (a flickering flame keeps
   // a steady average; a lamp switched on or off doesn't), and as last baked
   std::vector<float> lampAvg_, lampBaked_;
+  std::vector<Vec3> lampBakedAt_;  // where each lamp was when its bounce was last worked out
+  size_t cacheLamps_ = ~size_t(0);  // how many lamps the light cache was laid out with
   double lampWatchedAt_ = 0;
   void watchLampsForCache();
   std::vector<AABB> moverFrom_;  // per place: its box when it started moving

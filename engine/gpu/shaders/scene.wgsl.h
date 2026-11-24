@@ -39,14 +39,35 @@ fn mirrorHere(p : vec3f, n : vec3f) -> bool {
 // The light falling on a surface at p facing n that isn't straight from a
 // lamp or the sun, blended between the probes round it and between the faces;
 // and (a) how much of what such a surface looks at is open sky.
-fn cacheLight4(p : vec3f, n : vec3f) -> vec4f {
-  let dims = frame.cache1.xyz;
-  let half = 0.5 / dims;
-  let uvw = clamp(((p - frame.cache0.xyz) / frame.cache0.w + 0.5) / dims, half, 1.0 - half);
-  let fx = select(textureSampleLevel(cacheNX, skySampler, uvw, 0.0), textureSampleLevel(cachePX, skySampler, uvw, 0.0), n.x > 0.0);
-  let fy = select(textureSampleLevel(cacheNY, skySampler, uvw, 0.0), textureSampleLevel(cachePY, skySampler, uvw, 0.0), n.y > 0.0);
-  let fz = select(textureSampleLevel(cacheNZ, skySampler, uvw, 0.0), textureSampleLevel(cachePZ, skySampler, uvw, 0.0), n.z > 0.0);
-  return fx * n.x * n.x + fy * n.y * n.y + fz * n.z * n.z;
+fn cacheLight4(p0 : vec3f, n : vec3f) -> vec4f {
+  // the eight probes round a point a step out in front of the surface (a
+  // third of the spacing), each by nearness and by which side of the surface
+  // it is on: the ones behind a wall or under a floor hardly count (DDGI's
+  // weights; LightCache::irradiance and probeFacing, the same rule)
+  let s = frame.cache0.w;
+  let dims = vec3i(frame.cache1.xyz);
+  let p = p0 + n * (0.3 * s);
+  let q = clamp((p - frame.cache0.xyz) / s, vec3f(0.0), vec3f(dims - 1));
+  let base = min(vec3i(floor(q)), max(dims - 2, vec3i(0)));
+  let t = q - vec3f(base);
+  let nn = n * n;
+  var sum = vec4f(0.0);
+  var total = 0.0;
+  for (var c = 0; c < 8; c++) {
+    let o = vec3i(c & 1, (c >> 1) & 1, c >> 2);
+    let at = min(base + o, dims - 1);
+    let tri = select(1.0 - t, t, vec3<bool>(o == vec3i(1)));
+    let to = frame.cache0.xyz + vec3f(at) * s - p0;
+    let len = length(to);
+    let side = select(1.0, (dot(to, n) / max(len, 1e-4) + 1.0) * 0.5, len > 1e-4);
+    let w = max(tri.x, 0.0) * max(tri.y, 0.0) * max(tri.z, 0.0) * (side * side + 1e-3);
+    let fx = select(textureLoad(cacheNX, at, 0), textureLoad(cachePX, at, 0), n.x > 0.0);
+    let fy = select(textureLoad(cacheNY, at, 0), textureLoad(cachePY, at, 0), n.y > 0.0);
+    let fz = select(textureLoad(cacheNZ, at, 0), textureLoad(cachePZ, at, 0), n.z > 0.0);
+    sum += (fx * nn.x + fy * nn.y + fz * nn.z) * w;
+    total += w;
+  }
+  return select(vec4f(0.0), sum / total, total > 1e-6);
 }
 fn cacheLight(p : vec3f, n : vec3f) -> vec3f { return cacheLight4(p, n).rgb; }
 
