@@ -1,0 +1,16 @@
+# dark_stage · a pitch-black world: no sky, no sun, no light at all, only a matte floor that shows where a lamp falls
+# dark_stage(at, floor, exposure) makes the sky black and holds the camera's exposure still (auto exposure off), so
+# dark stays dark and a lamp is as bright as it really is: drop lamps in and only what they reach can be seen. A
+# 40 m matte grey floor (floor: no leaves it out). `exposure` brightens (+1) or darkens (-1) every lamp at once.
+# kind: script
+# place: dark_stage(AT)
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the library's Scripts shelf (2026-11-24)
+# tags: dark, black, night, empty, stage, lighting test, shadows, studio, script
+to dark_stage(at: vec(0, 0, 0), floor: yes, exposure: 0)
+  sky "color", color: rgb(0, 0, 0), nits: 0
+  # a camera set for a dim room by night (f/2, 1/30 s, ISO 1600), held there
+  camera f_stop: 2, shutter: 1 / 30 s, iso: 1600, exposure: exposure, auto_exposure: no
+  if floor
+    ground 40, material: material(color: rgb(0.32, 0.31, 0.3), roughness: 0.8)

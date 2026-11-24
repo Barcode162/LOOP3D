@@ -1500,6 +1500,16 @@
   "what": "a plain room: a floor, four walls with a doorway, a ceiling with a soft panel light"
  },
  {
+  "about": "dark_stage(at, floor, exposure) makes the sky black and holds the camera's exposure still (auto exposure off), so dark stays dark and a lamp is as bright as it really is: drop lamps in and only what they reach can be seen. A 40 m matte grey floor (floor: no leaves it out). `exposure` brightens (+1) or darkens (-1) every lamp at once.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the library's Scripts shelf (2026-11-24)",
+  "kind": "script",
+  "licence": "our own work, free for every J Production project",
+  "name": "dark_stage",
+  "place": "dark_stage(AT)",
+  "what": "a pitch-black world: no sky, no sun, no light at all, only a matte floor that shows where a lamp falls"
+ },
+ {
   "about": "orbit_camera(around, radius, height, seconds, lens) makes the scene a film (`mode \"movie\"`) with one shot that goes once round `around` in `seconds` (30), `radius` metres out (6) and `height` metres up (2.2), always looking at a point a metre above it, then starts again with no jolt. Drop it on the middle of what you want to show.",
   "credit": "J Production, made in Loop3D",
   "from": "the library's Scripts shelf (2026-11-23)",
