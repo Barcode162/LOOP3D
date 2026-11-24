@@ -43,6 +43,7 @@ window.LE = window.LE || {};
   E.perfBegin = () => E.M._loop_perf_begin();
   E.perfEnd = () => JSON.parse(read(E.M._loop_perf_end()));
   // the editor's hands on the world (web/player.cpp: loop_edit_camera, loop_pick, loop_view, loop_thing, loop_thing_set)
+  E.lightAt = (i, at) => (has('loop_light_at') ? E.M._loop_light_at(i, at[0], at[1], at[2]) : 0);
   E.editCamera = (o) => (has('loop_edit_camera') ? withStr(JSON.stringify(o), (p) => E.M._loop_edit_camera(p)) : 0);
   E.pick = (x, y) => (has('loop_pick') ? E.M._loop_pick(x, y) : -1);
   E.view = () => { if (!has('loop_view')) return null; try { return JSON.parse(read(E.M._loop_view())); } catch (e) { return null; } };

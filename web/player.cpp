@@ -972,6 +972,14 @@ EMSCRIPTEN_KEEPALIVE const char* loop_scene_json() {
 
 // The editor camera: {"on": true, "at": [x, y, z], "look_at": [x, y, z], "lens": 24}.
 // Off ({"on": false}) gives the walk or the film back.
+// The editor moving a lamp by its marker: the lamp itself goes there at once,
+// with its light and its shadows (the script's line is rewritten on letting go).
+EMSCRIPTEN_KEEPALIVE int loop_light_at(int index, float x, float y, float z) {
+  if (!g.stage || index < 0 || index >= static_cast<int>(g.stage->scene.lights.size())) return 0;
+  g.stage->scene.lights[static_cast<size_t>(index)].position = Vec3(x, y, z);
+  ++g.stage->lightsVersion;
+  return 1;
+}
 EMSCRIPTEN_KEEPALIVE int loop_edit_camera(const char* json) {
   Json o;
   if (!Json::parse(json ? json : "{}", o) || !o.isObject()) return 0;

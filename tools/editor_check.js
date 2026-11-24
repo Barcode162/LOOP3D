@@ -209,6 +209,25 @@ async function run(browser, name, viewport, touch) {
   await p.screenshot({ path: `${OUT}/${name}_library_drag.png` });
   await p.mouse.up(); await p.waitForTimeout(2500);
   check((await lines('^use "walk_controls"')).length === 1 && (await lines('^walk_controls\\(vec\\(')).length === 1, name + ': dropping it adds its use line and itself (' + (await lines('^walk_controls'))[0] + ')');
+  // a lamp: dragging its marker moves its light at once (the light and its shadows follow the finger), and its line on letting go
+  await tap('Lamp');
+  // wait for the lamp and its marker on screen (a fixed wait failed one run in two on a busy machine)
+  await p.waitForFunction(() => LE.history.text.split('\n').some((l) => /^light at: /.test(l)) && LE.view.extra.some((x) => x.kind === 'lamp' && x._p), null, { timeout: 20000 }).catch(() => {});
+  await p.waitForTimeout(500);
+  const lamp0 = await lines('^light at: ');
+  const mk = await p.evaluate(() => { const m = LE.view.extra.find((x) => x.kind === 'lamp' && x._p); if (!m) return null; const r = document.getElementById('view').getBoundingClientRect(); return { x: r.left + m._p[0], y: r.top + m._p[1], at: m.at.slice() }; });
+  check(!!mk && lamp0.length === 1, name + ': the Lamp button adds a lamp with a marker');
+  if (mk) {
+    const lampAt = () => p.evaluate((at) => { const L = (LE.engine.sceneInfo().lights || []).map((l) => l.position); let best = null, bd = Infinity; for (const q of L) { const d = Math.hypot(q[0] - at[0], q[2] - at[2]); if (d < bd) { bd = d; best = q; } } return best; }, mk.at);
+    const before = await lampAt();
+    await p.mouse.move(mk.x, mk.y); await p.mouse.down();
+    for (let i = 1; i <= 8; i++) { await p.mouse.move(mk.x + i * 6, mk.y + i * 2); await p.waitForTimeout(40); }
+    const during = await p.evaluate(() => (LE.engine.sceneInfo().lights || []).map((l) => l.position));
+    check(during.some((q) => Math.hypot(q[0] - before[0], q[2] - before[2]) > 0.02 && Math.abs(q[1] - before[1]) < 1e-3), name + ': while its marker is dragged the lamp itself moves');
+    await p.mouse.up(); await p.waitForTimeout(2000);
+    const lamp1 = await lines('^light at: ');
+    check(lamp1.length === 1 && lamp1[0] !== lamp0[0], name + ': letting go rewrites its line (' + lamp1[0] + ')');
+  }
   await p.click('#spaces [data-space=logic]'); await p.waitForTimeout(800);
   check(await p.evaluate(() => document.querySelector('.code textarea').value === LE.history.text), name + ': Logic shows the script');
   await p.screenshot({ path: `${OUT}/${name}_logic.png` });

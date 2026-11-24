@@ -23,6 +23,7 @@ struct Frame {
   lampMaps : vec4f,      // lamp shadow maps: how many lamps (the first in the list), tile size, -, -
   lampFaces : array<mat4x4f, 12>,  // each mapped lamp's six views (+x -x +y -y +z -z)
   lampValid : vec4f,     // per row: drawn for its lamp (1), or not yet (0: no shadow for a frame)
+  lampNear : vec4f,      // per row: its views' near and far distances (row 0 xy, row 1 zw), for soft edges
   shadowFarViewProj : mat4x4f,  // the sun's far shadow (the shadow map's second layer)
   shadowFar : vec4f,     // the near box's size over the far one's, the far map's layer (1 or 2; 0: none); frame blending on (1); w: drawn pixels per shown pixel (1, or less when frame blending upscales)
   cache0 : vec4f,        // the light cache: first probe xyz, spacing

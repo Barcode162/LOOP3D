@@ -94,13 +94,26 @@ void GpuRenderer::keepLampRows(std::vector<std::pair<float, uint32_t>>& rank) {
   // one of the shader's shadow rays is ever given to it
   auto noShadow = [&](const std::pair<float, uint32_t>& e) { return e.second < lampNoShadow_.size() && lampNoShadow_[e.second]; };
   std::stable_partition(rank.begin(), rank.end(), [&](const auto& e) { return !noShadow(e); });
-  if (!lampMapsWanted()) return;
+  lampRowsUsed_ = 0;
+  lampRowsRanked_ = lampMapsWanted();
+  if (!lampRowsRanked_) return;
   const int want = std::clamp(config().render.lampMaps, 0, kLampMapsMost);
-  std::vector<uint32_t> top;
-  for (size_t i = 0; i < rank.size() && static_cast<int>(top.size()) < want; ++i) {
-    if (lights_[rank[i].second].dir.w > 1.5f) break;  // panels go last: no more bulbs
-    top.push_back(rank[i].second);
+  // the rows go to the lamps that give the most light where the eye is, bulbs
+  // and panels alike (a softbox or a window casts shadows too: before, panels
+  // never had one, and a room lit by one looked lit everywhere)
+  std::vector<std::pair<float, uint32_t>> strongest;
+  for (auto& e : rank) {
+    if (noShadow(e)) continue;
+    const LightU& L = lights_[e.second];
+    if (L.dir.w > 1.5f && L.cone.x < 0.5f) continue;  // a group of far panels sent as one lamp
+    Vec3 d = L.pos.xyz() - lightsEye_;
+    float power = luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w * kPi : 1.0f);
+    strongest.push_back({power / std::max(dot(d, d), 0.25f), e.second});
   }
+  std::stable_sort(strongest.begin(), strongest.end(), [](auto& a, auto& b) { return a.first > b.first; });
+  std::vector<uint32_t> top;
+  for (size_t i = 0; i < strongest.size() && static_cast<int>(top.size()) < want; ++i) top.push_back(strongest[i].second);
+  lampRowsUsed_ = static_cast<int>(top.size());
   uint32_t row[kLampMapsMost] = {~0u, ~0u};
   std::vector<bool> placed(top.size(), false);
   for (size_t r = 0; r < top.size(); ++r)
@@ -121,7 +134,16 @@ void GpuRenderer::keepLampRows(std::vector<std::pair<float, uint32_t>>& rank) {
 }
 
 float GpuRenderer::lampMapReach(const LightU& L) {
-  return std::clamp(std::sqrt(std::max(luminance(L.color.xyz()), 0.0f) / 0.25f), 2.0f, 15.0f);
+  // a panel's colour is its brightness a square metre: times its area, as a bulb's
+  const float power = luminance(L.color.xyz()) * (L.dir.w > 1.5f ? L.cone.z * L.cone.w * kPi : 1.0f);
+  return std::clamp(std::sqrt(std::max(power, 0.0f) / 0.25f), 2.0f, 15.0f);
+}
+
+// Where a lamp's six views are taken from: a bulb's middle, or just in front of
+// a panel (so the wall or frame it sits in doesn't hide it). The shader's
+// lampMapSeen works it out the same way.
+Vec3 GpuRenderer::lampMapOrigin(const LightU& L) {
+  return L.dir.w > 1.5f ? L.pos.xyz() + L.dir.xyz() * 0.03f : L.pos.xyz();
 }
 
 void GpuRenderer::chooseLampMaps(FrameU& f) {
@@ -129,20 +151,23 @@ void GpuRenderer::chooseLampMaps(FrameU& f) {
   const bool want = lampMapsWanted();
   const int size = want ? std::clamp(r.lampMapSize, 64, 1024) : 0;
   if (!lampMapTex_ || size != lampMapSize_) makeLampMap(size);
-  int count = 0;
-  while (want && count < std::min(r.lampMaps, kLampMapsMost) && count < static_cast<int>(sortedLights_.size()) &&
-         sortedLights_[static_cast<size_t>(count)].dir.w < 1.5f)
-    ++count;
+  // the rows were handed out while the shapes were still cooking (no maps
+  // then): hand them out again, now they can be drawn
+  if (want && !lampRowsRanked_) lightsDirty_ = true;
+  const int count = want ? std::min({lampRowsUsed_, r.lampMaps, kLampMapsMost, static_cast<int>(sortedLights_.size())}) : 0;
   lampMapCount_ = count;
+  float nearFar[2 * kLampMapsMost] = {0};
   static const Vec3 axis[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
   lampRowDrawing_ = -1;
   for (int l = 0; l < count; ++l) {
     const LightU& L = sortedLights_[static_cast<size_t>(l)];
-    const Vec3 p = L.pos.xyz();
+    const Vec3 p = lampMapOrigin(L);
     // its reach worked out when it takes the row (a flickering flame keeps it)
     if (length(lampRowPos_[l] - p) > 0.01f || lampRowReach_[l] <= 0) lampRowPos_[l] = p, lampRowReach_[l] = lampMapReach(L);
     const float reach = lampRowReach_[l];
-    Mat4 proj = Mat4::perspective(kPi / 2, 1.0f, std::max(L.pos.w * 1.2f, 0.05f), reach);
+    const float nearD = L.dir.w > 1.5f ? 0.02f : std::max(L.pos.w * 1.2f, 0.05f);
+    nearFar[l * 2] = nearD, nearFar[l * 2 + 1] = reach;
+    Mat4 proj = Mat4::perspective(kPi / 2, 1.0f, nearD, reach);
     for (int a = 0; a < 6; ++a) {
       Vec3 up = a == 2 || a == 3 ? Vec3(0, 0, 1) : Vec3(0, 1, 0);
       lampFaceMat_[l * 6 + a] = proj * Mat4::lookAt(p, p + axis[a], up);
@@ -160,17 +185,24 @@ void GpuRenderer::chooseLampMaps(FrameU& f) {
     if (stale) lampRowValid_[l] = 0;
     if (stale && lampRowDrawing_ < 0) lampRowDrawing_ = l;
   }
-  for (int l = count; l < kLampMapsMost; ++l) lampRowValid_[l] = 0;
+  for (int l = count; l < kLampMapsMost; ++l) lampRowValid_[l] = 0, lampRowDrawnFor_[l] = ~0u;
   // z: High's lamps with no shadow of their own share one traced shadow ray (one picked a pixel)
   f.lampMaps = {static_cast<float>(count), static_cast<float>(std::max(size, 1)), sharedLampShadows() ? 1.0f : 0.0f, 0};
-  f.lampValid = {lampRowValid_[0], lampRowValid_[1], 0, 0};
+  // a row redrawn this frame because its own lamp moved still has a map of that
+  // lamp (at worst a frame behind) and gets its new one before anything is lit:
+  // it stays on, or a lamp that keeps moving would never cast a shadow
+  float valid[kLampMapsMost];
+  for (int l = 0; l < kLampMapsMost; ++l)
+    valid[l] = lampRowValid_[l] > 0 || (l < count && lampRowDrawnFor_[l] == lampRowLamp_[l] && lampRowLamp_[l] != ~0u) ? 1.0f : 0.0f;
+  f.lampValid = {valid[0], valid[1], 0, 0};
+  f.lampNear = {nearFar[0], nearFar[1], nearFar[2], nearFar[3]};
 }
 
 void GpuRenderer::prepareLampMaps() {
   const int l = lampRowDrawing_;
   if (l < 0) return;
   const LightU& L = sortedLights_[static_cast<size_t>(l)];
-  const Vec3 p = L.pos.xyz();
+  const Vec3 p = lampMapOrigin(L);
   const float reach = lampRowReach_[l];
   lampSlots_.clear();
   for (uint32_t slot = 0; slot < instData_.size() && slot < instBox_.size(); ++slot) {

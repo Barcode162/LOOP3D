@@ -129,6 +129,13 @@ TEST(library_scripts_bring_a_camera_and_controls) {
   // the starter: light, a floor and both controls in one
   auto s = dropScript("use \"scene_starter\"\nscene_starter(vec(0, 0, 0))\n");
   CHECK(s->ok && s->st.mode == "game" && s->st.teleport && !s->st.scene.instances.empty());
+  // the dark stage: a black sky giving no light, no sun, and the exposure held still (dark stays dark)
+  auto d = dropScript("use \"dark_stage\"\ndark_stage(vec(0, 0, 0))\n");
+  CHECK(d->ok && d->st.scene.sky.kind == Sky::Kind::kColor && d->st.scene.sky.colorNits == 0);
+  CHECK(!d->st.scene.camera.autoExposure && !d->st.scene.instances.empty());
+  bool sun = false;
+  for (const Light& l : d->st.scene.lights) sun = sun || l.kind == Light::Kind::kSun;
+  CHECK(!sun);
 }
 
 TEST(library_card_new_lines_are_read_and_checked) {
