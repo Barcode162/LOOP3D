@@ -258,3 +258,62 @@ TEST(light_cache_rooms_keep_a_lamps_change_in_its_room) {
   CHECK(rightMarked == 0);
   CHECK(leftMarked > 0);
 }
+
+// The Dark Room's corner (projects/samples/dark_room.loop), made by its script:
+// a bulb in a black world over a grey floor beside two pale walls. The light
+// the walls and floor send back must reach the probes, or the shadowed sides
+// stay flat black on the phone.
+TEST(light_cache_holds_a_bulbs_bounce_in_a_dark_corner) {
+  auto r = looptest::runScene(
+      "sky \"color\", color: rgb(0, 0, 0), nits: 0\n"
+      "ground 40, material: material(color: rgb(0.32, 0.31, 0.3), roughness: 0.8)\n"
+      "box size: vec(4, 2.6, 0.1), at: vec(0, 1.3, -2), material: material(color: rgb(0.8, 0.78, 0.74), roughness: 0.9)\n"
+      "box size: vec(0.1, 2.6, 4), at: vec(-2, 1.3, 0), material: material(color: rgb(0.8, 0.78, 0.74), roughness: 0.9)\n"
+      "light at: vec(0, 1.2, 0), lumens: 800, kelvin: 5500, radius: 0.04\n");
+  CHECK(r->ok);
+  if (!r->ok) return;
+  PathTracer pt;
+  pt.setScene(r->stage.scene);
+  // a probe beside the bulb, looking at each wall and the floor
+  LightCache c = oneProbe({0.5f, 0.6f, 0.5f});
+  bakeProbe(c, 0, pt, 256);
+  std::printf("    faces: +x %.3f -x %.3f +y %.3f -y %.3f +z %.3f -z %.3f\n", luminance(c.face[0][0]), luminance(c.face[0][1]),
+              luminance(c.face[0][2]), luminance(c.face[0][3]), luminance(c.face[0][4]), luminance(c.face[0][5]));
+  CHECK(luminance(c.face[0][1]) > 0.5f);  // -x: the pale wall, lit by the bulb
+  CHECK(luminance(c.face[0][3]) > 0.1f);  // -y: the floor, lit by the bulb
+}
+
+// A lamp carried about: its bounce is worked out again once it has gone half a
+// metre (or a tenth of its reach), not for every step (a lamp moving every
+// frame once cancelled the whole bake each frame, and never got any).
+TEST(light_cache_relights_a_carried_lamp_a_step_at_a_time) {
+  CHECK(!lampMovedFar(Vec3(0, 1, 0), Vec3(0.3f, 1, 0), 4));
+  CHECK(lampMovedFar(Vec3(0, 1, 0), Vec3(0.6f, 1, 0), 4));
+  CHECK(!lampMovedFar(Vec3(0, 1, 0), Vec3(0.9f, 1, 0), 12));  // a far-reaching lamp: a tenth of 12 m
+  CHECK(lampMovedFar(Vec3(0, 1, 0), Vec3(1.3f, 1, 0), 12));
+}
+
+// A wall in front of probes on both sides of it: the face looking into the lit
+// room reads the room's probes, not the dark ones behind it (they once halved
+// it or worse: the Dark Room's shadowed wall got 0.6% of its lit part's light,
+// film 24%).
+TEST(light_cache_a_wall_reads_the_probes_on_its_own_side) {
+  LightCache c = layOutLightCache(AABB(Vec3(0, 0, 0), Vec3(1, 1, 1)), 8, 1.0f);
+  CHECK(c.nx == 2 && c.ny == 2 && c.nz == 2);
+  if (c.probes() != 8) return;
+  for (int i = 0; i < 8; ++i) {
+    const bool room = c.probePos(i).z > c.origin.z + 0.5f;  // the probes at the far z: the lit room
+    for (auto& f : c.face[static_cast<size_t>(i)]) f = Vec3(room ? 10.0f : 0.0f);
+  }
+  c.on = true;
+  // a wall face just in front of the dark probes, facing the room
+  const Vec3 p = c.origin + Vec3(0.5f, 0.5f, 0.1f), towardsRoom(0, 0, 1);
+  const float e = luminance(c.irradiance(p, towardsRoom));
+  std::printf("    the room side of the wall: %.2f (the room's probes: 10)\n", e);
+  CHECK(e > 8.0f);
+  // facing the other way it reads the dark side (the wall's back)
+  CHECK(luminance(c.irradiance(p, -towardsRoom)) < 2.0f);
+  // with light alike all round, the weights change nothing
+  for (auto& f : c.face) for (auto& v : f) v = Vec3(4.0f);
+  CHECK_NEAR(luminance(c.irradiance(p, towardsRoom)), 4.0f, 1e-3f);
+}

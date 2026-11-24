@@ -13,20 +13,33 @@ void GpuRenderer::watchLampsForCache() {
     lampAvg_.resize(lights_.size());
     for (size_t k = 0; k < lights_.size(); ++k) lampAvg_[k] = lightOf(lights_[k]);
     lampBaked_ = lampAvg_;
+    lampBakedAt_.resize(lights_.size());
+    for (size_t k = 0; k < lights_.size(); ++k) lampBakedAt_[k] = lights_[k].pos.xyz();
     return;
   }
   if (lampBaked_.size() != lights_.size()) lampBaked_ = lampAvg_;
+  if (lampBakedAt_.size() != lights_.size()) {
+    lampBakedAt_.resize(lights_.size());
+    for (size_t k = 0; k < lights_.size(); ++k) lampBakedAt_[k] = lights_[k].pos.xyz();
+  }
   for (size_t k = 0; k < lights_.size(); ++k) {
     const LightU& L = lights_[k];
     const float now = lightOf(L);
     lampAvg_[k] += (now - lampAvg_[k]) * blend;
     const float was = lampBaked_[k];
-    if (std::fabs(lampAvg_[k] - was) > 0.35f * std::max(was, 1e-3f)) {
-      // where its light makes a difference: out to half a lux (a candle about
-      // 2 m, a 900 lm fire about 12 m)
-      const float reach = std::clamp(std::sqrt(std::max(lampAvg_[k], was) / 0.5f), 2.0f, 30.0f);
+    // where its light makes a difference: out to half a lux (a candle about
+    // 2 m, a 900 lm fire about 12 m)
+    const float reach = std::clamp(std::sqrt(std::max(lampAvg_[k], was) / 0.5f), 2.0f, 30.0f);
+    // brighter or dimmer by a third, or carried a step away from where its
+    // bounce was worked out (half a metre, or a tenth of its reach)
+    const bool dimmed = std::fabs(lampAvg_[k] - was) > 0.35f * std::max(was, 1e-3f);
+    const bool carried = lampMovedFar(lampBakedAt_[k], L.pos.xyz(), reach);
+    if (dimmed || carried) {
       relight_.push_back(AABB(L.pos.xyz() - Vec3(reach), L.pos.xyz() + Vec3(reach))), relightFrom_.push_back(L.pos.xyz());
+      if (carried)  // and where it was: its old light leaves there
+        relight_.push_back(AABB(lampBakedAt_[k] - Vec3(reach), lampBakedAt_[k] + Vec3(reach))), relightFrom_.push_back(lampBakedAt_[k]);
       lampBaked_[k] = lampAvg_[k];
+      lampBakedAt_[k] = L.pos.xyz();
     }
   }
 }
@@ -90,15 +103,21 @@ void GpuRenderer::keepLightCache(Vec3 eye) {
     tracer_.reset();
     return;
   }
-  static const std::vector<std::string> kFrom = {"shapes", "placements", "lamp places", "settings"};
-  // started again at most every two seconds (a carried lamp moves every
-  // frame); but the old bake stops at once: its path tracer points into the
-  // scene as it was, and a changed scene may have moved or freed that
-  const bool changed = changes_.stale(cacheMade_, kFrom);
+  // A lamp moving is not a new scene: the path tracer keeps its own copy of
+  // the lamps, so its bake goes on, and watchLampsForCache relights only the
+  // probes near where the lamp went. (It once counted as one: a lamp that
+  // kept moving cancelled the bake every frame, and its bounced light never
+  // came.) Lamps added or taken away still start it again.
+  static const std::vector<std::string> kFrom = {"shapes", "placements", "settings"};
+  // started again at most every two seconds; but the old bake stops at once:
+  // its path tracer points into the scene as it was, and a changed scene may
+  // have moved or freed that
+  const bool changed = changes_.stale(cacheMade_, kFrom) || lights_.size() != cacheLamps_;
   if (changed) tracer_.reset();
   if (changed && emscripten_get_now() - cacheStarted_ > 2000) {
     cacheStarted_ = emscripten_get_now();
     changes_.made(cacheMade_, kFrom);
+    cacheLamps_ = lights_.size();
     // the probes over every copy (a probe within reach of the scene's things)
     AABB box;
     for (size_t i = 0; i < instBox_.size(); ++i)

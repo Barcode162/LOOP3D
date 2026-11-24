@@ -15,19 +15,25 @@ Vec3 LightCache::probePos(int i) const {
 
 Vec3 LightCache::irradiance(Vec3 p, Vec3 n) const {
   if (!on) return Vec3(0);
+  // read from a step out in front of the surface (a third of the spacing:
+  // DDGI's normal bias), so the probes just behind it count for little
+  p = p + n * (0.3f * spacing);
   Vec3 q = (p - origin) / spacing;
   q = vmin(vmax(q, Vec3(0)), Vec3(static_cast<float>(nx - 1), static_cast<float>(ny - 1), static_cast<float>(nz - 1)));
   const int x0 = std::min(static_cast<int>(q.x), std::max(nx - 2, 0)), y0 = std::min(static_cast<int>(q.y), std::max(ny - 2, 0)),
             z0 = std::min(static_cast<int>(q.z), std::max(nz - 2, 0));
   Vec3 out(0);
+  float total = 0;
   for (int c = 0; c < 8; ++c) {
     const int x = std::min(x0 + (c & 1), nx - 1), y = std::min(y0 + ((c >> 1) & 1), ny - 1), z = std::min(z0 + (c >> 2), nz - 1);
     const float wx = (c & 1) ? q.x - x0 : 1 - (q.x - x0), wy = ((c >> 1) & 1) ? q.y - y0 : 1 - (q.y - y0), wz = (c >> 2) ? q.z - z0 : 1 - (q.z - z0);
-    const auto& f = face[static_cast<size_t>(probeAt(x, y, z))];
+    const int i = probeAt(x, y, z);
+    const auto& f = face[static_cast<size_t>(i)];
     const Vec3 e = (n.x > 0 ? f[0] : f[1]) * (n.x * n.x) + (n.y > 0 ? f[2] : f[3]) * (n.y * n.y) + (n.z > 0 ? f[4] : f[5]) * (n.z * n.z);
-    out += e * (std::max(wx, 0.0f) * std::max(wy, 0.0f) * std::max(wz, 0.0f));
+    const float w = std::max(wx, 0.0f) * std::max(wy, 0.0f) * std::max(wz, 0.0f) * probeFacing(probePos(i) - p, n);
+    out += e * w, total += w;
   }
-  return vmax(out, Vec3(0));
+  return total > 1e-6f ? vmax(out / total, Vec3(0)) : Vec3(0);
 }
 
 LightCache layOutLightCache(const AABB& box, int maxProbes, float minSpacing) {
