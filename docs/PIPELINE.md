@@ -96,7 +96,7 @@ added on every tier; **Upgrade** = High or Ultra only.
 | 25 | Contact shadows | New live | Short rays for tiny shadows the maps miss |
 | 26 | Ray-traced shadows | Upgrade | High: the two brightest lamps (runs today); Ultra: every lamp |
 | 27 | ReSTIR DI | Upgrade | High: shadows from many lamps with one ray a pixel |
-| 28 | Baked lightmaps | Bake | Idea kept, storage changed: cinema bakes bounce light into the light cache, no unwrapping |
+| 28 | Baked lightmaps | Not used | The owner, 2026-11-24: live light only (`CLAUDE.md`). No lightmaps; bounced light lives in the light cache, worked out while playing and redone when things change |
 | 29 | Sky as 9 numbers | Have | Its maths is reused for every probe |
 | 30 | Ambient occlusion | New live | Small creases the probes are too coarse for |
 | 31 | Light propagation volumes | Out | Probes (35) do the same job better |
