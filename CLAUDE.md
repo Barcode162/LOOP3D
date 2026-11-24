@@ -54,7 +54,8 @@ Work so each chat spends as little as it can:
    cloud setup **J Production (Loop3D)** installs Emscripten 6.0.13 there and builds the engine at each start).
 4. **Commit small, push `main`.** GitHub's **Check** tests and builds every push. The public player changes only
    when it's published: the **Publish the player** workflow (by hand), or, where Claude can't start workflows,
-   the `site` artifact of a green Check put on `gh-pages` as one new commit. Then open the live page to check it.
+   the `site` artifact of a green Check (or the same commit built here) put on `gh-pages` as one new commit with
+   `tools/publish_pages.sh "<what changed>"` (it checks every file went up as built). Then open the live page to check it.
    A change to the player also goes to the user's **recording page** (`docs/TUNING.md`, section 5).
 5. **Grow the library:** whatever a goal makes that another project could use (a model, a room, a piece, a
    light rig, a clip, a sound) goes into `library/<kinds>/<name>.loop` with its card (what it is, how to
