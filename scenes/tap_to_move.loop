@@ -1,0 +1,15 @@
+# tap_to_move · tap the floor and the player walks there by themselves; the stick still works and takes over
+# tap_to_move(reach, speed) makes the scene a game and, on a tap, walks the player to the point tapped when it is
+# within `reach` metres (30) and no higher than half a metre above their feet (a floor, a step, a low seat's top,
+# not a wall or a shelf). `speed` 0 walks at the scene's walking speed. Pairs with walk_controls.
+# kind: script
+# place: tap_to_move()
+# credit: J Production, made in Loop3D
+# licence: our own work, free for every J Production project
+# from: the library's Scripts shelf (2026-11-23)
+# tags: controls, tap, click to move, point and click, touch, walk, game, script
+to tap_to_move(reach: 30, speed: 0)
+  mode "game"
+  when "tap"
+    if event.hit and event.distance < reach and event.at.y < player().y + 0.5
+      walk_player(event.at, speed: speed)

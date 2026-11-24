@@ -1500,6 +1500,46 @@
   "what": "a plain room: a floor, four walls with a doorway, a ceiling with a soft panel light"
  },
  {
+  "about": "orbit_camera(around, radius, height, seconds, lens) makes the scene a film (`mode \"movie\"`) with one shot that goes once round `around` in `seconds` (30), `radius` metres out (6) and `height` metres up (2.2), always looking at a point a metre above it, then starts again with no jolt. Drop it on the middle of what you want to show.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the library's Scripts shelf (2026-11-23)",
+  "kind": "script",
+  "licence": "our own work, free for every J Production project",
+  "name": "orbit_camera",
+  "place": "orbit_camera(AT)",
+  "what": "a film camera that circles one point, slowly and all the way round, again and again"
+ },
+ {
+  "about": "scene_starter(at, floor) brings in a soft daylit sky and a low warm sun, a 60 m floor (floor: no leaves it out when the scene has its own ground), walk_controls standing the player 5 m in front of `at` looking at it, and tap_to_move. Drop it on the spot the scene is about; put things around it.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the library's Scripts shelf (2026-11-23)",
+  "kind": "script",
+  "licence": "our own work, free for every J Production project",
+  "name": "scene_starter",
+  "place": "scene_starter(AT)",
+  "what": "everything a new scene needs to be played: daylight, a sun, a floor, and walking with the stick or a tap"
+ },
+ {
+  "about": "tap_to_move(reach, speed) makes the scene a game and, on a tap, walks the player to the point tapped when it is within `reach` metres (30) and no higher than half a metre above their feet (a floor, a step, a low seat's top, not a wall or a shelf). `speed` 0 walks at the scene's walking speed. Pairs with walk_controls.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the library's Scripts shelf (2026-11-23)",
+  "kind": "script",
+  "licence": "our own work, free for every J Production project",
+  "name": "tap_to_move",
+  "place": "tap_to_move()",
+  "what": "tap the floor and the player walks there by themselves; the stick still works and takes over"
+ },
+ {
+  "about": "walk_controls(at, look_at, walk, run, eye) makes the scene a game (`mode \"game\"`) and stands the player at `at`, looking at `look_at` (5 m ahead if not given), walking at `walk` m/s (1.4, a person's pace), running at `run` (4), with their eyes `eye` metres up (1.65). Drop it where the player should start.",
+  "credit": "J Production, made in Loop3D",
+  "from": "the library's Scripts shelf (2026-11-23)",
+  "kind": "script",
+  "licence": "our own work, free for every J Production project",
+  "name": "walk_controls",
+  "place": "walk_controls(AT)",
+  "what": "walk around the scene yourself: the thumb stick (or WASD) to walk, a drag (or the mouse) to look"
+ },
+ {
   "about": "use \"human\" brings it in; bones(\"human\", at: vec(0, 0, 0)) shows it standing. An adult 1.75 m tall in the rest pose: facing -z, left at -x, arms 45 degrees down and out, palms down. Each bone says where it starts and ends, the way a positive bend carries its tip, and how far it turns from rest: bend, side, twist. A turn not named does not happen (an elbow never bends sideways). Every left_ bone gets its right_ twin; on the right, side and twist run the other way. Rings 2 (the bones that follow) and 3 (the face) come after.",
   "credit": "J Production, made in Loop3D. Proportions after Drillis and Contini (1966) and Winter, Biomechanics and Motor Control of Human Movement. Joint limits after the American Academy of Orthopaedic Surgeons, Joint Motion: Method of Measuring and Recording (1965), and Norkin and White, Measurement of Joint Motion; rounded, and shared along the spine and neck",
   "from": "the Studio's foundation, order T-B1 (2026-11-12)",
@@ -1523,7 +1563,7 @@
   "about": "moon(toward, size, at, glow) hangs it 800 m from `at` (the eye) in the direction `toward` (up and out): `size` degrees across (1.2; the real moon is 0.5). No lamp: it glows, and is far too dim to light a room by itself.",
   "credit": "J Production, made in Loop3D",
   "from": "The Loft (2026-11-18)",
-  "kind": "skie",
+  "kind": "sky",
   "licence": "our own work, free for every J Production project",
   "name": "moon",
   "place": "moon(AT)",

@@ -2,7 +2,7 @@
 # moon(toward, size, at, glow) hangs it 800 m from `at` (the eye) in the direction `toward` (up and out): `size`
 # degrees across (1.2; the real moon is 0.5). No lamp: it glows, and is far too dim to light a room by itself.
 #
-# kind: skie
+# kind: sky
 # place: moon(AT)
 # credit: J Production, made in Loop3D
 # licence: our own work, free for every J Production project
