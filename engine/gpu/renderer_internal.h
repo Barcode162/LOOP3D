@@ -98,6 +98,7 @@ struct FrameU {
   Vec4 lampMaps;      // lamp shadow maps: lamps, tile size, atlas width, height
   Mat4 lampFaces[12]; // each mapped lamp's six views
   Vec4 lampValid;     // per row: its map is drawn for its lamp (1) or not yet (0)
+  Vec4 lampNear;      // per row: its views' near and far distances (row 0 xy, row 1 zw), for soft edges
   Mat4 shadowFarViewProj;  // the sun's far shadow (a second, coarser map)
   Vec4 shadowFar;          // the near box's size over the far one's, the far map's layer (1 or 2; 0: none)
   Vec4 cache0, cache1;     // the light cache: first probe xyz, spacing; probes x y z, on
@@ -167,7 +168,7 @@ struct NodeU {
 struct ExposureU {
   Vec4 size, limits;
 };
-static_assert(sizeof(FrameU) == 1584, "frame layout");
+static_assert(sizeof(FrameU) == 1600, "frame layout");
 static_assert(sizeof(InstanceU) == 128, "instance layout");
 
 constexpr int kMaxLights = 256;
@@ -621,15 +622,19 @@ class GpuRenderer final : public Renderer {
   // Phone's lamp maps keep their rows: a mapped lamp still among the first
   // stays in its row (only a newcomer's row is drawn again), the others move up.
   uint32_t lampRowLamp_[kLampMapsMost] = {~0u, ~0u};
+  uint32_t lampRowDrawnFor_[kLampMapsMost] = {~0u, ~0u};  // which lamp each row's map was last drawn for
   void keepLampRows(std::vector<std::pair<float, uint32_t>>& rank);
   // How far a lamp's map reaches: where its light falls below a quarter of a
   // lux (a shadow farther out is too faint to see), 2 to 15 m.
   static float lampMapReach(const LightU& L);
+  static Vec3 lampMapOrigin(const LightU& L);
   ChangeTracker::Made lampRowMade_[kLampMapsMost];
   int lampRowDrawing_ = -1;  // the row drawn this frame (one at most: the work spread over frames)
   float lampRowValid_[kLampMapsMost] = {0, 0};
   Vec3 lampRowPos_[kLampMapsMost];
   float lampRowReach_[kLampMapsMost] = {0, 0};
+  bool lampRowsRanked_ = false;  // keepLampRows ran while maps could be drawn
+  int lampRowsUsed_ = 0;  // how many rows keepLampRows gave a lamp (bulbs or panels)
   // Which lamps get maps this frame, and their views (into the frame's constants).
   void chooseLampMaps(FrameU& f);
   // The row drawn this frame: its six lists, the still copies within its reach.

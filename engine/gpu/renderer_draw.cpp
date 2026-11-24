@@ -467,6 +467,7 @@ bool GpuRenderer::draw(const Camera& cam, const Look& look, float dt, float time
     const std::string name = "lamp row " + std::to_string(row);
     changes_.made(lampRowMade_[row], {"placements", "shapes", "settings", "movers", name});
     lampRowValid_[row] = 1;
+    lampRowDrawnFor_[row] = lampRowLamp_[row];  // the lamp this map is of
     ++lampMapDraws_;
   }, lampMapsStale && lampListsReady());
   // the Ultra quality: the path tracer, then its noise cleaned, keeping edges

@@ -184,6 +184,15 @@ phase is meant to change the look).
    ("lamp maps": which lamps, the placements, shapes, settings, movers); moving things are left out of them. The
    shader picks the view facing the point and compares (2x2 blended). Checked against High's rays: the cabin 0.75
    apart (8.5 without); the cabin's and the bar's reference pictures renewed.
+   *Soft lamp shadows, panels and moving lamps, 2026-11-24:* the two rows go to the lamps giving the most light
+   where the eye is, panels as well as bulbs (a panel's map is taken 3 cm in front of it; before, a softbox or a
+   window never cast a shadow on Phone, so a room it lit looked lit everywhere). Each mapped lamp's edge is as soft
+   as the lamp is wide (a bulb's diameter, a panel's side), found the film's way: the things in the way round the
+   point and their distance from the lamp first, then the map read over the width of soft edge that gives
+   (percentage-closer soft shadows: 8 reads and 8 blended compares on Phone, 16 on High). A lamp that keeps moving
+   kept its row marked "not drawn" every frame and so never cast a shadow; a row redrawn for its own lamp now stays
+   on. The rows are handed out again once the shapes are cooked. Surface Box against film: 3.1 to 2.5 (worst tenth
+   7.5 to 5.6).
    *2026-11-09:* each lamp keeps its row (only a newcomer's is drawn, one lamp a frame); a map reaches only where
    its lamp gives a quarter of a lux (2-15 m), fixed when the lamp takes the row (a flickering flame keeps its
    map); a layer per lamp. *Sun shadows in steps:* the shadow map has two layers, the near box as before and a far

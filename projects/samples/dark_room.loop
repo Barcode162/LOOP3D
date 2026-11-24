@@ -1,0 +1,36 @@
+# The Dark Room: nothing but black, a few plain shapes, and one bare bulb that walks slowly round them.
+# What to look at: every shadow swings as the bulb goes by, sharp where a shape stands on the floor and
+# softening the farther it falls from it, as a real bulb's do. Walk round with the stick.
+# In the editor: drag in more lamps (Build: the Lamp button, or the library's Lights shelf) and slide their
+# ☀ markers; the light and its shadows follow your finger. Two lamps at a time cast shadows on the phone.
+title "The Dark Room"
+use "dark_stage"
+use "walk_controls"
+dark_stage()
+
+# what the light falls on
+let clay = material(color: rgb(0.72, 0.7, 0.66), roughness: 0.6)
+sphere(0.35, at: vec(-0.9, 0.35, 0), material: clay)
+box size: vec(0.6, 0.6, 0.6), at: vec(0.7, 0.3, -0.3), turn: 30 deg, material: clay
+cylinder(0.12, 1.6, at: vec(0.1, 0.8, -1.1), material: clay)
+cone(0.3, 0.7, at: vec(0.9, 0.35, 0.9), material: clay)
+
+# the bare bulb: a warm 800 lumens, and a small glowing ball to show where it is (inside the bulb's
+# own size, so it never shades its own light)
+let bulb = light(at: vec(-1.6, 1.2, 1.2), lumens: 800, kelvin: 2700, radius: 0.04)
+let glass = sphere(0.03, at: vec(-1.6, 1.2, 1.2), material: material(color: rgb(1, 0.8, 0.55), glow: 600), collide: no)
+# round the shapes in 16 seconds, rising and falling a little, and round again with no jolt
+clip bulb, loop: yes
+  key 0 s, at: vec(-1.6, 1.2, 1.2)
+  key 4 s, at: vec(1.8, 0.9, 1.4)
+  key 8 s, at: vec(1.8, 1.5, -1.8)
+  key 12 s, at: vec(-1.6, 1.0, -1.6)
+  key 16 s, at: vec(-1.6, 1.2, 1.2)
+clip glass, loop: yes
+  key 0 s, at: vec(-1.6, 1.2, 1.2)
+  key 4 s, at: vec(1.8, 0.9, 1.4)
+  key 8 s, at: vec(1.8, 1.5, -1.8)
+  key 12 s, at: vec(-1.6, 1.0, -1.6)
+  key 16 s, at: vec(-1.6, 1.2, 1.2)
+
+walk_controls(vec(0, 0, 4.2), look_at: vec(0, 0.5, 0))

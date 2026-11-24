@@ -267,6 +267,7 @@ window.LE = window.LE || {};
       let at = add(hit, g.grab);
       if (V.snap) at = [snapTo(at[0], V.moveStep), at[1], snapTo(at[2], V.moveStep)];
       g.at = at; g.mark.at = at;
+      if (g.lamp >= 0) E.lightAt(g.lamp, at);  // its light and shadows follow the finger
       hint(g.mark.label + ' · ' + S.num(at[0]) + ', ' + S.num(at[1]) + ', ' + S.num(at[2]) + ' m', 0);
     }
   });
@@ -345,7 +346,14 @@ window.LE = window.LE || {};
   function startMarkMove(mk, e) {
     const ray = viewRay(e.clientX, e.clientY), hit = ray && onPlane(ray, mk.at[1]);
     if (!hit) return;
-    g = { kind: 'mark', mark: mk, x0: e.clientX, y0: e.clientY, grab: sub(mk.at, hit), y: mk.at[1], before: mk.at.slice(), at: mk.at.slice() };
+    // a lamp's own light in the engine (the one standing where its marker is), moved with it as it's dragged
+    let lamp = -1;
+    const info = LE.spaces && LE.spaces.refreshInfo && LE.spaces.refreshInfo();
+    if (mk.kind === 'lamp' && info && info.lights) {
+      let best = 0.01;
+      info.lights.forEach((L, i) => { const d = len(sub(L.position, mk.at)); if (d < best) { best = d; lamp = i; } });
+    }
+    g = { kind: 'mark', mark: mk, lamp, x0: e.clientX, y0: e.clientY, grab: sub(mk.at, hit), y: mk.at[1], before: mk.at.slice(), at: mk.at.slice() };
   }
   function finishMark(was) {
     const mk = was.mark, delta = sub(was.at, was.before);

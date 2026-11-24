@@ -21,6 +21,7 @@
     {"name": "bar"},
     {"name": "two_rooms"},
     {"name": "windows"},
-    {"name": "surface_box"}
+    {"name": "surface_box"},
+    {"name": "dark_room", "why": "one moving bulb in the dark: its shadows on the phone (a lamp that keeps moving once never cast any)"}
   ]
 }

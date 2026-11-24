@@ -50,10 +50,25 @@ fn cacheLight4(p : vec3f, n : vec3f) -> vec4f {
 }
 fn cacheLight(p : vec3f, n : vec3f) -> vec3f { return cacheLight4(p, n).rgb; }
 
+// Where lamp k's six views are taken from: a bulb's middle, or 3 cm in front of
+// a panel (GpuRenderer::lampMapOrigin, the same rule).
+fn lampOrigin(L : Light) -> vec3f {
+  return select(L.pos.xyz, L.pos.xyz + L.dir.xyz * 0.03, L.dir.w > 1.5);
+}
+// How wide the lamp is, as a shadow sees it: a bulb's diameter, a panel's side.
+fn lampSize(L : Light) -> f32 {
+  return select(2.0 * L.pos.w, sqrt(L.cone.z * L.cone.w), L.dir.w > 1.5);
+}
+
 // How much of lamp k (one of the first, mapped) a point sees: its depth in the
-// lamp's view that faces it, against the map (the chip blends 2x2 of them).
+// lamp's view that faces it, against the map. The edge is as soft as the lamp
+// is wide and as far as the shadow falls from what casts it (as in film, where
+// a ball's shadow is sharp where it touches the floor and blurs away from it):
+// first the things in the way are found round the point and their average
+// distance from the lamp taken, then the map is read over the width of
+// shadow's soft edge that gives (percentage-closer soft shadows).
 fn lampMapSeen(p : vec3f, L : Light, k : u32, pix : vec2f) -> f32 {
-  let v = p - L.pos.xyz;
+  let v = p - lampOrigin(L);
   let a = abs(v);
   var face = 0u;
   if (a.x >= a.y && a.x >= a.z) { face = select(1u, 0u, v.x > 0.0); }
@@ -65,20 +80,37 @@ fn lampMapSeen(p : vec3f, L : Light, k : u32, pix : vec2f) -> f32 {
   let tile = frame.lampMaps.y;
   let inset = 1.0 / tile;
   let uv = clamp(ndc.xy * vec2f(0.5, -0.5) + 0.5, vec2f(inset), vec2f(1.0 - inset));
-  if (kShading >= 2u) {
-    // a softer edge: four taps a texel and a half round the point (each the
-    // chip's own blend of 2x2), turned per pixel, kept inside this view's tile
-    let ang = pixelTurn(pix) * 6.2831853;
-    let rot = vec2f(cos(ang), sin(ang));
-    var seen = 0.0;
-    for (var t = 0; t < 4; t++) {
-      let q = clamp(uv + spiral(t, 4, rot) * (1.5 * inset), vec2f(inset), vec2f(1.0 - inset));
-      seen += textureSampleCompareLevel(lampMap, shadowSampler, vec2f((f32(face) + q.x) / 6.0, q.y), i32(k), ndc.z);
-    }
-    return seen * 0.25;
+  if (kShading == 0u) {
+    return textureSampleCompareLevel(lampMap, shadowSampler, vec2f((f32(face) + uv.x) / 6.0, uv.y), i32(k), ndc.z);
   }
-  let at = vec2f((f32(face) + uv.x) / 6.0, uv.y);
-  return textureSampleCompareLevel(lampMap, shadowSampler, at, i32(k), ndc.z);
+  let nf = select(frame.lampNear.xy, frame.lampNear.zw, k == 1u);
+  let tr = c.w;  // the point's distance from the lamp, along the view
+  let size = lampSize(L);
+  let ang = pixelTurn(pix) * 6.2831853;
+  let rot = vec2f(cos(ang), sin(ang));
+  // 1. what is in the way: the lamp's width seen from the point, on the map
+  // (1 uv is 2 x tr metres at the point's distance)
+  let search = clamp(size * 0.5 / tr, 1.5 * inset, 0.08);
+  var block = 0.0;
+  var blockers = 0.0;
+  for (var t = 0; t < 8; t++) {
+    let q = clamp(uv + spiral(t, 8, rot) * search, vec2f(inset), vec2f(1.0 - inset));
+    let d = textureLoad(lampMap, vec2i(i32((f32(face) + q.x) * tile), i32(q.y * tile)), i32(k), 0);
+    if (d < ndc.z) { block += d; blockers += 1.0; }
+  }
+  if (blockers == 0.0) { return 1.0; }
+  // its distance from the lamp (the views' depth back to metres)
+  let db = block / blockers;
+  let tb = nf.x * nf.y / max(nf.y - db * (nf.y - nf.x), 1e-5);
+  // 2. the soft edge: as wide as the lamp, times how far past what's in the way
+  let spread = clamp(size * max(tr - tb, 0.0) / max(tb, 0.01) / (4.0 * tr), inset, 0.1);
+  let n = select(8, 16, kShading >= 2u);
+  var seen = 0.0;
+  for (var t = 0; t < n; t++) {
+    let q = clamp(uv + spiral(t, n, rot) * spread, vec2f(inset), vec2f(1.0 - inset));
+    seen += textureSampleCompareLevel(lampMap, shadowSampler, vec2f((f32(face) + q.x) / 6.0, q.y), i32(k), ndc.z);
+  }
+  return seen / f32(n);
 }
 
 fn srgbToLinear(c : vec3f) -> vec3f {
@@ -805,10 +837,12 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     let off = ng * sign(nl);  // off the surface, on the lamp's side
     // the main lamps' shadow maps (Phone): only the first few lamps have one
     var ownShadow = false;
+    var seen = 1.0;  // how much of a mapped lamp this point sees (a wide panel's light takes it too)
     if (k < u32(frame.lampMaps.x) && frame.lampValid[k] > 0.5) {
-      I *= lampMapSeen(i.world + off * 0.02, L, k, i.clip.xy);
+      seen = lampMapSeen(i.world + off * 0.02, L, k, i.clip.xy);
+      I *= seen;
       ownShadow = true;
-      if (dot(I, I) == 0.0) { continue; }
+      if (seen == 0.0) { continue; }
     }
     // a real shadow: can this point see the lamp? (rays through the scene)
     // panels (windows, softboxes) are left unshadowed: their real shadows are
@@ -827,7 +861,7 @@ fn shade(i : VsOut, front : bool) -> Shaded {
     if (!ownShadow && !picked) { I *= mix(1.0, aoTerm, 0.7); }
     var c = surfLight(sf, l, L.pos.w / (2.0 * sqrt(d2))) * I;
     // (blended into the point's light over the last of that reach: no ring where one takes over)
-    if (wide) { c = mix(panelLight(sf, i.world, L) * mix(1.0, aoTerm, 0.7), c, smoothstep(25.0, 36.0, d2 / diag2)); }
+    if (wide) { c = mix(panelLight(sf, i.world, L) * select(mix(1.0, aoTerm, 0.7), seen, ownShadow), c, smoothstep(25.0, 36.0, d2 / diag2)); }
     if (picked) {
       // one kept, each with the chance of its share of the light so far
       let w = dot(c, vec3f(0.3333));
