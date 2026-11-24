@@ -75,3 +75,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | N9 | S | builder | 5 | 3 | 2026-11-24 |
 | N10 | S | builder | 4 | 2 | 2026-11-24 |
 | N11 | S | builder | 4 | 1 | 2026-11-24 |
+| N12 | S | builder | 4 | 47 | 2026-11-24 |
