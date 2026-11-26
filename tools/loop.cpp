@@ -49,6 +49,7 @@
 #include "engine/project/project.h"
 #include "engine/render/demo_scenes.h"
 #include "engine/render/film.h"
+#include "engine/render/budget_sheet.h"
 #include "engine/render/frame_cost.h"
 #include "engine/render/pathtracer.h"
 #include "engine/geometry/world_gen.h"
@@ -522,26 +523,11 @@ bool measureScene(const std::string& path, const Options& o, Measured& m) {
   double secs = o.secondsGiven ? o.seconds : 1;
   for (double t = 0; t < secs; t += 1.0 / 60) vm.update(1.0 / 60), stage.update(1.0f / 60);
   m.budget = budgetFor(o.quality == "high" ? "high" : "phone");
-  const Config& C = config();
+  Camera cam = stage.scene.camera;
+  if (stage.mode == "movie" && !stage.film.shots.empty()) cam = stage.film.at(static_cast<float>(secs), stage.scene.camera);
   FrameView& v = m.view;
-  v.camera = stage.scene.camera;
-  if (stage.mode == "movie" && !stage.film.shots.empty()) v.camera = stage.film.at(static_cast<float>(secs), stage.scene.camera);
-  v.width = o.sizeGiven ? o.w : m.budget.width, v.height = o.sizeGiven ? o.h : m.budget.height;
-  v.drawDistance = C.world.drawDistance, v.maxLights = C.render.maxLights;
-  v.cullOffscreen = C.render.cull;
-  v.lodBias = C.world.lodBias;
-  v.portraitWide = C.camera.portraitWide;
-  v.clusters = C.render.clusters, v.clusterError = C.render.clusterError;
-  v.textureSize = C.render.textureSize;
-  v.lightGrid = C.render.lightGrid, v.lampGrouping = C.render.lampGrouping, v.lampError = C.render.lampError;
-  v.mirrorSmallest = C.render.mirrorSmallest;
-  v.mirrorPane = C.render.mirrorPane && m.budget.quality != "ultra";
-  {
-    int lamps = 0;
-    for (const Light& l : stage.scene.lights) lamps += l.kind != Light::Kind::kSun;
-    v.prepass = prepassOn(C.render.prepass, std::min(lamps, std::max(C.render.maxLights, 1)));
-  }
-  v.shadowRadius = C.render.shadowDistance > 0 ? C.render.shadowDistance : m.budget.quality == "high" ? 40.0f : 25.0f;
+  v = liveFrameView(stage.scene, cam, m.budget);
+  if (o.sizeGiven) v.width = o.w, v.height = o.h;
   m.cost = measureFrame(stage.scene, v);
   m.title = stage.title;
   {
@@ -596,6 +582,13 @@ int budgetScene(const std::string& path, const Options& o) {
   std::printf("  heaviest shapes in the scene (triangles x copies):\n");
   for (const auto& h : m.heaviest)
     std::printf("    %-24s %8zu x %-5zu = %6.2f M\n", h.material.c_str(), h.triangles, h.copies, static_cast<double>(h.triangles * h.copies) / 1e6);
+  // the Budget page's sheet (engine/render/budget_sheet.h), as the phone shows it, without the live times
+  std::printf("  the budget sheet (used of what's there):\n");
+  for (const BudgetLine& l : budgetSheet(c, m.budget, LiveNumbers{})) {
+    const char* mark[] = {"fine", "near", "OVER"};
+    std::printf("    %-30s %9.2f of %-9.2f %-3s %-5s %s%s\n", l.name.c_str(), l.used, l.budget, l.unit.c_str(), mark[l.state()], sourceName(l.source),
+                l.budgetEstimated ? ", budget estimated" : "");
+  }
   std::vector<std::string> over = overBudget(c, m.budget);
   if (over.empty()) {
     std::printf("fits the %s budget\n", q.c_str());

@@ -63,6 +63,26 @@
   #bench td:first-child, #bench th:first-child { text-align: left; white-space: normal; }
   #bench .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   #benchLive { position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); font: 12px ui-monospace, monospace; color: var(--amber); background: rgba(0, 0, 0, 0.7); padding: 6px 12px; border-radius: 999px; display: none; }
+  /* the Budget page: everything a frame spends, used of what's there (engine/render/budget_sheet.h) */
+  #budget { position: fixed; top: calc(10px + env(safe-area-inset-top)); bottom: calc(10px + env(safe-area-inset-bottom)); right: max(10px, env(safe-area-inset-right)); width: min(420px, calc(100vw - 20px)); box-sizing: border-box; overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 14px 14px 18px; background: rgba(0, 0, 0, 0.92); border: 1px solid var(--line); border-radius: 16px; display: none; z-index: 5; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  #budget h2 { margin: 0; font-size: 18px; }
+  #budget h3 { margin: 16px 0 6px; font-size: 13px; color: var(--dim); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  #budget .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #budget .dev { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+  #budget .dev span:nth-child(odd) { color: var(--dim); }
+  #budget .ln { margin: 9px 0; cursor: pointer; }
+  #budget .ln .top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+  #budget .ln .num { font: 12px ui-monospace, monospace; color: var(--dim); white-space: nowrap; }
+  #budget .bb { position: relative; height: 9px; margin-top: 4px; border-radius: 5px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+  #budget .bb i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: #fff; }
+  #budget .near .bb i { background: #ffc85a; }
+  #budget .over .bb i { background: #ff6b6b; }
+  #budget .over .num { color: #ff8a8a; }
+  #budget .src { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  #budget .says { font-size: 12px; color: var(--dim); margin-top: 3px; display: none; }
+  #budget .ln.open .says { display: block; }
+  #budget .note { font-size: 12px; color: var(--dim); margin-top: 8px; }
+  #budget button { padding: 6px 12px; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -81,6 +101,7 @@
   <select id="scene" title="Scene">
     <option value="courtyard">Courtyard</option>
   </select>
+  <button id="budgetBtn" title="What each frame spends: used of what's there">Budget</button>
   <a class="chip" id="editorLink" href="editor.html" title="Open the Loop3D editor" style="text-decoration:none">Editor</a>
   <select id="benchSel" title="Measure how smoothly it runs">
     <option value="">Benchmark…</option>
@@ -102,6 +123,7 @@
 <canvas id="graph" width="480" height="180"></canvas>
 <div id="meter"></div>
 <div id="benchLive"></div>
+<div id="budget"></div>
 <div id="bench"></div>
 <div class="stick" id="ls"><i></i></div>
 <div class="stick" id="rs"><i></i></div>
@@ -331,6 +353,116 @@
         `<div class="note">${worst <= BUDGET ? 'Fits 60 a second.' : slower + ' is the slower: ' + worst.toFixed(1) + ' ms a frame.'} ${m.cores > 1 ? m.cores + ' cores at work.' : 'One core.'} ${m.cacheWaiting ? 'Baking bounced light: ' + m.cacheWaiting + ' probes to go. ' : ''}Build ${document.querySelector('meta[name=loop-build]').content}. ${m.clustered ? 'Drawn in clusters' + (m.pieces && m.pieces[0] ? ': ' + (m.pieces[0] + m.pieces[1]).toLocaleString() + ' pieces' + (m.pieces[1] ? ' (' + m.pieces[1].toLocaleString() + ' just come into view)' : '') : '') + '.' : 'Clusters cooking…'}</div>`;
     } catch (e) {}
     setTimeout(drawMeter, 500);
+  }
+  // ---- the Budget page: everything a frame spends, each line used of what's
+  // there (engine/render/budget_sheet.h), what the device has, and which parts
+  // cost the most (found by switching each one off for a moment)
+  const budgetBox = document.getElementById('budget');
+  const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  let budgetOn = false, budgetTick = 0, budgetFind = null, budgetFinding = false;
+  const fmt = (v, unit) => unit === 'M' ? v.toFixed(2) + ' M' : unit === 'ms' ? v.toFixed(1) + ' ms' : unit === '%' ? Math.round(v) + '%' : unit === 'MB' ? Math.round(v) + ' MB' : (v >= 100 ? Math.round(v) : v.toFixed(1)) + (unit ? ' ' + unit : '');
+  function budgetLine(l) {
+    const share = l.budget > 0 ? l.used / l.budget : 0, cls = ['', 'near', 'over'][l.state];
+    let num;
+    if (l.higherIsBetter) num = fmt(l.used, l.unit) + ' of full' + (l.used < l.budget - 0.5 ? ' · ' + fmt(l.budget - l.used, l.unit) + ' given up' : '');
+    else num = fmt(l.used, l.unit) + ' of ' + fmt(l.budget, l.unit) + ' · ' + (l.used <= l.budget ? fmt(l.budget - l.used, l.unit) + ' free' : fmt(l.used - l.budget, l.unit) + ' over');
+    const src = l.source + (l.budgetEstimated ? ' · the limit is estimated (Safari hides it)' : '');
+    return `<div class="ln ${cls}" data-id="${l.id}"><div class="top"><span>${esc(l.name)}</span><span class="num">${num}</span></div>` +
+      `<div class="bb"><i style="width:${Math.min(100, share * 100).toFixed(1)}%"></i></div><div class="src">${src}</div><div class="says">${esc(l.says)}</div></div>`;
+  }
+  function drawBudget() {
+    if (!budgetOn) return;
+    try {
+      const b = M && M._loop_budget ? JSON.parse(M.UTF8ToString(M._loop_budget(budgetTick++ % 6 === 0 ? 1 : 0))) : {};
+      const open = new Set([...budgetBox.querySelectorAll('.ln.open')].map((e) => e.dataset.id));
+      const over = (b.lines || []).filter((l) => l.state === 2);
+      budgetBox.innerHTML = `<div class="head"><h2>Budget</h2><button id="budgetClose">✕</button></div>` +
+        `<div class="note">${over.length ? 'Over: ' + over.map((l) => esc(l.name)).join(', ') + '. That is what to cut first.' : 'Everything fits.'} Tap a line to see what it is.</div>` +
+        `<h3>This device</h3><div class="dev">` +
+        `<span>Graphics</span><span>${navigator.gpu ? 'WebGPU' : 'no WebGPU'} · the chip's name is hidden by the browser</span>` +
+        `<span>Screen</span><span>${screen.width} × ${screen.height} points, ${devicePixelRatio}× pixels</span>` +
+        `<span>Processor</span><span>${navigator.hardwareConcurrency || '?'} cores${window.crossOriginIsolated ? ', the engine uses several' : ', the engine uses one'}</span>` +
+        `<span>Chip timers</span><span>${b.timers ? 'yes: each step is timed (tap the fps)' : 'no: parts are found by switching them off'}</span>` +
+        `<span>Quality</span><span>${esc(b.quality || '?')} · ${b.things || 0} things · ${b.lamps || 0} lamps${b.sun ? ' · sun' : ''}</span></div>` +
+        `<h3>Each frame (used of what's there)</h3>` + (b.lines ? b.lines.map(budgetLine).join('') : `<div class="note">Waiting for the scene…</div>`) +
+        `<h3>Where the time goes</h3>` +
+        (budgetFind ? budgetFind : `<div class="note">Switches each part off for a moment and times the graphics chip without it (about half a minute; the picture will flicker).</div>`) +
+        `<div style="margin-top:8px"><button id="budgetFindBtn" ${budgetFinding ? 'disabled' : ''}>${budgetFinding ? 'Measuring…' : 'Find what costs the most'}</button></div>`;
+      budgetBox.querySelectorAll('.ln').forEach((e) => { if (open.has(e.dataset.id)) e.classList.add('open'); e.onclick = () => e.classList.toggle('open'); });
+      document.getElementById('budgetClose').onclick = () => showBudget(false);
+      document.getElementById('budgetFindBtn').onclick = findCosts;
+    } catch (e) { console.error('budget page:', e); }
+    setTimeout(drawBudget, 500);
+  }
+  function showBudget(on) {
+    budgetOn = on;
+    budgetBox.style.display = on ? 'block' : 'none';
+    document.getElementById('budgetBtn').classList.toggle('on', on);
+    if (on && document.body.classList.contains('menu-open')) menuBtn.click();  // the sheet, not the buttons
+    if (on) drawBudget();
+  }
+  document.getElementById('budgetBtn').onclick = () => showBudget(!budgetOn);
+  // Each part's cost: the graphics chip's time with it on, then off, at a held
+  // sharpness (so the automatic resolution doesn't hide the change).
+  const COST_PARTS = [
+    ['Many lamps (all but the brightest)', 'render.maxLights', 1],
+    ['Lamp shadows', 'render.lampShadows', false],
+    ['Sun shadows', 'render.sunShadows', false],
+    ['The mirror in the glass', 'render.mirrorPane', false],
+    ['Material detail', 'render.shading', 0],
+    ['Soft creases (ambient occlusion)', 'render.ao', 0],
+    ['Screen reflections', 'render.ssr', false],
+    ['Edge smoothing (multisampling)', 'render.msaa', 1],
+    ['Shapes at full detail', 'world.lodBias', -2],
+  ];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function gpuAverage(ms) {
+    let sum = 0, n = 0;
+    for (const end = performance.now() + ms; performance.now() < end; await sleep(100)) { sum += JSON.parse(M.UTF8ToString(M._loop_stats())).gpu || 0; n++; }
+    return n ? sum / n : 0;
+  }
+  function editorValue(id) {
+    const e = JSON.parse(M.UTF8ToString(M._loop_settings_json())).find((x) => x.id === id);
+    return e ? { now: e.value, mine: e.layers && 'editor' in e.layers ? e.layers.editor : null } : null;
+  }
+  function setSetting(id, v) {
+    const json = JSON.stringify(v), a = M.lengthBytesUTF8(id) + 1, b = M.lengthBytesUTF8(json) + 1, pa = M._malloc(a), pb = M._malloc(b);
+    M.stringToUTF8(id, pa, a); M.stringToUTF8(json, pb, b);
+    const ok = M._loop_set_setting(pa, pb);
+    M._free(pa); M._free(pb);
+    return ok;
+  }
+  async function findCosts() {
+    if (budgetFinding || !M) return;
+    budgetFinding = true;
+    const res = editorValue('render.res');
+    try {
+      setSetting('render.res', Math.max(0.2, JSON.parse(M.UTF8ToString(M._loop_stats())).scale || 1));
+      await sleep(800);
+      const base = await gpuAverage(1500), rows = [];
+      if (base < 0.1) throw new Error('this device is not reporting the graphics chip\'s time right now');
+      for (let i = 0; i < COST_PARTS.length; i++) {
+        const [name, id, off] = COST_PARTS[i], was = editorValue(id);
+        if (!was || JSON.stringify(was.now) === JSON.stringify(off)) continue;
+        budgetFind = `<div class="note">Measuring ${i + 1} of ${COST_PARTS.length}: ${esc(name)}…</div>`;
+        setSetting(id, off);
+        await sleep(700);
+        const without = await gpuAverage(1200);
+        setSetting(id, was.mine);
+        await sleep(500);
+        rows.push({ name, ms: base - without });
+      }
+      rows.sort((a, b) => b.ms - a.ms);
+      const most = Math.max(base, 0.1);
+      budgetFind = `<div class="note">Graphics chip: ${base.toFixed(1)} ms a frame with everything on. Each part's share (switched off, it saves):</div>` +
+        rows.map((r) => `<div class="ln${r.ms > base * 0.25 ? ' over' : r.ms > base * 0.1 ? ' near' : ''}"><div class="top"><span>${esc(r.name)}</span><span class="num">${r.ms > 0.05 ? r.ms.toFixed(1) + ' ms' : 'about 0'}</span></div>` +
+          `<div class="bb"><i style="width:${Math.max(0, Math.min(100, r.ms / most * 100)).toFixed(1)}%"></i></div></div>`).join('') +
+        `<div class="note">Measured on this device just now, at ${Math.round((JSON.parse(M.UTF8ToString(M._loop_stats())).scale || 1) * 100)}% sharpness. Parts share work, so they don't add up exactly.</div>`;
+    } catch (e) {
+      budgetFind = `<div class="note">The measuring stopped: ${esc(String(e))}</div>`;
+    }
+    setSetting('render.res', res ? res.mine : null);
+    budgetFinding = false;
   }
   function drawGraph() {
     if (!graphOn) return;

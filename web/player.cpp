@@ -24,6 +24,7 @@
 #include "engine/core/settings.h"
 #include "engine/geometry/shape_edit.h"
 #include "engine/gpu/renderer.h"
+#include "engine/render/budget_sheet.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
 
@@ -1449,6 +1450,39 @@ EMSCRIPTEN_KEEPALIVE const char* loop_meter() {
   if (g.renderer && g.renderer->lightCacheWaiting()) out.insert(out.size() - 1, ",\"cacheWaiting\":" + std::to_string(g.renderer->lightCacheWaiting()));
   // each step of the frame on the graphics chip, when it has its own timers
   if (g.renderer && g.renderer->timers()) addSteps(out, g.renderer->stepMs());
+  return out.c_str();
+}
+// The Budget page (engine/render/budget_sheet.h): every line of what a frame
+// spends, used of what's there. `count` 1 counts the scene again from the live
+// camera (a few milliseconds, so the page asks every few seconds); 0 reuses the
+// last count with fresh times and memory.
+EMSCRIPTEN_KEEPALIVE const char* loop_budget(int count) {
+  static std::string out;
+  static FrameCost cost;
+  static bool counted = false;
+  if (!g.stage || !g.renderer) return "{}";
+  FrameBudget b = budgetFor(g.quality == 0 ? "phone" : "high");
+  if (count || !counted) {
+    cost = measureFrame(g.stage->scene, liveFrameView(g.stage->scene, g.stage->scene.camera, b), 3000);
+    counted = true;
+  }
+  LiveNumbers live;
+  live.running = true;
+  live.cpuMs = g.cpuMs, live.gpuMs = g.renderer->gpuMs();
+  live.targetFps = static_cast<float>(config().render.targetFps);
+  live.sharpness = g.renderer->renderScale();
+  live.gpuMB = g.renderer->gpuBytes() / (1024.0 * 1024.0);
+  live.heapMB = emscripten_get_heap_size() / (1024.0 * 1024.0);
+  int lamps = 0;
+  for (const Light& l : g.stage->scene.lights) lamps += l.kind != Light::Kind::kSun;
+  Json o = Json::object();
+  o.set("quality", Json(g.quality == 0 ? "Phone" : g.quality == 1 ? "High" : "Ultra"));
+  o.set("things", Json(static_cast<double>(g.stage->scene.instances.size())));
+  o.set("lamps", Json(lamps));
+  o.set("sun", Json(cost.sun));
+  o.set("timers", Json(g.renderer->timers()));
+  o.set("lines", budgetSheetJson(budgetSheet(cost, b, live)));
+  out = o.dump();
   return out.c_str();
 }
 EMSCRIPTEN_KEEPALIVE const char* loop_stats() {
