@@ -77,3 +77,4 @@ Written by `tools/claims.py finish` when the deployer ships a job; `tools/claims
 | N11 | S | builder | 4 | 1 | 2026-11-24 |
 | N12 | S | builder | 4 | 47 | 2026-11-24 |
 | DS1 | S | builder | 4 | 15 | 2026-11-27 |
+| DS2 | S | builder | 4 | 7 | 2026-11-27 |
