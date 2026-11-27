@@ -19,6 +19,11 @@ An engine setting has one name everywhere: in the editor (Project Settings), in 
    mirror, screen reflections, soft creases, bounced light and shape detail. Steps 1 to 6 draw at Phone, 7 to 10 at
    High; 5 is Phone and 7 is High as they were. Low steps give up costly light first and keep the picture sharp.
    A phone starts at 5, a computer at 7; the player remembers the last step (`?detail=3` in the address picks one).
+   Each kind of scene has its own recipe (`render.style`): **interior** (a night room: lamps cost most, so far
+   lamps are grouped and lamp shadows go first, shapes keep full detail), **open** (a daylight space: shapes and the
+   sun's shadow cost most, so far shapes get simpler and the sun's shadow shorter first, and high steps reach far)
+   and **balanced** (the steps above). Left empty, it is worked out: six lamps or more, or lamps and no sun, is an
+   interior; the sun with fewer lamps is open.
 
 `get_setting("player.walk")` reads a setting's value in effect.
 
@@ -123,6 +128,7 @@ roadmap (docs/TUNING.md); **needs you** is your call.
 | Lamp grid (many lamps cheaply) | `render.lightGrid` | true |  | live · script | `setting "render.lightGrid", true` | Each part of the room lists the lamps near it, worked out one by one, and far groups of lamps, each worked out as one lamp with all their light. Every lamp still lights everything. Off: every lamp alone, everywhere (for comparing). |
 | Lamp shadows on Phone (main lamps) | `render.lampMaps` | 2 | 0 … 2 | live · script | `setting "render.lampMaps", 2` | Phone traces no rays: the lamps giving the most light near you (up to 2, bulbs or soft panels like softboxes and windows) cast shadows from shadow maps instead, six views round each, drawn again when they or the things round them change (a lamp that keeps moving every frame). Their edges are as soft as the lamp is wide. 0: no lamp shadows on Phone. |
 | Lamp shadow sharpness | `render.lampMapSize` | 256 | 128 / 256 / 512 / 1024 | live · script | `setting "render.lampMapSize", 256` | Pixels square for each of a lamp shadow map's six views: sharper costs memory (256: 3 MB for two lamps, 512: 12 MB). |
+| Detail recipe | `render.style` | "" | "" / interior / open / balanced | live · script | `setting "render.style", ""` · `setting "render.style", "interior"` | What the Detail slider gives up first in this kind of scene. Interior: a night room, where lamps cost most. Open: a daylight space, where shapes and the sun's shadow cost most. Automatic works it out from the lamps and the sun. |
 | Lamp grouping distance | `render.lampGrouping` | 7 | 1 … 64 | live · script | `setting "render.lampGrouping", 7` | How far away, in its own sizes, a group of lamps must be to be worked out as one. More: closer to every lamp alone, more work. The bar: 7 is about a third less lamp work. |
 | Dim lamps as one | `render.lampError` | 0 | 0 … 0.2 | live · script | `setting "render.lampError", 0` | A nearer group of lamps is worked out as one too, when the most its light could be wrong is under this share of the light there. Off for now: on the phone it leaves sharp dark rectangles. |
 | Ambient occlusion | `render.ao` | 1 | 0 … 3 x | live · script | `setting "render.ao", 1` | Drawing in clusters: the soft light darkens where surfaces meet (corners, under tables, round feet), found in the depth picture. 0: off. |
@@ -609,4 +615,4 @@ Kept per browser; they change the editor, not the game.
 
 ---
 
-11 project.json · 156 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you
+11 project.json · 157 live · script · 49 live · 24 not built yet · 15 editor · 6 needs you

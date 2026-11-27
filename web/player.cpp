@@ -61,6 +61,7 @@ struct Player {
   float fps = 0;
   double cpuMs = 0, frameStart = 0;
   int quality = 1;              // 0 Phone, 1 High, 2 Ultra
+  int detail = 0;               // the Detail slider's step, 1 .. 10 (0: not set yet)
   uint64_t scriptSerial = 0;    // counts scenes started
   bool awaitingFirstFrame = false;
   double lastGpuReset = -1e9;
@@ -230,6 +231,18 @@ Light* sunOf(Scene& s) {
     if (l.kind == Light::Kind::kSun) return &l;
   return nullptr;
 }
+// The Detail slider's recipe for the scene on stage: its own word
+// (render.style), else worked out from its lamps and sun.
+DetailStyle sceneDetailStyle() {
+  int lamps = 0;
+  bool sun = false;
+  if (g.stage)
+    for (const Light& l : g.stage->scene.lights) {
+      if (l.kind == Light::Kind::kSun) sun = true;
+      else ++lamps;
+    }
+  return detailStyleFor(config().render.style, lamps, sun);
+}
 // sun.elevation and sun.azimuth (degrees) → the light's direction
 void aimSun(Light& sun, float elevDeg, float azDeg) {
   float e = elevDeg * kPi / 180, a = azDeg * kPi / 180;
@@ -346,6 +359,14 @@ void startScript(const std::string& src) {
   g.yaw = g.yawTarget = std::atan2(f.x, -f.z);
   g.pitch = g.pitchTarget = std::asin(clamp(f.y, -1.0f, 1.0f));
   g.vel = Vec3(0);
+  // each scene gets the slider's step in its own recipe (Ultra stays Ultra)
+  if (g.detail) {
+    int q = applyDetail(g.detail, sceneDetailStyle());
+    if (g.quality != 2 && q != g.quality) {
+      g.quality = q;
+      if (g.renderer) g.renderer->setQuality(qualityOf(q));
+    }
+  }
   EM_ASM({ if (window.loopStarted) window.loopStarted(UTF8ToString($0), UTF8ToString($1), $2); }, g.stage->title.c_str(), g.stage->mode.c_str(),
          static_cast<int>(g.stage->film.shots.size()));
 }
@@ -679,15 +700,19 @@ EMSCRIPTEN_KEEPALIVE void loop_set_quality(int q) {
 }
 // The Detail slider (engine/render/detail_steps.h): step 1 .. 10 sets its
 // settings in the detail layer and draws at the step's quality. Gives back
-// {"step", "quality", "says"}.
+// {"step", "quality", "says", "style"}; the step is taken in the scene's
+// recipe (engine/render/detail_steps.h: interior, open or balanced).
 EMSCRIPTEN_KEEPALIVE const char* loop_set_detail(int step) {
   static std::string out;
-  const DetailStep& s = detailStep(step);
-  loop_set_quality(applyDetail(s.step));
+  DetailStyle style = sceneDetailStyle();
+  const DetailStep& s = detailStep(step, style);
+  g.detail = s.step;
+  loop_set_quality(applyDetail(s.step, style));
   Json o = Json::object();
   o.set("step", Json(s.step));
   o.set("quality", Json(s.quality));
   o.set("says", Json(s.says));
+  o.set("style", Json(detailStyleName(style)));
   out = o.dump();
   return out.c_str();
 }

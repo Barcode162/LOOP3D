@@ -57,6 +57,11 @@ An engine setting has one name everywhere: in the editor (Project Settings), in 
    mirror, screen reflections, soft creases, bounced light and shape detail. Steps 1 to 6 draw at Phone, 7 to 10 at
    High; 5 is Phone and 7 is High as they were. Low steps give up costly light first and keep the picture sharp.
    A phone starts at 5, a computer at 7; the player remembers the last step (\`?detail=3\` in the address picks one).
+   Each kind of scene has its own recipe (\`render.style\`): **interior** (a night room: lamps cost most, so far
+   lamps are grouped and lamp shadows go first, shapes keep full detail), **open** (a daylight space: shapes and the
+   sun's shadow cost most, so far shapes get simpler and the sun's shadow shorter first, and high steps reach far)
+   and **balanced** (the steps above). Left empty, it is worked out: six lamps or more, or lamps and no sun, is an
+   interior; the sun with fewer lamps is open.
 
 \`get_setting("player.walk")\` reads a setting's value in effect.
 

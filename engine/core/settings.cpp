@@ -115,6 +115,7 @@ Settings::Settings() {
   B("render.passShadow", r.passShadow, "debug: the shadow pass");
   B("render.passDraw", r.passDraw, "debug: the scene pass");
   I("render.prepass", r.prepass, 0, 2, "depth pre-pass, so each pixel is lit once: 0 off, 1 on, 2 automatic (on when 6 or more lamps light the scene)");
+  T("render.style", r.style, "the Detail slider's recipe for this kind of scene: \"\" (works it out from the lamps and the sun) | interior (night rooms: lamps cost most) | open (daylight spaces: shapes and the sun's shadow cost most) | balanced");
   I("render.view", r.view, 0, 6, "debug view: 0 picture, 1 raw light, 2 exposure, 3 bloom, 4 ray work, 5 ambient occlusion, 6 kept lamp shadow (High)");
 
   auto& u = c.ultra;

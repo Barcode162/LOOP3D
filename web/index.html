@@ -511,7 +511,7 @@
       d.value = dn.textContent = String(r.step);
       if (+q.value !== 2) q.value = String(r.quality);
       try { localStorage.setItem('loop.detail', String(r.step)); } catch (e) {}
-      if (say && !note.classList.contains('loading')) { showNote('Detail ' + r.step + ': ' + r.says, false); clearTimeout(setDetail.t); setDetail.t = setTimeout(() => { note.style.display = 'none'; }, 2500); }
+      if (say && !note.classList.contains('loading')) { showNote('Detail ' + r.step + ({ interior: ' (the room recipe)', open: ' (the outdoor recipe)' }[r.style] || '') + ': ' + r.says, false); clearTimeout(setDetail.t); setDetail.t = setTimeout(() => { note.style.display = 'none'; }, 2500); }
       return r;
     };
     d.oninput = () => { dn.textContent = d.value; };

@@ -61,6 +61,7 @@ struct Config {
     bool passScene = true, passExposure = true, passBloom = true, passFilm = true, passShadow = true, passDraw = true;
     int prepass = 2;  // depth pre-pass: 0 off, 1 on, 2 automatic (many lamps)
     int view = 0;
+    std::string style = "";  // the Detail slider's recipe: "" works it out, interior, open, balanced
   } render;
   struct Ultra {
     int bounces = 5, spp = 1, history = 0;  // history 0 = keep sharpening forever
