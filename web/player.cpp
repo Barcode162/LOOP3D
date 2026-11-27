@@ -25,6 +25,7 @@
 #include "engine/geometry/shape_edit.h"
 #include "engine/gpu/renderer.h"
 #include "engine/render/budget_sheet.h"
+#include "engine/render/detail_steps.h"
 #include "engine/script/scene_api.h"
 #include "engine/script/vm.h"
 
@@ -675,6 +676,20 @@ EMSCRIPTEN_KEEPALIVE void loop_set_mode(int movie) {
 EMSCRIPTEN_KEEPALIVE void loop_set_quality(int q) {
   g.quality = std::clamp(q, 0, 2);
   if (g.renderer) g.renderer->setQuality(qualityOf(g.quality));
+}
+// The Detail slider (engine/render/detail_steps.h): step 1 .. 10 sets its
+// settings in the detail layer and draws at the step's quality. Gives back
+// {"step", "quality", "says"}.
+EMSCRIPTEN_KEEPALIVE const char* loop_set_detail(int step) {
+  static std::string out;
+  const DetailStep& s = detailStep(step);
+  loop_set_quality(applyDetail(s.step));
+  Json o = Json::object();
+  o.set("step", Json(s.step));
+  o.set("quality", Json(s.quality));
+  o.set("says", Json(s.says));
+  out = o.dump();
+  return out.c_str();
 }
 EMSCRIPTEN_KEEPALIVE void loop_emit(const char* event) {
   if (g.vm) g.vm->emit(event ? event : "");

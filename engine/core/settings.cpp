@@ -271,7 +271,7 @@ double asNumber(const Json& v) { return v.type() == Json::Type::kBool ? (v.boole
 
 void Settings::apply(Entry& e) {
   const Json* v = &e.def;
-  for (int l = kEditor; l >= kProject; --l)
+  for (int l = kEditor; l >= kDetail; --l)
     if (!e.layers[l].isNull()) { v = &e.layers[l]; break; }
   auto clampD = [&](double x) { return std::clamp(x, e.min, e.max); };
   switch (e.type) {
@@ -389,7 +389,7 @@ Json Settings::value(const std::string& id) const {
 Json Settings::list() const {
   Json out = Json::array();
   const char* kinds[] = {"bool", "int", "float", "vec3", "text"};
-  const char* layerNames[] = {"project", "scene", "editor"};
+  const char* layerNames[] = {"detail", "project", "scene", "editor"};
   for (const Entry& e : entries_) {
     Json o = Json::object();
     o.set("id", Json(e.id));
@@ -399,7 +399,7 @@ Json Settings::list() const {
     if (e.type == Type::kInt || e.type == Type::kFloat || e.type == Type::kVec3) o.set("min", Json(e.min)), o.set("max", Json(e.max));
     o.set("help", Json(e.help));
     Json set = Json::object();
-    for (int l = 0; l < 3; ++l)
+    for (int l = 0; l < kLayers; ++l)
       if (!e.layers[l].isNull()) set.set(layerNames[l], e.layers[l]);
     if (set.size()) o.set("layers", set);
     out.push(o);

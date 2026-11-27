@@ -143,7 +143,9 @@ Config& config();
 class Settings {
  public:
   enum class Type { kBool, kInt, kFloat, kVec3, kText };
-  enum Layer { kProject = 0, kScene = 1, kEditor = 2 };
+  // kDetail: the Detail slider's choices (engine/render/detail_steps.h), under
+  // everything a project, a scene or the editor sets on purpose.
+  enum Layer { kDetail = 0, kProject = 1, kScene = 2, kEditor = 3, kLayers = 4 };
   struct Entry {
     std::string id;
     Type type;
@@ -151,7 +153,7 @@ class Settings {
     Json def;
     double min = -1e30, max = 1e30;
     std::string help;
-    Json layers[3];  // null = not set in that layer
+    Json layers[kLayers];  // null = not set in that layer
   };
 
   static Settings& get();

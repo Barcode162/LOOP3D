@@ -44,7 +44,7 @@ Made by \`node tools/settings_doc.js > docs/SETTINGS.md\` from the editor's sett
 ## How settings work
 
 An engine setting has one name everywhere: in the editor (Project Settings), in a project's
-\`project.json\` and in a scene's script. Values come in three layers, the higher winning:
+\`project.json\` and in a scene's script. Values come in four layers, the higher winning:
 
 1. **The editor**: what you change while editing (kept in your browser).
 2. **The scene**: what its script asks for, with \`setting "physics.iterations", 24\`,
@@ -52,6 +52,11 @@ An engine setting has one name everywhere: in the editor (Project Settings), in 
    (\`gravity(…)\`, \`look(…)\` …). A new scene starts from the project's values again.
 3. **The project**: \`projects/<name>/project.json\`, \`"settings": {"render.lamps": 4}\` (the editor writes it:
    File → Save to project). \`loop render\` and the site build read it too.
+4. **The Detail slider**: the player's menu, 1 to 10 (\`engine/render/detail_steps.cpp\`). One dial over
+   sharpness, the lowest automatic resolution, shader detail, lamp shadows, the sun's shadow map and reach, the
+   mirror, screen reflections, soft creases, bounced light and shape detail. Steps 1 to 6 draw at Phone, 7 to 10 at
+   High; 5 is Phone and 7 is High as they were. Low steps give up costly light first and keep the picture sharp.
+   A phone starts at 5, a computer at 7; the player remembers the last step (\`?detail=3\` in the address picks one).
 
 \`get_setting("player.walk")\` reads a setting's value in effect.
 

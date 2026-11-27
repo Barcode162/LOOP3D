@@ -65,6 +65,10 @@
   #benchLive { position: fixed; left: 50%; top: calc(56px + env(safe-area-inset-top)); transform: translateX(-50%); font: 12px ui-monospace, monospace; color: var(--amber); background: rgba(0, 0, 0, 0.7); padding: 6px 12px; border-radius: 999px; display: none; }
   /* the Budget page: everything a frame spends, used of what's there (engine/render/budget_sheet.h) */
   #budget { position: fixed; top: calc(10px + env(safe-area-inset-top)); bottom: calc(10px + env(safe-area-inset-bottom)); right: max(10px, env(safe-area-inset-right)); width: min(420px, calc(100vw - 20px)); box-sizing: border-box; overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 14px 14px 18px; background: rgba(0, 0, 0, 0.92); border: 1px solid var(--line); border-radius: 16px; display: none; z-index: 5; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  /* the Detail slider (engine/render/detail_steps.h) */
+  #detailChip { display: inline-flex; align-items: center; gap: 8px; }
+  #detailChip input { pointer-events: auto; width: 120px; accent-color: #fff; margin: 0; }
+  #detailChip b { font: 600 14px ui-monospace, monospace; min-width: 1.4em; text-align: right; }
   #budget h2 { margin: 0; font-size: 18px; }
   #budget h3 { margin: 16px 0 6px; font-size: 13px; color: var(--dim); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
   #budget .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -109,6 +113,7 @@
     <option value="scene" class="auto">This scene, by itself</option>
     <option value="story" class="auto">The whole story (about 30 min)</option>
   </select>
+  <label class="chip" id="detailChip" title="Detail: one dial for many settings. Low is smooth and sharp, high adds light">Detail <input type="range" id="detail" min="1" max="10" step="1" value="5"> <b id="detailN">5</b></label>
   <select id="quality" title="Quality">
     <option value="0">Phone</option>
     <option value="1">High</option>
@@ -155,6 +160,8 @@
   const benchChoices = (params.get('choices') || '').split(',').filter((x) => x !== '').map(Number);
   let benchAsked = 0, benchSegments = [], benchScene = null, benchTimer = null, benchUse = null, benchStarted = 0;
   const qualityNames = ['Phone', 'High', 'Ultra'];
+  // what the recorder and the benchmark call the picture's level: "Phone · detail 4"
+  const qualityLabel = () => { const q = +document.getElementById('quality').value; return qualityNames[q] + (q < 2 ? ' · detail ' + document.getElementById('detail').value : ''); };
   // the live recorder (LoopUI.recorder): every visit outside a benchmark is
   // timed scene by scene. Framed (the recording page inside claude.ai) it is
   // saved where Claude reads it; the page has no editor and no benchmarks
@@ -172,7 +179,7 @@
       chip.hidden = false;
       chip.textContent = ok ? '● Recording for Claude · ' + Math.max(1, Math.round(visit.summary.seconds / 60)) + ' min' : 'Recording not saved (' + (code || 'error') + ')';
     });
-    rec = LoopUI.recorder({ getM: () => M, quality: () => qualityNames[+document.getElementById('quality').value], store, device: deviceInfo(),
+    rec = LoopUI.recorder({ getM: () => M, quality: qualityLabel, store, device: deviceInfo(),
                             build: document.querySelector('meta[name=loop-build]').content });
     document.addEventListener('visibilitychange', () => (document.hidden ? rec.hidden() : rec.shown()));
     addEventListener('pagehide', () => rec.cut());
@@ -190,9 +197,11 @@
   window.loopShown = () => { note.style.display = 'none'; fade.in(M); if (rec) rec.firstFrame(); };
   window.loopGpuProblem = (t) => { problemsBox.style.display = 'block'; problemsBox.textContent += (problemsBox.textContent ? '\n' : '') + 'Graphics problem: ' + t; if (rec) rec.event('gpu-problem', t); };
   window.loopGpuLost = () => { showNote('The graphics card restarted. Reconnecting…', true); if (rec) rec.event('gpu-lost'); };
+  let setDetail = null;
   window.loopGpuBack = (q) => {
     const sel = document.getElementById('quality');
     const lowered = +sel.value !== q;
+    if (lowered && q === 0 && setDetail) setDetail(Math.min(5, +document.getElementById('detail').value), false);
     if (rec) rec.event('gpu-back', 'at ' + qualityNames[q]);
     if (rec && lowered) rec.quality();
     sel.value = String(q);
@@ -289,7 +298,7 @@
     const segs = benchSegments;
     const result = {
       kind: 'loop3d-bench', v: 1, when: new Date().toISOString(), build: document.querySelector('meta[name=loop-build]').content,
-      bench, start: sceneName, quality: qualityNames[+document.getElementById('quality').value], msaa: +(params.get('msaa') || 4),
+      bench, start: sceneName, quality: qualityLabel(), msaa: +(params.get('msaa') || 4),
       device: await deviceInfo(),
       summary: LoopUI.summary(segs),
       segments: segs,
@@ -383,7 +392,7 @@
         `<span>Screen</span><span>${screen.width} × ${screen.height} points, ${devicePixelRatio}× pixels</span>` +
         `<span>Processor</span><span>${navigator.hardwareConcurrency || '?'} cores${window.crossOriginIsolated ? ', the engine uses several' : ', the engine uses one'}</span>` +
         `<span>Chip timers</span><span>${b.timers ? 'yes: each step is timed (tap the fps)' : 'no: parts are found by switching them off'}</span>` +
-        `<span>Quality</span><span>${esc(b.quality || '?')} · ${b.things || 0} things · ${b.lamps || 0} lamps${b.sun ? ' · sun' : ''}</span></div>` +
+        `<span>Quality</span><span>${esc(b.quality || '?')}${+document.getElementById('quality').value < 2 ? ' · detail ' + document.getElementById('detail').value : ''} · ${b.things || 0} things · ${b.lamps || 0} lamps${b.sun ? ' · sun' : ''}</span></div>` +
         `<h3>Each frame (used of what's there)</h3>` + (b.lines ? b.lines.map(budgetLine).join('') : `<div class="note">Waiting for the scene…</div>`) +
         `<h3>Where the time goes</h3>` +
         (budgetFind ? budgetFind : `<div class="note">Switches each part off for a moment and times the graphics chip without it (about half a minute; the picture will flicker).</div>`) +
@@ -490,8 +499,30 @@
   window.loopReady = async () => {
     const q = document.getElementById('quality');
     q.value = params.get('quality') || (touch ? '0' : '1');
-    q.onchange = () => { if (rec) rec.quality(); M._loop_set_quality(+q.value); q.blur(); };
-    M._loop_set_quality(+q.value);
+    // the Detail slider: one dial, 1 to 10, sets many settings at once
+    // (engine/render/detail_steps.h); Phone and High in the picker are its
+    // steps 5 and 7, Ultra is the path tracer, off the dial
+    const d = document.getElementById('detail'), dn = document.getElementById('detailN');
+    let saved = null;
+    try { saved = localStorage.getItem('loop.detail'); } catch (e) {}
+    const want = params.get('detail') || (params.get('quality') ? (q.value === '0' ? 5 : 7) : null) || saved || (touch ? 5 : 7);
+    setDetail = (step, say) => {
+      const r = JSON.parse(M.UTF8ToString(M._loop_set_detail(+step)));
+      d.value = dn.textContent = String(r.step);
+      if (+q.value !== 2) q.value = String(r.quality);
+      try { localStorage.setItem('loop.detail', String(r.step)); } catch (e) {}
+      if (say && !note.classList.contains('loading')) { showNote('Detail ' + r.step + ': ' + r.says, false); clearTimeout(setDetail.t); setDetail.t = setTimeout(() => { note.style.display = 'none'; }, 2500); }
+      return r;
+    };
+    d.oninput = () => { dn.textContent = d.value; };
+    d.onchange = () => { if (+q.value === 2) q.value = '0'; setDetail(d.value, true); if (rec) rec.quality(); };
+    q.onchange = () => {
+      if (+q.value === 2) M._loop_set_quality(2);
+      else setDetail(+q.value === 0 ? 5 : 7, true);
+      if (rec) rec.quality(); q.blur();
+    };
+    if (+q.value === 2) { M._loop_set_detail(+want); M._loop_set_quality(2); d.value = dn.textContent = String(want); }
+    else setDetail(want, false);
     // ?pause=1: the world holds still from its very first moment (picture tests)
     if (params.get('pause') === '1') { const n = M.lengthBytesUTF8('pause') + 1, p = M._malloc(n); M.stringToUTF8('pause', p, n); M._loop_set_option(p, 1); M._free(p); }
     const sc = document.getElementById('scene');
