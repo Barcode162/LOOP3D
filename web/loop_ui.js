@@ -258,7 +258,7 @@ window.LoopUI = (() => {
   // closed halfway still keeps what came before. The engine times the frames
   // (loop_perf_*); this decides when a part starts and ends.
   //   o.getM()      the engine (or null while it loads)
-  //   o.quality()   'Phone', 'High' or 'Ultra' now
+  //   o.quality()   'Phone · detail 5', 'High · detail 7' or 'Ultra' now
   //   o.store       where the visit is saved: { save(visit) }
   //   o.build, o.device (a promise), o.partMs, o.slowMs, o.clock (tests)
   // It also keeps what went wrong, saved the moment it happens (visit.events:

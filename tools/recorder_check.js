@@ -83,7 +83,7 @@ const ok = (cond, what, got) => { checks++; if (!cond) { failed++; console.log('
         const s = row.body.segments[0] || {};
         ok(row.path.startsWith('runs/live-'), 'one row per visit, runs/live-…', row.path);
         ok(row.body.bench === 'live' && row.body.kind === 'loop3d-bench', 'the row is a live recording');
-        ok(s.scene === 'courtyard' && s.part === 0 && s.quality === 'Phone', 'the part names its scene, number and quality', [s.scene, s.part, s.quality]);
+        ok(s.scene === 'courtyard' && s.part === 0 && /^Phone · detail \d+$/.test(s.quality), 'the part names its scene, number and quality (with its Detail step)', [s.scene, s.part, s.quality]);
         ok(s.frames > 5 && s.gpuMs >= 0 && s.fps > 0, 'the part holds frames', [s.frames, s.fps, s.gpuMs]);
         ok(s.loadMs > 0, "the scene's first part has its load time", s.loadMs);
         // the test browser's graphics chip has its own timers: each step of the frame is in the part
