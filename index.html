@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Loop3D Player</title>
 <link rel="icon" href="data:,">
-<meta name="loop-build" content="b304888 2026-11-27">
+<meta name="loop-build" content="2d53fce 2026-11-27">
 <style>
   :root { --ink: #f2f2f2; --dim: #9a9a9a; --glass: rgba(0, 0, 0, 0.6); --line: rgba(255, 255, 255, 0.18); --amber: #ffffff; --glow: 0 0 16px rgba(255, 255, 255, 0.32); }
   html, body { margin: 0; height: 100%; background: #000; color: var(--ink); font: 15px/1.35 -apple-system, system-ui, sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
@@ -511,7 +511,7 @@
       d.value = dn.textContent = String(r.step);
       if (+q.value !== 2) q.value = String(r.quality);
       try { localStorage.setItem('loop.detail', String(r.step)); } catch (e) {}
-      if (say && !note.classList.contains('loading')) { showNote('Detail ' + r.step + ': ' + r.says, false); clearTimeout(setDetail.t); setDetail.t = setTimeout(() => { note.style.display = 'none'; }, 2500); }
+      if (say && !note.classList.contains('loading')) { showNote('Detail ' + r.step + ({ interior: ' (the room recipe)', open: ' (the outdoor recipe)' }[r.style] || '') + ': ' + r.says, false); clearTimeout(setDetail.t); setDetail.t = setTimeout(() => { note.style.display = 'none'; }, 2500); }
       return r;
     };
     d.oninput = () => { dn.textContent = d.value; };
